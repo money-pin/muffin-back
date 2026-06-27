@@ -1,0 +1,12 @@
+# OS
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.claude/
+
+.env

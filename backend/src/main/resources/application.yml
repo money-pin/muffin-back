@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: muffin
+  profiles:
+    default: local
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+springdoc:
+  swagger-ui:
+    tags-sorter: alpha
+    operations-sorter: method
