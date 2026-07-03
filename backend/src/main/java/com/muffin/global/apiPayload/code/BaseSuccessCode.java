@@ -1,4 +1,3 @@
 package com.muffin.global.apiPayload.code;
 
-public interface BaseSuccessCode extends BaseCode {
-}
+public interface BaseSuccessCode extends BaseCode {}
