@@ -35,32 +35,30 @@ class UserTest {
         @Test
         @DisplayName("null characterId → NullPointerException")
         void nullCharacterId() {
-            assertThatThrownBy(
-                            () -> User.register(null, "uuid-1234", "홍길동", "길동이", LocalDate.of(1995, 1, 1), "010-1234-5678"))
+            assertThatThrownBy(() ->
+                            User.register(null, "uuid-1234", "홍길동", "길동이", LocalDate.of(1995, 1, 1), "010-1234-5678"))
                     .isInstanceOf(NullPointerException.class);
         }
 
         @Test
         @DisplayName("null userUuid → NullPointerException")
         void nullUserUuid() {
-            assertThatThrownBy(
-                            () -> User.register(1L, null, "홍길동", "길동이", LocalDate.of(1995, 1, 1), "010-1234-5678"))
+            assertThatThrownBy(() -> User.register(1L, null, "홍길동", "길동이", LocalDate.of(1995, 1, 1), "010-1234-5678"))
                     .isInstanceOf(NullPointerException.class);
         }
 
         @Test
         @DisplayName("null nickname → NullPointerException")
         void nullNickname() {
-            assertThatThrownBy(
-                            () -> User.register(1L, "uuid-1234", "홍길동", null, LocalDate.of(1995, 1, 1), "010-1234-5678"))
+            assertThatThrownBy(() ->
+                            User.register(1L, "uuid-1234", "홍길동", null, LocalDate.of(1995, 1, 1), "010-1234-5678"))
                     .isInstanceOf(NullPointerException.class);
         }
 
         @Test
         @DisplayName("name, birthday, phoneNumber는 null 허용")
         void optionalFieldsNullable() {
-            assertThatNoException()
-                    .isThrownBy(() -> User.register(1L, "uuid-1234", null, "길동이", null, null));
+            assertThatNoException().isThrownBy(() -> User.register(1L, "uuid-1234", null, "길동이", null, null));
         }
     }
 
@@ -110,8 +108,7 @@ class UserTest {
             User user = defaultUser();
             user.completeOnboarding(1, 2, 3);
 
-            assertThatThrownBy(() -> user.completeOnboarding(1, 2, 3))
-                    .isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> user.completeOnboarding(1, 2, 3)).isInstanceOf(IllegalStateException.class);
         }
 
         @Test
@@ -119,8 +116,7 @@ class UserTest {
         void optionBelowMin() {
             User user = defaultUser();
 
-            assertThatThrownBy(() -> user.completeOnboarding(0, 1, 1))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.completeOnboarding(0, 1, 1)).isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
@@ -140,8 +136,7 @@ class UserTest {
         void optionAboveMax() {
             User user = defaultUser();
 
-            assertThatThrownBy(() -> user.completeOnboarding(4, 1, 1))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.completeOnboarding(4, 1, 1)).isInstanceOf(IllegalArgumentException.class);
         }
     }
 

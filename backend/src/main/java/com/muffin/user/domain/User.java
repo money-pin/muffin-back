@@ -3,18 +3,19 @@ package com.muffin.user.domain;
 import com.muffin.user.domain.enums.UserRole;
 import com.muffin.user.domain.enums.UserStatus;
 import jakarta.persistence.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-
 @Entity
 @Table(
-    name = "users",
-    uniqueConstraints = @UniqueConstraint(name = "uk_provider_user", columnNames = {"provider", "provider_user_id"})
-)
+        name = "users",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_provider_user",
+                        columnNames = {"provider", "provider_user_id"}))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class User {
@@ -71,8 +72,8 @@ public class User {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private UserOnboarding userOnboarding;
 
-    private User(Long characterId, String userUuid, String name, String nickname,
-                 LocalDate birthday, String phoneNumber) {
+    private User(
+            Long characterId, String userUuid, String name, String nickname, LocalDate birthday, String phoneNumber) {
         if (characterId == null) {
             throw new NullPointerException("characterId는 필수입니다.");
         }
@@ -98,8 +99,8 @@ public class User {
     }
 
     // 회원가입 공통 진입점
-    public static User register(Long characterId, String userUuid, String name, String nickname,
-                                LocalDate birthday, String phoneNumber) {
+    public static User register(
+            Long characterId, String userUuid, String name, String nickname, LocalDate birthday, String phoneNumber) {
         return new User(characterId, userUuid, name, nickname, birthday, phoneNumber);
     }
 

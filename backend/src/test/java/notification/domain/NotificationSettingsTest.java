@@ -29,8 +29,7 @@ class NotificationSettingsTest {
         @Test
         @DisplayName("null userId → NullPointerException")
         void nullUserId() {
-            assertThatThrownBy(() -> NotificationSettings.createDefault(null))
-                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> NotificationSettings.createDefault(null)).isInstanceOf(NullPointerException.class);
         }
     }
 

@@ -49,7 +49,7 @@ dependencies {
 spotless {
     java {
         // Palantir Java Format
-        palantirJavaFormat("2.47.0")
+        palantirJavaFormat("2.74.0")
         removeUnusedImports()
         formatAnnotations()
         // 모든 파일은 개행으로 끝나고, 줄 끝 공백은 제거

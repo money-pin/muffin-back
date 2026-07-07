@@ -34,8 +34,7 @@ class AuthTest {
         @Test
         @DisplayName("비밀번호 8자(최솟값) → 성공")
         void passwordMinLength() {
-            assertThatNoException()
-                    .isThrownBy(() -> Auth.createLocal(1L, "test@example.com", "abc12345", "encoded"));
+            assertThatNoException().isThrownBy(() -> Auth.createLocal(1L, "test@example.com", "abc12345", "encoded"));
         }
 
         @Test
@@ -48,8 +47,7 @@ class AuthTest {
         @Test
         @DisplayName("비밀번호 17자 → 실패")
         void passwordTooLong() {
-            assertThatThrownBy(
-                            () -> Auth.createLocal(1L, "test@example.com", "abcdefgh123456789", "encoded"))
+            assertThatThrownBy(() -> Auth.createLocal(1L, "test@example.com", "abcdefgh123456789", "encoded"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
@@ -182,8 +180,7 @@ class AuthTest {
         void nullEncodedPassword() {
             Auth auth = Auth.createLocal(1L, "test@example.com", "password1", "encoded");
 
-            assertThatThrownBy(() -> auth.changePassword("newPass1", null))
-                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> auth.changePassword("newPass1", null)).isInstanceOf(NullPointerException.class);
         }
     }
 }

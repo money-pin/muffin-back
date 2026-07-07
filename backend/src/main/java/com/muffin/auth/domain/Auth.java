@@ -2,29 +2,28 @@ package com.muffin.auth.domain;
 
 import com.muffin.auth.domain.enums.AuthProvider;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.regex.Pattern;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-import java.util.regex.Pattern;
-
 @Entity
 @Table(
-    name = "auths",
-    uniqueConstraints = @UniqueConstraint(name = "uk_provider_user", columnNames = {"provider", "provider_user_id"})
-)
+        name = "auths",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_provider_user",
+                        columnNames = {"provider", "provider_user_id"}))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class Auth {
 
     // 비밀번호 형식: 영문, 숫자를 포함한 8~16자리 조합
-    private static final Pattern PASSWORD_PATTERN =
-        Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,16}$");
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,16}$");
 
     // 이메일 형식: local@domain.tld
-    private static final Pattern EMAIL_PATTERN =
-        Pattern.compile("^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$");
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
