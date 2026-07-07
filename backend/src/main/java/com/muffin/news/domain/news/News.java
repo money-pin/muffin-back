@@ -51,7 +51,7 @@ public class News extends BaseEntity {
     @Column(name = "thumbnail_url", length = 1000)
     private String thumbnailUrl;
 
-    @Column(name = "original_url", nullable = false, length = 1000)
+    @Column(name = "original_url", nullable = false, length = 500)
     private String originalUrl;
 
     @Lob
