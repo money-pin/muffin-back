@@ -10,7 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "notification_settings")
+@Table(name = "notification_setting")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class NotificationSettings {

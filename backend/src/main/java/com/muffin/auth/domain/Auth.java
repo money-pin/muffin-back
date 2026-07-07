@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
-        name = "auths",
+        name = "auth",
         uniqueConstraints = {
             @UniqueConstraint(
                     name = "uk_provider_user",
