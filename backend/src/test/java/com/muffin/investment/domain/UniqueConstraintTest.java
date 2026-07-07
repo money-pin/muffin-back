@@ -2,6 +2,7 @@ package com.muffin.investment.domain;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.muffin.global.config.JpaAuditingConfig;
 import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.InvestmentRepository;
 import com.muffin.investment.domain.profitsummary.ProfitSummary;
@@ -13,18 +14,19 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 사용자 단위 유일성(사용자-투자일자, 사용자-요약일자, 사용자 1:1) DB 유니크 제약 검증. 도메인 순수 단위 테스트로는 확인할 수 없어 실제 저장을 시도한다.
- * 메서드마다 트랜잭션이 롤백되어 테스트 간 데이터가 격리된다.
  */
-@SpringBootTest
+@DataJpaTest
 @ActiveProfiles("test")
-@Transactional
+@Import(JpaAuditingConfig.class)
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class UniqueConstraintTest {
 
     private static final LocalDate DATE = LocalDate.of(2026, 5, 7);

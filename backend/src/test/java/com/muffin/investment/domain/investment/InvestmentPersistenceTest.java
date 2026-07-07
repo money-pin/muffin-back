@@ -3,19 +3,22 @@ package com.muffin.investment.domain.investment;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import com.muffin.global.config.JpaAuditingConfig;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 /** 섹터를 포함한 Investment 애그리거트가 자식(InvestmentSector)까지 함께 저장/조회되는지 검증한다. */
-@SpringBootTest
+@DataJpaTest
 @ActiveProfiles("test")
-@Transactional
+@Import(JpaAuditingConfig.class)
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class InvestmentPersistenceTest {
 
     @Autowired
