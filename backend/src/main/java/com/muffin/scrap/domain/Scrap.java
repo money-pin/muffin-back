@@ -8,7 +8,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,16 +37,12 @@ public class Scrap extends BaseEntity {
     @Column(name = "news_id", nullable = false)
     private Long newsId;
 
-    @Column(name = "saved_at", nullable = false)
-    private LocalDateTime savedAt;
-
     private Scrap(Long userId, Long newsId) {
         this.userId = userId;
         this.newsId = newsId;
-        this.savedAt = LocalDateTime.now();
     }
 
-    /** 스크랩 생성. 저장 시각을 현재로 기록한다. */
+    /** 스크랩 생성.  */
     public static Scrap create(Long userId, Long newsId) {
         return new Scrap(userId, newsId);
     }
