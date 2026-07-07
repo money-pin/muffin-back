@@ -1,4 +1,4 @@
-package notification.domain;
+package com.muffin.notification.domain;
 
 import static org.assertj.core.api.Assertions.*;
 

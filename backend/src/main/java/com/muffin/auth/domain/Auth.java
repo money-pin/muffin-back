@@ -11,10 +11,14 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "auths",
-        uniqueConstraints =
-                @UniqueConstraint(
-                        name = "uk_provider_user",
-                        columnNames = {"provider", "provider_user_id"}))
+        uniqueConstraints = {
+            @UniqueConstraint(
+                    name = "uk_provider_user",
+                    columnNames = {"provider", "provider_user_id"}),
+            @UniqueConstraint(
+                    name = "uk_provider_email",
+                    columnNames = {"provider", "email"})
+        })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class Auth {

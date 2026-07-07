@@ -1,4 +1,4 @@
-package notification.domain;
+package com.muffin.notification.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -10,12 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(
-        name = "users",
-        uniqueConstraints =
-                @UniqueConstraint(
-                        name = "uk_provider_user",
-                        columnNames = {"provider", "provider_user_id"}))
+@Table(name = "users")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class User {
@@ -84,6 +79,9 @@ public class User {
         this.userUuid = userUuid;
         if (nickname == null) {
             throw new NullPointerException("nickname은 필수입니다.");
+        }
+        if (nickname.length() > 20) {
+            throw new IllegalArgumentException("nickname은 20자를 초과할 수 없습니다.");
         }
         this.nickname = nickname;
         this.name = name;
@@ -161,6 +159,9 @@ public class User {
     public void changeNickname(String newNickname) {
         if (newNickname == null) {
             throw new NullPointerException("nickname은 필수입니다.");
+        }
+        if (newNickname.length() > 20) {
+            throw new IllegalArgumentException("nickname은 20자를 초과할 수 없습니다.");
         }
         this.nickname = newNickname;
         touch();
