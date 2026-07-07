@@ -1,5 +1,6 @@
 package com.muffin.user.domain;
 
+import com.muffin.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -9,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "user_onboarding")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
-public class UserOnboarding {
+public class UserOnboarding extends BaseEntity {
 
     private static final int MIN_OPTION = 1;
     private static final int MAX_OPTION = 3;

@@ -1,5 +1,6 @@
 package com.muffin.user.domain;
 
+import com.muffin.global.entity.BaseEntity;
 import com.muffin.user.domain.enums.UserRole;
 import com.muffin.user.domain.enums.UserStatus;
 import jakarta.persistence.*;
@@ -13,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "member")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,12 +56,6 @@ public class User {
     @Column(name = "status", nullable = false, length = 20)
     private UserStatus status;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -91,9 +86,6 @@ public class User {
         this.termAgreement = false;
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
-        LocalDateTime now = LocalDateTime.now();
-        this.createdAt = now;
-        this.updatedAt = now;
     }
 
     // 회원가입 공통 진입점
@@ -108,7 +100,6 @@ public class User {
         }
         this.termAgreement = true;
         this.termAgreedAt = LocalDateTime.now();
-        touch();
     }
 
     // 온보딩 완료
@@ -118,7 +109,6 @@ public class User {
         }
         this.userOnboarding = UserOnboarding.of(this, firstQuestion, secondQuestion, thirdQuestion);
         this.onboardingCompleted = true;
-        touch();
     }
 
     // 탈퇴: 이름/전화번호/생년월일 즉시 삭제. 나머지 이력은 별도 배치가 비식별화 후 6개월 뒤 삭제.
@@ -134,7 +124,6 @@ public class User {
         this.birthday = null;
         this.status = UserStatus.WITHDRAWN;
         this.deletedAt = LocalDateTime.now();
-        touch();
     }
 
     public void suspend() {
@@ -145,7 +134,6 @@ public class User {
             throw new IllegalStateException("이미 정지한 사용자입니다.");
         }
         this.status = UserStatus.SUSPENDED;
-        touch();
     }
 
     public void reactivate() {
@@ -153,7 +141,6 @@ public class User {
             throw new IllegalStateException("정지 상태인 사용자만 복구할 수 있습니다.");
         }
         this.status = UserStatus.ACTIVE;
-        touch();
     }
 
     public void changeNickname(String newNickname) {
@@ -164,10 +151,5 @@ public class User {
             throw new IllegalArgumentException("nickname은 20자를 초과할 수 없습니다.");
         }
         this.nickname = newNickname;
-        touch();
-    }
-
-    private void touch() {
-        this.updatedAt = LocalDateTime.now();
     }
 }

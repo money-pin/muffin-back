@@ -13,7 +13,7 @@ class NotificationSettingsTest {
     class CreateDefault {
 
         @Test
-        @DisplayName("정상 생성 시 모든 알림 기본값 true, createdAt 설정, updatedAt은 null")
+        @DisplayName("정상 생성 시 모든 알림 기본값 true")
         void success() {
             NotificationSettings settings = NotificationSettings.createDefault(1L);
 
@@ -22,8 +22,6 @@ class NotificationSettingsTest {
             assertThat(settings.isInvestmentResultPushEnabled()).isTrue();
             assertThat(settings.isRankingChangedPushEnabled()).isTrue();
             assertThat(settings.isNewsUpdatePushEnabled()).isTrue();
-            assertThat(settings.getCreatedAt()).isNotNull();
-            assertThat(settings.getUpdatedAt()).isNull();
         }
 
         @Test
@@ -38,14 +36,13 @@ class NotificationSettingsTest {
     class UpdateQuizPush {
 
         @Test
-        @DisplayName("true → false 변경 후 updatedAt 설정")
+        @DisplayName("true → false 변경")
         void disablePush() {
             NotificationSettings settings = NotificationSettings.createDefault(1L);
 
             settings.updateQuizPush(false);
 
             assertThat(settings.isQuizPushEnabled()).isFalse();
-            assertThat(settings.getUpdatedAt()).isNotNull();
         }
 
         @Test
@@ -65,14 +62,13 @@ class NotificationSettingsTest {
     class UpdateInvestmentResultPush {
 
         @Test
-        @DisplayName("true → false 변경 후 updatedAt 설정")
+        @DisplayName("true → false 변경")
         void disablePush() {
             NotificationSettings settings = NotificationSettings.createDefault(1L);
 
             settings.updateInvestmentResultPush(false);
 
             assertThat(settings.isInvestmentResultPushEnabled()).isFalse();
-            assertThat(settings.getUpdatedAt()).isNotNull();
         }
 
         @Test
@@ -92,14 +88,13 @@ class NotificationSettingsTest {
     class UpdateRankingChangedPush {
 
         @Test
-        @DisplayName("true → false 변경 후 updatedAt 설정")
+        @DisplayName("true → false 변경")
         void disablePush() {
             NotificationSettings settings = NotificationSettings.createDefault(1L);
 
             settings.updateRankingChangedPush(false);
 
             assertThat(settings.isRankingChangedPushEnabled()).isFalse();
-            assertThat(settings.getUpdatedAt()).isNotNull();
         }
 
         @Test
@@ -119,14 +114,13 @@ class NotificationSettingsTest {
     class UpdateNewsUpdatePush {
 
         @Test
-        @DisplayName("true → false 변경 후 updatedAt 설정")
+        @DisplayName("true → false 변경")
         void disablePush() {
             NotificationSettings settings = NotificationSettings.createDefault(1L);
 
             settings.updateNewsUpdatePush(false);
 
             assertThat(settings.isNewsUpdatePushEnabled()).isFalse();
-            assertThat(settings.getUpdatedAt()).isNotNull();
         }
 
         @Test

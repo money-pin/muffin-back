@@ -1,8 +1,8 @@
 package com.muffin.auth.domain;
 
 import com.muffin.auth.domain.enums.AuthProvider;
+import com.muffin.global.entity.BaseEntity;
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
         })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
-public class Auth {
+public class Auth extends BaseEntity {
 
     // 비밀번호 형식: 영문, 숫자를 포함한 8~16자리 조합
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,16}$");
@@ -53,12 +53,6 @@ public class Auth {
     @Column(name = "password", length = 255)
     private String passwordHash;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
     private Auth(Long userId, AuthProvider provider, String email) {
         if (userId == null) {
             throw new NullPointerException("userId는 필수입니다.");
@@ -68,7 +62,6 @@ public class Auth {
         validateEmailFormat(email);
         this.email = email;
         this.emailVerified = false;
-        this.createdAt = LocalDateTime.now();
     }
 
     // 로컬 회원가입
@@ -107,7 +100,6 @@ public class Auth {
 
     public void verifyEmail() {
         this.emailVerified = true;
-        touch();
     }
 
     public void changePassword(String rawPassword, String encodedPassword) {
@@ -119,10 +111,5 @@ public class Auth {
             throw new NullPointerException("encodedPassword는 필수입니다.");
         }
         this.passwordHash = encodedPassword;
-        touch();
-    }
-
-    private void touch() {
-        this.updatedAt = LocalDateTime.now();
     }
 }

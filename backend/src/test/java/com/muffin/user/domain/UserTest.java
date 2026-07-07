@@ -28,8 +28,6 @@ class UserTest {
             assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
             assertThat(user.isOnboardingCompleted()).isFalse();
             assertThat(user.isTermAgreement()).isFalse();
-            assertThat(user.getCreatedAt()).isNotNull();
-            assertThat(user.getUpdatedAt()).isNotNull();
         }
 
         @Test
