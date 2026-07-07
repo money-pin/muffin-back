@@ -7,7 +7,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -16,12 +15,7 @@ import lombok.NoArgsConstructor;
 /** 주간 수익률 랭킹 애그리거트 루트. 배치가 주 단위로 산출하는 스냅샷이다. */
 @Getter
 @Entity
-@Table(
-        name = "weekly_ranking",
-        uniqueConstraints =
-                @UniqueConstraint(
-                        name = "uk_weekly_ranking_user_week",
-                        columnNames = {"user_id", "week_of_year"}))
+@Table(name = "weekly_ranking")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class WeeklyRanking extends BaseEntity {
 
