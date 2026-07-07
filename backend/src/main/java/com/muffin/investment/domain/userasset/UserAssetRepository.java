@@ -1,4 +1,4 @@
-package com.muffin.investment.domain.userAsset;
+package com.muffin.investment.domain.userasset;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

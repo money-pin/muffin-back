@@ -1,4 +1,4 @@
-package com.muffin.investment.domain.userAsset;
+package com.muffin.investment.domain.userasset;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
