@@ -23,7 +23,7 @@ public class User {
     @Column(name = "character_id", nullable = false)
     private Long characterId;
 
-    @Column(name = "user_uuid", nullable = false, length = 36, updatable = false)
+    @Column(name = "user_uuid", nullable = false, length = 36, updatable = false, unique = true)
     private String userUuid;
 
     @Column(name = "name", length = 10)
