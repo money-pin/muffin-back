@@ -1,4 +1,4 @@
-package com.muffin.investment.domain.userasset;
+package com.muffin.investment.domain.userAsset;
 
 import com.muffin.global.entity.BaseEntity;
 import jakarta.persistence.Column;

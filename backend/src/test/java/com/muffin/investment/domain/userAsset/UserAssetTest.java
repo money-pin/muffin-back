@@ -3,7 +3,6 @@ package com.muffin.investment.domain.userAsset;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.muffin.investment.domain.userasset.UserAsset;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
