@@ -54,9 +54,13 @@ public class UserAsset extends BaseEntity {
         return new UserAsset(userId, initialAsset);
     }
 
-    /** 정산 결과를 자산에 반영한다. */
+    /** 정산 결과를 자산에 반영한다. 총자산은 음수가 될 수 없다(손실이 총자산을 초과하면 정산을 거부한다). */
     public void applySettlement(long changeAmount, BigDecimal changeRate, LocalDateTime settledAt) {
-        this.totalAsset += changeAmount;
+        long newTotalAsset = this.totalAsset + changeAmount;
+        if (newTotalAsset < 0) {
+            throw new IllegalArgumentException("총자산은 음수가 될 수 없습니다: 변동액=" + changeAmount);
+        }
+        this.totalAsset = newTotalAsset;
         this.dailyChangeAmount = changeAmount;
         this.dailyChangeRate = changeRate;
         this.lastSettledAt = settledAt;

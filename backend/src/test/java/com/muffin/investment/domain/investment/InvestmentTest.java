@@ -54,6 +54,16 @@ class InvestmentTest {
     }
 
     @Test
+    @DisplayName("미정산 섹터가 있는 상태로 정산하면 예외가 발생한다")
+    void settle_throwsWhenSectorNotResolved() {
+        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        investment.addSector(100L, 10, 300_000L, BigDecimal.valueOf(30_000));
+        // applySectorResult 미호출 → 섹터 profitLoss 가 null 인 상태
+
+        assertThrows(IllegalStateException.class, () -> investment.settle(LocalDateTime.of(2026, 5, 8, 9, 0)));
+    }
+
+    @Test
     @DisplayName("존재하지 않는 섹터에 정산 결과를 반영하면 예외가 발생한다")
     void applySectorResult_throwsWhenSectorNotFound() {
         Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);

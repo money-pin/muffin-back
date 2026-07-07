@@ -121,11 +121,15 @@ public class Investment extends BaseEntity {
         sector.applyResult(sellPrice, profitLoss, profitLossRate, priceDataSource);
     }
 
-    /** 정산 반영: 각 섹터 결과가 채워진 뒤 호출해 총 손익/손익률을 재계산하고 상태를 SETTLED로 만든다. */
+    /** 정산 반영: 모든 섹터 결과가 채워진 뒤 호출해 총 손익/손익률을 재계산하고 상태를 SETTLED로 만든다. 미정산 섹터가 있으면 완료할 수 없다. */
     public void settle(LocalDateTime settledAt) {
-        long profit = sectors.stream()
-                .mapToLong(s -> s.getProfitLoss() == null ? 0L : s.getProfitLoss())
-                .sum();
+        long profit = 0L;
+        for (InvestmentSector sector : sectors) {
+            if (sector.getProfitLoss() == null) {
+                throw new IllegalStateException("정산되지 않은 섹터가 있어 정산을 완료할 수 없습니다: sectorId=" + sector.getSectorId());
+            }
+            profit += sector.getProfitLoss();
+        }
         this.totalProfitLoss = profit;
         this.totalProfitLossRate = (totalAmount == 0L)
                 ? BigDecimal.ZERO

@@ -1,6 +1,7 @@
 package com.muffin.investment.domain.userasset;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -42,5 +43,16 @@ class UserAssetTest {
 
         assertEquals(970_000L, userAsset.getTotalAsset());
         assertEquals(-30_000L, userAsset.getDailyChangeAmount());
+    }
+
+    @Test
+    @DisplayName("손실이 총자산을 초과해 결과가 음수가 되면 예외가 발생한다")
+    void applySettlement_throwsWhenResultNegative() {
+        UserAsset userAsset = UserAsset.create(1L, 10_000L);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> userAsset.applySettlement(
+                        -20_000L, BigDecimal.valueOf(-200.0), LocalDateTime.of(2026, 5, 8, 9, 0)));
     }
 }
