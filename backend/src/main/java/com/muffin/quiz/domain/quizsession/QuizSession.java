@@ -17,6 +17,7 @@ import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -75,6 +76,7 @@ public class QuizSession extends BaseEntity {
     @Column(name = "reward_claimed", nullable = false)
     private boolean rewardClaimed;
 
+    @Getter(AccessLevel.NONE)
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "quiz_session_id", nullable = false)
     private final List<QuizAttempt> attempts = new ArrayList<>();
@@ -96,5 +98,21 @@ public class QuizSession extends BaseEntity {
     /** 사용자가 당일 퀴즈를 시작할 때 풀이 세션을 생성한다. */
     public static QuizSession start(Long userId, Long dailyQuizSetId, LocalDate date, int totalCount) {
         return new QuizSession(userId, dailyQuizSetId, date, totalCount, LocalDateTime.now());
+    }
+
+    /** 제출 기록을 추가하고 풀이 수, 정답 수, 보상 합계를 함께 갱신한다. */
+    public void recordAttempt(
+            Long quizId, Long optionId, boolean correct, Long rewardMoney, LocalDateTime submittedAt) {
+        this.attempts.add(new QuizAttempt(quizId, optionId, correct, submittedAt));
+        this.solvedCount++;
+        if (correct) {
+            this.correctCount++;
+            this.rewardMoney += rewardMoney;
+        }
+    }
+
+    /** 내부 리스트가 외부에서 직접 수정되지 않도록 읽기 전용 뷰를 반환한다. */
+    public List<QuizAttempt> getAttempts() {
+        return Collections.unmodifiableList(attempts);
     }
 }

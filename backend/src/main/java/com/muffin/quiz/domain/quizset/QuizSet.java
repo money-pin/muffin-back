@@ -17,6 +17,7 @@ import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -45,6 +46,7 @@ public class QuizSet extends BaseEntity {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
+    @Getter(AccessLevel.NONE)
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "daily_quiz_set_id", nullable = false)
     private final List<Quiz> quizzes = new ArrayList<>();
@@ -58,5 +60,10 @@ public class QuizSet extends BaseEntity {
     /** 일일 퀴즈 세트 생성. 처음에는 AI 생성 중 상태(GENERATING)로 시작한다. */
     public static QuizSet create(LocalDate quizDate) {
         return new QuizSet(quizDate);
+    }
+
+    /** 내부 리스트가 외부에서 직접 수정되지 않도록 읽기 전용 뷰를 반환한다. */
+    public List<Quiz> getQuizzes() {
+        return Collections.unmodifiableList(quizzes);
     }
 }
