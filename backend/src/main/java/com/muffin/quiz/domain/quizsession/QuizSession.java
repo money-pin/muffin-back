@@ -103,6 +103,12 @@ public class QuizSession extends BaseEntity {
     /** 제출 기록을 추가하고 풀이 수, 정답 수, 보상 합계를 함께 갱신한다. */
     public void recordAttempt(
             Long quizId, Long optionId, boolean correct, Long rewardMoney, LocalDateTime submittedAt) {
+        if (this.solvedCount >= this.totalCount) {
+            throw new IllegalStateException("이미 모든 문제를 풀었습니다.");
+        }
+        if (correct && rewardMoney == null) {
+            throw new IllegalArgumentException("정답인 경우 rewardMoney는 필수입니다.");
+        }
         this.attempts.add(new QuizAttempt(quizId, optionId, correct, submittedAt));
         this.solvedCount++;
         if (correct) {

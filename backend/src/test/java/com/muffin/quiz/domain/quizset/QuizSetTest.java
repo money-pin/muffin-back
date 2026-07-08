@@ -33,6 +33,35 @@ class QuizSetTest {
     }
 
     @Test
+    @DisplayName("퀴즈 추가 시 필수값이 없거나 숫자 값이 음수면 예외가 발생한다")
+    void addQuiz_throwsWhenInvalidInput() {
+        QuizSet quizSet = QuizSet.create(LocalDate.of(2026, 5, 7));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> quizSet.addQuiz(null, "질문", "해설", 100L, 1, "근거 문장", QuizDifficulty.EASY));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> quizSet.addQuiz(1L, " ", "해설", 100L, 1, "근거 문장", QuizDifficulty.EASY));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> quizSet.addQuiz(1L, "질문", " ", 100L, 1, "근거 문장", QuizDifficulty.EASY));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> quizSet.addQuiz(1L, "질문", "해설", null, 1, "근거 문장", QuizDifficulty.EASY));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> quizSet.addQuiz(1L, "질문", "해설", -1L, 1, "근거 문장", QuizDifficulty.EASY));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> quizSet.addQuiz(1L, "질문", "해설", 100L, -1, "근거 문장", QuizDifficulty.EASY));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> quizSet.addQuiz(1L, "질문", "해설", 100L, 1, " ", QuizDifficulty.EASY));
+        assertThrows(IllegalArgumentException.class, () -> quizSet.addQuiz(1L, "질문", "해설", 100L, 1, "근거 문장", null));
+    }
+
+    @Test
     @DisplayName("퀴즈 목록은 외부에서 직접 수정할 수 없다")
     void getQuizzes_returnsUnmodifiableView() {
         QuizSet quizSet = QuizSet.create(LocalDate.of(2026, 5, 7));

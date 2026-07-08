@@ -38,6 +38,27 @@ class QuizSessionTest {
     }
 
     @Test
+    @DisplayName("모든 문제를 푼 뒤에는 제출 기록을 추가할 수 없다")
+    void recordAttempt_throwsWhenSolvedCountReachesTotalCount() {
+        QuizSession session = QuizSession.start(1L, 10L, LocalDate.of(2026, 5, 7), 1);
+        session.recordAttempt(100L, 1001L, false, null, LocalDateTime.of(2026, 5, 7, 9, 10));
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> session.recordAttempt(200L, 2001L, false, null, LocalDateTime.of(2026, 5, 7, 9, 11)));
+    }
+
+    @Test
+    @DisplayName("정답 제출 시 보상 금액이 없으면 예외가 발생한다")
+    void recordAttempt_throwsWhenCorrectRewardMoneyIsNull() {
+        QuizSession session = QuizSession.start(1L, 10L, LocalDate.of(2026, 5, 7), 3);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> session.recordAttempt(100L, 1001L, true, null, LocalDateTime.of(2026, 5, 7, 9, 10)));
+    }
+
+    @Test
     @DisplayName("제출 기록 목록은 외부에서 직접 수정할 수 없다")
     void getAttempts_returnsUnmodifiableView() {
         QuizSession session = QuizSession.start(1L, 10L, LocalDate.of(2026, 5, 7), 3);

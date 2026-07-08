@@ -70,6 +70,7 @@ public class QuizSet extends BaseEntity {
             int quizOrder,
             String sourceSentence,
             QuizDifficulty difficulty) {
+        validateQuiz(newsId, question, explanation, rewardMoney, quizOrder, sourceSentence, difficulty);
         Quiz quiz = new Quiz(this, newsId, question, explanation, rewardMoney, quizOrder, sourceSentence, difficulty);
         this.quizzes.add(quiz);
         return quiz;
@@ -78,5 +79,40 @@ public class QuizSet extends BaseEntity {
     /** 내부 리스트가 외부에서 직접 수정되지 않도록 읽기 전용 뷰를 반환한다. */
     public List<Quiz> getQuizzes() {
         return Collections.unmodifiableList(quizzes);
+    }
+
+    private static void validateQuiz(
+            Long newsId,
+            String question,
+            String explanation,
+            Long rewardMoney,
+            int quizOrder,
+            String sourceSentence,
+            QuizDifficulty difficulty) {
+        if (newsId == null) {
+            throw new IllegalArgumentException("newsId는 필수입니다.");
+        }
+        if (isBlank(question)) {
+            throw new IllegalArgumentException("question은 필수입니다.");
+        }
+        if (isBlank(explanation)) {
+            throw new IllegalArgumentException("explanation은 필수입니다.");
+        }
+        if (rewardMoney == null || rewardMoney < 0) {
+            throw new IllegalArgumentException("rewardMoney는 0 이상이어야 합니다.");
+        }
+        if (quizOrder < 0) {
+            throw new IllegalArgumentException("quizOrder는 음수일 수 없습니다.");
+        }
+        if (isBlank(sourceSentence)) {
+            throw new IllegalArgumentException("sourceSentence는 필수입니다.");
+        }
+        if (difficulty == null) {
+            throw new IllegalArgumentException("difficulty는 필수입니다.");
+        }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
