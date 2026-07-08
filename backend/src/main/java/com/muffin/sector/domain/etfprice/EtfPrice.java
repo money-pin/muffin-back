@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -14,7 +15,12 @@ import lombok.NoArgsConstructor;
 /** ETF 일별 시세 애그리거트 루트. 배치가 매일 적재하는 스냅샷이며, 다른 애그리거트(Etf)는 ID로만 참조한다. */
 @Getter
 @Entity
-@Table(name = "etf_price")
+@Table(
+        name = "etf_price",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_etf_price_etf_price_date",
+                        columnNames = {"etf_id", "price_date"}))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class EtfPrice {
 

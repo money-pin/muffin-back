@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,7 +15,7 @@ import lombok.NoArgsConstructor;
 /** ETF 애그리거트 루트. 섹터가 ID로 참조하는 투자 상품 정보를 가진다. */
 @Getter
 @Entity
-@Table(name = "etf")
+@Table(name = "etf", uniqueConstraints = @UniqueConstraint(name = "uk_etf_etf_code", columnNames = "etf_code"))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Etf extends BaseEntity {
 
