@@ -45,6 +45,7 @@ public class NewsSectorImpact extends BaseEntity {
 
     // 새 영향도 레코드를 만들 때 필요한 값만 받는 생성자다.
     private NewsSectorImpact(Long newsId, Long sectorId, ImpactType impact) {
+        validate(newsId, sectorId, impact);
         this.newsId = newsId;
         this.sectorId = sectorId;
         this.impact = impact;
@@ -53,5 +54,17 @@ public class NewsSectorImpact extends BaseEntity {
     /** 뉴스 1건과 섹터 1건에 대한 영향도 결과를 생성한다. */
     public static NewsSectorImpact create(Long newsId, Long sectorId, ImpactType impact) {
         return new NewsSectorImpact(newsId, sectorId, impact);
+    }
+
+    private static void validate(Long newsId, Long sectorId, ImpactType impact) {
+        if (newsId == null) {
+            throw new IllegalArgumentException("newsId는 필수입니다.");
+        }
+        if (sectorId == null) {
+            throw new IllegalArgumentException("sectorId는 필수입니다.");
+        }
+        if (impact == null) {
+            throw new IllegalArgumentException("impact는 필수입니다.");
+        }
     }
 }

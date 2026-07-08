@@ -56,6 +56,7 @@ public class NewsExplanation extends BaseEntity {
 
     // 새 해설카드를 만들 때 필요한 값만 받는 생성자다.
     private NewsExplanation(Long newsId, int cardOrder, String title, String content, String keyTerm) {
+        validate(newsId, cardOrder, title, content, keyTerm);
         this.newsId = newsId;
         this.cardOrder = cardOrder;
         this.title = title;
@@ -67,5 +68,27 @@ public class NewsExplanation extends BaseEntity {
     /** 뉴스 상세 화면에 노출할 경제 상식 해설카드를 생성한다. */
     public static NewsExplanation create(Long newsId, int cardOrder, String title, String content, String keyTerm) {
         return new NewsExplanation(newsId, cardOrder, title, content, keyTerm);
+    }
+
+    private static void validate(Long newsId, int cardOrder, String title, String content, String keyTerm) {
+        if (newsId == null) {
+            throw new IllegalArgumentException("newsId는 필수입니다.");
+        }
+        if (cardOrder < 0) {
+            throw new IllegalArgumentException("cardOrder는 음수일 수 없습니다.");
+        }
+        if (isBlank(title)) {
+            throw new IllegalArgumentException("title은 필수입니다.");
+        }
+        if (isBlank(content)) {
+            throw new IllegalArgumentException("content는 필수입니다.");
+        }
+        if (isBlank(keyTerm)) {
+            throw new IllegalArgumentException("keyTerm은 필수입니다.");
+        }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
