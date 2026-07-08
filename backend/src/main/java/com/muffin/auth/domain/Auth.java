@@ -26,8 +26,8 @@ public class Auth extends BaseEntity {
     // 비밀번호 형식: 영문, 숫자를 포함한 8~16자리 조합
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,16}$");
 
-    // 이메일 형식: local@domain.tld
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$");
+    // 이메일 형식: local@domain.tld (서브도메인 다중 허용, 예: dgu.ac.kr)
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[\\w.+-]+@[\\w-]+(?:\\.[\\w-]+)*\\.[a-zA-Z]{2,}$");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
