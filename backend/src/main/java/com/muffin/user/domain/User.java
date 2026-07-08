@@ -62,6 +62,10 @@ public class User extends BaseEntity {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private UserOnboarding userOnboarding;
 
+    private static final int NAME_MAX_LENGTH = 10;
+    private static final int NICKNAME_MAX_LENGTH = 20;
+    private static final int PHONE_NUMBER_MAX_LENGTH = 15;
+
     private User(
             Long characterId, String userUuid, String name, String nickname, LocalDate birthday, String phoneNumber) {
         if (characterId == null) {
@@ -72,20 +76,30 @@ public class User extends BaseEntity {
             throw new NullPointerException("userUuid는 필수입니다.");
         }
         this.userUuid = userUuid;
-        if (nickname == null) {
-            throw new NullPointerException("nickname은 필수입니다.");
-        }
-        if (nickname.length() > 20) {
-            throw new IllegalArgumentException("nickname은 20자를 초과할 수 없습니다.");
-        }
+        validateNickname(nickname);
         this.nickname = nickname;
+        validateOptionalLength(name, NAME_MAX_LENGTH, "name");
         this.name = name;
         this.birthday = birthday;
+        validateOptionalLength(phoneNumber, PHONE_NUMBER_MAX_LENGTH, "phoneNumber");
         this.phoneNumber = phoneNumber;
         this.onboardingCompleted = false;
         this.termAgreement = false;
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
+    }
+
+    private static void validateNickname(String nickname) {
+        if (nickname == null) {
+            throw new NullPointerException("nickname은 필수입니다.");
+        }
+        validateOptionalLength(nickname, NICKNAME_MAX_LENGTH, "nickname");
+    }
+
+    private static void validateOptionalLength(String value, int maxLength, String fieldName) {
+        if (value != null && value.length() > maxLength) {
+            throw new IllegalArgumentException(fieldName + "은 " + maxLength + "자를 초과할 수 없습니다.");
+        }
     }
 
     // 회원가입 공통 진입점
@@ -144,12 +158,7 @@ public class User extends BaseEntity {
     }
 
     public void changeNickname(String newNickname) {
-        if (newNickname == null) {
-            throw new NullPointerException("nickname은 필수입니다.");
-        }
-        if (newNickname.length() > 20) {
-            throw new IllegalArgumentException("nickname은 20자를 초과할 수 없습니다.");
-        }
+        validateNickname(newNickname);
         this.nickname = newNickname;
     }
 }
