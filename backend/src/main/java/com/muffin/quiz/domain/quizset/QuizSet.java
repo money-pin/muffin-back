@@ -1,6 +1,7 @@
 package com.muffin.quiz.domain.quizset;
 
 import com.muffin.global.entity.BaseEntity;
+import com.muffin.quiz.domain.quizset.enums.QuizDifficulty;
 import com.muffin.quiz.domain.quizset.enums.QuizSetStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -10,7 +11,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -47,8 +47,7 @@ public class QuizSet extends BaseEntity {
     private LocalDateTime publishedAt;
 
     @Getter(AccessLevel.NONE)
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "daily_quiz_set_id", nullable = false)
+    @OneToMany(mappedBy = "quizSet", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<Quiz> quizzes = new ArrayList<>();
 
     // 새 퀴즈 세트를 만들 때 필요한 값만 받는 생성자다.
@@ -60,6 +59,20 @@ public class QuizSet extends BaseEntity {
     /** 일일 퀴즈 세트 생성. 처음에는 AI 생성 중 상태(GENERATING)로 시작한다. */
     public static QuizSet create(LocalDate quizDate) {
         return new QuizSet(quizDate);
+    }
+
+    /** 퀴즈 세트에 문제를 추가하면서 양방향 연관관계를 함께 설정한다. */
+    public Quiz addQuiz(
+            Long newsId,
+            String question,
+            String explanation,
+            Long rewardMoney,
+            int quizOrder,
+            String sourceSentence,
+            QuizDifficulty difficulty) {
+        Quiz quiz = new Quiz(this, newsId, question, explanation, rewardMoney, quizOrder, sourceSentence, difficulty);
+        this.quizzes.add(quiz);
+        return quiz;
     }
 
     /** 내부 리스트가 외부에서 직접 수정되지 않도록 읽기 전용 뷰를 반환한다. */

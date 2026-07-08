@@ -3,6 +3,7 @@ package com.muffin.quiz.domain.quizset;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.muffin.quiz.domain.quizset.enums.QuizDifficulty;
 import com.muffin.quiz.domain.quizset.enums.QuizSetStatus;
 import java.time.LocalDate;
 import java.util.List;
@@ -18,6 +19,17 @@ class QuizSetTest {
 
         assertEquals(QuizSetStatus.GENERATING, quizSet.getStatus());
         assertEquals(LocalDate.of(2026, 5, 7), quizSet.getQuizDate());
+    }
+
+    @Test
+    @DisplayName("퀴즈 세트에 문제를 추가하면 양방향 연관관계가 설정된다")
+    void addQuiz_setsBidirectionalRelation() {
+        QuizSet quizSet = QuizSet.create(LocalDate.of(2026, 5, 7));
+
+        Quiz quiz = quizSet.addQuiz(1L, "질문", "해설", 100L, 1, "근거 문장", QuizDifficulty.EASY);
+
+        assertEquals(1, quizSet.getQuizzes().size());
+        assertEquals(quizSet, quiz.getQuizSet());
     }
 
     @Test

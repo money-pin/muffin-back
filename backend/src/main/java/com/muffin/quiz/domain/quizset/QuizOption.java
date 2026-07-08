@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -17,7 +18,12 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 /** 퀴즈 선택지. QuizSet 애그리거트 내부에서 Quiz를 통해 생성된다. */
 @Entity
 @Getter
-@Table(name = "quiz_option")
+@Table(
+        name = "quiz_option",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_quiz_option_quiz_option_no",
+                        columnNames = {"quiz_id", "option_no"}))
 @EntityListeners(AuditingEntityListener.class)
 // JPA 전용 기본 생성자. 선택지는 퀴즈에 속한 값이라 직접 생성을 막는다.
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

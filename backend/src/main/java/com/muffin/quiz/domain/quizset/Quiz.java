@@ -7,10 +7,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -37,6 +39,10 @@ public class Quiz extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "quiz_id")
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "daily_quiz_set_id", nullable = false)
+    private QuizSet quizSet;
 
     // 다른 애그리거트(News)는 ID로만 참조한다.
     @Column(name = "news_id", nullable = false)
@@ -67,6 +73,7 @@ public class Quiz extends BaseEntity {
 
     // 같은 패키지의 QuizSet에서 문제를 만들 때 쓰는 생성자다.
     Quiz(
+            QuizSet quizSet,
             Long newsId,
             String question,
             String explanation,
@@ -74,6 +81,7 @@ public class Quiz extends BaseEntity {
             int quizOrder,
             String sourceSentence,
             QuizDifficulty difficulty) {
+        this.quizSet = quizSet;
         this.newsId = newsId;
         this.question = question;
         this.explanation = explanation;
