@@ -2,9 +2,12 @@ package com.muffin.quiz.domain.quizsession;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
@@ -43,8 +46,13 @@ public class QuizAttempt {
     @Column(name = "submitted_at", nullable = false)
     private LocalDateTime submittedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "quiz_session_id", nullable = false)
+    private QuizSession quizSession;
+
     // 같은 패키지의 QuizSession에서 제출 기록을 만들 때 쓰는 생성자다.
-    QuizAttempt(Long quizId, Long optionId, boolean correct, LocalDateTime submittedAt) {
+    QuizAttempt(QuizSession quizSession, Long quizId, Long optionId, boolean correct, LocalDateTime submittedAt) {
+        this.quizSession = quizSession;
         this.quizId = quizId;
         this.optionId = optionId;
         this.correct = correct;

@@ -17,6 +17,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -67,9 +68,20 @@ public class Quiz extends BaseEntity {
     @Column(name = "difficulty", nullable = false, length = 10)
     private QuizDifficulty difficulty;
 
+    @Getter(AccessLevel.NONE)
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "quiz_id", nullable = false)
     private final List<QuizOption> options = new ArrayList<>();
+
+    public List<QuizOption> getOptions() {
+        return Collections.unmodifiableList(options);
+    }
+
+    public QuizOption addOption(int optionNo, String content, boolean correct) {
+        QuizOption option = new QuizOption(optionNo, content, correct);
+        this.options.add(option);
+        return option;
+    }
 
     // 같은 패키지의 QuizSet에서 문제를 만들 때 쓰는 생성자다.
     Quiz(

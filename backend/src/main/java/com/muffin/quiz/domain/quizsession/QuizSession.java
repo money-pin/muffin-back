@@ -10,7 +10,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -77,8 +76,7 @@ public class QuizSession extends BaseEntity {
     private boolean rewardClaimed;
 
     @Getter(AccessLevel.NONE)
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "quiz_session_id", nullable = false)
+    @OneToMany(mappedBy = "quizSession", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<QuizAttempt> attempts = new ArrayList<>();
 
     // 세션 시작 시 필요한 값과 기본 진행 상태를 한 번에 세팅한다.
@@ -109,7 +107,7 @@ public class QuizSession extends BaseEntity {
         if (correct && rewardMoney == null) {
             throw new IllegalArgumentException("정답인 경우 rewardMoney는 필수입니다.");
         }
-        this.attempts.add(new QuizAttempt(quizId, optionId, correct, submittedAt));
+        this.attempts.add(new QuizAttempt(this, quizId, optionId, correct, submittedAt));
         this.solvedCount++;
         if (correct) {
             this.correctCount++;
