@@ -1,12 +1,7 @@
 package com.muffin.sector.domain.sector;
 
 import com.muffin.global.entity.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,7 +9,13 @@ import lombok.NoArgsConstructor;
 /** 섹터 애그리거트 루트. 다른 애그리거트(SectorGroup, Etf)는 ID로만 참조한다. */
 @Getter
 @Entity
-@Table(name = "sector")
+@Table(
+    name = "sector",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uk_sector_sector_code",
+        columnNames = "sector_code"
+    )
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Sector extends BaseEntity {
 
