@@ -1,4 +1,4 @@
-package com.muffin.sector.domain.sector;
+package com.muffin.sector.domain.sectorgroup;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -12,23 +12,23 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 
-/** 섹터 코드 UNIQUE 제약을 실제 저장 시도로 검증한다. */
+/** 섹터 그룹 코드 UNIQUE 제약을 실제 저장 시도로 검증한다. */
 @DataJpaTest
 @ActiveProfiles("test")
 @Import(JpaAuditingConfig.class)
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class SectorUniqueConstraintTest {
+class SectorGroupUniqueConstraintTest {
 
     @Autowired
-    private SectorRepository sectorRepository;
+    private SectorGroupRepository sectorGroupRepository;
 
     @Test
-    @DisplayName("같은 섹터 코드를 두 번 저장하면 UNIQUE 제약 위반이 발생한다")
-    void duplicateSectorCode_violatesUnique() {
-        sectorRepository.saveAndFlush(Sector.create(1L, 10L, "반도체", null, "SEMICONDUCTOR", 1));
+    @DisplayName("같은 그룹 코드를 두 번 저장하면 UNIQUE 제약 위반이 발생한다")
+    void duplicateGroupCode_violatesUnique() {
+        sectorGroupRepository.saveAndFlush(SectorGroup.create("BASE_ASSET", "기초자산", null, 1));
 
         assertThrows(
                 DataIntegrityViolationException.class,
-                () -> sectorRepository.saveAndFlush(Sector.create(2L, 20L, "다른섹터", null, "SEMICONDUCTOR", 1)));
+                () -> sectorGroupRepository.saveAndFlush(SectorGroup.create("BASE_ASSET", "다른그룹", null, 2)));
     }
 }
