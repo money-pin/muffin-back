@@ -10,12 +10,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @Entity
 @Table(
-    name = "sector",
-    uniqueConstraints = @UniqueConstraint(
-        name = "uk_sector_sector_code",
-        columnNames = "sector_code"
-    )
-)
+        name = "sector",
+        uniqueConstraints = @UniqueConstraint(name = "uk_sector_sector_code", columnNames = "sector_code"))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Sector extends BaseEntity {
 
