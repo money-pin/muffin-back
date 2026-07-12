@@ -13,3 +13,26 @@ springdoc:
   swagger-ui:
     tags-sorter: alpha
     operations-sorter: method
+
+muffin:
+  batch:
+    rss:
+      scheduler-enabled: ${NEWS_RSS_ENABLED:true}
+      cron: ${NEWS_RSS_CRON:0 0 6 * * *}
+      zone: ${NEWS_RSS_ZONE:Asia/Seoul}
+  news:
+    rss:
+      publisher: ${NEWS_RSS_PUBLISHER:매일경제}
+      feeds:
+        - category: 경제
+          url: ${NEWS_RSS_ECONOMY_URL:https://www.mk.co.kr/rss/30100041/}
+        - category: 증권
+          url: ${NEWS_RSS_STOCK_URL:https://www.mk.co.kr/rss/50200011/}
+        - category: 세계
+          url: ${NEWS_RSS_WORLD_URL:https://www.mk.co.kr/rss/30300018/}
+    ai-selection:
+      enabled: ${NEWS_AI_SELECTION_ENABLED:false}
+      api-key: ${OPENAI_API_KEY:}
+      model: ${NEWS_AI_SELECTION_MODEL:gpt-5-mini}
+      endpoint: ${OPENAI_RESPONSES_URL:https://api.openai.com/v1/responses}
+      max-per-category: ${NEWS_AI_SELECTION_MAX_PER_CATEGORY:5}
