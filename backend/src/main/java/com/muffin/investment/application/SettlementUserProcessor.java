@@ -25,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>{@link #settle}는 한 트랜잭션 안에서 investment_sector + investment + user_asset + profit_summary를 원자적으로 갱신한다. 손익은
  * investment_sector에서 한 번만 계산해(investment.settle로 합산) 나머지 테이블로 팬아웃한다. 실패 격리를 위해 오케스트레이터가 유저별로 이 메서드를 호출하며,
  * 실패 시 {@link #markFailed}로 해당 건만 FAILED 처리한다. (별도 빈으로 두어야 트랜잭션 프록시가 유저별로 적용된다.)
+ *
+ * <p>모든 쓰기 메서드는 {@code REQUIRES_NEW}로 각 사용자마다 독립 트랜잭션에서 커밋한다. 이벤트 트리거가 {@code AFTER_COMMIT}로 실행될 때 발행 측의
+ * 이미 커밋된 트랜잭션 리소스에 참여해 쓰기가 반영되지 않는 문제를 피하고, 사용자별 실패 격리도 보장한다.
  */
 @Slf4j
 @Component
@@ -42,7 +45,7 @@ public class SettlementUserProcessor {
      * @param sectorToEtfId sectorId → etfId 매핑
      * @param etfPriceByEtfId etfId → 당일 ETF 시세(해당 정산 일자)
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void settle(Long investmentId, Map<Long, Long> sectorToEtfId, Map<Long, EtfPrice> etfPriceByEtfId) {
         Investment investment = investmentRepository
                 .findWithSectorsById(investmentId)
@@ -72,7 +75,7 @@ public class SettlementUserProcessor {
     }
 
     /** 정산 창을 놓친 확정 투자를 취소한다. 자산은 건드리지 않고 profit_summary에 0행만 남긴다. */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void cancel(Long investmentId) {
         Investment investment = investmentRepository
                 .findById(investmentId)
@@ -85,7 +88,7 @@ public class SettlementUserProcessor {
     }
 
     /** 투자하지 않은 날(NO_INVEST)을 종료 처리한다. 자산은 그대로, profit_summary에 0행만 남긴다. */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordNoSettlement(Long investmentId) {
         Investment investment = investmentRepository
                 .findById(investmentId)

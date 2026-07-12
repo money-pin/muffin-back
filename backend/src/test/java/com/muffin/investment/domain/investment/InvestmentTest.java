@@ -65,7 +65,7 @@ class InvestmentTest {
         // (40,400-40,000)/40,000 = 1.0000%, 손익 200,000×1% = 2,000
         investment.settleSector(200L, BigDecimal.valueOf(40_400));
 
-        InvestmentSector first = investment.getSectors().get(0);
+        InvestmentSector first = investment.getSectors().getFirst();
         assertEquals(18_000L, first.getProfitLoss());
         assertEquals(0, new BigDecimal("6.0000").compareTo(first.getProfitLossRate()));
         assertEquals(PriceDataSource.NORMAL, first.getPriceDataSource());
@@ -84,7 +84,7 @@ class InvestmentTest {
 
         investment.settleSectorFallback(100L);
 
-        InvestmentSector sector = investment.getSectors().get(0);
+        InvestmentSector sector = investment.getSectors().getFirst();
         assertEquals(0L, sector.getProfitLoss());
         assertEquals(0, BigDecimal.ZERO.compareTo(sector.getProfitLossRate()));
         assertEquals(PriceDataSource.FALLBACK_ZERO, sector.getPriceDataSource());
@@ -92,6 +92,20 @@ class InvestmentTest {
         investment.settle(LocalDateTime.of(2026, 5, 8, 9, 30));
         assertEquals(0L, investment.getTotalProfitLoss());
         assertEquals(0, BigDecimal.ZERO.compareTo(investment.getTotalProfitLossRate()));
+    }
+
+    @Test
+    @DisplayName("매수가 스냅샷이 없는 섹터를 시가로 정산하면 계산 불가로 FALLBACK_ZERO 처리된다")
+    void settleSector_fallsBackWhenBuyPriceMissing() {
+        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        investment.addSector(100L, 10, 300_000L, null); // 매수가 스냅샷 결손
+
+        investment.settleSector(100L, BigDecimal.valueOf(31_800));
+
+        InvestmentSector sector = investment.getSectors().getFirst();
+        assertEquals(0L, sector.getProfitLoss());
+        assertEquals(0, BigDecimal.ZERO.compareTo(sector.getProfitLossRate()));
+        assertEquals(PriceDataSource.FALLBACK_ZERO, sector.getPriceDataSource());
     }
 
     @Test

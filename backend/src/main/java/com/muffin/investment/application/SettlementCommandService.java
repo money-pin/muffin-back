@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -51,25 +52,29 @@ public class SettlementCommandService {
      * @param settlementDate 당일 시가 기준 일자. 이 일자 이전(invest_date &lt; settlementDate)의 미정산 건이 대상.
      */
     public SettlementBatchResult settle(LocalDate settlementDate) {
-        // 적재 완료 가드: 오늘 ETF 시세가 하나도 없으면 로더 미실행으로 보고 정산하지 않는다(잘못된 폴백 방지).
-        if (!etfPriceRepository.existsByPriceDate(settlementDate)) {
-            log.warn("[settlement] ETF prices not loaded for {}, skip settlement", settlementDate);
+        List<Sector> sectors = sectorRepository.findAll();
+        List<EtfPrice> prices = etfPriceRepository.findByPriceDate(settlementDate);
+
+        // 적재 완료 가드: 활성 섹터의 모든 ETF 시세가 적재돼야 정산한다. 한 건만 있어도 통과하면 부분 적재 중 스케줄러가
+        // 실행돼 미적재 ETF가 잘못 0% 폴백으로 SETTLED 될 수 있으므로, 커버리지 전체를 확인한다.
+        if (!pricesFullyLoaded(sectors, prices)) {
+            log.warn("[settlement] ETF prices not fully loaded for {}, skip settlement", settlementDate);
             return SettlementBatchResult.skipped(settlementDate);
         }
 
-        List<Investment> targets = investmentRepository.findByStatusInAndSettlementStatusInAndInvestDateLessThan(
+        List<Investment> allTargets = investmentRepository.findByStatusInAndSettlementStatusInAndInvestDateLessThan(
                 TARGET_STATUSES, REPROCESSABLE, settlementDate);
+        // 직전 거래일. 확정 투자가 "정산 창을 놓쳤는지(stale)" 판정에 사용한다.
+        LocalDate prevTradingDay = etfPriceRepository.findLatestPriceDateBefore(settlementDate);
+        List<Investment> targets = filterProcessable(allTargets, prevTradingDay, settlementDate);
         if (targets.isEmpty()) {
             log.info("[settlement] no targets for {}", settlementDate);
             return new SettlementBatchResult(settlementDate, true, 0, 0, 0);
         }
 
-        // 직전 거래일. 확정 투자가 "정산 창을 놓쳤는지(stale)" 판정에 사용한다.
-        LocalDate prevTradingDay = etfPriceRepository.findLatestPriceDateBefore(settlementDate);
-        Map<Long, Long> sectorToEtfId =
-                sectorRepository.findAll().stream().collect(Collectors.toMap(Sector::getId, Sector::getEtfId));
-        Map<Long, EtfPrice> etfPriceByEtfId = etfPriceRepository.findByPriceDate(settlementDate).stream()
-                .collect(Collectors.toMap(EtfPrice::getEtfId, Function.identity(), (a, b) -> a));
+        Map<Long, Long> sectorToEtfId = sectors.stream().collect(Collectors.toMap(Sector::getId, Sector::getEtfId));
+        Map<Long, EtfPrice> etfPriceByEtfId =
+                prices.stream().collect(Collectors.toMap(EtfPrice::getEtfId, Function.identity(), (a, b) -> a));
 
         int success = 0;
         int failed = 0;
@@ -117,6 +122,40 @@ public class SettlementCommandService {
         } else {
             processor.settle(target.getId(), sectorToEtfId, etfPriceByEtfId);
         }
+    }
+
+    /** 활성 섹터의 모든 ETF 시세가 해당 일자에 적재됐는지(적재 완료 여부). 부분 적재로 정산을 시작하지 않기 위한 가드. */
+    private boolean pricesFullyLoaded(List<Sector> sectors, List<EtfPrice> prices) {
+        Set<Long> activeEtfIds =
+                sectors.stream().filter(Sector::isActive).map(Sector::getEtfId).collect(Collectors.toSet());
+        if (activeEtfIds.isEmpty()) {
+            return false; // 활성 섹터 설정 전이면 정산하지 않는다.
+        }
+        Set<Long> loadedEtfIds = prices.stream().map(EtfPrice::getEtfId).collect(Collectors.toSet());
+        return loadedEtfIds.containsAll(activeEtfIds);
+    }
+
+    /**
+     * 이번 실행에서 처리 가능한 대상만 남긴다. 직전 거래일을 구할 수 없으면(첫 적재일/짧은 보존 기간) 확정 투자의 정산 창을 판정할 수 없으므로, 확정 건은 PENDING으로
+     * 남겨 다음 실행으로 미루고 NO_INVEST만 종료 처리한다.
+     */
+    private List<Investment> filterProcessable(
+            List<Investment> targets, LocalDate prevTradingDay, LocalDate settlementDate) {
+        if (prevTradingDay != null) {
+            return targets;
+        }
+        long deferred = targets.stream()
+                .filter(t -> t.getStatus() == InvestmentStatus.CONFIRMED)
+                .count();
+        if (deferred > 0) {
+            log.warn(
+                    "[settlement] no previous trading day before {}, defer {} CONFIRMED (kept PENDING)",
+                    settlementDate,
+                    deferred);
+        }
+        return targets.stream()
+                .filter(t -> t.getStatus() == InvestmentStatus.NO_INVEST)
+                .toList();
     }
 
     /** 투자일자가 직전 거래일보다 이르면 정산 창을 놓친 것으로 본다(취소 대상). */

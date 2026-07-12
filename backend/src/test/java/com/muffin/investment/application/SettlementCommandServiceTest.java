@@ -65,6 +65,7 @@ class SettlementCommandServiceTest {
     void settle_updatesThreeTablesOnProfit() {
         long etfId = 7L;
         Sector sector = sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH"));
+        etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 30_000L, 30_000L)); // 직전 거래일(prevTradingDay)
         etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 31_800L, 32_000L)); // 당일 시가 31,800
         UserAsset asset = userAssetRepository.save(UserAsset.create(1L, 1_000_000L));
         Long investmentId = saveInvestment(1L, asset.getId(), sector.getId(), 300_000L, 30_000);
@@ -92,6 +93,7 @@ class SettlementCommandServiceTest {
     void settle_isIdempotentOnRerun() {
         long etfId = 7L;
         Sector sector = sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH"));
+        etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 30_000L, 30_000L)); // 직전 거래일(prevTradingDay)
         etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 31_800L, 32_000L));
         UserAsset asset = userAssetRepository.save(UserAsset.create(1L, 1_000_000L));
         saveInvestment(1L, asset.getId(), sector.getId(), 300_000L, 30_000);
@@ -110,6 +112,7 @@ class SettlementCommandServiceTest {
     void settle_isolatesFailurePerUser() {
         long etfId = 7L;
         Sector sector = sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH"));
+        etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 30_000L, 30_000L)); // 직전 거래일(prevTradingDay)
         etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 31_800L, 32_000L));
         UserAsset assetA = userAssetRepository.save(UserAsset.create(1L, 1_000_000L));
         Long okId = saveInvestment(1L, assetA.getId(), sector.getId(), 300_000L, 30_000);
@@ -130,11 +133,12 @@ class SettlementCommandServiceTest {
     }
 
     @Test
-    @DisplayName("섹터의 ETF 시세가 없으면 해당 섹터는 FALLBACK_ZERO(0%)로 정산된다")
-    void settle_appliesFallbackWhenEtfPriceMissing() {
-        // 다른 ETF 시세가 적재돼 있어 적재 가드는 통과하지만, 이 섹터의 ETF 시세는 없음
-        etfPriceRepository.save(EtfPrice.create(7L, SETTLE_DATE, 100L, 100L));
-        Sector sector = sectorRepository.save(Sector.create(1L, 8L, "바이오", "d", "BIO"));
+    @DisplayName("ETF가 거래정지(폴백 시세)면 해당 섹터는 FALLBACK_ZERO(0%)로 정산된다")
+    void settle_appliesFallbackWhenEtfHalted() {
+        long etfId = 8L;
+        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "바이오", "d", "BIO"));
+        etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 100L, 100L)); // 직전 거래일(prevTradingDay)
+        etfPriceRepository.save(EtfPrice.fallback(etfId, SETTLE_DATE)); // 당일 거래정지 → 폴백 시세(is_fallback)
         UserAsset asset = userAssetRepository.save(UserAsset.create(3L, 1_000_000L));
         Long investmentId = saveInvestment(3L, asset.getId(), sector.getId(), 300_000L, 30_000);
 
@@ -168,6 +172,7 @@ class SettlementCommandServiceTest {
     @Test
     @DisplayName("투자하지 않은 날(NO_INVEST)은 NO_SETTLEMENT로 종료되고 profit_summary에 0행이 남으며 자산은 그대로다")
     void settle_recordsZeroForNoInvest() {
+        sectorRepository.save(Sector.create(1L, 7L, "테크", "d", "TECH")); // 적재 완료 가드용 활성 섹터
         etfPriceRepository.save(EtfPrice.create(7L, SETTLE_DATE, 100L, 100L)); // 적재 가드 통과용
         UserAsset asset = userAssetRepository.save(UserAsset.create(5L, 1_000_000L));
         Long investmentId = investmentRepository
