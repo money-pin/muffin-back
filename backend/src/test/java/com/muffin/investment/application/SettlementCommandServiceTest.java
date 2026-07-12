@@ -144,7 +144,8 @@ class SettlementCommandServiceTest {
                 investmentRepository.findWithSectorsById(investmentId).orElseThrow();
         assertEquals(SettlementStatus.SETTLED, settled.getSettlementStatus());
         assertEquals(0L, settled.getTotalProfitLoss());
-        assertEquals(PriceDataSource.FALLBACK_ZERO, settled.getSectors().getFirst().getPriceDataSource());
+        assertEquals(
+                PriceDataSource.FALLBACK_ZERO, settled.getSectors().getFirst().getPriceDataSource());
         assertEquals(
                 1_000_000L,
                 userAssetRepository.findById(asset.getId()).orElseThrow().getTotalAsset());
