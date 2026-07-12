@@ -13,3 +13,9 @@ springdoc:
   swagger-ui:
     tags-sorter: alpha
     operations-sorter: method
+
+toss:
+  api:
+    base-url: ${TOSS_API_BASE_URL:https://open-api.tossinvest.com}
+    client-id: ${TOSS_CLIENT_ID:}
+    client-secret: ${TOSS_CLIENT_SECRET:}

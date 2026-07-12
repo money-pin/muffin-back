@@ -11,3 +11,9 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
+
+toss:
+  api:
+    base-url: https://toss-api.test
+    client-id: test-client-id
+    client-secret: test-client-secret
