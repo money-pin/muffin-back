@@ -40,7 +40,11 @@ public class TossApiClient {
             } catch (HttpClientErrorException.TooManyRequests e) {
                 handleTooManyRequests(e, attempt);
             } catch (RestClientResponseException e) {
-                throw toApiException(e);
+                if (e.getStatusCode().is5xxServerError()) {
+                    handleTransientServerError(e, attempt);
+                } else {
+                    throw toApiException(e);
+                }
             } catch (ResourceAccessException e) {
                 handleTransientNetworkError(e, attempt);
             }
@@ -63,6 +67,14 @@ public class TossApiClient {
             throw new TossApiException("토스증권 API 호출에 실패했습니다.", e);
         }
         log.warn("토스증권 API 호출 중 네트워크 오류, 재시도합니다. attempt={}", attempt);
+        sleep(TRANSIENT_ERROR_BACKOFF_UNIT.multipliedBy(attempt));
+    }
+
+    private void handleTransientServerError(RestClientResponseException e, int attempt) {
+        if (attempt == MAX_ATTEMPTS) {
+            throw toApiException(e);
+        }
+        log.warn("토스증권 API 서버 오류, 재시도합니다. status={}, attempt={}", e.getStatusCode(), attempt);
         sleep(TRANSIENT_ERROR_BACKOFF_UNIT.multipliedBy(attempt));
     }
 

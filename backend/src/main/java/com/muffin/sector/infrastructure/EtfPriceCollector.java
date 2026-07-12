@@ -87,7 +87,12 @@ public class EtfPriceCollector {
             return Optional.empty();
         }
         try {
-            return Optional.of(new BigDecimal(rawPrice).longValueExact());
+            long price = new BigDecimal(rawPrice).longValueExact();
+            if (price <= 0) {
+                log.warn("가격은 0보다 커야 합니다. rawPrice={}", rawPrice);
+                return Optional.empty();
+            }
+            return Optional.of(price);
         } catch (NumberFormatException | ArithmeticException e) {
             log.warn("가격 값을 파싱할 수 없습니다. rawPrice={}", rawPrice);
             return Optional.empty();

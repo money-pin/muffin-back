@@ -105,6 +105,37 @@ class TossApiClientTest {
     }
 
     @Test
+    @DisplayName("5xx 서버 오류는 재시도한 뒤 성공 응답을 반환한다")
+    void execute_retriesOnServerError_thenSucceeds() {
+        setUp();
+        server.expect(requestTo(URI)).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+        server.expect(requestTo(URI)).andRespond(withSuccess("{\"price\":10000}", MediaType.APPLICATION_JSON));
+
+        PriceDto result = client.execute(
+                () -> restClient.get().uri("/api/v1/candles").retrieve().body(PriceDto.class));
+
+        assertEquals(10000, result.price());
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("5xx 서버 오류가 최대 시도 횟수만큼 반복되면 API 예외를 던진다")
+    void execute_throwsTossApiException_afterServerErrorMaxAttempts() {
+        setUp();
+        for (int i = 0; i < 3; i++) {
+            server.expect(requestTo(URI)).andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+        }
+
+        TossApiException exception = assertThrows(
+                TossApiException.class,
+                () -> client.execute(
+                        () -> restClient.get().uri("/api/v1/candles").retrieve().body(PriceDto.class)));
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exception.getHttpStatus());
+        server.verify();
+    }
+
+    @Test
     @DisplayName("일시적 네트워크 오류는 재시도 후 성공하면 정상 반환한다")
     void execute_retriesOnTransientNetworkError_thenSucceeds() {
         setUp();

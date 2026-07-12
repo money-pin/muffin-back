@@ -1,6 +1,7 @@
 package com.muffin.sector.infrastructure.toss;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -9,6 +10,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
 import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse;
+import com.muffin.sector.infrastructure.toss.exception.TossApiException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -107,6 +109,29 @@ class TossMarketDataClientTest {
     }
 
     @Test
+    @DisplayName("일봉 응답 본문이 없으면 명시적인 API 예외를 던진다")
+    void getDailyCandle_throwsApiException_whenResponseBodyMissing() {
+        setUp();
+        LocalDate date = LocalDate.of(2026, 7, 10);
+        String before =
+                date.plusDays(1).atStartOfDay(KST).minusSeconds(1).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+        server.expect(requestToUriTemplate(
+                        TOSS_BASE_URL
+                                + "/api/v1/candles?symbol={symbol}&interval={interval}&count={count}&before={before}",
+                        "459580",
+                        "1d",
+                        1,
+                        before))
+                .andRespond(withSuccess());
+
+        TossApiException exception = assertThrows(TossApiException.class, () -> client.getDailyCandle("459580", date));
+
+        assertEquals("INVALID_RESPONSE", exception.getTossCode());
+        server.verify();
+    }
+
+    @Test
     @DisplayName("거래일 조회 시 Bearer 토큰을 담아 요청하고 result를 그대로 반환한다")
     void getMarketCalendar_returnsUnwrappedResult() {
         setUp();
@@ -125,6 +150,20 @@ class TossMarketDataClientTest {
         assertEquals(
                 "2026-07-11T09:00:00+09:00",
                 result.today().integrated().regularMarket().startTime());
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("거래일 응답 result가 없으면 명시적인 API 예외를 던진다")
+    void getMarketCalendar_throwsApiException_whenResultMissing() {
+        setUp();
+        LocalDate date = LocalDate.of(2026, 7, 11);
+        server.expect(requestToUriTemplate(TOSS_BASE_URL + "/api/v1/market-calendar/KR?date={date}", date))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        TossApiException exception = assertThrows(TossApiException.class, () -> client.getMarketCalendar(date));
+
+        assertEquals("INVALID_RESPONSE", exception.getTossCode());
         server.verify();
     }
 }

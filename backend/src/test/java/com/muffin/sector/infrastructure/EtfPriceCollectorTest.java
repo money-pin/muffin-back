@@ -19,6 +19,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -106,6 +108,24 @@ class EtfPriceCollectorTest {
 
         assertEquals(0, summary.successCount());
         assertEquals(0, summary.skippedCount());
+        assertEquals(1, summary.failureCount());
+        assertEquals(List.of("459580"), summary.failedEtfCodes());
+        verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-100"})
+    @DisplayName("0 이하의 시세는 저장하지 않고 실패로 집계한다")
+    void collect_countsAsFailure_whenPriceIsNotPositive(String rawPrice) {
+        Etf etf = Etf.create("459580", "KODEX ETF");
+        when(etfRepository.findAll()).thenReturn(List.of(etf));
+        when(tossMarketDataClient.getDailyCandle("459580", DATE))
+                .thenReturn(Optional.of(
+                        new Candle("2026-07-10T09:05:00+09:00", rawPrice, "10600", "9900", "10500", "12345", "KRW")));
+
+        EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
+
+        assertEquals(0, summary.successCount());
         assertEquals(1, summary.failureCount());
         assertEquals(List.of("459580"), summary.failedEtfCodes());
         verify(etfPriceWriter, never()).writeOpen(any(), any(), any());

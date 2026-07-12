@@ -3,6 +3,7 @@ package com.muffin.sector.infrastructure.toss;
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse;
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
 import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse;
+import com.muffin.sector.infrastructure.toss.exception.TossApiException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -73,22 +74,26 @@ public class TossMarketDataClient {
                 .retrieve()
                 .body(TossMarketCalendarResponse.class));
 
+        if (response == null || response.result() == null) {
+            throw invalidResponse("거래일");
+        }
         return response.result();
     }
 
     private Optional<Candle> candleOn(TossCandleResponse response, LocalDate date) {
-        if (response.result() == null) {
-            return Optional.empty();
+        if (response == null || response.result() == null || response.result().candles() == null) {
+            throw invalidResponse("일봉");
         }
         List<Candle> candles = response.result().candles();
-        if (candles == null) {
-            return Optional.empty();
-        }
         return candles.stream().filter(candle -> isOnDate(candle, date)).findFirst();
     }
 
+    private TossApiException invalidResponse(String responseType) {
+        return new TossApiException(null, "INVALID_RESPONSE", null, "토스증권 API의 " + responseType + " 응답 형식이 올바르지 않습니다.");
+    }
+
     private boolean isOnDate(Candle candle, LocalDate date) {
-        if (candle.timestamp() == null) {
+        if (candle == null || candle.timestamp() == null) {
             return false;
         }
         try {
