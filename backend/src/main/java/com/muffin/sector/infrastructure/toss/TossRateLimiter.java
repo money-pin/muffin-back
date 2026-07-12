@@ -11,6 +11,7 @@ public class TossRateLimiter {
 
     private final Clock clock;
     private final Duration minInterval;
+    private final Sleeper sleeper;
     private Instant lastCallAt;
 
     public TossRateLimiter(Clock clock) {
@@ -18,8 +19,13 @@ public class TossRateLimiter {
     }
 
     public TossRateLimiter(Clock clock, Duration minInterval) {
+        this(clock, minInterval, TossRateLimiter::sleep);
+    }
+
+    TossRateLimiter(Clock clock, Duration minInterval, Sleeper sleeper) {
         this.clock = clock;
         this.minInterval = minInterval;
+        this.sleeper = sleeper;
     }
 
     /** 이전 호출과의 간격이 최소 간격보다 짧으면 그 차이만큼 대기한 뒤 리턴한다. */
@@ -28,18 +34,24 @@ public class TossRateLimiter {
         if (lastCallAt != null) {
             Duration waitTime = minInterval.minus(Duration.between(lastCallAt, now));
             if (waitTime.isPositive()) {
-                sleep(waitTime);
+                sleeper.sleep(waitTime);
             }
         }
         lastCallAt = clock.instant();
     }
 
-    private void sleep(Duration duration) {
+    private static void sleep(Duration duration) {
         try {
-            Thread.sleep(duration.toMillis());
+            Thread.sleep(duration);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("레이트리밋 대기 중 인터럽트가 발생했습니다.", e);
         }
+    }
+
+    @FunctionalInterface
+    interface Sleeper {
+
+        void sleep(Duration duration);
     }
 }

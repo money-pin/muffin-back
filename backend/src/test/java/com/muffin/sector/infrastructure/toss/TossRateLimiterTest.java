@@ -1,12 +1,14 @@
 package com.muffin.sector.infrastructure.toss;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -15,23 +17,27 @@ class TossRateLimiterTest {
     @Test
     @DisplayName("첫 호출은 대기하지 않는다")
     void acquire_firstCall_doesNotWait() {
-        TossRateLimiter rateLimiter = new TossRateLimiter(Clock.systemUTC(), Duration.ofSeconds(5));
+        MutableClock clock = new MutableClock(Instant.parse("2026-07-13T00:00:00Z"));
+        RecordingSleeper sleeper = new RecordingSleeper(clock);
+        TossRateLimiter rateLimiter = new TossRateLimiter(clock, Duration.ofSeconds(5), sleeper);
 
-        long elapsedMillis = elapsedMillis(rateLimiter::acquire);
+        rateLimiter.acquire();
 
-        assertTrue(elapsedMillis < 200, "첫 호출은 거의 즉시 반환되어야 합니다. elapsed=" + elapsedMillis);
+        assertEquals(List.of(), sleeper.sleepDurations());
     }
 
     @Test
     @DisplayName("최소 간격 이내에 다시 호출하면 남은 시간만큼 대기한다")
     void acquire_withinMinInterval_waits() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-07-13T00:00:00Z"));
         Duration minInterval = Duration.ofMillis(150);
-        TossRateLimiter rateLimiter = new TossRateLimiter(Clock.systemUTC(), minInterval);
+        RecordingSleeper sleeper = new RecordingSleeper(clock);
+        TossRateLimiter rateLimiter = new TossRateLimiter(clock, minInterval, sleeper);
 
         rateLimiter.acquire();
-        long elapsedMillis = elapsedMillis(rateLimiter::acquire);
+        rateLimiter.acquire();
 
-        assertTrue(elapsedMillis >= minInterval.toMillis(), "최소 간격만큼 대기해야 합니다. elapsed=" + elapsedMillis);
+        assertEquals(List.of(minInterval), sleeper.sleepDurations());
     }
 
     @Test
@@ -39,19 +45,14 @@ class TossRateLimiterTest {
     void acquire_afterMinIntervalElapsed_doesNotWait() {
         MutableClock clock = new MutableClock(Instant.parse("2026-07-13T00:00:00Z"));
         Duration minInterval = Duration.ofMillis(150);
-        TossRateLimiter rateLimiter = new TossRateLimiter(clock, minInterval);
+        RecordingSleeper sleeper = new RecordingSleeper(clock);
+        TossRateLimiter rateLimiter = new TossRateLimiter(clock, minInterval, sleeper);
 
         rateLimiter.acquire();
         clock.advance(minInterval.plusMillis(10));
-        long elapsedMillis = elapsedMillis(rateLimiter::acquire);
+        rateLimiter.acquire();
 
-        assertTrue(elapsedMillis < 100, "간격이 지났다면 대기하지 않아야 합니다. elapsed=" + elapsedMillis);
-    }
-
-    private long elapsedMillis(Runnable action) {
-        long start = System.nanoTime();
-        action.run();
-        return Duration.ofNanos(System.nanoTime() - start).toMillis();
+        assertEquals(List.of(), sleeper.sleepDurations());
     }
 
     private static final class MutableClock extends Clock {
@@ -78,6 +79,26 @@ class TossRateLimiterTest {
         @Override
         public Instant instant() {
             return instant;
+        }
+    }
+
+    private static final class RecordingSleeper implements TossRateLimiter.Sleeper {
+
+        private final MutableClock clock;
+        private final List<Duration> sleepDurations = new ArrayList<>();
+
+        private RecordingSleeper(MutableClock clock) {
+            this.clock = clock;
+        }
+
+        @Override
+        public void sleep(Duration duration) {
+            sleepDurations.add(duration);
+            clock.advance(duration);
+        }
+
+        List<Duration> sleepDurations() {
+            return List.copyOf(sleepDurations);
         }
     }
 }
