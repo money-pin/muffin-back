@@ -32,10 +32,10 @@ public class EtfPrice {
     @Column(name = "etf_id", nullable = false)
     private Long etfId;
 
-    @Column(name = "end_price", nullable = false)
+    @Column(name = "end_price")
     private Long endPrice;
 
-    @Column(name = "start_price", nullable = false)
+    @Column(name = "start_price")
     private Long startPrice;
 
     @Column(name = "price_date", nullable = false)
@@ -50,6 +50,13 @@ public class EtfPrice {
         this.startPrice = startPrice;
         this.endPrice = endPrice;
         this.isFallback = isFallback;
+    }
+
+    // TODO: 하루에 같은 행을 시가와 종가 두 번에 걸쳐 완성하는 방식으로 설계
+
+    // 시가 저장
+    public static EtfPrice open(Long etfId, LocalDate priceDate, Long startPrice) {
+        return new EtfPrice(etfId, priceDate, startPrice, null, false);
     }
 
     /** 정상 시세 레코드를 생성한다. */
