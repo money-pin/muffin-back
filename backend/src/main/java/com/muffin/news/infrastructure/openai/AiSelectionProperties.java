@@ -1,4 +1,4 @@
-package com.muffin.news.application.rss.selection;
+package com.muffin.news.infrastructure.openai;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

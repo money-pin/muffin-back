@@ -1,5 +1,6 @@
-package com.muffin.news.application.rss.selection;
+package com.muffin.news.infrastructure.openai;
 
+import com.muffin.news.application.rss.RssArticleSelector;
 import java.util.List;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;

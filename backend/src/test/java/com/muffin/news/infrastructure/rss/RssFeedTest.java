@@ -1,4 +1,4 @@
-package com.muffin.news.application.rss.feed;
+package com.muffin.news.infrastructure.rss;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

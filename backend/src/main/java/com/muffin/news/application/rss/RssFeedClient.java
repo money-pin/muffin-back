@@ -1,6 +1,5 @@
-package com.muffin.news.application.rss.feed;
+package com.muffin.news.application.rss;
 
-import com.muffin.news.application.rss.RssArticle;
 import java.util.List;
 
 public interface RssFeedClient {

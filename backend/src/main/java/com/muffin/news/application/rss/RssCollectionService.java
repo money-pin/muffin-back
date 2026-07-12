@@ -1,7 +1,5 @@
 package com.muffin.news.application.rss;
 
-import com.muffin.news.application.rss.feed.RssFeedClient;
-import com.muffin.news.application.rss.selection.RssArticleSelector;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;

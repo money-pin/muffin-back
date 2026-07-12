@@ -1,9 +1,10 @@
-package com.muffin.news.application.rss.selection;
+package com.muffin.news.infrastructure.openai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muffin.news.application.rss.RssArticle;
+import com.muffin.news.application.rss.RssArticleSelector;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.LinkedHashMap;

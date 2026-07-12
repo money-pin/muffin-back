@@ -1,6 +1,7 @@
-package com.muffin.news.application.rss.feed;
+package com.muffin.news.infrastructure.rss;
 
 import com.muffin.news.application.rss.RssArticle;
+import com.muffin.news.application.rss.RssFeedClient;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.net.http.HttpClient;

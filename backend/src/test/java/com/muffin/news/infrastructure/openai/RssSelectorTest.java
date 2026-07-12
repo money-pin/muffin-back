@@ -1,4 +1,4 @@
-package com.muffin.news.application.rss.selection;
+package com.muffin.news.infrastructure.openai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;

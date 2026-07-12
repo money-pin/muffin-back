@@ -5,8 +5,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.muffin.news.application.rss.feed.RssFeedClient;
-import com.muffin.news.application.rss.selection.RssArticleSelector;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;

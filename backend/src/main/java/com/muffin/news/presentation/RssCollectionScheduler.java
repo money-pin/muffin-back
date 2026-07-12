@@ -1,5 +1,6 @@
-package com.muffin.news.application.rss;
+package com.muffin.news.presentation;
 
+import com.muffin.news.application.rss.RssCollectionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
