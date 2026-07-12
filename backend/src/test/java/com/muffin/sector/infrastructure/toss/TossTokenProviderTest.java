@@ -1,6 +1,7 @@
 package com.muffin.sector.infrastructure.toss;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -10,6 +11,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -36,6 +38,11 @@ class TossTokenProviderTest {
 
         server.expect(requestTo(TOKEN_URI))
                 .andExpect(method(HttpMethod.POST))
+                .andExpect(content()
+                        .formDataContains(Map.of(
+                                "grant_type", "client_credentials",
+                                "client_id", "client-id",
+                                "client_secret", "client-secret")))
                 .andRespond(withSuccess(
                         "{\"access_token\":\"token-1\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
                         MediaType.APPLICATION_JSON));

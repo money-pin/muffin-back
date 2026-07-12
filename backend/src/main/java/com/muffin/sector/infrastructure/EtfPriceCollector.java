@@ -3,11 +3,13 @@ package com.muffin.sector.infrastructure;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
-import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse;
+import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
 import com.muffin.sector.infrastructure.toss.exception.TossApiException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -41,12 +43,25 @@ public class EtfPriceCollector {
     }
 
     private void collectOne(Etf etf, LocalDate date) {
-        TossCandleResponse candle = tossMarketDataClient.getDailyCandle(etf.getEtfCode(), date);
-        if (candle.openPrice() != null) {
-            etfPriceWriter.writeOpen(etf.getId(), date, candle.openPrice());
+        Optional<Candle> candle = tossMarketDataClient.getDailyCandle(etf.getEtfCode(), date);
+        if (candle.isEmpty()) {
+            return;
         }
-        if (candle.closePrice() != null) {
-            etfPriceWriter.writeClose(etf.getId(), date, candle.closePrice());
+
+        Candle value = candle.get();
+        parsePrice(value.openPrice()).ifPresent(price -> etfPriceWriter.writeOpen(etf.getId(), date, price));
+        parsePrice(value.closePrice()).ifPresent(price -> etfPriceWriter.writeClose(etf.getId(), date, price));
+    }
+
+    private Optional<Long> parsePrice(String rawPrice) {
+        if (rawPrice == null) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(new BigDecimal(rawPrice).longValueExact());
+        } catch (NumberFormatException | ArithmeticException e) {
+            log.warn("가격 값을 파싱할 수 없습니다. rawPrice={}", rawPrice);
+            return Optional.empty();
         }
     }
 

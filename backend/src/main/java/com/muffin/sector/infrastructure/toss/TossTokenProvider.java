@@ -6,13 +6,15 @@ import java.time.Duration;
 import java.time.Instant;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
 /**
  * OAuth2 Client Credentials Grant로 토스증권 액세스 토큰을 발급받고 만료 전까지 캐싱한다.
  *
- * <p>클라이언트 인증 방식(Basic 헤더 vs 폼 바디)은 표준 OAuth2 관행(RFC 6749)을 따라 Basic 헤더로 구현했으며, 실제 토스증권
- * 문서로 재확인이 필요하다(§5.1).
+ * <p>{@code client_id}/{@code client_secret}은 Basic 인증 헤더가 아니라 {@code grant_type}과 함께
+ * {@code application/x-www-form-urlencoded} 요청 본문에 담아 전송한다(공식 문서 AuthApi 기준 확인 완료).
  */
 @Component
 public class TossTokenProvider {
@@ -44,12 +46,16 @@ public class TossTokenProvider {
     }
 
     private CachedToken fetchToken(Instant now) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "client_credentials");
+        form.add("client_id", properties.clientId());
+        form.add("client_secret", properties.clientSecret());
+
         TossTokenResponse response = tossApiClient.execute(() -> tossRestClient
                 .post()
                 .uri(TOKEN_PATH)
-                .headers(headers -> headers.setBasicAuth(properties.clientId(), properties.clientSecret()))
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body("grant_type=client_credentials")
+                .body(form)
                 .retrieve()
                 .body(TossTokenResponse.class));
 

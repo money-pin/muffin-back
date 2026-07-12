@@ -7,11 +7,14 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestToUriTemplate;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse;
+import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
 import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -21,6 +24,7 @@ import org.springframework.web.client.RestClient;
 class TossMarketDataClientTest {
 
     private static final String TOSS_BASE_URL = "http://toss.test";
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private RestClient restClient;
     private MockRestServiceServer server;
@@ -44,40 +48,83 @@ class TossMarketDataClientTest {
     }
 
     @Test
-    @DisplayName("일봉 조회 시 Bearer 토큰을 담아 요청하고 응답을 그대로 반환한다")
-    void getDailyCandle_returnsParsedResponse() {
+    @DisplayName("일봉 조회 시 Bearer 토큰을 담아 before 커서로 1건을 요청하고, 요청한 날짜의 캔들을 반환한다")
+    void getDailyCandle_returnsCandleForRequestedDate() {
         setUp();
         LocalDate date = LocalDate.of(2026, 7, 10);
+        String before =
+                date.plusDays(1).atStartOfDay(KST).minusSeconds(1).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
         server.expect(requestToUriTemplate(
-                        TOSS_BASE_URL + "/api/v1/candles?symbol={symbol}&date={date}", "459580", date))
+                        TOSS_BASE_URL
+                                + "/api/v1/candles?symbol={symbol}&interval={interval}&count={count}&before={before}",
+                        "459580",
+                        "1d",
+                        1,
+                        before))
                 .andExpect(header("Authorization", "Bearer test-token"))
                 .andRespond(withSuccess(
-                        "{\"base_date\":\"2026-07-10\",\"open_price\":10000,\"close_price\":10500,"
-                                + "\"high_price\":10600,\"low_price\":9900}",
+                        "{\"result\":{\"candles\":[{\"timestamp\":\"2026-07-10T15:30:00+09:00\","
+                                + "\"openPrice\":\"10000\",\"closePrice\":\"10500\",\"highPrice\":\"10600\","
+                                + "\"lowPrice\":\"9900\",\"volume\":\"12345\",\"currency\":\"KRW\"}],"
+                                + "\"nextBefore\":\"2026-07-09T15:30:00+09:00\"}}",
                         MediaType.APPLICATION_JSON));
 
-        TossCandleResponse response = client.getDailyCandle("459580", date);
+        Optional<Candle> result = client.getDailyCandle("459580", date);
 
-        assertEquals(date, response.baseDate());
-        assertEquals(10000L, response.openPrice());
-        assertEquals(10500L, response.closePrice());
+        assertTrue(result.isPresent());
+        assertEquals("10000", result.get().openPrice());
+        assertEquals("10500", result.get().closePrice());
         server.verify();
     }
 
     @Test
-    @DisplayName("거래일 조회 시 Bearer 토큰을 담아 요청하고 응답을 그대로 반환한다")
-    void getMarketCalendar_returnsParsedResponse() {
+    @DisplayName("요청한 날짜에 해당하는 캔들이 없으면(휴장일 등) 비어있는 결과를 반환한다")
+    void getDailyCandle_returnsEmpty_whenNoCandleMatchesDate() {
+        setUp();
+        LocalDate date = LocalDate.of(2026, 7, 11);
+        String before =
+                date.plusDays(1).atStartOfDay(KST).minusSeconds(1).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+        server.expect(requestToUriTemplate(
+                        TOSS_BASE_URL
+                                + "/api/v1/candles?symbol={symbol}&interval={interval}&count={count}&before={before}",
+                        "459580",
+                        "1d",
+                        1,
+                        before))
+                .andRespond(withSuccess(
+                        "{\"result\":{\"candles\":[{\"timestamp\":\"2026-07-10T15:30:00+09:00\","
+                                + "\"openPrice\":\"10000\",\"closePrice\":\"10500\",\"highPrice\":\"10600\","
+                                + "\"lowPrice\":\"9900\",\"volume\":\"12345\",\"currency\":\"KRW\"}],"
+                                + "\"nextBefore\":null}}",
+                        MediaType.APPLICATION_JSON));
+
+        Optional<Candle> result = client.getDailyCandle("459580", date);
+
+        assertTrue(result.isEmpty());
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("거래일 조회 시 Bearer 토큰을 담아 요청하고 result를 그대로 반환한다")
+    void getMarketCalendar_returnsUnwrappedResult() {
         setUp();
         LocalDate date = LocalDate.of(2026, 7, 11);
         server.expect(requestToUriTemplate(TOSS_BASE_URL + "/api/v1/market-calendar/KR?date={date}", date))
                 .andExpect(header("Authorization", "Bearer test-token"))
-                .andRespond(
-                        withSuccess("{\"date\":\"2026-07-11\",\"is_trading_day\":true}", MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess(
+                        "{\"result\":{\"today\":{\"date\":\"2026-07-11\",\"integrated\":{"
+                                + "\"regularMarket\":{\"startTime\":\"2026-07-11T09:00:00+09:00\","
+                                + "\"endTime\":\"2026-07-11T15:30:00+09:00\"}}}}}",
+                        MediaType.APPLICATION_JSON));
 
-        TossMarketCalendarResponse response = client.getMarketCalendar(date);
+        TossMarketCalendarResponse.Result result = client.getMarketCalendar(date);
 
-        assertEquals(date, response.date());
-        assertTrue(response.tradingDay());
+        assertEquals(date, result.today().date());
+        assertEquals(
+                "2026-07-11T09:00:00+09:00",
+                result.today().integrated().regularMarket().startTime());
         server.verify();
     }
 }
