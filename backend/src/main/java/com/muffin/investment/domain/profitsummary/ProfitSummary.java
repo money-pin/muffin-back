@@ -69,4 +69,11 @@ public class ProfitSummary extends BaseEntity {
             Long cumulativeProfitLoss) {
         return new ProfitSummary(userId, summaryDate, dailyProfitLoss, dailyProfitLossRate, cumulativeProfitLoss);
     }
+
+    /** 정산 재실행 시 기존 요약을 갱신한다(요약 일자는 불변). */
+    public void update(Long dailyProfitLoss, BigDecimal dailyProfitLossRate, Long cumulativeProfitLoss) {
+        this.dailyProfitLoss = dailyProfitLoss;
+        this.dailyProfitLossRate = dailyProfitLossRate;
+        this.cumulativeProfitLoss = cumulativeProfitLoss;
+    }
 }

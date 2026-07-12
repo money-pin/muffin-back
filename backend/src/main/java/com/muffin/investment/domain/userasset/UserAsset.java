@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
@@ -42,6 +43,11 @@ public class UserAsset extends BaseEntity {
 
     @Column(name = "last_settled_at")
     private LocalDateTime lastSettledAt;
+
+    // 정산 배치와 퀴즈 보상 등 total_asset을 동시에 가산하는 주체가 생겨, lost update 방지를 위한 낙관적 락.
+    @Version
+    @Column(name = "version")
+    private Long version;
 
     private UserAsset(Long userId, Long initialAsset) {
         this.userId = userId;
