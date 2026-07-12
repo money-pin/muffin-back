@@ -44,38 +44,75 @@ class EtfPriceCollectorTest {
     }
 
     @Test
-    @DisplayName("시가와 종가가 모두 있으면 문자열 가격을 파싱해서 둘 다 기록한다")
-    void collect_writesOpenAndClose_whenBothPresent() {
+    @DisplayName("collectOpen은 시가만 기록하고 종가는 건드리지 않는다")
+    void collectOpen_writesOnlyOpenPrice() {
+        Etf etf = Etf.create("459580", "KODEX CD금리액티브(합성)");
+        when(etfRepository.findAll()).thenReturn(List.of(etf));
+        when(tossMarketDataClient.getDailyCandle("459580", DATE))
+                .thenReturn(Optional.of(
+                        new Candle("2026-07-10T09:05:00+09:00", "10000", "10600", "9900", "10500", "12345", "KRW")));
+
+        EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
+
+        assertEquals(1, summary.successCount());
+        assertEquals(0, summary.skippedCount());
+        assertEquals(0, summary.failureCount());
+        verify(etfPriceWriter).writeOpen(any(), eq(DATE), eq(10_000L));
+        verify(etfPriceWriter, never()).writeClose(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("collectClose는 종가만 기록하고 시가는 건드리지 않는다")
+    void collectClose_writesOnlyClosePrice() {
         Etf etf = Etf.create("459580", "KODEX CD금리액티브(합성)");
         when(etfRepository.findAll()).thenReturn(List.of(etf));
         when(tossMarketDataClient.getDailyCandle("459580", DATE))
                 .thenReturn(Optional.of(
                         new Candle("2026-07-10T15:30:00+09:00", "10000", "10600", "9900", "10500", "12345", "KRW")));
 
-        EtfPriceCollector.CollectionSummary summary = collector.collect(DATE);
+        EtfPriceCollector.CollectionSummary summary = collector.collectClose(DATE);
 
         assertEquals(1, summary.successCount());
-        assertEquals(0, summary.failureCount());
-        verify(etfPriceWriter).writeOpen(any(), eq(DATE), eq(10_000L));
         verify(etfPriceWriter).writeClose(any(), eq(DATE), eq(10_500L));
+        verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
     }
 
     @Test
-    @DisplayName("해당 날짜의 캔들이 없으면(휴장일 등) 아무 것도 기록하지 않고 성공으로 집계한다")
-    void collect_writesNothing_whenCandleMissing() {
+    @DisplayName("해당 날짜의 캔들이 없으면(휴장일 등) skip으로 집계하고 아무 것도 기록하지 않는다")
+    void collect_skipsWhenCandleMissing() {
         Etf etf = Etf.create("459580", "KODEX CD금리액티브(합성)");
         when(etfRepository.findAll()).thenReturn(List.of(etf));
         when(tossMarketDataClient.getDailyCandle("459580", DATE)).thenReturn(Optional.empty());
 
-        EtfPriceCollector.CollectionSummary summary = collector.collect(DATE);
+        EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
 
-        assertEquals(1, summary.successCount());
+        assertEquals(0, summary.successCount());
+        assertEquals(1, summary.skippedCount());
+        assertEquals(0, summary.failureCount());
+        assertEquals(List.of("459580"), summary.skippedEtfCodes());
         verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
-        verify(etfPriceWriter, never()).writeClose(any(), any(), any());
     }
 
     @Test
-    @DisplayName("한 ETF가 실패해도 나머지는 계속 수집하고 실패 목록에 남긴다")
+    @DisplayName("가격 값을 파싱할 수 없으면 실패로 집계한다")
+    void collect_countsAsFailure_whenPriceUnparseable() {
+        Etf etf = Etf.create("459580", "KODEX CD금리액티브(합성)");
+        when(etfRepository.findAll()).thenReturn(List.of(etf));
+        when(tossMarketDataClient.getDailyCandle("459580", DATE))
+                .thenReturn(Optional.of(
+                        new Candle("2026-07-10T09:05:00+09:00", "N/A", "10600", "9900", "10500", "12345", "KRW")));
+
+        EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
+
+        assertEquals(0, summary.successCount());
+        assertEquals(0, summary.skippedCount());
+        assertEquals(1, summary.failureCount());
+        assertEquals(List.of("459580"), summary.failedEtfCodes());
+        verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("한 ETF가 API 실패해도 나머지는 계속 수집하고 실패 목록에 남긴다")
     void collect_continuesAfterOneEtfFails() {
         Etf failing = Etf.create("999999", "실패종목");
         Etf succeeding = Etf.create("459580", "KODEX CD금리액티브(합성)");
@@ -84,9 +121,9 @@ class EtfPriceCollectorTest {
                 .thenThrow(new TossApiException("r1", "NOT_FOUND", null, "종목을 찾을 수 없습니다"));
         when(tossMarketDataClient.getDailyCandle("459580", DATE))
                 .thenReturn(Optional.of(
-                        new Candle("2026-07-10T15:30:00+09:00", "10000", "10600", "9900", "10500", "12345", "KRW")));
+                        new Candle("2026-07-10T09:05:00+09:00", "10000", "10600", "9900", "10500", "12345", "KRW")));
 
-        EtfPriceCollector.CollectionSummary summary = collector.collect(DATE);
+        EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
 
         assertEquals(1, summary.successCount());
         assertEquals(1, summary.failureCount());
