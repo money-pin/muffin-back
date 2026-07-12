@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,31 +42,30 @@ public class EtfPrice {
     @Column(name = "price_date", nullable = false)
     private LocalDate priceDate;
 
-    @Column(name = "is_fallback", nullable = false)
-    private boolean isFallback;
-
-    private EtfPrice(Long etfId, LocalDate priceDate, Long startPrice, Long endPrice, boolean isFallback) {
+    private EtfPrice(Long etfId, LocalDate priceDate, Long startPrice, Long endPrice) {
         this.etfId = etfId;
         this.priceDate = priceDate;
         this.startPrice = startPrice;
         this.endPrice = endPrice;
-        this.isFallback = isFallback;
     }
 
-    // TODO: 하루에 같은 행을 시가와 종가 두 번에 걸쳐 완성하는 방식으로 설계
-
-    // 시가 저장
+    /** 시가만 확보된 레코드를 생성한다. 종가는 이후 {@link #recordClose(Long)}로 채운다. */
     public static EtfPrice open(Long etfId, LocalDate priceDate, Long startPrice) {
-        return new EtfPrice(etfId, priceDate, startPrice, null, false);
+        return new EtfPrice(etfId, priceDate, startPrice, null);
     }
 
-    /** 정상 시세 레코드를 생성한다. */
+    /** 시가와 종가가 모두 확보된 레코드를 생성한다. */
     public static EtfPrice create(Long etfId, LocalDate priceDate, Long startPrice, Long endPrice) {
-        return new EtfPrice(etfId, priceDate, startPrice, endPrice, false);
+        return new EtfPrice(etfId, priceDate, startPrice, endPrice);
     }
 
-    /** 시세를 조회하지 못했을 때 0원으로 대체하는 폴백 레코드를 생성한다. */
-    public static EtfPrice fallback(Long etfId, LocalDate priceDate) {
-        return new EtfPrice(etfId, priceDate, 0L, 0L, true);
+    /** 시가를 반영한다. 같은 값을 여러 번 반영해도 결과는 같다. */
+    public void recordOpen(Long startPrice) {
+        this.startPrice = Objects.requireNonNull(startPrice, "startPrice는 null일 수 없습니다.");
+    }
+
+    /** 종가를 반영한다. 같은 값을 여러 번 반영해도 결과는 같다. */
+    public void recordClose(Long endPrice) {
+        this.endPrice = Objects.requireNonNull(endPrice, "endPrice는 null일 수 없습니다.");
     }
 }
