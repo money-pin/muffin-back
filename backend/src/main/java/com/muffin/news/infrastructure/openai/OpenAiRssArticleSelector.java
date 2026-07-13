@@ -136,6 +136,7 @@ public class OpenAiRssArticleSelector implements RssArticleSelector {
     /** 후보 기사와 selected_urls JSON Schema를 OpenAI Responses API 요청 형식으로 구성한다. */
     private Map<String, Object> requestBody(String category, List<RssArticle> candidates) {
         List<Map<String, String>> articles = candidates.stream()
+                .filter(article -> article.title() != null && article.url() != null)
                 .map(article -> Map.of(
                         "title", article.title(),
                         "description", article.description() == null ? "" : article.description(),

@@ -20,6 +20,14 @@ muffin:
       scheduler-enabled: ${NEWS_RSS_ENABLED:true}
       cron: ${NEWS_RSS_CRON:0 0 6 * * *}
       zone: ${NEWS_RSS_ZONE:Asia/Seoul}
+
+    settlement:
+      # ETF 시세 적재 완료 이벤트가 1차 트리거.
+      # 아래 스케줄러는 이벤트가 아직 연동되지 않은 경우를 위한 안전망이며 멱등하다.
+      scheduler-enabled: true
+      cron: "0 30 9 * * *"
+      zone: Asia/Seoul
+
   news:
     rss:
       publisher: ${NEWS_RSS_PUBLISHER:매일경제}
@@ -30,6 +38,7 @@ muffin:
           url: ${NEWS_RSS_STOCK_URL:https://www.mk.co.kr/rss/50200011/}
         - category: 세계
           url: ${NEWS_RSS_WORLD_URL:https://www.mk.co.kr/rss/30300018/}
+
     ai-selection:
       enabled: ${NEWS_AI_SELECTION_ENABLED:false}
       api-key: ${OPENAI_API_KEY:}
