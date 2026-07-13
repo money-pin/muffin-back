@@ -71,4 +71,14 @@ public class UserAsset extends BaseEntity {
         this.dailyChangeRate = changeRate;
         this.lastSettledAt = settledAt;
     }
+
+    /**
+     * 손익 변화 없이 정산 처리만 반영한다(미투자일/취소일). 총자산은 유지하되 일간 변동을 0으로 갱신하고 최근 정산 시각을 올려, 화면에 이전 수익이 남거나 "정산 중"으로 계속
+     * 표시되는 것을 막는다.
+     */
+    public void markNoChange(LocalDateTime settledAt) {
+        this.dailyChangeAmount = 0L;
+        this.dailyChangeRate = BigDecimal.ZERO;
+        this.lastSettledAt = settledAt;
+    }
 }

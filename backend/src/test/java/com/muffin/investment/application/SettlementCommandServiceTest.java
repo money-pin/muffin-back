@@ -79,6 +79,8 @@ class SettlementCommandServiceTest {
         UserAsset updated = userAssetRepository.findById(asset.getId()).orElseThrow();
         assertEquals(1_018_000L, updated.getTotalAsset());
         assertEquals(18_000L, updated.getDailyChangeAmount());
+        // 등락률은 전일 총자산(1,000,000) 대비: 18,000/1,000,000 = 1.8000%
+        assertEquals(0, new BigDecimal("1.8000").compareTo(updated.getDailyChangeRate()));
         assertNotNull(updated.getLastSettledAt());
 
         ProfitSummary summary = profitSummaryRepository
@@ -187,9 +189,10 @@ class SettlementCommandServiceTest {
                 .findByUserIdAndSummaryDate(5L, INVEST_DATE)
                 .orElseThrow();
         assertEquals(0L, summary.getDailyProfitLoss());
-        assertEquals(
-                1_000_000L,
-                userAssetRepository.findById(asset.getId()).orElseThrow().getTotalAsset());
+        UserAsset updatedAsset = userAssetRepository.findById(asset.getId()).orElseThrow();
+        assertEquals(1_000_000L, updatedAsset.getTotalAsset()); // 총자산 유지
+        assertEquals(0L, updatedAsset.getDailyChangeAmount()); // 일간 변동 0으로 갱신
+        assertNotNull(updatedAsset.getLastSettledAt()); // 정산 시각 갱신(정산 중 표시 해제)
     }
 
     @Test
@@ -210,9 +213,10 @@ class SettlementCommandServiceTest {
         Investment processed = investmentRepository.findById(investmentId).orElseThrow();
         assertEquals(SettlementStatus.CANCELLED, processed.getSettlementStatus());
         assertEquals(0L, processed.getTotalProfitLoss());
-        assertEquals(
-                1_000_000L,
-                userAssetRepository.findById(asset.getId()).orElseThrow().getTotalAsset());
+        UserAsset updatedAsset = userAssetRepository.findById(asset.getId()).orElseThrow();
+        assertEquals(1_000_000L, updatedAsset.getTotalAsset()); // 총자산 유지
+        assertEquals(0L, updatedAsset.getDailyChangeAmount()); // 일간 변동 0으로 갱신
+        assertNotNull(updatedAsset.getLastSettledAt()); // 정산 시각 갱신
         ProfitSummary summary = profitSummaryRepository
                 .findByUserIdAndSummaryDate(6L, staleDate)
                 .orElseThrow();

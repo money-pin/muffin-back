@@ -10,6 +10,7 @@ import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
 import com.muffin.sector.domain.etfprice.EtfPrice;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -83,7 +84,9 @@ public class SettlementUserProcessor {
         if (isTerminal(investment)) {
             return;
         }
-        investment.cancelSettlement(LocalDateTime.now());
+        LocalDateTime settledAt = LocalDateTime.now();
+        investment.cancelSettlement(settledAt);
+        applyNoChangeToUserAsset(investment, settledAt); // 총자산 유지, 일간 변동 0/정산 시각 갱신
         upsertProfitSummary(investment); // 손익 0행
     }
 
@@ -96,7 +99,9 @@ public class SettlementUserProcessor {
         if (isTerminal(investment)) {
             return;
         }
-        investment.markNoSettlement(LocalDateTime.now());
+        LocalDateTime settledAt = LocalDateTime.now();
+        investment.markNoSettlement(settledAt);
+        applyNoChangeToUserAsset(investment, settledAt); // 총자산 유지, 일간 변동 0/정산 시각 갱신
         upsertProfitSummary(investment); // 손익 0행
     }
 
@@ -114,22 +119,38 @@ public class SettlementUserProcessor {
     }
 
     private void applyToUserAsset(Investment investment, LocalDateTime settledAt) {
-        UserAsset asset = userAssetRepository
-                .findById(investment.getUserAssetId())
-                .orElseThrow(
-                        () -> new IllegalStateException("사용자 자산이 없습니다: userAssetId=" + investment.getUserAssetId()));
+        UserAsset asset = loadUserAsset(investment);
         long before = asset.getTotalAsset();
-        asset.applySettlement(investment.getTotalProfitLoss(), investment.getTotalProfitLossRate(), settledAt);
+        long profit = investment.getTotalProfitLoss();
+        // 일간 등락률은 "투자금 대비"(investment.totalProfitLossRate)가 아니라 "전일 총자산 대비"여야 한다.
+        BigDecimal changeRate = (before == 0)
+                ? BigDecimal.ZERO
+                : BigDecimal.valueOf(profit)
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(BigDecimal.valueOf(before), 4, RoundingMode.HALF_UP);
+        asset.applySettlement(profit, changeRate, settledAt);
 
         // 사후조건: 자산 증가분은 정확히 총손익과 같아야 한다(테이블 간 정합성 검증).
         long actualDelta = asset.getTotalAsset() - before;
-        if (actualDelta != investment.getTotalProfitLoss()) {
+        if (actualDelta != profit) {
             log.error(
                     "[settlement] asset mismatch userId={} expectedDelta={} actualDelta={}",
                     investment.getUserId(),
-                    investment.getTotalProfitLoss(),
+                    profit,
                     actualDelta);
         }
+    }
+
+    /** 손익 없는 종료(취소/미투자)에도 자산의 일간 변동을 0으로, 최근 정산 시각을 갱신한다(총자산은 유지). */
+    private void applyNoChangeToUserAsset(Investment investment, LocalDateTime settledAt) {
+        loadUserAsset(investment).markNoChange(settledAt);
+    }
+
+    private UserAsset loadUserAsset(Investment investment) {
+        return userAssetRepository
+                .findById(investment.getUserAssetId())
+                .orElseThrow(
+                        () -> new IllegalStateException("사용자 자산이 없습니다: userAssetId=" + investment.getUserAssetId()));
     }
 
     private void upsertProfitSummary(Investment investment) {
