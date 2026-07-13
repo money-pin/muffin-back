@@ -2,6 +2,7 @@ package com.muffin.sector.domain.etfprice;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +20,8 @@ class EtfPriceTest {
 
         assertEquals(10_000L, etfPrice.getStartPrice());
         assertEquals(10_500L, etfPrice.getEndPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, etfPrice.getStartPriceStatus());
+        assertEquals(PriceCollectionStatus.SUCCESS, etfPrice.getEndPriceStatus());
     }
 
     @Test
@@ -28,6 +31,8 @@ class EtfPriceTest {
 
         assertEquals(10_000L, etfPrice.getStartPrice());
         assertNull(etfPrice.getEndPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, etfPrice.getStartPriceStatus());
+        assertEquals(PriceCollectionStatus.PENDING, etfPrice.getEndPriceStatus());
     }
 
     @Test
@@ -38,6 +43,7 @@ class EtfPriceTest {
         etfPrice.recordOpen(10_100L);
 
         assertEquals(10_100L, etfPrice.getStartPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, etfPrice.getStartPriceStatus());
     }
 
     @Test
@@ -59,6 +65,7 @@ class EtfPriceTest {
         etfPrice.recordClose(10_500L);
 
         assertEquals(10_500L, etfPrice.getEndPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, etfPrice.getEndPriceStatus());
     }
 
     @Test
@@ -70,5 +77,33 @@ class EtfPriceTest {
         etfPrice.recordClose(10_500L);
 
         assertEquals(10_500L, etfPrice.getEndPrice());
+    }
+
+    @Test
+    @DisplayName("미수신 상태는 가격을 만들지 않고 NO_DATA로 기록한다")
+    void markOpenNoData_recordsStatusWithoutPrice() {
+        EtfPrice etfPrice = EtfPrice.pending(ETF_ID, PRICE_DATE);
+
+        etfPrice.markOpenNoData();
+
+        assertNull(etfPrice.getStartPrice());
+        assertEquals(PriceCollectionStatus.NO_DATA, etfPrice.getStartPriceStatus());
+    }
+
+    @Test
+    @DisplayName("10시까지 시가가 없으면 FINAL_MISSING으로 확정할 수 있다")
+    void markOpenFinalMissing_recordsTerminalStatus() {
+        EtfPrice etfPrice = EtfPrice.pending(ETF_ID, PRICE_DATE);
+
+        etfPrice.markOpenFinalMissing();
+
+        assertNull(etfPrice.getStartPrice());
+        assertEquals(PriceCollectionStatus.FINAL_MISSING, etfPrice.getStartPriceStatus());
+    }
+
+    @Test
+    @DisplayName("0 이하 가격은 정상 가격으로 생성할 수 없다")
+    void create_rejectsNonPositivePrice() {
+        assertThrows(IllegalArgumentException.class, () -> EtfPrice.open(ETF_ID, PRICE_DATE, 0L));
     }
 }

@@ -41,6 +41,53 @@ public class EtfPriceWriter {
                 () -> EtfPrice.create(etfId, priceDate, null, endPrice));
     }
 
+    @Transactional
+    public void markOpenNoData(Long etfId, LocalDate priceDate) {
+        upsert(etfId, priceDate, EtfPrice::markOpenNoData, () -> marked(etfId, priceDate, EtfPrice::markOpenNoData));
+    }
+
+    @Transactional
+    public void markOpenFailed(Long etfId, LocalDate priceDate) {
+        upsert(etfId, priceDate, EtfPrice::markOpenFailed, () -> marked(etfId, priceDate, EtfPrice::markOpenFailed));
+    }
+
+    @Transactional
+    public void markOpenFinalMissing(Long etfId, LocalDate priceDate) {
+        upsert(
+                etfId,
+                priceDate,
+                EtfPrice::markOpenFinalMissing,
+                () -> marked(etfId, priceDate, EtfPrice::markOpenFinalMissing));
+    }
+
+    @Transactional
+    public void markOpenMarketClosed(Long etfId, LocalDate priceDate) {
+        upsert(
+                etfId,
+                priceDate,
+                EtfPrice::markOpenMarketClosed,
+                () -> marked(etfId, priceDate, EtfPrice::markOpenMarketClosed));
+    }
+
+    @Transactional
+    public void markCloseNoData(Long etfId, LocalDate priceDate) {
+        upsert(etfId, priceDate, EtfPrice::markCloseNoData, () -> marked(etfId, priceDate, EtfPrice::markCloseNoData));
+    }
+
+    @Transactional
+    public void markCloseFailed(Long etfId, LocalDate priceDate) {
+        upsert(etfId, priceDate, EtfPrice::markCloseFailed, () -> marked(etfId, priceDate, EtfPrice::markCloseFailed));
+    }
+
+    @Transactional
+    public void markCloseMarketClosed(Long etfId, LocalDate priceDate) {
+        upsert(
+                etfId,
+                priceDate,
+                EtfPrice::markCloseMarketClosed,
+                () -> marked(etfId, priceDate, EtfPrice::markCloseMarketClosed));
+    }
+
     private void upsert(Long etfId, LocalDate priceDate, Consumer<EtfPrice> update, Supplier<EtfPrice> create) {
         Optional<EtfPrice> existing = etfPriceRepository.findByEtfIdAndPriceDate(etfId, priceDate);
         if (existing.isPresent()) {
@@ -55,5 +102,11 @@ public class EtfPriceWriter {
                     etfPriceRepository.findByEtfIdAndPriceDate(etfId, priceDate).orElseThrow(() -> e);
             update.accept(raceWinner);
         }
+    }
+
+    private EtfPrice marked(Long etfId, LocalDate priceDate, Consumer<EtfPrice> marker) {
+        EtfPrice price = EtfPrice.pending(etfId, priceDate);
+        marker.accept(price);
+        return price;
     }
 }

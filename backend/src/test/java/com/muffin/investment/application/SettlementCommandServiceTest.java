@@ -135,13 +135,14 @@ class SettlementCommandServiceTest {
     }
 
     @Test
-    @DisplayName("ETF가 거래정지(폴백 시세)면 해당 섹터는 FALLBACK_ZERO(0%)로 정산된다")
-    void settle_appliesFallbackWhenEtfHalted() {
+    @DisplayName("10시까지 ETF 시가가 미확보되면 해당 섹터는 FALLBACK_ZERO(0%)로 정산된다")
+    void settle_appliesFallbackWhenOpenPriceFinalMissing() {
         long etfId = 8L;
         Sector sector = sectorRepository.save(Sector.create(1L, etfId, "바이오", "d", "BIO", 1));
         etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 100L, 100L)); // 직전 거래일(prevTradingDay)
-        // 당일 거래정지 → 행은 적재되지만(가드 통과) 시가가 0이라 isUsable()이 false를 반환해 폴백 처리된다
-        etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 0L, 0L));
+        EtfPrice missingOpen = EtfPrice.pending(etfId, SETTLE_DATE);
+        missingOpen.markOpenFinalMissing();
+        etfPriceRepository.save(missingOpen);
         UserAsset asset = userAssetRepository.save(UserAsset.create(3L, 1_000_000L));
         Long investmentId = saveInvestment(3L, asset.getId(), sector.getId(), 300_000L, 30_000);
 
@@ -163,6 +164,25 @@ class SettlementCommandServiceTest {
     void settle_skipsWhenPricesNotLoaded() {
         UserAsset asset = userAssetRepository.save(UserAsset.create(4L, 1_000_000L));
         Long investmentId = saveInvestment(4L, asset.getId(), createSector(), 300_000L, 30_000);
+
+        SettlementBatchResult result = settlementCommandService.settle(SETTLE_DATE);
+
+        assertFalse(result.ready());
+        assertEquals(
+                SettlementStatus.PENDING,
+                investmentRepository.findById(investmentId).orElseThrow().getSettlementStatus());
+    }
+
+    @Test
+    @DisplayName("ETF 가격 행이 있어도 시가 상태가 NO_DATA이면 정산을 건너뛴다")
+    void settle_skipsWhenOpenPriceNoData() {
+        long etfId = 9L;
+        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "금융", "d", "FIN", 1));
+        EtfPrice noData = EtfPrice.pending(etfId, SETTLE_DATE);
+        noData.markOpenNoData();
+        etfPriceRepository.save(noData);
+        UserAsset asset = userAssetRepository.save(UserAsset.create(4L, 1_000_000L));
+        Long investmentId = saveInvestment(4L, asset.getId(), sector.getId(), 300_000L, 30_000);
 
         SettlementBatchResult result = settlementCommandService.settle(SETTLE_DATE);
 

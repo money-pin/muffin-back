@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.EtfPriceRepository;
+import com.muffin.sector.domain.etfprice.PriceCollectionStatus;
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,9 @@ class EtfPriceWriterTest {
         EtfPrice saved =
                 etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
         assertEquals(10_000L, saved.getStartPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getStartPriceStatus());
         assertNull(saved.getEndPrice());
+        assertEquals(PriceCollectionStatus.PENDING, saved.getEndPriceStatus());
     }
 
     @Test
@@ -62,7 +65,9 @@ class EtfPriceWriterTest {
         EtfPrice saved =
                 etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
         assertNull(saved.getStartPrice());
+        assertEquals(PriceCollectionStatus.PENDING, saved.getStartPriceStatus());
         assertEquals(10_500L, saved.getEndPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getEndPriceStatus());
     }
 
     @Test
@@ -77,5 +82,40 @@ class EtfPriceWriterTest {
         assertEquals(10_000L, saved.getStartPrice());
         assertEquals(10_500L, saved.getEndPrice());
         assertEquals(1, etfPriceRepository.count());
+    }
+
+    @Test
+    @DisplayName("시가 캔들이 없으면 가격 없이 NO_DATA 상태 행을 남긴다")
+    void markOpenNoData_createsStatusRecord() {
+        etfPriceWriter.markOpenNoData(ETF_ID, PRICE_DATE);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertNull(saved.getStartPrice());
+        assertEquals(PriceCollectionStatus.NO_DATA, saved.getStartPriceStatus());
+    }
+
+    @Test
+    @DisplayName("시가 수신에 실패하면 가격 없이 FAILED 상태 행을 남긴다")
+    void markOpenFailed_createsStatusRecord() {
+        etfPriceWriter.markOpenFailed(ETF_ID, PRICE_DATE);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertNull(saved.getStartPrice());
+        assertEquals(PriceCollectionStatus.FAILED, saved.getStartPriceStatus());
+    }
+
+    @Test
+    @DisplayName("재시도에서 정상 시가를 받으면 실패 상태를 SUCCESS로 갱신한다")
+    void writeOpen_changesFailedStatusToSuccess() {
+        etfPriceWriter.markOpenFailed(ETF_ID, PRICE_DATE);
+
+        etfPriceWriter.writeOpen(ETF_ID, PRICE_DATE, 10_000L);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertEquals(10_000L, saved.getStartPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getStartPriceStatus());
     }
 }
