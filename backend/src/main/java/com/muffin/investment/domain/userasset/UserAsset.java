@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
@@ -43,6 +44,11 @@ public class UserAsset extends BaseEntity {
     @Column(name = "last_settled_at")
     private LocalDateTime lastSettledAt;
 
+    // 정산 배치와 퀴즈 보상 등 total_asset을 동시에 가산하는 주체가 생겨, lost update 방지를 위한 낙관적 락.
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     private UserAsset(Long userId, Long initialAsset) {
         this.userId = userId;
         this.totalAsset = initialAsset;
@@ -63,6 +69,16 @@ public class UserAsset extends BaseEntity {
         this.totalAsset = newTotalAsset;
         this.dailyChangeAmount = changeAmount;
         this.dailyChangeRate = changeRate;
+        this.lastSettledAt = settledAt;
+    }
+
+    /**
+     * 손익 변화 없이 정산 처리만 반영한다(미투자일/취소일). 총자산은 유지하되 일간 변동을 0으로 갱신하고 최근 정산 시각을 올려, 화면에 이전 수익이 남거나 "정산 중"으로 계속
+     * 표시되는 것을 막는다.
+     */
+    public void markNoChange(LocalDateTime settledAt) {
+        this.dailyChangeAmount = 0L;
+        this.dailyChangeRate = BigDecimal.ZERO;
         this.lastSettledAt = settledAt;
     }
 }
