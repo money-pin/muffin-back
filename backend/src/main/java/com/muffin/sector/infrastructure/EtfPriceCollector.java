@@ -4,6 +4,7 @@ import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
+import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse;
 import com.muffin.sector.infrastructure.toss.exception.TossApiException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,13 +24,17 @@ import org.springframework.stereotype.Component;
  * {@link #collectClose(LocalDate)}로 분리했다. 하나의 호출에서 둘 다 기록하면 장중 호출 시 아직 확정되지 않은 종가를
  * 실제 종가처럼 저장할 위험이 있다.
  *
- * <p>해당 일자의 캔들 자체가 없으면(휴장일 등) skip으로 집계하고 성공/실패 어느 쪽으로도 단정하지 않는다. 이 클래스는
- * 거래일 여부를 판단할 방법이 없기 때문이다(거래일 판정은 §5.2, 별도 서비스의 책임).
+ * <p>{@link TossMarketDataClient#getMarketCalendar}로 거래일 여부를 먼저 확인한다. 거래일이 아니면 전체를
+ * skip하고, 거래일인데 특정 ETF만 캔들이 없으면 거래정지로 간주해 시세 0을 명시적으로 저장한다. 이렇게 저장된 행은
+ * 정산 쪽의 "적재 완료 가드"는 통과하되 "가격 유효성 검사"에서는 걸러져 0% 폴백으로 처리된다. 행 자체가 없는 경우(=이번
+ * skip)는 아직 수집을 시도하지 않았다는 뜻으로 남아 정산 전체가 보류된다.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class EtfPriceCollector {
+
+    private static final long HALTED_PRICE = 0L;
 
     private final EtfRepository etfRepository;
     private final TossMarketDataClient tossMarketDataClient;
@@ -47,9 +52,15 @@ public class EtfPriceCollector {
 
     private CollectionSummary collect(
             LocalDate date, Function<Candle, String> priceField, BiConsumer<Long, Long> writer) {
+        if (!isTradingDay(date)) {
+            log.info("거래일이 아니라 ETF 시세 수집을 건너뜁니다. date={}", date);
+            List<String> etfCodes =
+                    etfRepository.findAll().stream().map(Etf::getEtfCode).toList();
+            return new CollectionSummary(0, etfCodes.size(), 0, etfCodes, List.of());
+        }
+
         List<Etf> etfs = etfRepository.findAll();
         int successCount = 0;
-        List<String> skippedEtfCodes = new ArrayList<>();
         List<String> failedEtfCodes = new ArrayList<>();
 
         for (Etf etf : etfs) {
@@ -62,12 +73,14 @@ public class EtfPriceCollector {
                 continue;
             }
 
-            if (candle.isEmpty()) {
-                skippedEtfCodes.add(etf.getEtfCode());
-                continue;
+            Optional<Long> price;
+            if (candle.isPresent()) {
+                price = parsePrice(priceField.apply(candle.get()));
+            } else {
+                log.info("거래일인데 캔들이 없어 거래정지로 판단해 0으로 기록합니다. etfCode={}, date={}", etf.getEtfCode(), date);
+                price = Optional.of(HALTED_PRICE);
             }
 
-            Optional<Long> price = parsePrice(priceField.apply(candle.get()));
             if (price.isEmpty()) {
                 failedEtfCodes.add(etf.getEtfCode());
                 continue;
@@ -82,12 +95,14 @@ public class EtfPriceCollector {
             }
         }
 
-        return new CollectionSummary(
-                successCount,
-                skippedEtfCodes.size(),
-                failedEtfCodes.size(),
-                List.copyOf(skippedEtfCodes),
-                List.copyOf(failedEtfCodes));
+        return new CollectionSummary(successCount, 0, failedEtfCodes.size(), List.of(), List.copyOf(failedEtfCodes));
+    }
+
+    private boolean isTradingDay(LocalDate date) {
+        TossMarketCalendarResponse.Result calendar = tossMarketDataClient.getMarketCalendar(date);
+        return calendar.today() != null
+                && calendar.today().integrated() != null
+                && calendar.today().integrated().regularMarket() != null;
     }
 
     private Optional<Long> parsePrice(String rawPrice) {

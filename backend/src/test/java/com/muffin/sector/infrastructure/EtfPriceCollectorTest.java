@@ -12,6 +12,10 @@ import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
+import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.BusinessDay;
+import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.Result;
+import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.Session;
+import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.Sessions;
 import com.muffin.sector.infrastructure.toss.exception.TossApiException;
 import java.time.LocalDate;
 import java.util.List;
@@ -45,6 +49,7 @@ class EtfPriceCollectorTest {
     @BeforeEach
     void setUp() {
         collector = new EtfPriceCollector(etfRepository, tossMarketDataClient, etfPriceWriter);
+        when(tossMarketDataClient.getMarketCalendar(DATE)).thenReturn(tradingDay());
     }
 
     @Test
@@ -82,11 +87,11 @@ class EtfPriceCollectorTest {
     }
 
     @Test
-    @DisplayName("해당 날짜의 캔들이 없으면(휴장일 등) skip으로 집계하고 아무 것도 기록하지 않는다")
-    void collect_skipsWhenCandleMissing() {
+    @DisplayName("거래일이 아니면 전체를 skip하고 캔들 조회 자체를 시도하지 않는다")
+    void collect_skipsEverything_whenNotTradingDay() {
         Etf etf = Etf.create("459580", "KODEX CD금리액티브(합성)");
         when(etfRepository.findAll()).thenReturn(List.of(etf));
-        when(tossMarketDataClient.getDailyCandle("459580", DATE)).thenReturn(Optional.empty());
+        when(tossMarketDataClient.getMarketCalendar(DATE)).thenReturn(nonTradingDay());
 
         EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
 
@@ -94,7 +99,23 @@ class EtfPriceCollectorTest {
         assertEquals(1, summary.skippedCount());
         assertEquals(0, summary.failureCount());
         assertEquals(List.of("459580"), summary.skippedEtfCodes());
+        verify(tossMarketDataClient, never()).getDailyCandle(any(), any());
         verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("거래일인데 캔들이 없으면 거래정지로 간주해 시세 0을 기록한다")
+    void collect_recordsZero_whenTradingDayButNoCandle() {
+        Etf etf = Etf.create("459580", "KODEX CD금리액티브(합성)");
+        when(etfRepository.findAll()).thenReturn(List.of(etf));
+        when(tossMarketDataClient.getDailyCandle("459580", DATE)).thenReturn(Optional.empty());
+
+        EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
+
+        assertEquals(1, summary.successCount());
+        assertEquals(0, summary.skippedCount());
+        assertEquals(0, summary.failureCount());
+        verify(etfPriceWriter).writeOpen(any(), eq(DATE), eq(0L));
     }
 
     @Test
@@ -174,5 +195,15 @@ class EtfPriceCollectorTest {
         assertEquals(1, summary.successCount());
         assertEquals(1, summary.failureCount());
         assertEquals(List.of("999999"), summary.failedEtfCodes());
+    }
+
+    private static Result tradingDay() {
+        Sessions sessions =
+                new Sessions(null, new Session("2026-07-10T09:00:00+09:00", "2026-07-10T15:30:00+09:00"), null);
+        return new Result(new BusinessDay(DATE, sessions), null, null);
+    }
+
+    private static Result nonTradingDay() {
+        return new Result(new BusinessDay(DATE, null), null, null);
     }
 }
