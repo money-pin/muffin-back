@@ -53,23 +53,31 @@ public class EtfPriceCollector {
         List<String> failedEtfCodes = new ArrayList<>();
 
         for (Etf etf : etfs) {
+            Optional<Candle> candle;
             try {
-                Optional<Candle> candle = tossMarketDataClient.getDailyCandle(etf.getEtfCode(), date);
-                if (candle.isEmpty()) {
-                    skippedEtfCodes.add(etf.getEtfCode());
-                    continue;
-                }
+                candle = tossMarketDataClient.getDailyCandle(etf.getEtfCode(), date);
+            } catch (TossApiException e) {
+                log.warn("ETF 시세 조회 실패. etfCode={}, date={}, message={}", etf.getEtfCode(), date, e.getMessage());
+                failedEtfCodes.add(etf.getEtfCode());
+                continue;
+            }
 
-                Optional<Long> price = parsePrice(priceField.apply(candle.get()));
-                if (price.isEmpty()) {
-                    failedEtfCodes.add(etf.getEtfCode());
-                    continue;
-                }
+            if (candle.isEmpty()) {
+                skippedEtfCodes.add(etf.getEtfCode());
+                continue;
+            }
 
+            Optional<Long> price = parsePrice(priceField.apply(candle.get()));
+            if (price.isEmpty()) {
+                failedEtfCodes.add(etf.getEtfCode());
+                continue;
+            }
+
+            try {
                 writer.accept(etf.getId(), price.get());
                 successCount++;
-            } catch (TossApiException e) {
-                log.warn("ETF 시세 수집 실패. etfCode={}, date={}, message={}", etf.getEtfCode(), date, e.getMessage());
+            } catch (RuntimeException e) {
+                log.warn("ETF 시세 저장 실패. etfCode={}, date={}, message={}", etf.getEtfCode(), date, e.getMessage());
                 failedEtfCodes.add(etf.getEtfCode());
             }
         }

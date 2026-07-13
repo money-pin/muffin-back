@@ -3,6 +3,7 @@ package com.muffin.sector.infrastructure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -23,6 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 class EtfPriceCollectorTest {
@@ -129,6 +131,30 @@ class EtfPriceCollectorTest {
         assertEquals(1, summary.failureCount());
         assertEquals(List.of("459580"), summary.failedEtfCodes());
         verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("저장 단계에서 예외가 나도 해당 ETF만 실패로 집계하고 나머지는 계속 진행한다")
+    void collect_isolatesWriterFailure() {
+        Etf failing = Etf.create("999999", "저장실패종목");
+        Etf succeeding = Etf.create("459580", "KODEX CD금리액티브(합성)");
+        when(etfRepository.findAll()).thenReturn(List.of(failing, succeeding));
+        when(tossMarketDataClient.getDailyCandle("999999", DATE))
+                .thenReturn(Optional.of(
+                        new Candle("2026-07-10T09:05:00+09:00", "10000", "10600", "9900", "10500", "12345", "KRW")));
+        when(tossMarketDataClient.getDailyCandle("459580", DATE))
+                .thenReturn(Optional.of(
+                        new Candle("2026-07-10T09:05:00+09:00", "20000", "20600", "19900", "20500", "12345", "KRW")));
+        doThrow(new DataIntegrityViolationException("uk_etf_price_etf_price_date"))
+                .when(etfPriceWriter)
+                .writeOpen(any(), eq(DATE), eq(10_000L));
+
+        EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
+
+        assertEquals(1, summary.successCount());
+        assertEquals(1, summary.failureCount());
+        assertEquals(List.of("999999"), summary.failedEtfCodes());
+        verify(etfPriceWriter).writeOpen(any(), eq(DATE), eq(20_000L));
     }
 
     @Test

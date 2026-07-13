@@ -35,7 +35,7 @@ public final class SectorSeedData {
             new EtfSeed("494840", "TIGER 미국방산TOP10"));
 
     /**
-     * §4.1~4.3의 10개 섹터. `CRYPTO`는 매핑할 ETF가 확정되지 않아 제외한다 (§4.2, §4.3 표 각주 참고). ETF가
+     * §4.1~4.3의 11개 섹터. `CRYPTO`는 매핑할 ETF가 확정되지 않아 제외한다 (§4.2, §4.3 표 각주 참고). ETF가
      * 정해지면 이 목록에 한 줄만 추가하면 된다.
      */
     public static final List<SectorSeed> SECTORS = List.of(

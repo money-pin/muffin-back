@@ -70,13 +70,12 @@ public class SectorSeedRunner implements ApplicationRunner {
 
     private void seedSectors(Map<String, Long> groupIdsByCode, Map<String, Long> etfIdsByCode) {
         for (SectorSeed seed : SectorSeedData.SECTORS) {
-            if (sectorRepository.findBySectorCode(seed.sectorCode()).isPresent()) {
-                continue;
-            }
-            Long sectorGroupId = groupIdsByCode.get(seed.groupCode());
-            Long etfId = etfIdsByCode.get(seed.etfCode());
-            sectorRepository.save(Sector.create(
-                    sectorGroupId, etfId, seed.name(), seed.description(), seed.sectorCode(), seed.sectorOrder()));
+            sectorRepository.findBySectorCode(seed.sectorCode()).orElseGet(() -> {
+                Long sectorGroupId = groupIdsByCode.get(seed.groupCode());
+                Long etfId = etfIdsByCode.get(seed.etfCode());
+                return sectorRepository.save(Sector.create(
+                        sectorGroupId, etfId, seed.name(), seed.description(), seed.sectorCode(), seed.sectorOrder()));
+            });
         }
         log.info("섹터 시딩 완료: 대상 {}건", SectorSeedData.SECTORS.size());
     }

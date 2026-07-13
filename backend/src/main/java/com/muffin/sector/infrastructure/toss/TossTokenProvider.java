@@ -1,6 +1,7 @@
 package com.muffin.sector.infrastructure.toss;
 
 import com.muffin.sector.infrastructure.toss.dto.TossTokenResponse;
+import com.muffin.sector.infrastructure.toss.exception.TossApiException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -58,6 +59,10 @@ public class TossTokenProvider {
                 .body(form)
                 .retrieve()
                 .body(TossTokenResponse.class));
+
+        if (response == null || response.accessToken() == null) {
+            throw new TossApiException(null, "INVALID_RESPONSE", null, "토스증권 API의 토큰 응답 형식이 올바르지 않습니다.");
+        }
 
         Instant expiresAt = now.plusSeconds(response.expiresIn()).minus(EXPIRY_BUFFER);
         return new CachedToken(response.accessToken(), expiresAt);

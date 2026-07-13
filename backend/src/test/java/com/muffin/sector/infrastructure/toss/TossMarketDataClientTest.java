@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -32,7 +33,8 @@ class TossMarketDataClientTest {
     private MockRestServiceServer server;
     private TossMarketDataClient client;
 
-    private void setUp() {
+    @BeforeEach
+    void setUp() {
         RestClient.Builder builder = RestClient.builder().baseUrl(TOSS_BASE_URL);
         server = MockRestServiceServer.bindTo(builder).build();
         restClient = builder.build();
@@ -52,7 +54,6 @@ class TossMarketDataClientTest {
     @Test
     @DisplayName("일봉 조회 시 Bearer 토큰을 담아 before 커서로 1건을 요청하고, 요청한 날짜의 캔들을 반환한다")
     void getDailyCandle_returnsCandleForRequestedDate() {
-        setUp();
         LocalDate date = LocalDate.of(2026, 7, 10);
         String before =
                 date.plusDays(1).atStartOfDay(KST).minusSeconds(1).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
@@ -83,7 +84,6 @@ class TossMarketDataClientTest {
     @Test
     @DisplayName("요청한 날짜에 해당하는 캔들이 없으면(휴장일 등) 비어있는 결과를 반환한다")
     void getDailyCandle_returnsEmpty_whenNoCandleMatchesDate() {
-        setUp();
         LocalDate date = LocalDate.of(2026, 7, 11);
         String before =
                 date.plusDays(1).atStartOfDay(KST).minusSeconds(1).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
@@ -111,7 +111,6 @@ class TossMarketDataClientTest {
     @Test
     @DisplayName("일봉 응답 본문이 없으면 명시적인 API 예외를 던진다")
     void getDailyCandle_throwsApiException_whenResponseBodyMissing() {
-        setUp();
         LocalDate date = LocalDate.of(2026, 7, 10);
         String before =
                 date.plusDays(1).atStartOfDay(KST).minusSeconds(1).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
@@ -134,7 +133,6 @@ class TossMarketDataClientTest {
     @Test
     @DisplayName("거래일 조회 시 Bearer 토큰을 담아 요청하고 result를 그대로 반환한다")
     void getMarketCalendar_returnsUnwrappedResult() {
-        setUp();
         LocalDate date = LocalDate.of(2026, 7, 11);
         server.expect(requestToUriTemplate(TOSS_BASE_URL + "/api/v1/market-calendar/KR?date={date}", date))
                 .andExpect(header("Authorization", "Bearer test-token"))
@@ -156,7 +154,6 @@ class TossMarketDataClientTest {
     @Test
     @DisplayName("거래일 응답 result가 없으면 명시적인 API 예외를 던진다")
     void getMarketCalendar_throwsApiException_whenResultMissing() {
-        setUp();
         LocalDate date = LocalDate.of(2026, 7, 11);
         server.expect(requestToUriTemplate(TOSS_BASE_URL + "/api/v1/market-calendar/KR?date={date}", date))
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
