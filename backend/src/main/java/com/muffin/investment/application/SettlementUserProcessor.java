@@ -175,6 +175,6 @@ public class SettlementUserProcessor {
     }
 
     private boolean isUsable(EtfPrice price) {
-        return price != null && !price.isFallback() && price.getStartPrice() != null && price.getStartPrice() > 0;
+        return price != null && price.getStartPrice() != null && price.getStartPrice() > 0;
     }
 }
