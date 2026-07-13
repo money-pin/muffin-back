@@ -45,8 +45,3 @@ muffin:
       model: ${NEWS_AI_SELECTION_MODEL:gpt-5-mini}
       endpoint: ${OPENAI_RESPONSES_URL:https://api.openai.com/v1/responses}
       max-per-category: ${NEWS_AI_SELECTION_MAX_PER_CATEGORY:5}
-    settlement:
-      # ETF 시세 적재 완료 이벤트가 1차 트리거. 아래 스케줄러는 이벤트가 아직 연동되지 않은 경우를 위한 안전망이며 멱등하다.
-      scheduler-enabled: true
-      cron: "0 30 9 * * *" # 매일 09:30, 결과 노출(10:00)보다 앞서 미리 정산
-      zone: Asia/Seoul
