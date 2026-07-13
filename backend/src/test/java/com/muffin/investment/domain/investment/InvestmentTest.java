@@ -95,17 +95,12 @@ class InvestmentTest {
     }
 
     @Test
-    @DisplayName("매수가 스냅샷이 없는 섹터를 시가로 정산하면 계산 불가로 FALLBACK_ZERO 처리된다")
-    void settleSector_fallsBackWhenBuyPriceMissing() {
+    @DisplayName("매수가 스냅샷이 없는 섹터를 시가로 정산하면 데이터 결함으로 예외가 발생한다")
+    void settleSector_throwsWhenBuyPriceMissing() {
         Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
         investment.addSector(100L, 10, 300_000L, null); // 매수가 스냅샷 결손
 
-        investment.settleSector(100L, BigDecimal.valueOf(31_800));
-
-        InvestmentSector sector = investment.getSectors().getFirst();
-        assertEquals(0L, sector.getProfitLoss());
-        assertEquals(0, BigDecimal.ZERO.compareTo(sector.getProfitLossRate()));
-        assertEquals(PriceDataSource.FALLBACK_ZERO, sector.getPriceDataSource());
+        assertThrows(IllegalStateException.class, () -> investment.settleSector(100L, BigDecimal.valueOf(31_800)));
     }
 
     @Test

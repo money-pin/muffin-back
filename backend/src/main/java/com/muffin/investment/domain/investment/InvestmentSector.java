@@ -72,15 +72,16 @@ public class InvestmentSector extends BaseEntity {
     }
 
     /**
-     * 당일 시가(sellPrice)로 손익을 직접 계산해 반영한다(정상 정산). 매수가(전일 종가 스냅샷)가 없거나 0이면 계산이 불가능하므로 폴백(0%) 처리한다. 루트(Investment.settleSector)를
-     * 통해서만 호출된다.
+     * 당일 시가(sellPrice)로 손익을 직접 계산해 반영한다(정상 정산). 루트(Investment.settleSector)를 통해서만 호출된다.
+     *
+     * <p>매수가(전일 종가 스냅샷)가 없거나 0 이하이면 거래정지(폴백)와 다른 상류 데이터 결함이므로, 조용히 0% 처리하지 않고 예외를 던져 정산을 실패시킨다. (거래정지 0% 폴백은
+     * 매도가 부재로 판단해 {@link Investment#settleSectorFallback}로 별도 처리한다.)
      *
      * <p>손익률 = (당일 시가 - 매수가) / 매수가 × 100, 손익금 = round(투자금 × (당일 시가 - 매수가) / 매수가)
      */
     void settle(BigDecimal sellPrice) {
         if (buyPrice == null || buyPrice.signum() <= 0) {
-            settleFallback();
-            return;
+            throw new IllegalStateException("매수가 스냅샷이 없어 정산할 수 없습니다: sectorId=" + sectorId + ", buyPrice=" + buyPrice);
         }
         BigDecimal diff = sellPrice.subtract(buyPrice);
         BigDecimal rate = diff.multiply(BigDecimal.valueOf(100)).divide(buyPrice, 4, RoundingMode.HALF_UP);
