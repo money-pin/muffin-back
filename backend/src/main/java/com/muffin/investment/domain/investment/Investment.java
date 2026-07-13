@@ -107,18 +107,31 @@ public class Investment extends BaseEntity {
                 sectors.stream().mapToLong(InvestmentSector::getAmount).sum();
     }
 
-    /** 섹터별 정산 결과를 루트를 통해 반영한다. */
+    /** 섹터별 정산 결과를 루트를 통해 반영한다(계산된 값 주입형). */
     public void applySectorResult(
             Long sectorId,
             BigDecimal sellPrice,
             Long profitLoss,
             BigDecimal profitLossRate,
             PriceDataSource priceDataSource) {
-        InvestmentSector sector = sectors.stream()
+        findSector(sectorId).applyResult(sellPrice, profitLoss, profitLossRate, priceDataSource);
+    }
+
+    /** 당일 시가(sellPrice)로 섹터 손익을 계산해 반영한다(정상 정산). 계산 규칙은 도메인(InvestmentSector)에 있다. */
+    public void settleSector(Long sectorId, BigDecimal sellPrice) {
+        findSector(sectorId).settle(sellPrice);
+    }
+
+    /** ETF 시세를 사용할 수 없는 섹터를 0%(FALLBACK_ZERO)로 정산한다. */
+    public void settleSectorFallback(Long sectorId) {
+        findSector(sectorId).settleFallback();
+    }
+
+    private InvestmentSector findSector(Long sectorId) {
+        return sectors.stream()
                 .filter(s -> s.getSectorId().equals(sectorId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("해당 섹터 투자 내역이 없습니다: sectorId=" + sectorId));
-        sector.applyResult(sellPrice, profitLoss, profitLossRate, priceDataSource);
     }
 
     /** 정산 반영: 모든 섹터 결과가 채워진 뒤 호출해 총 손익/손익률을 재계산하고 상태를 SETTLED로 만든다. 미정산 섹터가 있으면 완료할 수 없다. */
@@ -143,6 +156,22 @@ public class Investment extends BaseEntity {
     /** 정산 실패 처리. */
     public void failSettlement() {
         this.settlementStatus = SettlementStatus.FAILED;
+    }
+
+    /** 정산 창(다음 거래일)을 놓친 확정 투자를 취소한다. 자산에 영향을 주지 않으며 손익 0으로 종료한다. */
+    public void cancelSettlement(LocalDateTime cancelledAt) {
+        this.totalProfitLoss = 0L;
+        this.totalProfitLossRate = BigDecimal.ZERO;
+        this.settlementStatus = SettlementStatus.CANCELLED;
+        this.settledAt = cancelledAt;
+    }
+
+    /** 투자하지 않은 날(NO_INVEST)의 정산을 종료 처리한다. 손익 0으로 남겨 일별 시계열에 0행을 만들 수 있게 한다. */
+    public void markNoSettlement(LocalDateTime processedAt) {
+        this.totalProfitLoss = 0L;
+        this.totalProfitLossRate = BigDecimal.ZERO;
+        this.settlementStatus = SettlementStatus.NO_SETTLEMENT;
+        this.settledAt = processedAt;
     }
 
     /** 읽기 전용 뷰를 반환한다. */
