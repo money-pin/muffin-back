@@ -2,13 +2,13 @@ package com.muffin.news.infrastructure.openai;
 
 import com.muffin.news.application.rss.RssArticle;
 import com.muffin.news.application.rss.RssArticleSelector;
+import com.muffin.news.infrastructure.retry.RetryExecutor;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -21,13 +21,9 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
-@Slf4j
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "muffin.news.ai-selection.enabled", havingValue = "true")
 public class OpenAiRssArticleSelector implements RssArticleSelector {
-
-    private static final int MAX_ATTEMPTS = 3;
-    private static final long RETRY_DELAY_MS = 2_000L;
 
     /** 금융 입문자용 기사 선별 기준과 JSON 출력 규칙을 정의한다. */
     private static final String INSTRUCTIONS =
@@ -98,61 +94,43 @@ public class OpenAiRssArticleSelector implements RssArticleSelector {
             throw new IllegalStateException("Failed to parse OpenAI response", exception);
         }
         Set<String> selectedUrls = extractSelectedUrls(response);
-        return candidates.stream()
-                .filter(article -> selectedUrls.contains(article.url()))
+        Map<String, RssArticle> candidatesByUrl = new LinkedHashMap<>();
+        candidates.forEach(article -> candidatesByUrl.putIfAbsent(article.url(), article));
+        return selectedUrls.stream()
+                .map(candidatesByUrl::get)
+                .filter(java.util.Objects::nonNull)
                 .limit(properties.maxPerCategory())
                 .toList();
     }
 
-    /** RSS 피드 선별 요청 실패 시 재시도(최대 3회, 재시도 대기시간 2초)*/
+    /** RSS 후보 선별 요청을 공통 재시도 정책으로 실행한다. */
     private String requestSelectionWithRetry(String category, List<RssArticle> candidates) {
-        int attempt = 1;
-        while (true) {
-            try {
-                return restClient
+        return RetryExecutor.execute(
+                "OpenAI request",
+                category,
+                "OpenAI retry wait was interrupted",
+                () -> restClient
                         .post()
                         .uri(properties.endpoint())
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + properties.apiKey())
                         .body(requestBody(category, candidates))
                         .retrieve()
-                        .body(String.class);
-            } catch (ResourceAccessException exception) {
-                if (attempt == MAX_ATTEMPTS) {
-                    throw exception;
-                }
-                waitBeforeRetry(category, attempt, exception);
-            } catch (RestClientResponseException exception) {
-                if (!isRetryableStatus(exception.getStatusCode()) || attempt == MAX_ATTEMPTS) {
-                    throw exception;
-                }
-                waitBeforeRetry(category, attempt, exception);
-            }
-            attempt++;
-        }
+                        .body(String.class),
+                OpenAiRssArticleSelector::isRetryableException);
+    }
+
+    /** 네트워크 오류 또는 재시도 가능한 OpenAI HTTP 응답인지 확인한다. */
+    private static boolean isRetryableException(RuntimeException exception) {
+        return exception instanceof ResourceAccessException
+                || exception instanceof RestClientResponseException responseException
+                        && isRetryableStatus(responseException.getStatusCode());
     }
 
     /** 재시도 가능한 상태코드인지 검증(408, 429, 5xx) */
     private static boolean isRetryableStatus(HttpStatusCode statusCode) {
         int value = statusCode.value();
         return value == 408 || value == 429 || statusCode.is5xxServerError();
-    }
-
-    /** 다음 재시도 전에 고정된 시간만큼 대기한다. */
-    private static void waitBeforeRetry(String category, int attempt, Exception cause) {
-        log.warn(
-                "OpenAI request failed; retrying: category={}, attempt={}/{}, delayMs={}",
-                category,
-                attempt,
-                MAX_ATTEMPTS,
-                RETRY_DELAY_MS,
-                cause);
-        try {
-            Thread.sleep(RETRY_DELAY_MS);
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("OpenAI retry wait was interrupted", exception);
-        }
     }
 
     /** 후보 기사와 selected_urls JSON Schema를 OpenAI Responses API 요청 형식으로 구성한다. */
