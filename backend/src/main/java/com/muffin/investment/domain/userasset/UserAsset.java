@@ -81,4 +81,12 @@ public class UserAsset extends BaseEntity {
         this.dailyChangeRate = BigDecimal.ZERO;
         this.lastSettledAt = settledAt;
     }
+
+    /** 퀴즈 완료 보상을 총자산에 반영한다. @Version 필드로 동시 갱신 충돌을 감지한다. */
+    public void addQuizReward(long rewardAmount) {
+        if (rewardAmount < 0) {
+            throw new IllegalArgumentException("퀴즈 보상은 음수일 수 없습니다: rewardAmount=" + rewardAmount);
+        }
+        this.totalAsset += rewardAmount;
+    }
 }

@@ -2,9 +2,12 @@ package com.muffin.quiz.application;
 
 import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.investment.domain.userasset.UserAsset;
+import com.muffin.investment.domain.userasset.UserAssetRepository;
 import com.muffin.quiz.domain.quizsession.QuizAttempt;
 import com.muffin.quiz.domain.quizsession.QuizSession;
 import com.muffin.quiz.domain.quizsession.QuizSessionRepository;
+import com.muffin.quiz.domain.quizsession.enums.QuizSessionStatus;
 import com.muffin.quiz.domain.quizset.Quiz;
 import com.muffin.quiz.domain.quizset.QuizOption;
 import com.muffin.quiz.domain.quizset.QuizSet;
@@ -35,6 +38,7 @@ public class QuizCommandService {
     private final QuizSetRepository quizSetRepository;
     private final QuizSessionRepository quizSessionRepository;
     private final UserRepository userRepository;
+    private final UserAssetRepository userAssetRepository;
 
     @Transactional
     public QuizAttemptResponse submitAnswer(Long userId, Long quizId, QuizAttemptRequest request) {
@@ -78,6 +82,10 @@ public class QuizCommandService {
         // 이미 제출한 문항이면 새 답안을 저장하지 않고 기존 제출 결과를 그대로 반환한다.
         if (attemptOptional.isPresent()) {
             QuizAttempt attempt = attemptOptional.get();
+            boolean rewardClaimed = claimRewardIfFinished(session, userId, quizSet.getId());
+            if (rewardClaimed) {
+                quizSessionRepository.saveAndFlush(session);
+            }
             log.info(
                     "Duplicate quiz attempt ignored. userId={} quizSetId={} quizId={} attemptId={}",
                     userId,
@@ -93,6 +101,8 @@ public class QuizCommandService {
         QuizAttempt attempt = session.recordAttempt(
                 quiz.getId(), selectedOption.getId(), correct, quiz.getRewardMoney(), submittedAt);
 
+        claimRewardIfFinished(session, userId, quizSet.getId());
+
         QuizSession savedSession = quizSessionRepository.saveAndFlush(session);
         if (savedSession.getSolvedCount() >= savedSession.getTotalCount()) {
             log.info(
@@ -104,6 +114,24 @@ public class QuizCommandService {
         }
 
         return toResponse(savedSession, quiz, attempt, correctOption);
+    }
+
+    /** 마지막 문항 제출로 세션이 완료되면 보상을 한 번만 자산에 반영한다. UserAsset의 @Version으로 동시 갱신 충돌을 감지한다. */
+    private boolean claimRewardIfFinished(QuizSession session, Long userId, Long quizSetId) {
+        if (session.getStatus() != QuizSessionStatus.FINISHED || session.isRewardClaimed()) {
+            return false;
+        }
+
+        Long rewardAmount = session.claimReward();
+        if (rewardAmount > 0L) {
+            UserAsset userAsset = userAssetRepository
+                    .findByUserId(userId)
+                    .orElseThrow(() -> new IllegalStateException("사용자 자산이 없습니다: userId=" + userId));
+            userAsset.addQuizReward(rewardAmount);
+        }
+
+        log.info("Quiz reward claimed. userId={} quizSetId={} rewardAmount={}", userId, quizSetId, rewardAmount);
+        return true;
     }
 
     private QuizAttemptResponse toResponse(

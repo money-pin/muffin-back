@@ -145,6 +145,22 @@ public class QuizSession extends BaseEntity {
         return attempt;
     }
 
+    /** 완료된 세션의 보상을 1회만 확정한다. 1문항 이하 정답은 명세에 따라 보상을 0원으로 처리한다. */
+    public Long claimReward() {
+        if (this.status != QuizSessionStatus.FINISHED) {
+            throw new IllegalStateException("완료된 퀴즈 세션만 보상을 지급할 수 있습니다.");
+        }
+        if (this.rewardClaimed) {
+            return 0L;
+        }
+
+        if (this.correctCount <= 1) {
+            this.rewardMoney = 0L;
+        }
+        this.rewardClaimed = true;
+        return this.rewardMoney;
+    }
+
     /** 내부 리스트가 외부에서 직접 수정되지 않도록 읽기 전용 뷰를 반환한다. */
     public List<QuizAttempt> getAttempts() {
         return Collections.unmodifiableList(attempts);

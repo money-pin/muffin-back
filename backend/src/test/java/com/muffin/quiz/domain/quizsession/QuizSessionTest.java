@@ -59,6 +59,37 @@ class QuizSessionTest {
     }
 
     @Test
+    @DisplayName("완료된 세션의 보상은 한 번만 확정할 수 있다")
+    void claimReward_returnsRewardOnlyOnce() {
+        QuizSession session = QuizSession.start(1L, 10L, LocalDate.of(2026, 5, 7), 2);
+        session.recordAttempt(100L, 1001L, true, 100L, LocalDateTime.of(2026, 5, 7, 9, 10));
+        session.recordAttempt(200L, 2001L, true, 100L, LocalDateTime.of(2026, 5, 7, 9, 11));
+
+        assertEquals(200L, session.claimReward());
+        assertEquals(0L, session.claimReward());
+    }
+
+    @Test
+    @DisplayName("정답 수가 1문항 이하이면 보상은 0원으로 확정된다")
+    void claimReward_setsZeroWhenCorrectCountIsOneOrLess() {
+        QuizSession session = QuizSession.start(1L, 10L, LocalDate.of(2026, 5, 7), 1);
+        session.recordAttempt(100L, 1001L, true, 100L, LocalDateTime.of(2026, 5, 7, 9, 10));
+
+        Long reward = session.claimReward();
+
+        assertEquals(0L, reward);
+        assertEquals(0L, session.getRewardMoney());
+    }
+
+    @Test
+    @DisplayName("완료되지 않은 세션은 보상을 확정할 수 없다")
+    void claimReward_throwsWhenSessionIsNotFinished() {
+        QuizSession session = QuizSession.start(1L, 10L, LocalDate.of(2026, 5, 7), 3);
+
+        assertThrows(IllegalStateException.class, session::claimReward);
+    }
+
+    @Test
     @DisplayName("제출 기록 목록은 외부에서 직접 수정할 수 없다")
     void getAttempts_returnsUnmodifiableView() {
         QuizSession session = QuizSession.start(1L, 10L, LocalDate.of(2026, 5, 7), 3);

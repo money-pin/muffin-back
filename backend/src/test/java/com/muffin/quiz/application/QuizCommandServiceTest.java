@@ -9,9 +9,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.investment.domain.userasset.UserAsset;
+import com.muffin.investment.domain.userasset.UserAssetRepository;
 import com.muffin.quiz.domain.quizsession.QuizAttempt;
 import com.muffin.quiz.domain.quizsession.QuizSession;
 import com.muffin.quiz.domain.quizsession.QuizSessionRepository;
@@ -46,6 +49,7 @@ class QuizCommandServiceTest {
     private QuizSetRepository quizSetRepository;
     private QuizSessionRepository quizSessionRepository;
     private UserRepository userRepository;
+    private UserAssetRepository userAssetRepository;
     private QuizCommandService quizCommandService;
 
     @BeforeEach
@@ -53,7 +57,9 @@ class QuizCommandServiceTest {
         quizSetRepository = mock(QuizSetRepository.class);
         quizSessionRepository = mock(QuizSessionRepository.class);
         userRepository = mock(UserRepository.class);
-        quizCommandService = new QuizCommandService(quizSetRepository, quizSessionRepository, userRepository);
+        userAssetRepository = mock(UserAssetRepository.class);
+        quizCommandService =
+                new QuizCommandService(quizSetRepository, quizSessionRepository, userRepository, userAssetRepository);
     }
 
     @Test
@@ -91,6 +97,7 @@ class QuizCommandServiceTest {
         assertEquals(
                 KST.getRules().getOffset(response.submittedAt().toInstant()),
                 response.submittedAt().getOffset());
+        verifyNoInteractions(userAssetRepository);
     }
 
     @Test
@@ -119,6 +126,7 @@ class QuizCommandServiceTest {
         assertEquals(1, response.progress().solvedCount());
         assertEquals(0, response.progress().correctCount());
         assertEquals(2, response.progress().nextQuestionOrder());
+        verifyNoInteractions(userAssetRepository);
     }
 
     @Test
@@ -144,14 +152,49 @@ class QuizCommandServiceTest {
         assertTrue(response.isCorrect());
         assertEquals(1, response.progress().solvedCount());
         verify(quizSessionRepository, never()).saveAndFlush(any(QuizSession.class));
+        verifyNoInteractions(userAssetRepository);
     }
 
     @Test
-    @DisplayName("마지막 문항을 제출하면 세션이 FINISHED 상태가 된다")
-    void submitAnswer_finishesSessionWhenLastQuestionSubmitted() {
+    @DisplayName("완료됐지만 보상이 미확정인 세션을 재제출하면 기존 답안을 반환하며 보상을 확정한다")
+    void submitAnswer_claimsRewardForFinishedUnclaimedSessionOnDuplicateSubmit() {
         LocalDate today = LocalDate.now(KST);
         User user = onboardedUser("세현");
         QuizSet quizSet = publishedQuizSet(today);
+        UserAsset userAsset = UserAsset.create(USER_ID, 1_000_000L);
+        QuizSession session = QuizSession.start(USER_ID, QUIZ_SET_ID, today, 3);
+        session.recordAttempt(101L, 1011L, true, 100000L, LocalDateTime.now());
+        session.recordAttempt(102L, 1022L, false, 100000L, LocalDateTime.now());
+        QuizAttempt attempt = session.recordAttempt(103L, 1031L, true, 100000L, LocalDateTime.now());
+        ReflectionTestUtils.setField(session, "id", 505L);
+        ReflectionTestUtils.setField(attempt, "id", 9005L);
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(quizSet));
+        when(quizSessionRepository.findByUserIdAndDailyQuizSetId(USER_ID, QUIZ_SET_ID))
+                .thenReturn(Optional.of(session));
+        when(userAssetRepository.findByUserId(USER_ID)).thenReturn(Optional.of(userAsset));
+        when(quizSessionRepository.saveAndFlush(any(QuizSession.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        QuizAttemptResponse response = quizCommandService.submitAnswer(USER_ID, 103L, new QuizAttemptRequest(1032L));
+
+        assertEquals(9005L, response.attemptId());
+        assertEquals(1031L, response.selectedOptionId());
+        assertEquals(QuizSessionStatus.FINISHED, response.sessionStatus());
+        assertTrue(session.isRewardClaimed());
+        assertEquals(1_200_000L, userAsset.getTotalAsset());
+        verify(userAssetRepository).findByUserId(USER_ID);
+        verify(quizSessionRepository).saveAndFlush(session);
+    }
+
+    @Test
+    @DisplayName("마지막 문항을 제출하면 세션을 완료하고 보상을 자산에 반영한다")
+    void submitAnswer_finishesSessionAndClaimsReward() {
+        LocalDate today = LocalDate.now(KST);
+        User user = onboardedUser("세현");
+        QuizSet quizSet = publishedQuizSet(today);
+        UserAsset userAsset = UserAsset.create(USER_ID, 1_000_000L);
         QuizSession session = QuizSession.start(USER_ID, QUIZ_SET_ID, today, 3);
         session.recordAttempt(101L, 1011L, true, 100000L, LocalDateTime.now());
         session.recordAttempt(102L, 1022L, false, 100000L, LocalDateTime.now());
@@ -160,6 +203,7 @@ class QuizCommandServiceTest {
         when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(quizSet));
         when(quizSessionRepository.findByUserIdAndDailyQuizSetId(USER_ID, QUIZ_SET_ID))
                 .thenReturn(Optional.of(session));
+        when(userAssetRepository.findByUserId(USER_ID)).thenReturn(Optional.of(userAsset));
         when(quizSessionRepository.saveAndFlush(any(QuizSession.class))).thenAnswer(invocation -> {
             QuizSession savedSession = invocation.getArgument(0);
             ReflectionTestUtils.setField(savedSession, "id", 504L);
@@ -174,6 +218,35 @@ class QuizCommandServiceTest {
         assertEquals(3, response.progress().solvedCount());
         assertEquals(2, response.progress().correctCount());
         assertNull(response.progress().nextQuestionOrder());
+        assertTrue(session.isRewardClaimed());
+        assertEquals(200_000L, session.getRewardMoney());
+        assertEquals(1_200_000L, userAsset.getTotalAsset());
+        verify(userAssetRepository).findByUserId(USER_ID);
+    }
+
+    @Test
+    @DisplayName("마지막 제출 후 정답이 1문항 이하이면 보상을 0원으로 확정하고 자산은 조회하지 않는다")
+    void submitAnswer_claimsZeroRewardWhenCorrectCountIsOneOrLess() {
+        LocalDate today = LocalDate.now(KST);
+        User user = onboardedUser("세현");
+        QuizSet quizSet = publishedQuizSet(today);
+        QuizSession session = QuizSession.start(USER_ID, QUIZ_SET_ID, today, 3);
+        session.recordAttempt(101L, 1012L, false, 100000L, LocalDateTime.now());
+        session.recordAttempt(102L, 1022L, false, 100000L, LocalDateTime.now());
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(quizSet));
+        when(quizSessionRepository.findByUserIdAndDailyQuizSetId(USER_ID, QUIZ_SET_ID))
+                .thenReturn(Optional.of(session));
+        when(quizSessionRepository.saveAndFlush(any(QuizSession.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        QuizAttemptResponse response = quizCommandService.submitAnswer(USER_ID, 103L, new QuizAttemptRequest(1031L));
+
+        assertEquals(QuizSessionStatus.FINISHED, response.sessionStatus());
+        assertTrue(session.isRewardClaimed());
+        assertEquals(0L, session.getRewardMoney());
+        verifyNoInteractions(userAssetRepository);
     }
 
     @Test
