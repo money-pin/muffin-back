@@ -59,6 +59,10 @@ public class EmailVerification extends BaseEntity {
         return attemptCount >= maxAttempts;
     }
 
+    public boolean isWithinCooldown(long cooldownSeconds) {
+        return getCreatedAt().plusSeconds(cooldownSeconds).isAfter(LocalDateTime.now());
+    }
+
     public void increaseAttemptCount() {
         this.attemptCount++;
     }
