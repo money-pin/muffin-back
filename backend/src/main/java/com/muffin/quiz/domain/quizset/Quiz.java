@@ -19,6 +19,7 @@ import jakarta.persistence.UniqueConstraint;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -81,6 +82,18 @@ public class Quiz extends BaseEntity {
         QuizOption option = new QuizOption(optionNo, content, correct);
         this.options.add(option);
         return option;
+    }
+
+    /** 이 문제에 속한 선택지인지 확인하기 위해 내부 선택지 목록에서 찾는다. */
+    public Optional<QuizOption> findOption(Long optionId) {
+        return options.stream()
+                .filter(option -> option.getId().equals(optionId))
+                .findFirst();
+    }
+
+    /** 제출 피드백에서 정답 선택지를 알려주기 위해 정답으로 표시된 선택지를 찾는다. */
+    public Optional<QuizOption> findCorrectOption() {
+        return options.stream().filter(QuizOption::isCorrect).findFirst();
     }
 
     // 같은 패키지의 QuizSet에서 문제를 만들 때 쓰는 생성자다.
