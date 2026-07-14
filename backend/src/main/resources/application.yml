@@ -14,6 +14,12 @@ springdoc:
     tags-sorter: alpha
     operations-sorter: method
 
+toss:
+  api:
+    base-url: ${TOSS_API_BASE_URL:https://openapi.tossinvest.com}
+    client-id: ${TOSS_CLIENT_ID}
+    client-secret: ${TOSS_CLIENT_SECRET}
+
 muffin:
   batch:
     rss:

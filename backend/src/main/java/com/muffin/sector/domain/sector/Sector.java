@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,7 +15,9 @@ import lombok.NoArgsConstructor;
 /** 섹터 애그리거트 루트. 다른 애그리거트(SectorGroup, Etf)는 ID로만 참조한다. */
 @Getter
 @Entity
-@Table(name = "sector")
+@Table(
+        name = "sector",
+        uniqueConstraints = @UniqueConstraint(name = "uk_sector_sector_code", columnNames = "sector_code"))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Sector extends BaseEntity {
 
@@ -41,18 +44,24 @@ public class Sector extends BaseEntity {
     @Column(name = "is_active", nullable = false)
     private boolean isActive;
 
-    private Sector(Long sectorGroupId, Long etfId, String name, String description, String sectorCode) {
+    @Column(name = "sector_order", nullable = false)
+    private int sectorOrder;
+
+    private Sector(
+            Long sectorGroupId, Long etfId, String name, String description, String sectorCode, int sectorOrder) {
         this.sectorGroupId = sectorGroupId;
         this.etfId = etfId;
         this.name = name;
         this.description = description;
         this.sectorCode = sectorCode;
         this.isActive = true;
+        this.sectorOrder = sectorOrder;
     }
 
     /* 섹터 레코드를 생성. 생성 직후에는 활성 상태 */
-    public static Sector create(Long sectorGroupId, Long etfId, String name, String description, String sectorCode) {
-        return new Sector(sectorGroupId, etfId, name, description, sectorCode);
+    public static Sector create(
+            Long sectorGroupId, Long etfId, String name, String description, String sectorCode, int sectorOrder) {
+        return new Sector(sectorGroupId, etfId, name, description, sectorCode, sectorOrder);
     }
 
     /* 섹터를 비활성화. 이미 비활성 상태라면 예외발생. */

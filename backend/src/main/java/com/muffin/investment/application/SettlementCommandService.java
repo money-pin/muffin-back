@@ -6,6 +6,7 @@ import com.muffin.investment.domain.investment.enums.InvestmentStatus;
 import com.muffin.investment.domain.investment.enums.SettlementStatus;
 import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.EtfPriceRepository;
+import com.muffin.sector.domain.etfprice.PriceCollectionStatus;
 import com.muffin.sector.domain.sector.Sector;
 import com.muffin.sector.domain.sector.SectorRepository;
 import jakarta.persistence.OptimisticLockException;
@@ -55,10 +56,9 @@ public class SettlementCommandService {
         List<Sector> sectors = sectorRepository.findAll();
         List<EtfPrice> prices = etfPriceRepository.findByPriceDate(settlementDate);
 
-        // 적재 완료 가드: 활성 섹터의 모든 ETF 시세가 적재돼야 정산한다. 한 건만 있어도 통과하면 부분 적재 중 스케줄러가
-        // 실행돼 미적재 ETF가 잘못 0% 폴백으로 SETTLED 될 수 있으므로, 커버리지 전체를 확인한다.
-        if (!pricesFullyLoaded(sectors, prices)) {
-            log.warn("[settlement] ETF prices not fully loaded for {}, skip settlement", settlementDate);
+        // 시가 준비 가드: 행 존재만으로는 PENDING/NO_DATA/FAILED를 구분할 수 없으므로 상태까지 확인한다.
+        if (!openPricesReady(sectors, prices)) {
+            log.warn("[settlement] ETF open prices not ready for {}, skip settlement", settlementDate);
             return SettlementBatchResult.skipped(settlementDate);
         }
 
@@ -124,15 +124,23 @@ public class SettlementCommandService {
         }
     }
 
-    /** 활성 섹터의 모든 ETF 시세가 해당 일자에 적재됐는지(적재 완료 여부). 부분 적재로 정산을 시작하지 않기 위한 가드. */
-    private boolean pricesFullyLoaded(List<Sector> sectors, List<EtfPrice> prices) {
+    /** 활성 ETF의 시가가 정상 수집됐거나 마감 시각 이후 FINAL_MISSING으로 확정됐는지 확인한다. */
+    private boolean openPricesReady(List<Sector> sectors, List<EtfPrice> prices) {
         Set<Long> activeEtfIds =
                 sectors.stream().filter(Sector::isActive).map(Sector::getEtfId).collect(Collectors.toSet());
         if (activeEtfIds.isEmpty()) {
             return false; // 활성 섹터 설정 전이면 정산하지 않는다.
         }
-        Set<Long> loadedEtfIds = prices.stream().map(EtfPrice::getEtfId).collect(Collectors.toSet());
-        return loadedEtfIds.containsAll(activeEtfIds);
+        Map<Long, EtfPrice> priceByEtfId =
+                prices.stream().collect(Collectors.toMap(EtfPrice::getEtfId, Function.identity(), (a, b) -> a));
+        return activeEtfIds.stream().allMatch(etfId -> {
+            EtfPrice price = priceByEtfId.get(etfId);
+            if (price == null) {
+                return false;
+            }
+            PriceCollectionStatus status = price.getStartPriceStatus();
+            return status == PriceCollectionStatus.SUCCESS || status == PriceCollectionStatus.FINAL_MISSING;
+        });
     }
 
     /**
