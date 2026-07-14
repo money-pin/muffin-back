@@ -94,13 +94,15 @@ public class QuizQueryService {
 
     /** 공개된 퀴즈는 있지만 사용자의 풀이 세션이 아직 없는 경우의 응답을 만든다. */
     private TodayQuizResponse notStartedResponse(LocalDate today, String nickname, QuizSet quizSet) {
+        int totalCount = quizSet.getQuizzes().size();
+
         return new TodayQuizResponse(
                 quizSet.getId(),
                 today,
                 quizSet.getStatus(),
                 QuizSessionStatus.NOT_STARTED,
                 nickname,
-                new QuizProgressResponse(DAILY_QUIZ_COUNT, 0, 0, 1),
+                new QuizProgressResponse(totalCount, 0, 0, 1),
                 toQuestionResponses(quizSet));
     }
 
