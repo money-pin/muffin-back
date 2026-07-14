@@ -3,6 +3,7 @@ package com.muffin.news.infrastructure.rss;
 import com.muffin.news.application.rss.RssArticle;
 import com.muffin.news.application.rss.RssFeedClient;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -18,36 +19,92 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 @Component
+@Slf4j
 public class HttpRssFeedClient implements RssFeedClient {
 
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long RETRY_DELAY_MS = 2_000L;
+
     private final HttpClient httpClient =
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
     /** RSS 서버에 HTTP 요청을 보내고 응답 XML을 기사 목록으로 반환한다. */
     @Override
     public List<RssArticle> fetch(String feedUrl) {
+        HttpResponse<byte[]> response = requestWithRetry(feedUrl);
         try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(feedUrl))
-                    .timeout(Duration.ofSeconds(20))
-                    .header("User-Agent", "Muffin-RSS/1.0")
-                    .GET()
-                    .build();
-            HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IllegalStateException("RSS server returned HTTP " + response.statusCode());
-            }
             return parse(response.body());
+        } catch (Exception exception) {
+            throw new IllegalStateException("Failed to parse RSS feed", exception);
+        }
+    }
+
+    /** 일시적인 네트워크 오류 또는 재시도 가능한 HTTP 응답 발생 시 RSS 피드를 재조회한다. */
+    private HttpResponse<byte[]> requestWithRetry(String feedUrl) {
+        int attempt = 1;
+        while (true) {
+            try {
+                HttpRequest request = HttpRequest.newBuilder(URI.create(feedUrl))
+                        .timeout(Duration.ofSeconds(20))
+                        .header("User-Agent", "Muffin-RSS/1.0")
+                        .GET()
+                        .build();
+                HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    return response;
+                }
+
+                if (!isRetryableStatus(response.statusCode()) || attempt == MAX_ATTEMPTS) {
+                    throw new IllegalStateException("RSS server returned HTTP " + response.statusCode());
+                }
+                waitBeforeRetry(feedUrl, attempt, null);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("RSS request was interrupted", exception);
+            } catch (IOException exception) {
+                if (attempt == MAX_ATTEMPTS) {
+                    throw new IllegalStateException("Failed to fetch RSS feed", exception);
+                }
+                waitBeforeRetry(feedUrl, attempt, exception);
+            }
+            attempt++;
+        }
+    }
+
+    private static boolean isRetryableStatus(int statusCode) {
+        return statusCode == 408 || statusCode == 429 || statusCode >= 500;
+    }
+
+    /** 다음 재시도 전에 고정된 시간(2초)만큼 대기한다. */
+    private static void waitBeforeRetry(String feedUrl, int attempt, Exception cause) {
+        if (cause == null) {
+            log.warn(
+                    "RSS request failed; retrying: url={}, attempt={}/{}, delayMs={}",
+                    feedUrl,
+                    attempt,
+                    MAX_ATTEMPTS,
+                    RETRY_DELAY_MS);
+        } else {
+            log.warn(
+                    "RSS request failed; retrying: url={}, attempt={}/{}, delayMs={}",
+                    feedUrl,
+                    attempt,
+                    MAX_ATTEMPTS,
+                    RETRY_DELAY_MS,
+                    cause);
+        }
+        try {
+            Thread.sleep(RETRY_DELAY_MS);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("RSS request was interrupted", exception);
-        } catch (Exception exception) {
-            throw new IllegalStateException("Failed to fetch RSS feed", exception);
+            throw new IllegalStateException("RSS retry wait was interrupted", exception);
         }
     }
 

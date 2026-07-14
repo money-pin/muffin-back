@@ -5,28 +5,29 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muffin.news.application.rss.RssArticle;
 import com.muffin.news.application.rss.RssArticleSelector;
-import java.net.http.HttpClient;
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 @Component
+@Slf4j
+@RequiredArgsConstructor
 @ConditionalOnProperty(name = "muffin.news.ai-selection.enabled", havingValue = "true")
 public class OpenAiRssArticleSelector implements RssArticleSelector {
 
-    /** OpenAI 호출이 스케줄러를 무기한 점유하지 않도록 제한한다. */
-    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
-
-    private static final Duration READ_TIMEOUT = Duration.ofSeconds(60);
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long RETRY_DELAY_MS = 2_000L;
 
     /** 금융 입문자용 기사 선별 기준과 JSON 출력 규칙을 정의한다. */
     private static final String INSTRUCTIONS =
@@ -83,43 +84,13 @@ public class OpenAiRssArticleSelector implements RssArticleSelector {
     private final ObjectMapper objectMapper;
     private final AiSelectionProperties properties;
 
-    @Autowired
-    public OpenAiRssArticleSelector(AiSelectionProperties properties) {
-        this(createRestClient(), new ObjectMapper(), properties);
-    }
-
-    OpenAiRssArticleSelector(RestClient restClient, ObjectMapper objectMapper, AiSelectionProperties properties) {
-        if (properties.apiKey() == null || properties.apiKey().isBlank()) {
-            throw new IllegalStateException("OPENAI_API_KEY is required when news AI selection is enabled");
-        }
-        this.restClient = restClient;
-        this.objectMapper = objectMapper;
-        this.properties = properties;
-    }
-
-    /** 연결 10초, 응답 읽기 60초 제한이 적용된 OpenAI 전용 HTTP 클라이언트를 생성한다. */
-    private static RestClient createRestClient() {
-        HttpClient httpClient =
-                HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
-        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(READ_TIMEOUT);
-        return RestClient.builder().requestFactory(requestFactory).build();
-    }
-
     /** 제목과 RSS 요약을 OpenAI에 전달하고 선택된 URL에 해당하는 기사만 반환한다. */
     @Override
     public List<RssArticle> select(String category, List<RssArticle> candidates) {
         if (candidates.isEmpty()) {
             return List.of();
         }
-        String responseBody = restClient
-                .post()
-                .uri(properties.endpoint())
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("Authorization", "Bearer " + properties.apiKey())
-                .body(requestBody(category, candidates))
-                .retrieve()
-                .body(String.class);
+        String responseBody = requestSelectionWithRetry(category, candidates);
         JsonNode response;
         try {
             response = objectMapper.readTree(responseBody);
@@ -131,6 +102,57 @@ public class OpenAiRssArticleSelector implements RssArticleSelector {
                 .filter(article -> selectedUrls.contains(article.url()))
                 .limit(properties.maxPerCategory())
                 .toList();
+    }
+
+    /** RSS 피드 선별 요청 실패 시 재시도(최대 3회, 재시도 대기시간 2초)*/
+    private String requestSelectionWithRetry(String category, List<RssArticle> candidates) {
+        int attempt = 1;
+        while (true) {
+            try {
+                return restClient
+                        .post()
+                        .uri(properties.endpoint())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + properties.apiKey())
+                        .body(requestBody(category, candidates))
+                        .retrieve()
+                        .body(String.class);
+            } catch (ResourceAccessException exception) {
+                if (attempt == MAX_ATTEMPTS) {
+                    throw exception;
+                }
+                waitBeforeRetry(category, attempt, exception);
+            } catch (RestClientResponseException exception) {
+                if (!isRetryableStatus(exception.getStatusCode()) || attempt == MAX_ATTEMPTS) {
+                    throw exception;
+                }
+                waitBeforeRetry(category, attempt, exception);
+            }
+            attempt++;
+        }
+    }
+
+    /** 재시도 가능한 상태코드인지 검증(408, 429, 5xx) */
+    private static boolean isRetryableStatus(HttpStatusCode statusCode) {
+        int value = statusCode.value();
+        return value == 408 || value == 429 || statusCode.is5xxServerError();
+    }
+
+    /** 다음 재시도 전에 고정된 시간만큼 대기한다. */
+    private static void waitBeforeRetry(String category, int attempt, Exception cause) {
+        log.warn(
+                "OpenAI request failed; retrying: category={}, attempt={}/{}, delayMs={}",
+                category,
+                attempt,
+                MAX_ATTEMPTS,
+                RETRY_DELAY_MS,
+                cause);
+        try {
+            Thread.sleep(RETRY_DELAY_MS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("OpenAI retry wait was interrupted", exception);
+        }
     }
 
     /** 후보 기사와 selected_urls JSON Schema를 OpenAI Responses API 요청 형식으로 구성한다. */
