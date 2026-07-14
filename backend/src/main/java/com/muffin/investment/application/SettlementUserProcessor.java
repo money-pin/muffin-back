@@ -9,6 +9,7 @@ import com.muffin.investment.domain.profitsummary.ProfitSummaryRepository;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
 import com.muffin.sector.domain.etfprice.EtfPrice;
+import com.muffin.sector.domain.etfprice.PriceCollectionStatus;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -62,9 +63,12 @@ public class SettlementUserProcessor {
             EtfPrice price = (etfId == null) ? null : etfPriceByEtfId.get(etfId);
             if (isUsable(price)) {
                 investment.settleSector(sector.getSectorId(), BigDecimal.valueOf(price.getStartPrice()));
-            } else {
-                // ETF 시세 미적재/거래정지 → 0% 폴백
+            } else if (isFinalMissing(price)) {
+                // 10:00까지 시가 미확보 → 0% 폴백
                 investment.settleSectorFallback(sector.getSectorId());
+            } else {
+                throw new IllegalStateException("정산 가능한 ETF 시가 상태가 아닙니다: etfId=" + etfId + ", status="
+                        + (price == null ? null : price.getStartPriceStatus()));
             }
         }
 
@@ -175,6 +179,13 @@ public class SettlementUserProcessor {
     }
 
     private boolean isUsable(EtfPrice price) {
-        return price != null && !price.isFallback() && price.getStartPrice() != null && price.getStartPrice() > 0;
+        return price != null
+                && price.getStartPriceStatus() == PriceCollectionStatus.SUCCESS
+                && price.getStartPrice() != null
+                && price.getStartPrice() > 0;
+    }
+
+    private boolean isFinalMissing(EtfPrice price) {
+        return price != null && price.getStartPriceStatus() == PriceCollectionStatus.FINAL_MISSING;
     }
 }
