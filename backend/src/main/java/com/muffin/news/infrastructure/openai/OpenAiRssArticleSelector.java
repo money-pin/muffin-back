@@ -1,8 +1,5 @@
 package com.muffin.news.infrastructure.openai;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muffin.news.application.rss.RssArticle;
 import com.muffin.news.application.rss.RssArticleSelector;
 import java.util.LinkedHashMap;
@@ -19,6 +16,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @Slf4j
@@ -94,7 +94,7 @@ public class OpenAiRssArticleSelector implements RssArticleSelector {
         JsonNode response;
         try {
             response = objectMapper.readTree(responseBody);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalStateException("Failed to parse OpenAI response", exception);
         }
         Set<String> selectedUrls = extractSelectedUrls(response);
@@ -168,7 +168,7 @@ public class OpenAiRssArticleSelector implements RssArticleSelector {
         try {
             input = "카테고리: " + category + "\n최대 " + properties.maxPerCategory() + "건을 선택하라.\n후보: "
                     + objectMapper.writeValueAsString(articles);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalStateException("Failed to serialize RSS candidates", exception);
         }
 
@@ -220,7 +220,7 @@ public class OpenAiRssArticleSelector implements RssArticleSelector {
                         Set<String> selectedUrls = new LinkedHashSet<>();
                         result.path("selected_urls").forEach(url -> selectedUrls.add(url.asText()));
                         return selectedUrls;
-                    } catch (JsonProcessingException exception) {
+                    } catch (JacksonException exception) {
                         throw new IllegalStateException("Failed to parse OpenAI selection response", exception);
                     }
                 }

@@ -1,6 +1,5 @@
 package com.muffin.news.infrastructure.openai;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muffin.news.application.rss.RssArticleSelector;
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -16,13 +15,6 @@ public class RssSelectorConfig {
 
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(60);
-
-    /** AI 응답 직렬화와 역직렬화에 사용할 Jackson 매퍼를 등록한다. */
-    @Bean
-    @ConditionalOnProperty(name = "muffin.news.ai-selection.enabled", havingValue = "true")
-    ObjectMapper openAiObjectMapper() {
-        return new ObjectMapper();
-    }
 
     /** OpenAI 호출에 연결 및 응답 제한 시간을 적용한 HTTP 클라이언트를 등록한다. */
     @Bean
