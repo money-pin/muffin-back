@@ -17,3 +17,8 @@ toss:
     base-url: https://toss-api.test
     client-id: test-client-id
     client-secret: test-client-secret
+
+muffin:
+  news:
+    ai-selection:
+      enabled: false
