@@ -24,6 +24,10 @@ public class SettlementEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onEtfPricesLoaded(EtfPricesLoadedEvent event) {
         log.info("[settlement] triggered by EtfPricesLoadedEvent priceDate={}", event.priceDate());
-        settlementCommandService.settle(event.priceDate());
+        try {
+            settlementCommandService.settle(event.priceDate());
+        } catch (RuntimeException e) {
+            log.error("[settlement] event-triggered settlement failed priceDate={}", event.priceDate(), e);
+        }
     }
 }

@@ -56,7 +56,15 @@ public class EtfPriceCollector {
 
     private CollectionSummary collect(LocalDate date, Function<Candle, String> priceField, CollectionTarget target) {
         List<Etf> etfs = etfRepository.findAll();
-        if (!isTradingDay(date)) {
+        boolean tradingDay;
+        try {
+            tradingDay = isTradingDay(date);
+        } catch (TossApiException e) {
+            log.warn("Market calendar lookup failed. date={}, message={}", date, e.getMessage());
+            return markAllFailed(target, etfs, date);
+        }
+
+        if (!tradingDay) {
             log.info("거래일이 아니라 ETF 시세 수집을 건너뜁니다. date={}", date);
             List<String> skippedEtfCodes = new ArrayList<>();
             List<String> failedEtfCodes = new ArrayList<>();
@@ -132,6 +140,15 @@ public class EtfPriceCollector {
                 failedEtfCodes.size(),
                 List.copyOf(skippedEtfCodes),
                 List.copyOf(failedEtfCodes));
+    }
+
+    private CollectionSummary markAllFailed(CollectionTarget target, List<Etf> etfs, LocalDate date) {
+        List<String> failedEtfCodes = new ArrayList<>();
+        for (Etf etf : etfs) {
+            markFailedSafely(target, etf, date);
+            failedEtfCodes.add(etf.getEtfCode());
+        }
+        return new CollectionSummary(0, 0, failedEtfCodes.size(), List.of(), List.copyOf(failedEtfCodes));
     }
 
     private void writePrice(CollectionTarget target, Long etfId, LocalDate date, Long price) {

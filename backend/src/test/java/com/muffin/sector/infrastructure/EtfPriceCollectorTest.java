@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -109,6 +110,26 @@ class EtfPriceCollectorTest {
         verify(tossMarketDataClient, never()).getDailyCandle(any(), any());
         verify(etfPriceWriter).markOpenMarketClosed(any(), eq(DATE));
         verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("Market calendar failure marks every ETF as failed and returns a failure summary")
+    void collect_marksEverythingFailed_whenMarketCalendarFails() {
+        Etf first = Etf.create("459580", "ETF 1");
+        Etf second = Etf.create("132030", "ETF 2");
+        when(etfRepository.findAll()).thenReturn(List.of(first, second));
+        when(tossMarketDataClient.getMarketCalendar(DATE))
+                .thenThrow(new TossApiException("r1", "SERVER_ERROR", null, "calendar failure"));
+
+        EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
+
+        assertEquals(0, summary.successCount());
+        assertEquals(0, summary.skippedCount());
+        assertEquals(2, summary.failureCount());
+        assertEquals(List.of("459580", "132030"), summary.failedEtfCodes());
+        verify(etfPriceWriter, times(2)).markOpenFailed(any(), eq(DATE));
+        verify(tossMarketDataClient, never()).getDailyCandle(any(), any());
         verify(eventPublisher, never()).publishEvent(any());
     }
 
