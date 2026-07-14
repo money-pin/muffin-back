@@ -51,6 +51,38 @@ class RssSelectorTest {
         server.verify();
     }
 
+    /** AI가 반환한 URL 우선순위를 유지하고 설정된 최대 기사 수까지만 반환한다. */
+    @Test
+    void preservesOpenAiUrlOrderAndAppliesConfiguredLimit() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        OpenAiRssArticleSelector selector = new OpenAiRssArticleSelector(
+                builder.build(),
+                new ObjectMapper(),
+                new AiSelectionProperties("test-key", "gpt-5-mini", "https://api.test/responses", 2));
+        RssArticle first = article("첫 번째 후보", "https://example.com/1");
+        RssArticle second = article("두 번째 후보", "https://example.com/2");
+        RssArticle third = article("세 번째 후보", "https://example.com/3");
+        server.expect(requestTo("https://api.test/responses"))
+                .andRespond(withSuccess(
+                        """
+                        {
+                          "output": [{
+                            "content": [{
+                              "type": "output_text",
+                              "text": "{\\\"selected_urls\\\":[\\\"https://example.com/3\\\",\\\"https://hallucinated.example\\\",\\\"https://example.com/1\\\",\\\"https://example.com/2\\\"]}"
+                            }]
+                          }]
+                        }
+                        """,
+                        MediaType.APPLICATION_JSON));
+
+        List<RssArticle> result = selector.select("경제", List.of(first, second, third));
+
+        assertThat(result).containsExactly(third, first);
+        server.verify();
+    }
+
     private static RssArticle article(String title, String url) {
         return new RssArticle(title, url, "요약", LocalDateTime.of(2026, 7, 12, 6, 0));
     }
