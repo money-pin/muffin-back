@@ -21,3 +21,11 @@ muffin:
       scheduler-enabled: true
       cron: "0 30 9 * * *" # 매일 09:30, 결과 노출(10:00)보다 앞서 미리 정산
       zone: Asia/Seoul
+  auth:
+    email-verification:
+      code-length: 6
+      expire-minutes: 5
+      resend-cooldown-seconds: 60
+      max-attempts: 5
+      cleanup-cron: "0 0 * * * *" # 매시 정각, 만료된 인증 레코드 정리
+      zone: Asia/Seoul
