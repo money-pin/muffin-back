@@ -25,7 +25,8 @@ muffin:
     email-verification:
       code-length: 6
       expire-minutes: 5
-      resend-cooldown-seconds: 60
+      resend-cooldown-seconds: 30
       max-attempts: 5
+      max-daily-resend-count: 10
       cleanup-cron: "0 0 * * * *" # 매시 정각, 만료된 인증 레코드 정리
       zone: Asia/Seoul

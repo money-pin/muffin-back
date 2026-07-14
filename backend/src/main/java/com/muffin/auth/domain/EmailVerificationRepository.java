@@ -1,0 +1,15 @@
+package com.muffin.auth.domain;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+/** EmailVerification 애그리거트 리포지토리 */
+public interface EmailVerificationRepository extends JpaRepository<EmailVerification, Long> {
+
+    // 해당 이메일의 현재 유효한 가장 최근 인증 세션 반환
+    Optional<EmailVerification> findTopByEmailOrderByCreatedAtDesc(String email);
+
+    // 일일 재발송 횟수 제한(10회) 체크용. since에 당일 00:00을 넘겨 호출.
+    long countByEmailAndCreatedAtAfter(String email, LocalDateTime since);
+}
