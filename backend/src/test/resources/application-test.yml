@@ -11,3 +11,8 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
+
+muffin:
+  news:
+    ai-selection:
+      enabled: false

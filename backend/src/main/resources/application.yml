@@ -40,7 +40,7 @@ muffin:
           url: ${NEWS_RSS_WORLD_URL:https://www.mk.co.kr/rss/30300018/}
 
     ai-selection:
-      enabled: ${NEWS_AI_SELECTION_ENABLED:true}
+      enabled: ${NEWS_AI_SELECTION_ENABLED:false}
       api-key: ${OPENAI_API_KEY:}
       model: ${NEWS_AI_SELECTION_MODEL:gpt-5-mini}
       endpoint: ${OPENAI_RESPONSES_URL:https://api.openai.com/v1/responses}
