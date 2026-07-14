@@ -72,5 +72,14 @@ tasks.named('test') {
 
 tasks.named('asciidoctor') {
     inputs.dir snippetsDir
+    attributes 'snippets': snippetsDir
     dependsOn test
+}
+
+// build 시 REST Docs HTML을 생성하고, 생성물을 jar의 static/docs로 포함해 /docs/index.html로 제공한다.
+tasks.named('bootJar') {
+    dependsOn asciidoctor
+    from(layout.buildDirectory.dir('docs/asciidoc')) {
+        into 'static/docs'
+    }
 }
