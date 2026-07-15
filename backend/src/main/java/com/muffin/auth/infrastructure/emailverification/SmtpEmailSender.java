@@ -1,6 +1,6 @@
-package com.muffin.auth.infrastructure;
+package com.muffin.auth.infrastructure.emailverification;
 
-import com.muffin.auth.application.EmailSender;
+import com.muffin.auth.application.emailverification.EmailSender;
 import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import jakarta.mail.MessagingException;

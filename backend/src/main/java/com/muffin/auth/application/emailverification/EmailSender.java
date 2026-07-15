@@ -1,4 +1,4 @@
-package com.muffin.auth.application;
+package com.muffin.auth.application.emailverification;
 
 public interface EmailSender {
 

@@ -1,9 +1,9 @@
-package com.muffin.auth.presentation;
+package com.muffin.auth.presentation.emailverification;
 
-import com.muffin.auth.application.EmailVerificationCommandService;
-import com.muffin.auth.presentation.dto.EmailVerificationConfirmRequest;
-import com.muffin.auth.presentation.dto.EmailVerificationSendRequest;
-import com.muffin.auth.presentation.swagger.EmailVerificationApi;
+import com.muffin.auth.application.emailverification.EmailVerificationCommandService;
+import com.muffin.auth.presentation.emailverification.dto.EmailVerificationConfirmRequest;
+import com.muffin.auth.presentation.emailverification.dto.EmailVerificationSendRequest;
+import com.muffin.auth.presentation.emailverification.swagger.EmailVerificationApi;
 import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.global.apiPayload.code.GeneralSuccessCode;
 import jakarta.validation.Valid;

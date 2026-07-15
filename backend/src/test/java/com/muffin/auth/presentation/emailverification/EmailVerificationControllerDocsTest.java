@@ -1,4 +1,4 @@
-package com.muffin.auth.presentation;
+package com.muffin.auth.presentation.emailverification;
 
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
@@ -9,7 +9,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.response
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.muffin.auth.application.EmailVerificationCommandService;
+import com.muffin.auth.application.emailverification.EmailVerificationCommandService;
 import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;

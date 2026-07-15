@@ -1,6 +1,6 @@
-package com.muffin.auth.application;
+package com.muffin.auth.application.emailverification;
 
-import com.muffin.auth.domain.EmailVerificationRepository;
+import com.muffin.auth.domain.emailverification.EmailVerificationRepository;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;

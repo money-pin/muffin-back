@@ -1,11 +1,11 @@
-package com.muffin.auth.application;
+package com.muffin.auth.application.emailverification;
 
 import com.muffin.auth.application.exception.AuthErrorCode;
-import com.muffin.auth.domain.DuplicateEmailException;
-import com.muffin.auth.domain.DuplicateEmailValidator;
-import com.muffin.auth.domain.EmailVerification;
-import com.muffin.auth.domain.EmailVerificationRepository;
 import com.muffin.auth.domain.PasswordEncoder;
+import com.muffin.auth.domain.emailverification.DuplicateEmailException;
+import com.muffin.auth.domain.emailverification.DuplicateEmailValidator;
+import com.muffin.auth.domain.emailverification.EmailVerification;
+import com.muffin.auth.domain.emailverification.EmailVerificationRepository;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

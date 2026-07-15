@@ -1,4 +1,4 @@
-package com.muffin.auth.application;
+package com.muffin.auth.application.emailverification;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

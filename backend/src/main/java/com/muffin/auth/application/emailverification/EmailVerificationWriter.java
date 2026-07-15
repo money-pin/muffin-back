@@ -1,8 +1,8 @@
-package com.muffin.auth.application;
+package com.muffin.auth.application.emailverification;
 
-import com.muffin.auth.domain.EmailVerification;
-import com.muffin.auth.domain.EmailVerificationRepository;
 import com.muffin.auth.domain.PasswordEncoder;
+import com.muffin.auth.domain.emailverification.EmailVerification;
+import com.muffin.auth.domain.emailverification.EmailVerificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

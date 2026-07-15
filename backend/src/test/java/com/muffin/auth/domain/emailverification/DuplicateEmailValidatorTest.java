@@ -1,8 +1,9 @@
-package com.muffin.auth.domain;
+package com.muffin.auth.domain.emailverification;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.muffin.auth.domain.AuthRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

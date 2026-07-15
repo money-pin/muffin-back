@@ -1,4 +1,4 @@
-package com.muffin.auth.application;
+package com.muffin.auth.application.emailverification;
 
 import java.security.SecureRandom;
 import lombok.RequiredArgsConstructor;

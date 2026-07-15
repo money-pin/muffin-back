@@ -1,6 +1,6 @@
-package com.muffin.auth.infrastructure;
+package com.muffin.auth.infrastructure.emailverification;
 
-import com.muffin.auth.application.EmailSender;
+import com.muffin.auth.application.emailverification.EmailSender;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;

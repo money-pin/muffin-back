@@ -1,4 +1,4 @@
-package com.muffin.auth.domain;
+package com.muffin.auth.domain.emailverification;
 
 import static org.assertj.core.api.Assertions.*;
 

@@ -1,6 +1,6 @@
-package com.muffin.auth.presentation;
+package com.muffin.auth.presentation.emailverification;
 
-import com.muffin.auth.application.EmailVerificationCleanupService;
+import com.muffin.auth.application.emailverification.EmailVerificationCleanupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;

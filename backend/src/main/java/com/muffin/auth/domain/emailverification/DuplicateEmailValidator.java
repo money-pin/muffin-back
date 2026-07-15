@@ -1,5 +1,6 @@
-package com.muffin.auth.domain;
+package com.muffin.auth.domain.emailverification;
 
+import com.muffin.auth.domain.AuthRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

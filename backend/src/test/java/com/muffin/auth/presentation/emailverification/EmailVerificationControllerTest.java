@@ -1,4 +1,4 @@
-package com.muffin.auth.presentation;
+package com.muffin.auth.presentation.emailverification;
 
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -8,9 +8,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muffin.auth.domain.Auth;
 import com.muffin.auth.domain.AuthRepository;
-import com.muffin.auth.domain.EmailVerification;
-import com.muffin.auth.domain.EmailVerificationRepository;
 import com.muffin.auth.domain.PasswordEncoder;
+import com.muffin.auth.domain.emailverification.EmailVerification;
+import com.muffin.auth.domain.emailverification.EmailVerificationRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

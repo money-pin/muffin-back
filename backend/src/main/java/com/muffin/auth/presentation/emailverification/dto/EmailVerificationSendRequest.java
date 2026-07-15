@@ -1,4 +1,4 @@
-package com.muffin.auth.presentation.dto;
+package com.muffin.auth.presentation.emailverification.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

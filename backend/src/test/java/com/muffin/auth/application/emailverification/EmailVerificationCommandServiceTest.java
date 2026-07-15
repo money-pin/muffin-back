@@ -1,10 +1,10 @@
-package com.muffin.auth.application;
+package com.muffin.auth.application.emailverification;
 
 import static org.assertj.core.api.Assertions.*;
 
-import com.muffin.auth.domain.EmailVerification;
-import com.muffin.auth.domain.EmailVerificationRepository;
 import com.muffin.auth.domain.PasswordEncoder;
+import com.muffin.auth.domain.emailverification.EmailVerification;
+import com.muffin.auth.domain.emailverification.EmailVerificationRepository;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;

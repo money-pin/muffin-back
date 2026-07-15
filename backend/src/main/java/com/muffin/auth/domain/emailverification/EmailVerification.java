@@ -1,4 +1,4 @@
-package com.muffin.auth.domain;
+package com.muffin.auth.domain.emailverification;
 
 import com.muffin.global.entity.BaseEntity;
 import jakarta.persistence.Column;

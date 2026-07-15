@@ -1,7 +1,7 @@
-package com.muffin.auth.presentation.swagger;
+package com.muffin.auth.presentation.emailverification.swagger;
 
-import com.muffin.auth.presentation.dto.EmailVerificationConfirmRequest;
-import com.muffin.auth.presentation.dto.EmailVerificationSendRequest;
+import com.muffin.auth.presentation.emailverification.dto.EmailVerificationConfirmRequest;
+import com.muffin.auth.presentation.emailverification.dto.EmailVerificationSendRequest;
 import com.muffin.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
