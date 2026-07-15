@@ -37,7 +37,7 @@ muffin:
   auth:
     email-verification:
       code-length: 6
-      expire-minutes: 5
+      expire-minutes: 3
       resend-cooldown-seconds: 30
       max-attempts: 5
       max-daily-resend-count: 10
