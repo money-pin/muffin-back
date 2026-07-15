@@ -65,7 +65,7 @@ public class EmailVerificationCommandService {
     @Transactional(noRollbackFor = GeneralException.class)
     public void verifyCode(String email, String code) {
         EmailVerification verification = emailVerificationRepository
-                .findTopByEmailOrderByCreatedAtDesc(email)
+                .findTopByEmailOrderByCreatedAtDescForUpdate(email)
                 .orElseThrow(() -> new GeneralException(AuthErrorCode.EMAIL_VERIFICATION_CODE_MISMATCH));
 
         if (verification.isLocked(properties.maxAttempts())) {

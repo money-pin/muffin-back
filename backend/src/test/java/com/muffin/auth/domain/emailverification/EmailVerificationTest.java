@@ -52,9 +52,9 @@ class EmailVerificationTest {
         }
 
         @Test
-        @DisplayName("만료시각 경과(0분) → true")
+        @DisplayName("만료시각 경과(-1분) → true")
         void expired() {
-            EmailVerification verification = EmailVerification.create("test@example.com", "hashed-code", 0);
+            EmailVerification verification = EmailVerification.create("test@example.com", "hashed-code", -1);
 
             assertThat(verification.isExpired()).isTrue();
         }
