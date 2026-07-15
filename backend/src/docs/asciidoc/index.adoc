@@ -34,7 +34,7 @@ include::{snippets}/settlement-result-reason/http-response.adoc[]
 include::{snippets}/settlement-result-reason/response-fields.adoc[]
 
 [[auth-email-verification]]
-== 이메일 인증번호 발송/확인
+== 이메일 인증번호 발송/확인 (Auth-01)
 
 이메일 인증번호를 발송하고 확인한다. 회원가입 이전 단계에서 이메일 소유권을 확인하는 용도이며, 아직 가입되지 않은 이메일에 대해서만 발송된다.
 
