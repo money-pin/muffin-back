@@ -76,3 +76,31 @@ include::{snippets}/email-verification-confirm-mismatch/response-fields.adoc[]
 |423|AUTH_423_001|인증 시도 횟수를 초과하여 잠겼습니다. 인증번호를 다시 요청해 주세요.|연속 시도 한도(기본 5회) 초과
 |500|AUTH_500_001|인증 메일 발송에 실패했습니다.|SMTP 발송 실패(운영 환경)
 |===
+
+[[stats-summary]]
+== 수익 통계 조회 (STATS-02)
+
+가입 이후 누적 손익, 최근 7일 누적 수익률 그래프, 수익 TOP3 섹터, 투자 성향을 한 번에 조회한다. 정산 완료(SETTLED)된 투자만 집계한다.
+
+* 누적 수익률: 초기자본 100만원 기준(`누적 손익금 / 1,000,000 × 100`), 소수 첫째자리.
+* 그래프: 가장 최근 정산일을 포함한 직전 7일. 각 날짜는 그 날까지의 누적 수익률이며, 투자하지 않은 날은 직전 누적을 그대로 유지한다(손실 시 음수).
+* TOP3 섹터: 섹터 누적 수익률(그 섹터 누적 매수금 기준) 내림차순 3개.
+* 투자 성향: 섹터 그룹별 누적 매수 비중으로 판정(STABLE/BALANCED/GROWTH/AGGRESSIVE).
+
+NOTE: 인증은 추후 구현 예정이며, 현재는 임시로 `X-User-Id` 헤더로 사용자를 식별한다. 인증 구현 후에는 토큰에서 사용자를 해석하므로 이 헤더는 제거된다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+=== 요청
+
+include::{snippets}/stats-summary/http-request.adoc[]
+
+=== 응답 - 정상
+
+include::{snippets}/stats-summary/http-response.adoc[]
+include::{snippets}/stats-summary/response-fields.adoc[]
+
+=== 응답 - 정산 이력 없음(빈 상태)
+
+정산 완료 이력이 없는 신규 사용자는 `investDate`/`investmentType`이 생략되고 `graph`/`topSectors`가 빈 배열이다.
+
+include::{snippets}/stats-summary-empty/http-response.adoc[]
+include::{snippets}/stats-summary-empty/response-fields.adoc[]
