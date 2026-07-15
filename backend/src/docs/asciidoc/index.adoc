@@ -6,6 +6,33 @@
 :toclevels: 2
 :sectlinks:
 
+[[investment-settlement-result]]
+== 정산 결과 팝업 조회 (INVEST-06)
+
+가장 최근 정산 대상 투자의 결과를 조회한다. 정산 완료(SETTLED)면 손익 결과를 반환하고, 그 외에는 사유(`reason`)만 반환한다.
+
+* `SETTLEMENT_PENDING`: 정산 배치가 아직 완료되지 않음(정산 중)
+* `NO_INVESTMENT`: 최근 정산 대상 투자가 없음(미투자/취소 포함)
+
+NOTE: 인증은 추후 구현 예정이며, 현재는 임시로 `X-User-Id` 헤더로 사용자를 식별한다. 인증 구현 후에는 토큰에서 사용자를 해석하므로 이 헤더는 제거된다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+FE 담당자는 invest_date를 로컬에 저장하여 같은 투자 결과 팝업을 1회만 보여줄 수 있도록 한다.
+
+=== 요청
+
+정산 완료 결과가 있는 경우의 요청 예시.
+
+include::{snippets}/settlement-result-settled/http-request.adoc[]
+
+=== 응답 - 정산 완료(결과 있음)
+
+include::{snippets}/settlement-result-settled/http-response.adoc[]
+include::{snippets}/settlement-result-settled/response-fields.adoc[]
+
+=== 응답 - 결과 없음 / 정산 중
+
+include::{snippets}/settlement-result-reason/http-response.adoc[]
+include::{snippets}/settlement-result-reason/response-fields.adoc[]
+
 [[auth-email-verification]]
 == 이메일 인증번호 발송/확인
 

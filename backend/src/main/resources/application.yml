@@ -14,13 +14,26 @@ springdoc:
     tags-sorter: alpha
     operations-sorter: method
 
+toss:
+  api:
+    base-url: ${TOSS_API_BASE_URL:https://openapi.tossinvest.com}
+    client-id: ${TOSS_CLIENT_ID}
+    client-secret: ${TOSS_CLIENT_SECRET}
+
 muffin:
   batch:
+    rss:
+      scheduler-enabled: ${NEWS_RSS_ENABLED:true}
+      cron: ${NEWS_RSS_CRON:0 0 6 * * *}
+      zone: ${NEWS_RSS_ZONE:Asia/Seoul}
+
     settlement:
-      # ETF 시세 적재 완료 이벤트가 1차 트리거. 아래 스케줄러는 이벤트가 아직 연동되지 않은 경우를 위한 안전망이며 멱등하다.
+      # ETF 시세 적재 완료 이벤트가 1차 트리거.
+      # 아래 스케줄러는 이벤트가 아직 연동되지 않은 경우를 위한 안전망이며 멱등하다.
       scheduler-enabled: true
-      cron: "0 30 9 * * *" # 매일 09:30, 결과 노출(10:00)보다 앞서 미리 정산
+      cron: "0 30 9 * * *"
       zone: Asia/Seoul
+
   auth:
     email-verification:
       code-length: 6
@@ -30,3 +43,21 @@ muffin:
       max-daily-resend-count: 10
       cleanup-cron: "0 0 * * * *" # 매시 정각, 만료된 인증 레코드 정리
       zone: Asia/Seoul
+
+  news:
+    rss:
+      publisher: ${NEWS_RSS_PUBLISHER:매일경제}
+      feeds:
+        - category: 경제
+          url: ${NEWS_RSS_ECONOMY_URL:https://www.mk.co.kr/rss/30100041/}
+        - category: 증권
+          url: ${NEWS_RSS_STOCK_URL:https://www.mk.co.kr/rss/50200011/}
+        - category: 세계
+          url: ${NEWS_RSS_WORLD_URL:https://www.mk.co.kr/rss/30300018/}
+
+    ai-selection:
+      enabled: ${NEWS_AI_SELECTION_ENABLED:false}
+      api-key: ${OPENAI_API_KEY:}
+      model: ${NEWS_AI_SELECTION_MODEL:gpt-5-mini}
+      endpoint: ${OPENAI_RESPONSES_URL:https://api.openai.com/v1/responses}
+      max-per-category: ${NEWS_AI_SELECTION_MAX_PER_CATEGORY:5}

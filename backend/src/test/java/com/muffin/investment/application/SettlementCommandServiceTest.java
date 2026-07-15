@@ -64,7 +64,7 @@ class SettlementCommandServiceTest {
     @DisplayName("정산하면 investment/user_asset/profit_summary 세 테이블이 총손익 기준으로 함께 갱신된다")
     void settle_updatesThreeTablesOnProfit() {
         long etfId = 7L;
-        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH"));
+        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH", 1));
         etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 30_000L, 30_000L)); // 직전 거래일(prevTradingDay)
         etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 31_800L, 32_000L)); // 당일 시가 31,800
         UserAsset asset = userAssetRepository.save(UserAsset.create(1L, 1_000_000L));
@@ -94,7 +94,7 @@ class SettlementCommandServiceTest {
     @DisplayName("이미 SETTLED 된 건은 재실행해도 대상에서 제외되어 손익이 이중 반영되지 않는다")
     void settle_isIdempotentOnRerun() {
         long etfId = 7L;
-        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH"));
+        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH", 1));
         etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 30_000L, 30_000L)); // 직전 거래일(prevTradingDay)
         etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 31_800L, 32_000L));
         UserAsset asset = userAssetRepository.save(UserAsset.create(1L, 1_000_000L));
@@ -113,7 +113,7 @@ class SettlementCommandServiceTest {
     @DisplayName("한 유저 정산이 실패해도 다른 유저는 정산되고 실패 건만 FAILED 로 격리된다")
     void settle_isolatesFailurePerUser() {
         long etfId = 7L;
-        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH"));
+        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH", 1));
         etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 30_000L, 30_000L)); // 직전 거래일(prevTradingDay)
         etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 31_800L, 32_000L));
         UserAsset assetA = userAssetRepository.save(UserAsset.create(1L, 1_000_000L));
@@ -135,12 +135,14 @@ class SettlementCommandServiceTest {
     }
 
     @Test
-    @DisplayName("ETF가 거래정지(폴백 시세)면 해당 섹터는 FALLBACK_ZERO(0%)로 정산된다")
-    void settle_appliesFallbackWhenEtfHalted() {
+    @DisplayName("10시까지 ETF 시가가 미확보되면 해당 섹터는 FALLBACK_ZERO(0%)로 정산된다")
+    void settle_appliesFallbackWhenOpenPriceFinalMissing() {
         long etfId = 8L;
-        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "바이오", "d", "BIO"));
+        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "바이오", "d", "BIO", 1));
         etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 100L, 100L)); // 직전 거래일(prevTradingDay)
-        etfPriceRepository.save(EtfPrice.fallback(etfId, SETTLE_DATE)); // 당일 거래정지 → 폴백 시세(is_fallback)
+        EtfPrice missingOpen = EtfPrice.pending(etfId, SETTLE_DATE);
+        missingOpen.markOpenFinalMissing();
+        etfPriceRepository.save(missingOpen);
         UserAsset asset = userAssetRepository.save(UserAsset.create(3L, 1_000_000L));
         Long investmentId = saveInvestment(3L, asset.getId(), sector.getId(), 300_000L, 30_000);
 
@@ -172,9 +174,28 @@ class SettlementCommandServiceTest {
     }
 
     @Test
+    @DisplayName("ETF 가격 행이 있어도 시가 상태가 NO_DATA이면 정산을 건너뛴다")
+    void settle_skipsWhenOpenPriceNoData() {
+        long etfId = 9L;
+        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "금융", "d", "FIN", 1));
+        EtfPrice noData = EtfPrice.pending(etfId, SETTLE_DATE);
+        noData.markOpenNoData();
+        etfPriceRepository.save(noData);
+        UserAsset asset = userAssetRepository.save(UserAsset.create(4L, 1_000_000L));
+        Long investmentId = saveInvestment(4L, asset.getId(), sector.getId(), 300_000L, 30_000);
+
+        SettlementBatchResult result = settlementCommandService.settle(SETTLE_DATE);
+
+        assertFalse(result.ready());
+        assertEquals(
+                SettlementStatus.PENDING,
+                investmentRepository.findById(investmentId).orElseThrow().getSettlementStatus());
+    }
+
+    @Test
     @DisplayName("투자하지 않은 날(NO_INVEST)은 NO_SETTLEMENT로 종료되고 profit_summary에 0행이 남으며 자산은 그대로다")
     void settle_recordsZeroForNoInvest() {
-        sectorRepository.save(Sector.create(1L, 7L, "테크", "d", "TECH")); // 적재 완료 가드용 활성 섹터
+        sectorRepository.save(Sector.create(1L, 7L, "테크", "d", "TECH", 1)); // 적재 완료 가드용 활성 섹터
         etfPriceRepository.save(EtfPrice.create(7L, SETTLE_DATE, 100L, 100L)); // 적재 가드 통과용
         UserAsset asset = userAssetRepository.save(UserAsset.create(5L, 1_000_000L));
         Long investmentId = investmentRepository
@@ -199,7 +220,7 @@ class SettlementCommandServiceTest {
     @DisplayName("정산 창을 놓친 오래된 확정 투자는 CANCELLED 되고 자산은 그대로, profit_summary에 0행이 남는다")
     void settle_cancelsStaleConfirmed() {
         long etfId = 7L;
-        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH"));
+        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH", 1));
         etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 100L, 100L)); // 05-08 = settlementDate
         etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 100L, 100L)); // 05-07 = 직전 거래일
         UserAsset asset = userAssetRepository.save(UserAsset.create(6L, 1_000_000L));
@@ -224,7 +245,7 @@ class SettlementCommandServiceTest {
     }
 
     private Long createSector() {
-        return sectorRepository.save(Sector.create(1L, 9L, "금융", "d", "FIN")).getId();
+        return sectorRepository.save(Sector.create(1L, 9L, "금융", "d", "FIN", 1)).getId();
     }
 
     private Long saveInvestment(Long userId, Long userAssetId, Long sectorId, long amount, int buyPrice) {
