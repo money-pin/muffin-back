@@ -21,4 +21,12 @@ public interface InvestmentRepository extends JpaRepository<Investment, Long> {
     /** 유저별 처리기에서 섹터까지 함께 로딩해 정산한다(N+1 방지). */
     @EntityGraph(attributePaths = "sectors")
     Optional<Investment> findWithSectorsById(Long id);
+
+    // TODO : 확인필요 - 이슈 #23 오늘 투자 및 처리 대기 상태 조회를 위해 기존 Repository에 추가함.
+    @EntityGraph(attributePaths = "sectors")
+    Optional<Investment> findWithSectorsByUserIdAndInvestDateAndStatus(
+            Long userId, LocalDate investDate, InvestmentStatus status);
+
+    List<Investment> findByUserIdAndSettlementStatusInAndInvestDateLessThan(
+            Long userId, Collection<SettlementStatus> settlementStatuses, LocalDate investDate);
 }
