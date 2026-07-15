@@ -1,0 +1,51 @@
+= Muffin API 문서
+:doctype: book
+:icons: font
+:source-highlighter: highlightjs
+:toc: left
+:toclevels: 2
+:sectlinks:
+
+[[auth-email-verification]]
+== 이메일 인증번호 발송/확인
+
+이메일 인증번호를 발송하고 확인한다. 회원가입 이전 단계에서 이메일 소유권을 확인하는 용도이며, 아직 가입되지 않은 이메일에 대해서만 발송된다.
+
+NOTE: 인증에 성공(`verified=true`)한 기록은 실제 회원가입 시점에 회원가입 서비스가 조회해서 확인할 예정이며, 이 API 자체는 회원가입을 수행하지 않는다. 정리 배치는 만료된 미인증 기록만 삭제하고 인증 성공 기록은 건드리지 않는다.
+
+=== 발송 - 성공
+
+include::{snippets}/email-verification-send-success/http-request.adoc[]
+include::{snippets}/email-verification-send-success/http-response.adoc[]
+include::{snippets}/email-verification-send-success/response-fields.adoc[]
+
+=== 발송 - 실패(이미 사용 중인 이메일)
+
+include::{snippets}/email-verification-send-duplicate/http-response.adoc[]
+include::{snippets}/email-verification-send-duplicate/response-fields.adoc[]
+
+=== 확인 - 성공
+
+include::{snippets}/email-verification-confirm-success/http-request.adoc[]
+include::{snippets}/email-verification-confirm-success/http-response.adoc[]
+include::{snippets}/email-verification-confirm-success/response-fields.adoc[]
+
+=== 확인 - 실패(코드 불일치)
+
+include::{snippets}/email-verification-confirm-mismatch/http-response.adoc[]
+include::{snippets}/email-verification-confirm-mismatch/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|409|AUTH_409_001|이미 사용 중인 이메일입니다.|발송 전 이메일 중복 체크 실패
+|429|AUTH_429_001|잠시 후 다시 시도해주세요.|재발송 쿨다운(기본 30초) 중
+|429|AUTH_429_002|오늘 인증번호 전송 횟수를 초과했습니다.|일일 발송 한도(기본 10회) 초과
+|400|AUTH_400_001|인증번호가 일치하지 않습니다.|코드 불일치, 또는 발송 이력 자체가 없음
+|410|AUTH_410_001|인증번호가 만료되었습니다.|만료(기본 5분)
+|423|AUTH_423_001|인증 시도 횟수를 초과하여 잠겼습니다. 인증번호를 다시 요청해 주세요.|연속 시도 한도(기본 5회) 초과
+|500|AUTH_500_001|인증 메일 발송에 실패했습니다.|SMTP 발송 실패(운영 환경)
+|===
