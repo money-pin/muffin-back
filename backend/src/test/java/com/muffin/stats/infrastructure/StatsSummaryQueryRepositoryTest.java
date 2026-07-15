@@ -12,7 +12,7 @@ import com.muffin.sector.domain.sector.Sector;
 import com.muffin.sector.domain.sector.SectorRepository;
 import com.muffin.sector.domain.sectorgroup.SectorGroup;
 import com.muffin.sector.domain.sectorgroup.SectorGroupRepository;
-import com.muffin.stats.application.StatsSummaryQueryRepository;
+import com.muffin.stats.application.StatsQueryRepository;
 import com.muffin.stats.application.projection.DailyProfitProjection;
 import com.muffin.stats.application.projection.SectorStatProjection;
 import java.math.BigDecimal;
@@ -33,7 +33,7 @@ import org.springframework.test.context.ActiveProfiles;
 /** 통계 집계 쿼리가 정산 완료(SETTLED) 투자만, 섹터/그룹까지 조인해 집계하는지 검증한다. */
 @DataJpaTest
 @ActiveProfiles("test")
-@Import({QueryDslConfig.class, StatsSummaryQueryRepositoryImpl.class, JpaAuditingConfig.class})
+@Import({QueryDslConfig.class, StatsQueryRepositoryImpl.class, JpaAuditingConfig.class})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class StatsSummaryQueryRepositoryTest {
 
@@ -41,7 +41,7 @@ class StatsSummaryQueryRepositoryTest {
     private static final long DUMMY_ASSET_ID = 99L;
 
     @Autowired
-    private StatsSummaryQueryRepository statsSummaryQueryRepository;
+    private StatsQueryRepository statsSummaryQueryRepository;
 
     @Autowired
     private InvestmentRepository investmentRepository;

@@ -5,7 +5,7 @@ import com.muffin.investment.domain.investment.QInvestmentSector;
 import com.muffin.investment.domain.investment.enums.SettlementStatus;
 import com.muffin.sector.domain.sector.QSector;
 import com.muffin.sector.domain.sectorgroup.QSectorGroup;
-import com.muffin.stats.application.StatsSummaryQueryRepository;
+import com.muffin.stats.application.StatsQueryRepository;
 import com.muffin.stats.application.projection.DailyProfitProjection;
 import com.muffin.stats.application.projection.SectorStatProjection;
 import com.querydsl.core.types.Projections;
@@ -14,13 +14,13 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-/** 수익 통계 조회 QueryDSL 구현. 정산 완료(SETTLED) 투자만 집계한다. */
 @Repository
 @RequiredArgsConstructor
-public class StatsSummaryQueryRepositoryImpl implements StatsSummaryQueryRepository {
+public class StatsQueryRepositoryImpl implements StatsQueryRepository {
 
     private final JPAQueryFactory queryFactory;
 
+    /** 수익 통계 조회. 정산 완료(SETTLED) 투자만 집계한다. */
     @Override
     public List<DailyProfitProjection> findSettledDailyProfits(Long userId) {
         QInvestment investment = QInvestment.investment;

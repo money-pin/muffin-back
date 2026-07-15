@@ -35,7 +35,7 @@ public class StatsQueryService {
     private static final int GRAPH_DAYS = 7;
     private static final int TOP_SECTOR_COUNT = 3;
 
-    private final StatsSummaryQueryRepository statsSummaryQueryRepository;
+    private final StatsQueryRepository statsSummaryQueryRepository;
 
     @Transactional(readOnly = true)
     public StatsSummaryResponse getSummary(Long userId) {

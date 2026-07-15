@@ -126,7 +126,7 @@ class StatsQueryServiceTest {
 
     private StatsQueryService serviceWith(
             List<DailyProfitProjection> dailyProfits, List<SectorStatProjection> sectorStats) {
-        return new StatsQueryService(new StatsSummaryQueryRepository() {
+        return new StatsQueryService(new StatsQueryRepository() {
             @Override
             public List<DailyProfitProjection> findSettledDailyProfits(Long userId) {
                 return dailyProfits;
