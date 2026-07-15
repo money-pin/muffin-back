@@ -6,6 +6,7 @@ import com.muffin.user.domain.enums.UserStatus;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,6 +16,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class User extends BaseEntity {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -113,7 +116,7 @@ public class User extends BaseEntity {
             throw new IllegalStateException("이미 약관에 동의한 사용자입니다.");
         }
         this.termAgreement = true;
-        this.termAgreedAt = LocalDateTime.now();
+        this.termAgreedAt = LocalDateTime.now(KST);
     }
 
     // 온보딩 완료
@@ -137,7 +140,7 @@ public class User extends BaseEntity {
         this.phoneNumber = null;
         this.birthday = null;
         this.status = UserStatus.WITHDRAWN;
-        this.deletedAt = LocalDateTime.now();
+        this.deletedAt = LocalDateTime.now(KST);
     }
 
     public void suspend() {

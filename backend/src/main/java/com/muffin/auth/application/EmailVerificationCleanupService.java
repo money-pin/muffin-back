@@ -2,6 +2,7 @@ package com.muffin.auth.application;
 
 import com.muffin.auth.domain.EmailVerificationRepository;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -13,11 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class EmailVerificationCleanupService {
 
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
     private final EmailVerificationRepository emailVerificationRepository;
 
     @Transactional
     public void cleanupExpired() {
-        int deleted = emailVerificationRepository.deleteExpiredUnverified(LocalDateTime.now());
+        int deleted = emailVerificationRepository.deleteExpiredUnverified(LocalDateTime.now(KST));
         log.info("[email-verification-cleanup] deleted={}", deleted);
     }
 }

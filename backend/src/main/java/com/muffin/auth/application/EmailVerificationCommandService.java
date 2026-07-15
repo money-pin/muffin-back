@@ -9,6 +9,7 @@ import com.muffin.auth.domain.PasswordEncoder;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class EmailVerificationCommandService {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final EmailVerificationRepository emailVerificationRepository;
     private final DuplicateEmailValidator duplicateEmailValidator;
@@ -42,7 +45,7 @@ public class EmailVerificationCommandService {
                     throw new GeneralException(AuthErrorCode.EMAIL_VERIFICATION_RESEND_COOLDOWN);
                 });
 
-        LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+        LocalDateTime startOfToday = LocalDate.now(KST).atStartOfDay();
         long todayCount = emailVerificationRepository.countByEmailAndCreatedAtAfter(email, startOfToday);
         if (todayCount >= properties.maxDailyResendCount()) {
             throw new GeneralException(AuthErrorCode.EMAIL_VERIFICATION_DAILY_LIMIT_EXCEEDED);

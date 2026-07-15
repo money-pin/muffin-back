@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -26,6 +27,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class EmailVerification extends BaseEntity {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,11 +59,11 @@ public class EmailVerification extends BaseEntity {
     }
 
     public static EmailVerification create(String email, String codeHash, long expireMinutes) {
-        return new EmailVerification(email, codeHash, LocalDateTime.now().plusMinutes(expireMinutes));
+        return new EmailVerification(email, codeHash, LocalDateTime.now(KST).plusMinutes(expireMinutes));
     }
 
     public boolean isExpired() {
-        return LocalDateTime.now().isAfter(expiresAt);
+        return LocalDateTime.now(KST).isAfter(expiresAt);
     }
 
     public boolean isLocked(int maxAttempts) {
@@ -68,7 +71,7 @@ public class EmailVerification extends BaseEntity {
     }
 
     public boolean isWithinCooldown(long cooldownSeconds) {
-        return getCreatedAt().plusSeconds(cooldownSeconds).isAfter(LocalDateTime.now());
+        return getCreatedAt().plusSeconds(cooldownSeconds).isAfter(LocalDateTime.now(KST));
     }
 
     public void increaseAttemptCount() {
