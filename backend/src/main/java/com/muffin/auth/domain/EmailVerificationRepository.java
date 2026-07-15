@@ -12,4 +12,7 @@ public interface EmailVerificationRepository extends JpaRepository<EmailVerifica
 
     // 일일 재발송 횟수 제한(10회) 체크용. since에 당일 00:00을 넘겨 호출.
     long countByEmailAndCreatedAtAfter(String email, LocalDateTime since);
+
+    // 정리 배치용. 인증 성공(verified=true) 레코드는 회원가입 서비스가 나중에 조회할 수 있어야 하므로 건드리지 않는다.
+    long deleteByVerifiedFalseAndExpiresAtBefore(LocalDateTime cutoff);
 }
