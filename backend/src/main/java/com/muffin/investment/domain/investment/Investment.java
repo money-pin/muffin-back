@@ -75,13 +75,13 @@ public class Investment extends BaseEntity {
     private LocalDateTime settledAt;
 
     // TODO : 확인필요 - 자정 마감 여부와 정산 예정일을 조회하기 위해 기존 엔티티에 추가 필요할 예정 - 검토를 위해 주석처리
-//    자정 마감 배치 구현할 때 필요할 예정
-//    @Column(name = "settlement_due_date")
-//    private LocalDate settlementDueDate;
-//
-//    00시 투자 마감 배치와 투자 수정 API를 구현할 때 필요할 예정
-//    @Column(name = "finalized_at")
-//    private LocalDateTime finalizedAt;
+    //    자정 마감 배치 구현할 때 필요할 예정
+    //    @Column(name = "settlement_due_date")
+    //    private LocalDate settlementDueDate;
+    //
+    //    00시 투자 마감 배치와 투자 수정 API를 구현할 때 필요할 예정
+    //    @Column(name = "finalized_at")
+    //    private LocalDateTime finalizedAt;
 
     // InvestmentSector는 이 애그리거트 내부 엔티티이므로 루트가 관리한다.
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)

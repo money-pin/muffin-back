@@ -114,23 +114,12 @@ public class InvestmentQueryService {
         return investmentRepository
                 .findByUserIdAndSettlementStatusInAndInvestDateLessThan(userId, REPROCESSABLE, calendar.date())
                 .stream()
-                .filter(investment -> !isStaleConfirmed(investment, calendar.previousTradingDay()))
-                .anyMatch(investment ->
-                        isUnfinalized(investment, calendar.date()) || isSettlementDue(investment, calendar.date()));
+                .anyMatch(investment -> !isStaleConfirmed(investment, calendar.previousTradingDay()));
     }
 
     private boolean isStaleConfirmed(Investment investment, LocalDate previousTradingDay) {
         return investment.getStatus() == InvestmentStatus.CONFIRMED
                 && investment.getInvestDate().isBefore(previousTradingDay);
-    }
-
-    private boolean isUnfinalized(Investment investment, LocalDate today) {
-        return investment.getInvestDate().isBefore(today) && investment.getFinalizedAt() == null;
-    }
-
-    private boolean isSettlementDue(Investment investment, LocalDate today) {
-        return investment.getSettlementDueDate() != null
-                && !investment.getSettlementDueDate().isAfter(today);
     }
 
     private TodayInvestmentResponse confirmedResponse(Investment investment, long totalAsset) {

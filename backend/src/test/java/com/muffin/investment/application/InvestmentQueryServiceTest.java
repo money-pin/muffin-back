@@ -156,7 +156,7 @@ class InvestmentQueryServiceTest {
     }
 
     @Test
-    @DisplayName("10시 이후 직전 거래일의 미마감 투자가 있으면 SETTLEMENT_DELAYED이다")
+    @DisplayName("10시 이후 직전 거래일의 미정산 투자가 있으면 SETTLEMENT_DELAYED이다")
     void getToday_returnsSettlementDelayedForPendingInvestment() {
         mockTradingMonday();
         Investment pending = Investment.confirm(USER_ID, 10L, PREVIOUS_TRADING_DAY);
