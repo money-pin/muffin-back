@@ -1,13 +1,13 @@
 package com.muffin.auth.infrastructure;
 
 import com.muffin.auth.domain.PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
-public class BCryptPasswordEncoder implements PasswordEncoder {
+public class BCryptPasswordEncoderAdapter implements PasswordEncoder {
 
-    private final org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder delegate =
-            new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder delegate = new BCryptPasswordEncoder();
 
     @Override
     public String encode(String raw) {
