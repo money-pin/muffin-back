@@ -22,11 +22,12 @@ public class EmailVerificationCommandService {
     private final DuplicateEmailValidator duplicateEmailValidator;
     private final EmailSender emailSender;
     private final PasswordEncoder passwordEncoder;
-    private final VerificationCodeGenerator codeGenerator;
+    private final EmailVerificationWriter emailVerificationWriter;
     private final EmailVerificationProperties properties;
 
-    /** 인증번호를 생성해 저장하고 메일로 발송한다. 이미 가입된 이메일, 쿨다운 중, 일일 발송 한도 초과 시 거부한다. */
-    @Transactional
+    /**
+     * 인증번호를 생성해 저장하고 메일로 발송한다. 이미 가입된 이메일, 쿨다운 중, 일일 발송 한도 초과 시 거부한다.
+     */
     public void sendCode(String email) {
         try {
             duplicateEmailValidator.validate(email);
@@ -47,15 +48,18 @@ public class EmailVerificationCommandService {
             throw new GeneralException(AuthErrorCode.EMAIL_VERIFICATION_DAILY_LIMIT_EXCEEDED);
         }
 
-        String code = codeGenerator.generate();
-        String codeHash = passwordEncoder.encode(code);
-        emailVerificationRepository.save(EmailVerification.create(email, codeHash, properties.expireMinutes()));
+        String code = emailVerificationWriter.save(email);
 
         emailSender.sendVerificationCode(email, code);
     }
 
-    /** 가장 최근 발송된 인증번호와 대조한다. 불일치 시 시도 횟수를 누적하고, 한도 초과 시 이후 요청은 잠금 처리한다. */
-    @Transactional
+    /**
+     * 가장 최근 발송된 인증번호와 대조한다. 불일치 시 시도 횟수를 누적하고, 한도 초과 시 이후 요청은 잠금 처리한다.
+     *
+     * <p>noRollbackFor 필수: 불일치 시 increaseAttemptCount() 이후 바로 GeneralException을 던지는데, 기본 롤백 정책대로면
+     * 이 카운트 증가 자체가 커밋되지 않아 잠금(isLocked)이 무력화되고 무제한 브루트포스가 가능해진다.
+     */
+    @Transactional(noRollbackFor = GeneralException.class)
     public void verifyCode(String email, String code) {
         EmailVerification verification = emailVerificationRepository
                 .findTopByEmailOrderByCreatedAtDesc(email)

@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -14,7 +15,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "email_verification")
+@Table(
+        name = "email_verification",
+        indexes = {
+            // findTopByEmailOrderByCreatedAtDesc / countByEmailAndCreatedAtAfter 조회용
+            @Index(name = "idx_email_verification_email_created_at", columnList = "email, created_at"),
+            // deleteExpiredUnverified 정리 배치용
+            @Index(name = "idx_email_verification_verified_expires_at", columnList = "verified, expires_at")
+        })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class EmailVerification extends BaseEntity {

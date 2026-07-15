@@ -17,7 +17,7 @@ public class EmailVerificationCleanupService {
 
     @Transactional
     public void cleanupExpired() {
-        long deleted = emailVerificationRepository.deleteByVerifiedFalseAndExpiresAtBefore(LocalDateTime.now());
+        int deleted = emailVerificationRepository.deleteExpiredUnverified(LocalDateTime.now());
         log.info("[email-verification-cleanup] deleted={}", deleted);
     }
 }
