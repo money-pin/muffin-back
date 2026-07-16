@@ -124,6 +124,9 @@ public class QuizSession extends BaseEntity {
         if (this.solvedCount >= this.totalCount) {
             throw new IllegalStateException("이미 모든 문제를 풀었습니다.");
         }
+        if (findAttemptByQuizId(quizId).isPresent()) {
+            throw new IllegalStateException("이미 제출한 문항입니다: quizId=" + quizId);
+        }
         if (correct && rewardMoney == null) {
             throw new IllegalArgumentException("정답인 경우 rewardMoney는 필수입니다.");
         }

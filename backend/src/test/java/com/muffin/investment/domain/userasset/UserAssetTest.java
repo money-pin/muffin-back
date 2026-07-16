@@ -73,4 +73,12 @@ class UserAssetTest {
 
         assertThrows(IllegalArgumentException.class, () -> userAsset.addQuizReward(-1L));
     }
+
+    @Test
+    @DisplayName("퀴즈 보상 반영 후 총자산이 Long 범위를 초과하면 예외가 발생한다")
+    void addQuizReward_throwsWhenTotalAssetOverflows() {
+        UserAsset userAsset = UserAsset.create(1L, Long.MAX_VALUE);
+
+        assertThrows(IllegalArgumentException.class, () -> userAsset.addQuizReward(1L));
+    }
 }

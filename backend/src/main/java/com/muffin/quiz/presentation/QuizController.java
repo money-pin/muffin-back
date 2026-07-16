@@ -39,7 +39,6 @@ public class QuizController implements QuizApi {
     public ApiResponse<QuizAttemptResponse> submitAnswer(
             // TODO: 인증(Security/JWT) 구현 후 @AuthenticationPrincipal 등으로 교체. 현재는 임시 헤더.
             @RequestHeader("X-User-Id") Long userId,
-            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey,
             @PathVariable Long quizId,
             @Valid @RequestBody QuizAttemptRequest request) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizCommandService.submitAnswer(userId, quizId, request));

@@ -12,6 +12,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -74,6 +75,16 @@ public class GeneralExceptionAdvice {
         String detail = ex.getParameterName() + ": 필수 파라미터가 누락되었습니다.";
         log.debug("[MissingParam] {}", detail);
         return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(detail)));
+    }
+
+    // 필수 RequestHeader 누락
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiResponse<?>> handleMissingHeader(MissingRequestHeaderException ex) {
+        BaseErrorCode ec = GeneralErrorCode.UNAUTHORIZED;
+
+        String detail = ex.getHeaderName() + ": 필수 인증 헤더가 누락되었습니다.";
+        log.debug("[MissingHeader] {}", detail);
+        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(ec.getMessage())));
     }
 
     // JSON 파싱 실패 / 요청 body가 깨졌을 때

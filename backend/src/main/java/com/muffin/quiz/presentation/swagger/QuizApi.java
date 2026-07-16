@@ -43,7 +43,6 @@ public interface QuizApi {
     })
     ApiResponse<QuizAttemptResponse> submitAnswer(
             @Parameter(hidden = true) Long userId,
-            @Parameter(hidden = true) String idempotencyKey,
             @Parameter(description = "답안을 제출할 퀴즈 문항 ID") Long quizId,
             QuizAttemptRequest request);
 }

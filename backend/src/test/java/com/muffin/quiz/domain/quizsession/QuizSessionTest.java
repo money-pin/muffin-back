@@ -59,6 +59,17 @@ class QuizSessionTest {
     }
 
     @Test
+    @DisplayName("같은 문제에 대한 제출 기록은 중복으로 추가할 수 없다")
+    void recordAttempt_throwsWhenQuizAlreadyAttempted() {
+        QuizSession session = QuizSession.start(1L, 10L, LocalDate.of(2026, 5, 7), 3);
+        session.recordAttempt(100L, 1001L, false, null, LocalDateTime.of(2026, 5, 7, 9, 10));
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> session.recordAttempt(100L, 1002L, true, 100L, LocalDateTime.of(2026, 5, 7, 9, 11)));
+    }
+
+    @Test
     @DisplayName("완료된 세션의 보상은 한 번만 확정할 수 있다")
     void claimReward_returnsRewardOnlyOnce() {
         QuizSession session = QuizSession.start(1L, 10L, LocalDate.of(2026, 5, 7), 2);

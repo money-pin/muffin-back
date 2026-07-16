@@ -225,6 +225,30 @@ class QuizCommandServiceTest {
     }
 
     @Test
+    @DisplayName("보상 지급 대상인데 사용자 자산이 없으면 예외가 발생하고 세션을 저장하지 않는다")
+    void submitAnswer_throwsWhenUserAssetMissingForReward() {
+        LocalDate today = LocalDate.now(KST);
+        User user = onboardedUser("세현");
+        QuizSet quizSet = publishedQuizSet(today);
+        QuizSession session = QuizSession.start(USER_ID, QUIZ_SET_ID, today, 3);
+        session.recordAttempt(101L, 1011L, true, 100000L, LocalDateTime.now());
+        session.recordAttempt(102L, 1022L, false, 100000L, LocalDateTime.now());
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(quizSet));
+        when(quizSessionRepository.findByUserIdAndDailyQuizSetId(USER_ID, QUIZ_SET_ID))
+                .thenReturn(Optional.of(session));
+        when(userAssetRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> quizCommandService.submitAnswer(USER_ID, 103L, new QuizAttemptRequest(1031L)));
+
+        verify(userAssetRepository).findByUserId(USER_ID);
+        verify(quizSessionRepository, never()).saveAndFlush(any(QuizSession.class));
+    }
+
+    @Test
     @DisplayName("마지막 제출 후 정답이 1문항 이하이면 보상을 0원으로 확정하고 자산은 조회하지 않는다")
     void submitAnswer_claimsZeroRewardWhenCorrectCountIsOneOrLess() {
         LocalDate today = LocalDate.now(KST);

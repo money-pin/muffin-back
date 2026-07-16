@@ -6,6 +6,7 @@ import com.muffin.quiz.domain.quizsession.QuizSession;
 import com.muffin.quiz.domain.quizsession.QuizSessionRepository;
 import com.muffin.quiz.domain.quizsession.enums.QuizSessionStatus;
 import com.muffin.quiz.domain.quizset.Quiz;
+import com.muffin.quiz.domain.quizset.QuizOption;
 import com.muffin.quiz.domain.quizset.QuizSet;
 import com.muffin.quiz.domain.quizset.QuizSetRepository;
 import com.muffin.quiz.domain.quizset.enums.QuizSetStatus;
@@ -17,6 +18,7 @@ import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -111,6 +113,7 @@ public class QuizQueryService {
     /** QuizSet 루트가 가진 문제 목록을 API 응답 DTO로 변환한다. */
     private List<QuizQuestionResponse> toQuestionResponses(QuizSet quizSet) {
         return quizSet.getQuizzes().stream()
+                .sorted(Comparator.comparingInt(Quiz::getQuizOrder))
                 .map(quiz -> new QuizQuestionResponse(
                         quiz.getId(), quiz.getQuizOrder(), quiz.getQuestion(), toOptionResponses(quiz)))
                 .toList();
@@ -119,6 +122,7 @@ public class QuizQueryService {
     /** 정답 여부는 노출하지 않고 선택지 식별자, 순서, 내용만 응답으로 변환한다. */
     private List<QuizOptionResponse> toOptionResponses(Quiz quiz) {
         return quiz.getOptions().stream()
+                .sorted(Comparator.comparingInt(QuizOption::getOptionNo))
                 .map(option -> new QuizOptionResponse(option.getId(), option.getOptionNo(), option.getContent()))
                 .toList();
     }

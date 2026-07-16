@@ -87,6 +87,9 @@ public class UserAsset extends BaseEntity {
         if (rewardAmount < 0) {
             throw new IllegalArgumentException("퀴즈 보상은 음수일 수 없습니다: rewardAmount=" + rewardAmount);
         }
+        if (rewardAmount > Long.MAX_VALUE - this.totalAsset) {
+            throw new IllegalArgumentException("총자산이 Long 범위를 초과합니다.");
+        }
         this.totalAsset += rewardAmount;
     }
 }
