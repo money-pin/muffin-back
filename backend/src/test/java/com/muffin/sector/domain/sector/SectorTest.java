@@ -59,6 +59,6 @@ class SectorTest {
     }
 
     private Sector createSector() {
-        return Sector.create(SECTOR_GROUP_ID, ETF_ID, "반도체", "반도체 섹터", "SEC-001");
+        return Sector.create(SECTOR_GROUP_ID, ETF_ID, "반도체", "반도체 섹터", "SEMICONDUCTOR", 2);
     }
 }
