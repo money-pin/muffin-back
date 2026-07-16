@@ -26,7 +26,14 @@ public class NewsReconstructionService {
         }
     }
 
-    /** 뉴스 재구성 */
+    /**
+     * 지정된 뉴스를 재구성하고 처리 결과에 따라 상태를 변경한다.
+     *
+     * <p>{@link NewsStatus#PROCESSING} 상태인 뉴스만 처리하며, 원문을 조회한 뒤 AI 재구성 결과를 저장하고 발행 대기 상태로 전환한다.
+     * 처리 중 예외가 발생하면 해당 뉴스만 실패 상태로 변경하여 다른 뉴스의 재구성에 영향을 주지 않도록 한다.
+     *
+     * @param newsId 재구성할 뉴스 ID
+     */
     private void reconstructOne(Long newsId) {
         try {
             News news = newsRepository

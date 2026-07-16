@@ -46,7 +46,8 @@ muffin:
           url: ${NEWS_RSS_WORLD_URL:https://www.mk.co.kr/rss/30300018/}
 
     ai:
-      enabled: ${NEWS_AI_ENABLED:false}
+      # AI 기반 기능의 활성화 여부 (비활성화 시 관련 AI 컴포넌트를 등록하지 않음)
+      enabled: ${NEWS_AI_ENABLED:true}
       api-key: ${OPENAI_API_KEY:}
       endpoint: ${OPENAI_RESPONSES_URL:https://api.openai.com/v1/responses}
 
