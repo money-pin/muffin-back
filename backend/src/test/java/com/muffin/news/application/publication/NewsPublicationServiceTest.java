@@ -2,6 +2,7 @@ package com.muffin.news.application.publication;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,6 +31,22 @@ class NewsPublicationServiceTest {
         assertThat(first.getStatus()).isEqualTo(NewsStatus.PUBLISHED);
         assertThat(second.getStatus()).isEqualTo(NewsStatus.PUBLISHED);
         verify(newsRepository).findAllByStatus(NewsStatus.PENDING);
+    }
+
+    /** 재구성 결과가 없는 과거 PENDING 데이터는 발행하지 않는다. */
+    @Test
+    void skipsPendingNewsWithoutReconstructionResult() {
+        News completed = pendingNews("https://example.com/completed");
+        News incomplete = mock(News.class);
+        when(incomplete.hasReconstructionResult()).thenReturn(false);
+        when(incomplete.getId()).thenReturn(2L);
+        when(newsRepository.findAllByStatus(NewsStatus.PENDING)).thenReturn(List.of(completed, incomplete));
+
+        int count = publicationService.publishPendingNews();
+
+        assertThat(count).isEqualTo(1);
+        assertThat(completed.getStatus()).isEqualTo(NewsStatus.PUBLISHED);
+        verify(incomplete, never()).publish();
     }
 
     private static News pendingNews(String originalUrl) {

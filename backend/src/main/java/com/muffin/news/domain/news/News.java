@@ -121,7 +121,15 @@ public class News extends BaseEntity {
         if (status != NewsStatus.PENDING) {
             throw new IllegalStateException("Only pending news can be published");
         }
+        if (!hasReconstructionResult()) {
+            throw new IllegalStateException("News cannot be published without reconstruction result");
+        }
         this.status = NewsStatus.PUBLISHED;
+    }
+
+    /** 뉴스 요약과 재구성된 본문이 모두 저장되었는지 확인한다. */
+    public boolean hasReconstructionResult() {
+        return summary != null && !summary.isBlank() && content != null && !content.isBlank();
     }
 
     /** 뉴스 발행 또는 처리 과정이 실패했을 때 상태를 변경한다. */

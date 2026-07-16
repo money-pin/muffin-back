@@ -5,9 +5,11 @@ import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.news.enums.NewsStatus;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NewsPublicationService {
@@ -18,7 +20,18 @@ public class NewsPublicationService {
     @Transactional
     public int publishPendingNews() {
         List<News> pendingNews = newsRepository.findAllByStatus(NewsStatus.PENDING);
-        pendingNews.forEach(News::publish);
-        return pendingNews.size();
+        int publishedCount = 0;
+
+        for (News news : pendingNews) {
+            if (!news.hasReconstructionResult()) {
+                log.warn("News publication skipped: reconstruction result is missing, newsId={}", news.getId());
+                continue;
+            }
+
+            news.publish();
+            publishedCount++;
+        }
+
+        return publishedCount;
     }
 }
