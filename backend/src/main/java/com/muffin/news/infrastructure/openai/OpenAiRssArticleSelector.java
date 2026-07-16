@@ -22,7 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "muffin.news.ai-selection.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "muffin.news.ai.enabled", havingValue = "true")
 public class OpenAiRssArticleSelector implements RssArticleSelector {
 
     /** 금융 입문자용 기사 선별 기준과 JSON 출력 규칙을 정의한다. */
@@ -78,6 +78,7 @@ public class OpenAiRssArticleSelector implements RssArticleSelector {
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
+    private final OpenAiClientProperties openAiProperties;
     private final AiSelectionProperties properties;
 
     /** 제목과 RSS 요약을 OpenAI에 전달하고 선택된 URL에 해당하는 기사만 반환한다. */
@@ -111,9 +112,9 @@ public class OpenAiRssArticleSelector implements RssArticleSelector {
                 "OpenAI retry wait was interrupted",
                 () -> restClient
                         .post()
-                        .uri(properties.endpoint())
+                        .uri(openAiProperties.endpoint())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("Authorization", "Bearer " + properties.apiKey())
+                        .header("Authorization", "Bearer " + openAiProperties.apiKey())
                         .body(requestBody(category, candidates))
                         .retrieve()
                         .body(String.class),

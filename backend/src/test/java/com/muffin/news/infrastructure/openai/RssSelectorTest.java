@@ -26,7 +26,8 @@ class RssSelectorTest {
         OpenAiRssArticleSelector selector = new OpenAiRssArticleSelector(
                 builder.build(),
                 new ObjectMapper(),
-                new AiSelectionProperties("test-key", "gpt-5-mini", "https://api.test/responses", 5));
+                new OpenAiClientProperties("test-key", "https://api.test/responses"),
+                new AiSelectionProperties("gpt-5-mini", 5));
         RssArticle selected = article("선택", "https://example.com/1");
         RssArticle rejected = article("탈락", "https://example.com/2");
         server.expect(requestTo("https://api.test/responses"))
@@ -59,7 +60,8 @@ class RssSelectorTest {
         OpenAiRssArticleSelector selector = new OpenAiRssArticleSelector(
                 builder.build(),
                 new ObjectMapper(),
-                new AiSelectionProperties("test-key", "gpt-5-mini", "https://api.test/responses", 2));
+                new OpenAiClientProperties("test-key", "https://api.test/responses"),
+                new AiSelectionProperties("gpt-5-mini", 2));
         RssArticle first = article("첫 번째 후보", "https://example.com/1");
         RssArticle second = article("두 번째 후보", "https://example.com/2");
         RssArticle third = article("세 번째 후보", "https://example.com/3");

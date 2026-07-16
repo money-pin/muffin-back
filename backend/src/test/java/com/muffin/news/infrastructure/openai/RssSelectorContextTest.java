@@ -10,7 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(properties = {"muffin.news.ai-selection.enabled=true", "muffin.news.ai-selection.api-key=test-key"})
+@SpringBootTest(properties = {"muffin.news.ai.enabled=true", "muffin.news.ai.api-key=test-key"})
 @ActiveProfiles("test")
 class RssSelectorContextTest {
 
