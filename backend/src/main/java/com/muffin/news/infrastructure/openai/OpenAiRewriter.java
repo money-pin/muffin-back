@@ -8,7 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -21,7 +21,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
-@RequiredArgsConstructor
 @ConditionalOnProperty(name = "muffin.news.ai.enabled", havingValue = "true")
 public class OpenAiRewriter implements NewsRewriter {
 
@@ -137,6 +136,17 @@ public class OpenAiRewriter implements NewsRewriter {
     private final ObjectMapper objectMapper;
     private final OpenAiClientProperties openAiProperties;
     private final NewsReconstructionProperties properties;
+
+    public OpenAiRewriter(
+            @Qualifier("openAiRestClient") RestClient restClient,
+            ObjectMapper objectMapper,
+            OpenAiClientProperties openAiProperties,
+            NewsReconstructionProperties properties) {
+        this.restClient = restClient;
+        this.objectMapper = objectMapper;
+        this.openAiProperties = openAiProperties;
+        this.properties = properties;
+    }
 
     /** 기사 정보를 OpenAI에 전달하고 구조화된 재구성 결과를 반환한다. */
     @Override

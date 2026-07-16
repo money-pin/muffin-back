@@ -21,7 +21,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
-@RequiredArgsConstructor
 @ConditionalOnProperty(name = "muffin.news.ai.enabled", havingValue = "true")
 public class OpenAiRssArticleSelector implements RssArticleSelector {
 
@@ -84,9 +83,11 @@ public class OpenAiRssArticleSelector implements RssArticleSelector {
     public OpenAiRssArticleSelector(
             @Qualifier("openAiRestClient") RestClient restClient,
             ObjectMapper objectMapper,
+            OpenAiClientProperties openAiProperties,
             AiSelectionProperties properties) {
         this.restClient = restClient;
         this.objectMapper = objectMapper;
+        this.openAiProperties = openAiProperties;
         this.properties = properties;
     }
 
