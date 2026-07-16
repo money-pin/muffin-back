@@ -14,6 +14,12 @@ springdoc:
     tags-sorter: alpha
     operations-sorter: method
 
+toss:
+  api:
+    base-url: ${TOSS_API_BASE_URL:https://openapi.tossinvest.com}
+    client-id: ${TOSS_CLIENT_ID}
+    client-secret: ${TOSS_CLIENT_SECRET}
+
 muffin:
   batch:
     rss:
@@ -32,6 +38,16 @@ muffin:
       # 아래 스케줄러는 이벤트가 아직 연동되지 않은 경우를 위한 안전망이며 멱등하다.
       scheduler-enabled: true
       cron: "0 30 9 * * *"
+      zone: Asia/Seoul
+
+  auth:
+    email-verification:
+      code-length: 6
+      expire-minutes: 5
+      resend-cooldown-seconds: 30
+      max-attempts: 5
+      max-daily-resend-count: 10
+      cleanup-cron: "0 0 * * * *" # 매시 정각, 만료된 인증 레코드 정리
       zone: Asia/Seoul
 
   news:

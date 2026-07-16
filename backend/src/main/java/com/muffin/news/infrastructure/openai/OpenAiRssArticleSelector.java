@@ -8,7 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -80,6 +80,15 @@ public class OpenAiRssArticleSelector implements RssArticleSelector {
     private final ObjectMapper objectMapper;
     private final OpenAiClientProperties openAiProperties;
     private final AiSelectionProperties properties;
+
+    public OpenAiRssArticleSelector(
+            @Qualifier("openAiRestClient") RestClient restClient,
+            ObjectMapper objectMapper,
+            AiSelectionProperties properties) {
+        this.restClient = restClient;
+        this.objectMapper = objectMapper;
+        this.properties = properties;
+    }
 
     /** 제목과 RSS 요약을 OpenAI에 전달하고 선택된 URL에 해당하는 기사만 반환한다. */
     @Override
