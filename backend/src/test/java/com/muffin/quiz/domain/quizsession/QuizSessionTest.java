@@ -83,13 +83,21 @@ class QuizSessionTest {
     @Test
     @DisplayName("정답 수가 1문항 이하이면 보상은 0원으로 확정된다")
     void claimReward_setsZeroWhenCorrectCountIsOneOrLess() {
-        QuizSession session = QuizSession.start(1L, 10L, LocalDate.of(2026, 5, 7), 1);
-        session.recordAttempt(100L, 1001L, true, 100L, LocalDateTime.of(2026, 5, 7, 9, 10));
+        QuizSession oneCorrectSession = QuizSession.start(1L, 10L, LocalDate.of(2026, 5, 7), 1);
+        oneCorrectSession.recordAttempt(100L, 1001L, true, 100L, LocalDateTime.of(2026, 5, 7, 9, 10));
 
-        Long reward = session.claimReward();
+        Long oneCorrectReward = oneCorrectSession.claimReward();
 
-        assertEquals(0L, reward);
-        assertEquals(0L, session.getRewardMoney());
+        assertEquals(0L, oneCorrectReward);
+        assertEquals(0L, oneCorrectSession.getRewardMoney());
+
+        QuizSession zeroCorrectSession = QuizSession.start(1L, 10L, LocalDate.of(2026, 5, 7), 1);
+        zeroCorrectSession.recordAttempt(100L, 1001L, false, null, LocalDateTime.of(2026, 5, 7, 9, 10));
+
+        Long zeroCorrectReward = zeroCorrectSession.claimReward();
+
+        assertEquals(0L, zeroCorrectReward);
+        assertEquals(0L, zeroCorrectSession.getRewardMoney());
     }
 
     @Test
