@@ -31,8 +31,8 @@ public class RssFeedWriter {
             if (newsRepository.existsByOriginalUrl(article.url())) {
                 continue;
             }
-            News news = News.pending(
-                    category.getId(), article.title(), publisher, article.publishedAt(), null, article.url(), null);
+            News news = News.processing(
+                    category.getId(), article.title(), publisher, article.publishedAt(), null, article.url());
             collectedIds.add(newsRepository.save(news).getId());
         }
         return collectedIds;

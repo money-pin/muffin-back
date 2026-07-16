@@ -38,13 +38,12 @@ class NewsPersistenceTest {
     }
 
     private News createNews(String originalUrl) {
-        return News.create(
+        return News.processing(
                 1L,
                 "경제 뉴스",
                 "muffin",
                 LocalDateTime.of(2026, 7, 7, 9, 0),
                 "https://example.com/thumb.png",
-                originalUrl,
-                "뉴스 본문");
+                originalUrl);
     }
 }

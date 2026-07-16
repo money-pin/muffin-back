@@ -42,6 +42,9 @@ public class News extends BaseEntity {
     @Column(name = "title", nullable = false)
     private String title;
 
+    @Column(name = "summary", length = 255)
+    private String summary;
+
     @Column(name = "publisher", nullable = false, length = 20)
     private String publisher;
 
@@ -75,6 +78,7 @@ public class News extends BaseEntity {
     private News(
             Long categoryId,
             String title,
+            String summary,
             String publisher,
             LocalDateTime publishedAt,
             String thumbnailUrl,
@@ -83,6 +87,7 @@ public class News extends BaseEntity {
             NewsStatus status) {
         this.categoryId = categoryId;
         this.title = title;
+        this.summary = summary;
         this.publisher = publisher;
         this.publishedAt = publishedAt;
         this.thumbnailUrl = thumbnailUrl;
@@ -91,38 +96,39 @@ public class News extends BaseEntity {
         this.status = status;
     }
 
-    /** 발행 대기 상태의 뉴스 레코드를 생성한다. */
-    public static News create(
+    /** RSS로 수집한 뉴스를 AI 처리 중 상태로 생성한다. */
+    public static News processing(
             Long categoryId,
             String title,
             String publisher,
             LocalDateTime publishedAt,
             String thumbnailUrl,
-            String originalUrl,
-            String content) {
-        return pending(categoryId, title, publisher, publishedAt, thumbnailUrl, originalUrl, content);
-    }
-
-    /** 외부 뉴스 수집 후 아직 발행 처리되지 않은 뉴스 레코드를 생성한다. */
-    public static News pending(
-            Long categoryId,
-            String title,
-            String publisher,
-            LocalDateTime publishedAt,
-            String thumbnailUrl,
-            String originalUrl,
-            String content) {
+            String originalUrl) {
         return new News(
-                categoryId, title, publisher, publishedAt, thumbnailUrl, originalUrl, content, NewsStatus.PENDING);
+                categoryId,
+                title,
+                null,
+                publisher,
+                publishedAt,
+                thumbnailUrl,
+                originalUrl,
+                null,
+                NewsStatus.PROCESSING);
     }
 
-    /** 뉴스 발행 처리가 완료되었을 때 상태를 변경한다. */
+    /** 발행 대기 중인 뉴스를 사용자에게 공개한다. */
     public void publish() {
+        if (status != NewsStatus.PENDING) {
+            throw new IllegalStateException("Only pending news can be published");
+        }
         this.status = NewsStatus.PUBLISHED;
     }
 
     /** 뉴스 발행 또는 처리 과정이 실패했을 때 상태를 변경한다. */
     public void fail() {
+        if (status == NewsStatus.PUBLISHED) {
+            throw new IllegalStateException("Published news cannot be marked as failed");
+        }
         this.status = NewsStatus.FAILED;
     }
 
@@ -145,6 +151,41 @@ public class News extends BaseEntity {
     public void delete() {
         if (this.deletedAt == null) {
             this.deletedAt = LocalDateTime.now();
+        }
+    }
+
+    /** AI 재구성 결과를 저장하고 정해진 발행 시각을 기다리는 상태로 변경한다. */
+    public void completeReconstruction(String summary, String reconstructedContent) {
+        if (status != NewsStatus.PROCESSING) {
+            throw new IllegalStateException("Only processing news can complete reconstruction");
+        }
+
+        validateSummary(summary);
+        validateContent(reconstructedContent);
+
+        this.summary = summary;
+        this.content = reconstructedContent;
+        this.status = NewsStatus.PENDING;
+    }
+
+    private static void validateSummary(String summary) {
+        if (summary == null || summary.isBlank()) {
+            throw new IllegalArgumentException("News summary must not be blank");
+        }
+        if (summary.length() > 255) {
+            throw new IllegalArgumentException("News summary must be 255 characters or fewer");
+        }
+        if (summary.contains("\n") || summary.contains("\r")) {
+            throw new IllegalArgumentException("News summary must be a single line");
+        }
+    }
+
+    private static void validateContent(String content) {
+        if (content == null || content.isBlank()) {
+            throw new IllegalArgumentException("News content must not be blank");
+        }
+        if (content.length() > 1_000) {
+            throw new IllegalArgumentException("News content must be 1000 characters or fewer");
         }
     }
 }
