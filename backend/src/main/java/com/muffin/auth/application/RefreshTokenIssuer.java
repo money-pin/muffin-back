@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +43,11 @@ public class RefreshTokenIssuer {
                         () -> refreshTokenRepository.save(RefreshToken.issue(userId, tokenHash, expiresAt)));
 
         return rawToken;
+    }
+
+    /** 원문 refresh token으로 아직 만료되지 않은 레코드를 찾는다. 재발급/로그아웃에서 사용한다. */
+    public Optional<RefreshToken> findValid(String rawToken) {
+        return refreshTokenRepository.findByTokenHash(hash(rawToken)).filter(token -> !token.isExpired());
     }
 
     private static String generateRawToken() {

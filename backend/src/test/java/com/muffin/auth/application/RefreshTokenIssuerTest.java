@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.muffin.auth.domain.RefreshToken;
 import com.muffin.auth.domain.RefreshTokenRepository;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,5 +50,33 @@ class RefreshTokenIssuerTest {
         RefreshToken saved = refreshTokenRepository.findByUserId(USER_ID).orElseThrow();
         assertThat(saved.getTokenHash()).isEqualTo(RefreshTokenIssuer.hash(secondToken));
         assertThat(saved.getTokenHash()).isNotEqualTo(RefreshTokenIssuer.hash(firstToken));
+    }
+
+    @Test
+    @DisplayName("findValid: 발급된 원문 토큰으로 조회하면 해당 행을 찾는다")
+    void findValid_returnsRowForIssuedToken() {
+        String rawToken = refreshTokenIssuer.issue(USER_ID);
+
+        assertThat(refreshTokenIssuer.findValid(rawToken)).isPresent().get().satisfies(token -> assertThat(
+                        token.getUserId())
+                .isEqualTo(USER_ID));
+    }
+
+    @Test
+    @DisplayName("findValid: 존재하지 않는 토큰이면 빈 값")
+    void findValid_returnsEmptyForUnknownToken() {
+        assertThat(refreshTokenIssuer.findValid("no-such-token")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("findValid: 만료된 토큰이면 빈 값")
+    void findValid_returnsEmptyForExpiredToken() {
+        String rawToken = "expired-raw-token";
+        refreshTokenRepository.save(RefreshToken.issue(
+                USER_ID,
+                RefreshTokenIssuer.hash(rawToken),
+                LocalDateTime.now(ZoneId.of("Asia/Seoul")).minusDays(1)));
+
+        assertThat(refreshTokenIssuer.findValid(rawToken)).isEmpty();
     }
 }

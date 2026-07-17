@@ -80,7 +80,7 @@ include::{snippets}/email-verification-confirm-mismatch/response-fields.adoc[]
 |===
 
 [[auth-signup]]
-== 로컬 회원가입 (Auth-02)
+== 로컬 회원가입 (Auth-01)
 
 이메일/비밀번호/이름과 약관 동의로 로컬 계정을 생성한다. 가입 즉시 로그인 상태가 되어 access token을 응답 바디로, refresh token을 HttpOnly Cookie(`refreshToken`, Path=`/api/auth`, Secure, SameSite=Strict)로 발급한다.
 
@@ -119,7 +119,7 @@ include::{snippets}/signup-local-duplicate-email/response-fields.adoc[]
 |===
 
 [[auth-login]]
-== 로컬 로그인 (Auth-03)
+== 로컬 로그인 (Auth-02)
 
 이메일/비밀번호로 로그인하고 access token을 응답 바디로, refresh token을 HttpOnly Cookie(`refreshToken`, Path=`/api/auth`, Secure, SameSite=Strict)로 발급한다.
 
@@ -163,6 +163,34 @@ include::{snippets}/login-local-locked/response-fields.adoc[]
 |403|AUTH_403_002|탈퇴한 계정입니다.|status=WITHDRAWN
 |403|AUTH_403_003|정지된 계정입니다.|status=SUSPENDED
 |423|AUTH_423_002|로그인 시도 횟수를 초과하여 계정이 잠겼습니다. 30분 후 다시 시도해 주세요.|비밀번호 5회 연속 실패(30분 후 자동 해제)
+|===
+
+[[auth-token-refresh]]
+== Access Token 재발급 (Auth-02)
+
+요청 Cookie의 refresh token(`refreshToken`)으로 access token을 새로 발급한다. 요청 바디는 없고 `Authorization` 헤더도 필요 없다(만료된 access token을 대체하기 위한 API이므로).
+
+NOTE: 재발급할 때마다 refresh token도 함께 회전(rotate)된다. 새 refresh token이 다시 `Set-Cookie`로 내려가고, 재발급에 쓰인 기존 refresh token은 그 즉시 무효화되어 재사용할 수 없다(탈취 재사용 방지).
+
+=== 응답 - 성공
+
+include::{snippets}/token-refresh-success/http-response.adoc[]
+include::{snippets}/token-refresh-success/response-fields.adoc[]
+
+=== 응답 - 실패(refresh token 쿠키 없음/유효하지 않음)
+
+include::{snippets}/token-refresh-invalid/http-response.adoc[]
+include::{snippets}/token-refresh-invalid/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_003|유효하지 않은 refresh token입니다.|쿠키 없음, 존재하지 않는 토큰, 만료된 토큰을 모두 동일하게 응답
+|403|AUTH_403_002|탈퇴한 계정입니다.|status=WITHDRAWN
+|403|AUTH_403_003|정지된 계정입니다.|status=SUSPENDED
 |===
 
 [[stats-summary]]
