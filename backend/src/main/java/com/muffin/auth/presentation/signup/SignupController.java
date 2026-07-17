@@ -1,0 +1,41 @@
+package com.muffin.auth.presentation.signup;
+
+import com.muffin.auth.application.signup.SignupCommandService;
+import com.muffin.auth.application.signup.SignupResult;
+import com.muffin.auth.presentation.RefreshTokenCookieHelper;
+import com.muffin.auth.presentation.signup.dto.LocalSignupRequest;
+import com.muffin.auth.presentation.signup.dto.SignupResponse;
+import com.muffin.auth.presentation.signup.swagger.SignupApi;
+import com.muffin.global.apiPayload.ApiResponse;
+import com.muffin.global.apiPayload.code.GeneralSuccessCode;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class SignupController implements SignupApi {
+
+    private final SignupCommandService signupCommandService;
+    private final RefreshTokenCookieHelper refreshTokenCookieHelper;
+
+    @Override
+    @PostMapping("/signup")
+    public ApiResponse<SignupResponse> signupLocal(
+            @Valid @RequestBody LocalSignupRequest request, HttpServletResponse response) {
+        SignupResult result = signupCommandService.signupLocal(
+                request.email(), request.password(), request.name(), request.termsAgreed());
+
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                refreshTokenCookieHelper.build(result.refreshToken()).toString());
+
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, new SignupResponse(result.accessToken()));
+    }
+}

@@ -56,6 +56,24 @@ public class GeneralExceptionAdvice {
         return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, detail));
     }
 
+    // 도메인 엔티티가 직접 던지는 입력값 검증 실패(형식/범위 위반)
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalArgument(IllegalArgumentException ex) {
+        BaseErrorCode ec = GeneralErrorCode.BAD_REQUEST;
+
+        log.warn("[IllegalArgumentException] {}", ex.getMessage());
+        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(ex.getMessage())));
+    }
+
+    // 도메인 엔티티가 직접 던지는 상태 전이 위반(이미 처리됨, 잘못된 상태에서의 요청 등)
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalState(IllegalStateException ex) {
+        BaseErrorCode ec = GeneralErrorCode.CONFLICT;
+
+        log.warn("[IllegalStateException] {}", ex.getMessage());
+        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(ex.getMessage())));
+    }
+
     // 타입 미스매치
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<?>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
