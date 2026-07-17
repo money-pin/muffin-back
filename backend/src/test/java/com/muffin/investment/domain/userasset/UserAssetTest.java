@@ -55,4 +55,30 @@ class UserAssetTest {
                 () -> userAsset.applySettlement(
                         -20_000L, BigDecimal.valueOf(-200.0), LocalDateTime.of(2026, 5, 8, 9, 0)));
     }
+
+    @Test
+    @DisplayName("퀴즈 보상을 반영하면 총자산이 보상 금액만큼 증가한다")
+    void addQuizReward_increasesTotalAsset() {
+        UserAsset userAsset = UserAsset.create(1L, 1_000_000L);
+
+        userAsset.addQuizReward(200_000L);
+
+        assertEquals(1_200_000L, userAsset.getTotalAsset());
+    }
+
+    @Test
+    @DisplayName("퀴즈 보상 금액이 음수이면 예외가 발생한다")
+    void addQuizReward_throwsWhenRewardNegative() {
+        UserAsset userAsset = UserAsset.create(1L, 1_000_000L);
+
+        assertThrows(IllegalArgumentException.class, () -> userAsset.addQuizReward(-1L));
+    }
+
+    @Test
+    @DisplayName("퀴즈 보상 반영 후 총자산이 Long 범위를 초과하면 예외가 발생한다")
+    void addQuizReward_throwsWhenTotalAssetOverflows() {
+        UserAsset userAsset = UserAsset.create(1L, Long.MAX_VALUE);
+
+        assertThrows(IllegalArgumentException.class, () -> userAsset.addQuizReward(1L));
+    }
 }
