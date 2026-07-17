@@ -3,6 +3,7 @@ package com.muffin.investment.application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.when;
 
 import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.InvestmentRepository;
@@ -12,6 +13,8 @@ import com.muffin.investment.domain.profitsummary.ProfitSummary;
 import com.muffin.investment.domain.profitsummary.ProfitSummaryRepository;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
+import com.muffin.sector.application.TradingCalendarService;
+import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.EtfPriceRepository;
 import com.muffin.sector.domain.sector.Sector;
@@ -19,11 +22,13 @@ import com.muffin.sector.domain.sector.SectorRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /** 정산 배치 오케스트레이터의 유저별 트랜잭션/멱등/실패 격리/폴백 동작을 실제 저장소로 검증한다. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
@@ -50,6 +55,15 @@ class SettlementCommandServiceTest {
 
     @Autowired
     private EtfPriceRepository etfPriceRepository;
+
+    @MockitoBean
+    private TradingCalendarService tradingCalendarService;
+
+    @BeforeEach
+    void setUpCalendar() {
+        when(tradingCalendarService.getCalendar(SETTLE_DATE))
+                .thenReturn(new TradingCalendar(SETTLE_DATE, true, INVEST_DATE, SETTLE_DATE.plusDays(1)));
+    }
 
     @AfterEach
     void cleanUp() {
