@@ -3,6 +3,7 @@ package com.muffin.quiz.presentation.swagger;
 import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.quiz.presentation.dto.request.QuizAttemptRequest;
 import com.muffin.quiz.presentation.dto.response.QuizAttemptResponse;
+import com.muffin.quiz.presentation.dto.response.QuizResultResponse;
 import com.muffin.quiz.presentation.dto.response.TodayQuizResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,6 +27,21 @@ public interface QuizApi {
                 description = "온보딩을 완료한 후 이용할 수 있습니다.")
     })
     ApiResponse<TodayQuizResponse> getTodayQuiz(@Parameter(hidden = true) Long userId);
+
+    @Operation(
+            summary = "오늘의 한입 퀴즈 결과 조회 (QUIZ-03)",
+            description = "오늘 완료한 퀴즈의 정답 수와 이미 지급된 가상 머니 보상 결과를 조회한다. "
+                    + "퀴즈를 모두 완료한 경우에만 조회할 수 있으며, 보상 지급은 답안 제출 API에서 이미 처리된다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "퀴즈 결과 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "요청이 거부되었습니다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "오늘의 퀴즈를 아직 준비 중입니다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "퀴즈를 모두 완료한 후 결과를 조회할 수 있습니다.")
+    })
+    ApiResponse<QuizResultResponse> getTodayQuizResult(@Parameter(hidden = true) Long userId);
 
     @Operation(
             summary = "퀴즈 답안 제출 (QUIZ-02)",

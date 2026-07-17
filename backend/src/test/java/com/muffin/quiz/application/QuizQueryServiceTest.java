@@ -18,6 +18,8 @@ import com.muffin.quiz.domain.quizset.QuizSet;
 import com.muffin.quiz.domain.quizset.QuizSetRepository;
 import com.muffin.quiz.domain.quizset.enums.QuizDifficulty;
 import com.muffin.quiz.domain.quizset.enums.QuizSetStatus;
+import com.muffin.quiz.exception.QuizErrorCode;
+import com.muffin.quiz.presentation.dto.response.QuizResultResponse;
 import com.muffin.quiz.presentation.dto.response.TodayQuizResponse;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
@@ -166,6 +168,65 @@ class QuizQueryServiceTest {
         assertEquals(GeneralErrorCode.FORBIDDEN, exception.getErrorCode());
     }
 
+    @Test
+    @DisplayName("완료된 오늘 퀴즈 세션의 결과와 지급된 보상 정보를 조회한다")
+    void getTodayQuizResult_returnsFinishedResult() {
+        LocalDate today = LocalDate.now(KST);
+        User user = onboardedUser("세현");
+        QuizSet quizSet = publishedQuizSet(today);
+        QuizSession session = finishedSession(today);
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(quizSet));
+        when(quizSessionRepository.findByUserIdAndDailyQuizSetId(USER_ID, QUIZ_SET_ID))
+                .thenReturn(Optional.of(session));
+
+        QuizResultResponse response = quizQueryService.getTodayQuizResult(USER_ID);
+
+        assertEquals(501L, response.quizSessionId());
+        assertEquals(today, response.quizDate());
+        assertEquals(QuizSessionStatus.FINISHED, response.sessionStatus());
+        assertEquals(3, response.progress().totalCount());
+        assertEquals(2, response.progress().correctCount());
+        assertEquals(1, response.progress().incorrectCount());
+        assertEquals(200000L, response.reward().amount());
+        assertTrue(response.reward().claimed());
+    }
+
+    @Test
+    @DisplayName("오늘 퀴즈 세션이 아직 완료되지 않았으면 결과를 조회할 수 없다")
+    void getTodayQuizResult_throwsConflictWhenSessionIsNotFinished() {
+        LocalDate today = LocalDate.now(KST);
+        User user = onboardedUser("세현");
+        QuizSet quizSet = publishedQuizSet(today);
+        QuizSession session = QuizSession.start(USER_ID, QUIZ_SET_ID, today, 3);
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(quizSet));
+        when(quizSessionRepository.findByUserIdAndDailyQuizSetId(USER_ID, QUIZ_SET_ID))
+                .thenReturn(Optional.of(session));
+
+        GeneralException exception =
+                assertThrows(GeneralException.class, () -> quizQueryService.getTodayQuizResult(USER_ID));
+
+        assertEquals(QuizErrorCode.QUIZ_RESULT_NOT_READY, exception.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("오늘 공개된 퀴즈 세트가 없으면 결과를 조회할 수 없다")
+    void getTodayQuizResult_throwsNotFoundWhenQuizSetIsUnavailable() {
+        LocalDate today = LocalDate.now(KST);
+        User user = onboardedUser("세현");
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.empty());
+
+        GeneralException exception =
+                assertThrows(GeneralException.class, () -> quizQueryService.getTodayQuizResult(USER_ID));
+
+        assertEquals(QuizErrorCode.QUIZ_UNAVAILABLE, exception.getErrorCode());
+    }
+
     private User onboardedUser(String nickname) {
         User user = registeredUser(nickname);
         user.completeOnboarding(1, 2, 3);
@@ -199,5 +260,15 @@ class QuizQueryServiceTest {
         }
 
         return quizSet;
+    }
+
+    private QuizSession finishedSession(LocalDate today) {
+        QuizSession session = QuizSession.start(USER_ID, QUIZ_SET_ID, today, 3);
+        ReflectionTestUtils.setField(session, "id", 501L);
+        session.recordAttempt(101L, 1011L, true, 100000L, LocalDateTime.now());
+        session.recordAttempt(102L, 1022L, true, 100000L, LocalDateTime.now());
+        session.recordAttempt(103L, 1033L, false, null, LocalDateTime.now());
+        session.claimReward();
+        return session;
     }
 }

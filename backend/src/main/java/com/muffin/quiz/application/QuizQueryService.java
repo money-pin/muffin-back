@@ -10,9 +10,13 @@ import com.muffin.quiz.domain.quizset.QuizOption;
 import com.muffin.quiz.domain.quizset.QuizSet;
 import com.muffin.quiz.domain.quizset.QuizSetRepository;
 import com.muffin.quiz.domain.quizset.enums.QuizSetStatus;
+import com.muffin.quiz.exception.QuizErrorCode;
 import com.muffin.quiz.presentation.dto.response.QuizOptionResponse;
 import com.muffin.quiz.presentation.dto.response.QuizProgressResponse;
 import com.muffin.quiz.presentation.dto.response.QuizQuestionResponse;
+import com.muffin.quiz.presentation.dto.response.QuizResultProgressResponse;
+import com.muffin.quiz.presentation.dto.response.QuizResultResponse;
+import com.muffin.quiz.presentation.dto.response.QuizRewardResponse;
 import com.muffin.quiz.presentation.dto.response.TodayQuizResponse;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
@@ -41,15 +45,7 @@ public class QuizQueryService {
     @Transactional(readOnly = true)
     public TodayQuizResponse getTodayQuiz(Long userId) {
         LocalDate today = LocalDate.now(KST);
-
-        User user =
-                userRepository.findById(userId).orElseThrow(() -> new GeneralException(GeneralErrorCode.UNAUTHORIZED));
-
-        // 온보딩을 완료한 사용자만 오늘의 퀴즈를 조회할 수 있다.
-        if (!user.isOnboardingCompleted()) {
-            throw new GeneralException(GeneralErrorCode.FORBIDDEN);
-        }
-
+        User user = getValidatedUser(userId);
         String nickname = user.getNickname();
 
         // KST 기준 오늘 날짜의 퀴즈 세트를 조회한다.
@@ -82,6 +78,42 @@ public class QuizQueryService {
 
         QuizSession session = sessionOptional.get();
         return sessionResponse(today, nickname, quizSet, session);
+    }
+
+    @Transactional(readOnly = true)
+    public QuizResultResponse getTodayQuizResult(Long userId) {
+        LocalDate today = LocalDate.now(KST);
+        getValidatedUser(userId);
+
+        // 오늘 공개된 퀴즈 세트가 없으면 결과도 조회할 수 없다.
+        QuizSet quizSet = quizSetRepository
+                .findByQuizDate(today)
+                .filter(todayQuizSet -> todayQuizSet.getStatus() == QuizSetStatus.PUBLISHED)
+                .orElseThrow(() -> new GeneralException(QuizErrorCode.QUIZ_UNAVAILABLE));
+
+        // 결과 조회는 사용자의 당일 퀴즈 세션을 기준으로 한다.
+        QuizSession session = quizSessionRepository
+                .findByUserIdAndDailyQuizSetId(userId, quizSet.getId())
+                .orElseThrow(() -> new GeneralException(QuizErrorCode.QUIZ_RESULT_NOT_READY));
+
+        // 3문항을 모두 완료한 세션만 결과 화면에 진입할 수 있다.
+        if (session.getStatus() != QuizSessionStatus.FINISHED) {
+            throw new GeneralException(QuizErrorCode.QUIZ_RESULT_NOT_READY);
+        }
+
+        return toQuizResultResponse(session);
+    }
+
+    /** 임시 userId 기반 인증 단계. 추후 Security 적용 시 인증 객체에서 사용자 식별자를 가져오도록 교체한다. */
+    private User getValidatedUser(Long userId) {
+        User user =
+                userRepository.findById(userId).orElseThrow(() -> new GeneralException(GeneralErrorCode.UNAUTHORIZED));
+
+        if (!user.isOnboardingCompleted()) {
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN);
+        }
+
+        return user;
     }
 
     /** 오늘의 퀴즈가 없거나 공개 전인 경우 빈 상태 UI를 그릴 수 있는 응답을 만든다. */
@@ -140,5 +172,17 @@ public class QuizQueryService {
 
         return new TodayQuizResponse(
                 quizSet.getId(), today, quizSet.getStatus(), session.getStatus(), nickname, progress, questions);
+    }
+
+    /** 완료된 퀴즈 세션에 저장된 결과와 보상 정보를 결과 조회 응답 DTO로 변환한다. */
+    private QuizResultResponse toQuizResultResponse(QuizSession session) {
+        int incorrectCount = session.getTotalCount() - session.getCorrectCount();
+
+        return new QuizResultResponse(
+                session.getId(),
+                session.getDate(),
+                session.getStatus(),
+                new QuizResultProgressResponse(session.getTotalCount(), session.getCorrectCount(), incorrectCount),
+                new QuizRewardResponse(session.getRewardMoney(), session.isRewardClaimed()));
     }
 }
