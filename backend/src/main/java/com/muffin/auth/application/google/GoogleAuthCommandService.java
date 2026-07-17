@@ -1,5 +1,6 @@
 package com.muffin.auth.application.google;
 
+import com.muffin.auth.application.ConstraintViolations;
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.application.exception.AuthErrorCode;
@@ -16,6 +17,7 @@ import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import com.muffin.user.domain.enums.UserStatus;
+import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
@@ -42,6 +44,7 @@ public class GoogleAuthCommandService {
     private final DeletedEmailRepository deletedEmailRepository;
     private final AccessTokenProvider accessTokenProvider;
     private final RefreshTokenIssuer refreshTokenIssuer;
+    private final EntityManager entityManager;
 
     @Transactional
     public TokenPair authenticate(String idToken, boolean termsAgreed) {
@@ -85,8 +88,24 @@ public class GoogleAuthCommandService {
         try {
             return authRepository.saveAndFlush(auth);
         } catch (DataIntegrityViolationException e) {
-            // findByProviderAndProviderUserId 통과 이후 커밋 전 동시 가입 레이스: DB unique 제약이 최종 방어선.
-            throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
+            // 실패한 flush로 영속성 컨텍스트가 오염돼 있어(재조회 시 재플러시 시도로 깨짐), 재조회 전에 반드시 비워야 한다.
+            entityManager.clear();
+
+            if (ConstraintViolations.isConstraint(e, "uk_provider_user")) {
+                // findByProviderAndProviderUserId 통과 이후 커밋 전에 같은 구글 계정으로 먼저 가입을 완료한 요청이 있었던
+                // 것: 남과 충돌한 게 아니라 나 자신의 동시 요청이므로, 실패시키지 않고 승자의 결과를 재조회해 로그인으로 처리한다.
+                // User는 IDENTITY 생성 전략이라 save() 시점에 이미 INSERT가 끝나 있어(Auth와 달리 이 트랜잭션 롤백에 기대어
+                // 자동으로 없어지지 않음), 짝을 잃은 이 요청 자신의 User 행을 직접 지워야 고아로 남지 않는다.
+                userRepository.deleteById(user.getUserId());
+                return authRepository
+                        .findByProviderAndProviderUserId(AuthProvider.GOOGLE, payload.sub())
+                        .orElseThrow(() -> new GeneralException(AuthErrorCode.INVALID_GOOGLE_TOKEN));
+            }
+            if (ConstraintViolations.isConstraint(e, "uk_provider_email")) {
+                // 다른 구글 계정(sub)이 이미 같은 이메일을 쓰고 있음: 이건 진짜 충돌이라 그대로 실패시킨다.
+                throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
+            }
+            throw e;
         }
     }
 }

@@ -232,6 +232,22 @@ class AuthTest {
         }
 
         @Test
+        @DisplayName("잠금이 만료된 뒤 한 번만 더 틀려도 곧바로 재잠기지 않는다(만료 시 실패 횟수 초기화)")
+        void doesNotRelockImmediatelyAfterExpiry() {
+            Auth auth = Auth.createLocal(1L, "test@example.com", "password1", "encoded");
+            for (int i = 0; i < 5; i++) {
+                auth.recordFailedLogin(5, 0); // lockMinutes=0으로 매번 즉시 만료된 상태 재현
+            }
+            assertThat(auth.isLoginLocked()).isFalse(); // 잠금은 이미 만료됨
+            assertThat(auth.getFailedLoginAttempts()).isEqualTo(5);
+
+            auth.recordFailedLogin(5, 30);
+
+            assertThat(auth.isLoginLocked()).isFalse();
+            assertThat(auth.getFailedLoginAttempts()).isEqualTo(1);
+        }
+
+        @Test
         @DisplayName("resetLoginAttempts 호출 시 실패 횟수와 잠금이 모두 해제된다")
         void resetClearsLockAndCount() {
             Auth auth = Auth.createLocal(1L, "test@example.com", "password1", "encoded");

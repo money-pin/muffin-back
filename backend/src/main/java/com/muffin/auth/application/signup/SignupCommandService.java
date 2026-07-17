@@ -1,5 +1,6 @@
 package com.muffin.auth.application.signup;
 
+import com.muffin.auth.application.ConstraintViolations;
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.application.exception.AuthErrorCode;
@@ -58,6 +59,10 @@ public class SignupCommandService {
             authRepository.saveAndFlush(auth);
         } catch (DataIntegrityViolationException e) {
             // existsByEmail 이후 커밋 전 동시 가입 레이스: DB unique 제약(uk_provider_email)이 최종 방어선.
+            // 다른 무결성 위반까지 이메일 중복으로 잘못 번역하지 않도록 실제 위반 제약을 확인한다.
+            if (!ConstraintViolations.isConstraint(e, "uk_provider_email")) {
+                throw e;
+            }
             throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
         }
 

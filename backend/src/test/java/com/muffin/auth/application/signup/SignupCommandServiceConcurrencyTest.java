@@ -82,4 +82,21 @@ class SignupCommandServiceConcurrencyTest {
                 .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
                         .isEqualTo("AUTH_409_001"));
     }
+
+    @Test
+    @DisplayName("uk_provider_email과 무관한 무결성 위반이면 EMAIL_ALREADY_IN_USE로 감추지 않고 그대로 전파한다")
+    void signupLocal_unrelatedDataIntegrityViolation_propagatesAsIs() {
+        when(authRepository.existsByEmail(EMAIL)).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            ReflectionTestUtils.setField(user, "userId", 1L);
+            return user;
+        });
+        when(passwordEncoder.encode(PASSWORD)).thenReturn("encoded");
+        DataIntegrityViolationException unrelated = new DataIntegrityViolationException("some_other_constraint");
+        when(authRepository.saveAndFlush(any(Auth.class))).thenThrow(unrelated);
+
+        assertThatThrownBy(() -> signupCommandService.signupLocal(EMAIL, PASSWORD, NAME, true))
+                .isSameAs(unrelated);
+    }
 }

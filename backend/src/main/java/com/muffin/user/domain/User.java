@@ -63,8 +63,7 @@ public class User extends BaseEntity {
     private static final int NAME_MAX_LENGTH = 10;
     private static final int NICKNAME_MAX_LENGTH = 6;
     // 한글/영문/숫자/공백만 허용, 1~6자. 정규화(NFC) 후의 문자열에 대해서만 검증한다.
-    private static final Pattern NICKNAME_PATTERN =
-            Pattern.compile("^[가-힣a-zA-Z0-9\\s]{1," + NICKNAME_MAX_LENGTH + "}$");
+    private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[가-힣a-zA-Z0-9 ]{1," + NICKNAME_MAX_LENGTH + "}$");
 
     private User(Long characterId, String userUuid, String name, String nickname) {
         this.characterId = characterId;

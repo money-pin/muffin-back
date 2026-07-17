@@ -121,11 +121,18 @@ public class Auth extends BaseEntity {
         return lockedUntil != null && lockedUntil.isAfter(LocalDateTime.now(KST));
     }
 
-    /** 비밀번호 불일치 시 호출한다. 누적 실패 횟수가 maxAttempts에 도달하면 lockMinutes 동안 로그인을 잠근다. */
+    /**
+     * 비밀번호 불일치 시 호출한다. 누적 실패 횟수가 maxAttempts에 도달하면 lockMinutes 동안 로그인을 잠근다. 이전 잠금이 이미
+     * 만료된 상태라면 새로 세기 전에 먼저 초기화한다.
+     */
     public void recordFailedLogin(int maxAttempts, long lockMinutes) {
+        LocalDateTime now = LocalDateTime.now(KST);
+        if (lockedUntil != null && !lockedUntil.isAfter(now)) {
+            resetLoginAttempts();
+        }
         this.failedLoginAttempts++;
         if (this.failedLoginAttempts >= maxAttempts) {
-            this.lockedUntil = LocalDateTime.now(KST).plusMinutes(lockMinutes);
+            this.lockedUntil = now.plusMinutes(lockMinutes);
         }
     }
 

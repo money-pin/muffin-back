@@ -297,6 +297,15 @@ class UserTest {
         }
 
         @Test
+        @DisplayName("탭/줄바꿈 포함 → IllegalArgumentException(공백 문자는 리터럴 space만 허용)")
+        void controlWhitespaceRejected() {
+            User user = defaultUser();
+
+            assertThatThrownBy(() -> user.changeNickname("길동\n이")).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changeNickname("길동\t이")).isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
         @DisplayName("분해형(NFD) 한글 입력 → 완성형(NFC)으로 정규화되어 저장")
         void normalizesDecomposedHangul() {
             User user = defaultUser();

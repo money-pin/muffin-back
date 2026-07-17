@@ -172,7 +172,7 @@ class LoginControllerTest {
         mockMvc.perform(post("/api/auth/login").contentType("application/json").content(correctBody))
                 .andExpect(status().isLocked())
                 .andExpect(jsonPath("$.code", is("AUTH_423_002")))
-                .andExpect(jsonPath("$.message", is("로그인 시도 횟수를 초과하여 계정이 잠겼습니다. 30분 후 다시 시도해 주세요.")));
+                .andExpect(jsonPath("$.message", is("로그인 시도 횟수를 초과하여 계정이 잠겼습니다. 잠시 후 다시 시도해 주세요.")));
     }
 
     private record LoginRequestBody(String email, String password) {}
