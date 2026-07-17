@@ -53,6 +53,12 @@ muffin:
       max-attempts: 5
       lock-minutes: 30
 
+    signup:
+      unverified-account-cleanup:
+        ttl-minutes: 1440 # 24시간
+        cleanup-cron: "0 0 * * * *" # 매시 정각
+        zone: Asia/Seoul
+
   news:
     rss:
       publisher: ${NEWS_RSS_PUBLISHER:매일경제}

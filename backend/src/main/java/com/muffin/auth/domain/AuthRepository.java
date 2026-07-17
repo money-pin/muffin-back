@@ -1,6 +1,8 @@
 package com.muffin.auth.domain;
 
 import com.muffin.auth.domain.enums.AuthProvider;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -12,4 +14,7 @@ public interface AuthRepository extends JpaRepository<Auth, Long> {
     Optional<Auth> findByUserId(Long userId);
 
     Optional<Auth> findByProviderAndEmail(AuthProvider provider, String email);
+
+    // 미인증 계정 정리 배치용
+    List<Auth> findAllByProviderAndEmailVerifiedFalseAndCreatedAtBefore(AuthProvider provider, LocalDateTime cutoff);
 }
