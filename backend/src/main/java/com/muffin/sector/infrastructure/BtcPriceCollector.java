@@ -58,11 +58,13 @@ public class BtcPriceCollector {
 
         try {
             etfPriceWriter.writeBasePrice(btc.getId(), date, price);
-            eventPublisher.publishEvent(new EtfPricesLoadedEvent(date));
         } catch (RuntimeException e) {
             log.warn("코인 시세 저장 실패. date={}, message={}", date, e.getMessage());
             markFailedSafely(btc.getId(), date);
+            return;
         }
+
+        eventPublisher.publishEvent(new EtfPricesLoadedEvent(date));
     }
 
     private void markFailedSafely(Long etfId, LocalDate date) {

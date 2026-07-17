@@ -137,6 +137,22 @@ class BtcPriceCollectorTest {
         verify(eventPublisher, never()).publishEvent(any());
     }
 
+    @Test
+    @DisplayName("저장은 성공했는데 이벤트 발행이 실패해도 저장 실패로 오인해 FAILED로 덮어쓰지 않는다")
+    void collect_doesNotMarkFailed_whenOnlyEventPublishingFails() {
+        when(tradingCalendarService.getCalendar(DATE)).thenReturn(tradingDay());
+        when(etfRepository.findByEtfCode("BTC")).thenReturn(Optional.of(btc()));
+        when(coinGeckoClient.getBitcoinPriceKrw()).thenReturn(123_456_789L);
+        doThrow(new RuntimeException("listener error"))
+                .when(eventPublisher)
+                .publishEvent(new EtfPricesLoadedEvent(DATE));
+
+        assertThrows(RuntimeException.class, () -> collector.collect(DATE));
+
+        verify(etfPriceWriter).writeBasePrice(BTC_ID, DATE, 123_456_789L);
+        verify(etfPriceWriter, never()).markBaseFailed(any(), any());
+    }
+
     private static Etf btc() {
         Etf etf = Etf.create("BTC", "비트코인");
         ReflectionTestUtils.setField(etf, "id", BTC_ID);
