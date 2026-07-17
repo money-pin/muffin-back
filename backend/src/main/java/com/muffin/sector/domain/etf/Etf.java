@@ -3,6 +3,8 @@ package com.muffin.sector.domain.etf;
 import com.muffin.global.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -30,13 +32,23 @@ public class Etf extends BaseEntity {
     @Column(name = "etf_name", nullable = false, length = 50)
     private String etfName;
 
-    private Etf(String etfCode, String etfName) {
+    @Enumerated(EnumType.STRING)
+    @Column(name = "price_provider", nullable = false, length = 20)
+    private PriceProvider priceProvider;
+
+    private Etf(String etfCode, String etfName, PriceProvider priceProvider) {
         this.etfCode = etfCode;
         this.etfName = etfName;
+        this.priceProvider = priceProvider;
     }
 
-    /** ETF 레코드를 생성한다. */
+    /** 토스증권 시세로 수집하는 ETF 레코드를 생성한다. */
     public static Etf create(String etfCode, String etfName) {
-        return new Etf(etfCode, etfName);
+        return new Etf(etfCode, etfName, PriceProvider.TOSS);
+    }
+
+    /** 토스증권 외 다른 데이터 제공처(예: CoinGecko)로 시세를 수집하는 레코드를 생성한다. */
+    public static Etf create(String etfCode, String etfName, PriceProvider priceProvider) {
+        return new Etf(etfCode, etfName, priceProvider);
     }
 }

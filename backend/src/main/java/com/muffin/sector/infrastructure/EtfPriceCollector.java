@@ -4,6 +4,7 @@ import com.muffin.global.event.EtfPricesLoadedEvent;
 import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
+import com.muffin.sector.domain.etf.PriceProvider;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
 import com.muffin.sector.infrastructure.toss.exception.TossApiException;
@@ -19,7 +20,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
- * 시딩된 모든 ETF의 특정 일자 시세를 토스증권 API에서 가져와 저장한다. ETF 하나가 실패해도 나머지 ETF 수집은 계속 진행한다.
+ * 시딩된 ETF 중 {@link PriceProvider#TOSS}가 담당하는 종목의 특정 일자 시세를 토스증권 API에서 가져와 저장한다.
+ * 다른 데이터 제공처(예: CoinGecko)로 수집하는 종목은 이 클래스가 아니라 별도 수집기가 담당한다. ETF 하나가 실패해도
+ * 나머지 ETF 수집은 계속 진행한다.
  *
  * <p>시가와 종가는 서로 다른 시각(장 시작 직후 / 장 마감 이후)에 확정되므로 {@link #collectOpen(LocalDate)}와
  * {@link #collectClose(LocalDate)}로 분리했다. 하나의 호출에서 둘 다 기록하면 장중 호출 시 아직 확정되지 않은 종가를
@@ -57,7 +60,7 @@ public class EtfPriceCollector {
 
     private CollectionSummary collect(LocalDate date, Function<Candle, String> priceField, CollectionTarget target) {
         boolean tradingDay = tradingCalendarService.getCalendar(date).tradingDay();
-        List<Etf> etfs = etfRepository.findAll();
+        List<Etf> etfs = etfRepository.findAllByPriceProvider(PriceProvider.TOSS);
 
         if (!tradingDay) {
             log.info("거래일이 아니라 ETF 시세 수집을 건너뜁니다. date={}", date);

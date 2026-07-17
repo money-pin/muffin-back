@@ -1,5 +1,6 @@
 package com.muffin.sector.application.seed;
 
+import com.muffin.sector.domain.etf.PriceProvider;
 import java.util.List;
 
 /** 섹터/ETF 기준 데이터 상수. §4의 시딩 데이터를 그대로 옮긴 것으로, DB나 Spring에 의존하지 않는다. */
@@ -9,7 +10,7 @@ public final class SectorSeedData {
 
     public record GroupSeed(String groupCode, String name, String description, int groupOrder) {}
 
-    public record EtfSeed(String etfCode, String etfName) {}
+    public record EtfSeed(String etfCode, String etfName, PriceProvider priceProvider) {}
 
     public record SectorSeed(
             String sectorCode, String groupCode, String etfCode, String name, String description, int sectorOrder) {}
@@ -22,21 +23,22 @@ public final class SectorSeedData {
 
     /**
      * §4.1~4.3에서 확정된 11개 ETF와 코인 섹터 기준가 정책에 따른 BTC 1건. `BTC`는 토스증권이 아닌 CoinGecko API로
-     * 시세를 수집하므로 종목코드 대신 CoinGecko 코인 id 대응 코드를 쓴다({@link com.muffin.sector.infrastructure.BtcPriceCollector}).
+     * 시세를 수집하므로({@link PriceProvider#COINGECKO}) 종목코드 대신 CoinGecko 코인 id 대응 코드를 쓰고,
+     * {@link com.muffin.sector.infrastructure.EtfPriceCollector}(토스 전용)의 수집 대상에서 제외된다.
      */
     public static final List<EtfSeed> ETFS = List.of(
-            new EtfSeed("459580", "KODEX CD금리액티브(합성)"),
-            new EtfSeed("132030", "KODEX 골드선물(H)"),
-            new EtfSeed("148070", "KIWOOM 국고채10년"),
-            new EtfSeed("261240", "KODEX 미국달러선물"),
-            new EtfSeed("381170", "TIGER 미국테크TOP10 INDXX"),
-            new EtfSeed("381180", "TIGER 미국필라델피아반도체나스닥"),
-            new EtfSeed("203780", "TIGER 미국나스닥바이오"),
-            new EtfSeed("390400", "KODEX 미국스마트모빌리티S&P"),
-            new EtfSeed("218420", "KODEX 미국S&P500에너지(합성)"),
-            new EtfSeed("453650", "KODEX 미국S&P500금융"),
-            new EtfSeed("494840", "TIGER 미국방산TOP10"),
-            new EtfSeed("BTC", "비트코인"));
+            new EtfSeed("459580", "KODEX CD금리액티브(합성)", PriceProvider.TOSS),
+            new EtfSeed("132030", "KODEX 골드선물(H)", PriceProvider.TOSS),
+            new EtfSeed("148070", "KIWOOM 국고채10년", PriceProvider.TOSS),
+            new EtfSeed("261240", "KODEX 미국달러선물", PriceProvider.TOSS),
+            new EtfSeed("381170", "TIGER 미국테크TOP10 INDXX", PriceProvider.TOSS),
+            new EtfSeed("381180", "TIGER 미국필라델피아반도체나스닥", PriceProvider.TOSS),
+            new EtfSeed("203780", "TIGER 미국나스닥바이오", PriceProvider.TOSS),
+            new EtfSeed("390400", "KODEX 미국스마트모빌리티S&P", PriceProvider.TOSS),
+            new EtfSeed("218420", "KODEX 미국S&P500에너지(합성)", PriceProvider.TOSS),
+            new EtfSeed("453650", "KODEX 미국S&P500금융", PriceProvider.TOSS),
+            new EtfSeed("494840", "TIGER 미국방산TOP10", PriceProvider.TOSS),
+            new EtfSeed("BTC", "비트코인", PriceProvider.COINGECKO));
 
     /** §4.1~4.3의 11개 섹터와 코인 섹터 기준가 정책에 따라 추가된 `CRYPTO`(BTC) 1건. */
     public static final List<SectorSeed> SECTORS = List.of(

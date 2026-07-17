@@ -15,6 +15,8 @@ public class CoinGeckoClient {
     private static final String SIMPLE_PRICE_PATH = "/api/v3/simple/price";
     private static final String BITCOIN_ID = "bitcoin";
     private static final String KRW_CURRENCY = "krw";
+    // 쿼리 파라미터로 전달하면 프록시·접근 로그·APM에 키가 그대로 남을 수 있어 헤더로 전달한다.
+    private static final String API_KEY_HEADER = "x-cg-demo-api-key";
     private static final ParameterizedTypeReference<Map<String, Map<String, BigDecimal>>> RESPONSE_TYPE =
             new ParameterizedTypeReference<>() {};
 
@@ -37,8 +39,8 @@ public class CoinGeckoClient {
                         .path(SIMPLE_PRICE_PATH)
                         .queryParam("ids", BITCOIN_ID)
                         .queryParam("vs_currencies", KRW_CURRENCY)
-                        .queryParam("x_cg_demo_api_key", properties.apiKey())
                         .build())
+                .header(API_KEY_HEADER, properties.apiKey())
                 .retrieve()
                 .body(RESPONSE_TYPE));
 
