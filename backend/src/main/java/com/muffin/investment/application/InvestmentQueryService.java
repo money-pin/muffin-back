@@ -58,9 +58,9 @@ public class InvestmentQueryService {
         }
 
         ZonedDateTime now = now();
-        TradingCalendar calendar = tradingCalendarService.getCalendar(now.toLocalDate());
-        boolean settlementPending =
-                !isWeekend(now.toLocalDate()) && calendar.tradingDay() && hasPendingInvestment(userId, calendar);
+        LocalDate today = now.toLocalDate();
+        TradingCalendar calendar = tradingCalendarService.getCalendar(today);
+        boolean settlementPending = calendar.tradingDay() && hasPendingInvestment(userId, calendar);
         return new InvestmentAssetResponse(
                 asset.getTotalAsset(),
                 asset.getDailyChangeAmount(),
