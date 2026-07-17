@@ -1,5 +1,6 @@
 package com.muffin.sector.domain.sectorgroup;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -7,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SectorGroupRepository extends JpaRepository<SectorGroup, Long> {
 
     Optional<SectorGroup> findByGroupCode(String groupCode);
+
+    List<SectorGroup> findAllByOrderByGroupOrderAsc();
 }
