@@ -6,6 +6,7 @@ import com.muffin.quiz.application.QuizCommandService;
 import com.muffin.quiz.application.QuizQueryService;
 import com.muffin.quiz.presentation.dto.request.QuizAttemptRequest;
 import com.muffin.quiz.presentation.dto.response.QuizAttemptResponse;
+import com.muffin.quiz.presentation.dto.response.QuizResultResponse;
 import com.muffin.quiz.presentation.dto.response.TodayQuizResponse;
 import com.muffin.quiz.presentation.swagger.QuizApi;
 import jakarta.validation.Valid;
@@ -32,6 +33,14 @@ public class QuizController implements QuizApi {
             // TODO: 인증(Security/JWT) 구현 후 @AuthenticationPrincipal 등으로 교체. 현재는 임시 헤더.
             @RequestHeader("X-User-Id") Long userId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizQueryService.getTodayQuiz(userId));
+    }
+
+    @Override
+    @GetMapping("/today/result")
+    public ApiResponse<QuizResultResponse> getTodayQuizResult(
+            // TODO: 인증(Security/JWT) 구현 후 @AuthenticationPrincipal 등으로 교체. 현재는 임시 헤더.
+            @RequestHeader("X-User-Id") Long userId) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizQueryService.getTodayQuizResult(userId));
     }
 
     @Override
