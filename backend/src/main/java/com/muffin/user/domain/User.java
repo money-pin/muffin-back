@@ -33,7 +33,7 @@ public class User extends BaseEntity {
     @Column(name = "name", length = 10)
     private String name;
 
-    @Column(name = "nickname", nullable = false, length = 20)
+    @Column(name = "nickname", unique = true, length = 20)
     private String nickname;
 
     @Column(name = "birthday")
@@ -79,7 +79,7 @@ public class User extends BaseEntity {
             throw new NullPointerException("userUuid는 필수입니다.");
         }
         this.userUuid = userUuid;
-        validateNickname(nickname);
+        validateOptionalLength(nickname, NICKNAME_MAX_LENGTH, "nickname");
         this.nickname = nickname;
         validateOptionalLength(name, NAME_MAX_LENGTH, "name");
         this.name = name;

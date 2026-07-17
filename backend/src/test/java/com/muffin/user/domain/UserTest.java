@@ -46,17 +46,9 @@ class UserTest {
         }
 
         @Test
-        @DisplayName("null nickname → NullPointerException")
-        void nullNickname() {
-            assertThatThrownBy(() ->
-                            User.register(1L, "uuid-1234", "홍길동", null, LocalDate.of(1995, 1, 1), "010-1234-5678"))
-                    .isInstanceOf(NullPointerException.class);
-        }
-
-        @Test
-        @DisplayName("name, birthday, phoneNumber는 null 허용")
+        @DisplayName("name, nickname, birthday, phoneNumber는 null 허용(닉네임은 온보딩에서 나중에 설정)")
         void optionalFieldsNullable() {
-            assertThatNoException().isThrownBy(() -> User.register(1L, "uuid-1234", null, "길동이", null, null));
+            assertThatNoException().isThrownBy(() -> User.register(1L, "uuid-1234", null, null, null, null));
         }
     }
 
