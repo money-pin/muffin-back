@@ -51,7 +51,7 @@ class EmailVerificationControllerDocsTest {
         EmailVerificationCommandService stub = new EmailVerificationCommandService(null, null, null, null, null, null) {
             @Override
             public long sendCode(Long userId) {
-                return 180L;
+                return 300L;
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
