@@ -44,6 +44,11 @@ muffin:
       cleanup-cron: "0 0 * * * *" # 매시 정각, 만료된 인증 레코드 정리
       zone: Asia/Seoul
 
+    jwt:
+      secret: ${JWT_SECRET}
+      access-token-expire-minutes: 60
+      refresh-token-expire-days: 30
+
   news:
     rss:
       publisher: ${NEWS_RSS_PUBLISHER:매일경제}

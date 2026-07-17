@@ -19,6 +19,12 @@ toss:
     client-secret: test-client-secret
 
 muffin:
+  auth:
+    jwt:
+      secret: test-jwt-secret-key-for-automated-tests-only-32bytes-minimum
+      access-token-expire-minutes: 60
+      refresh-token-expire-days: 30
+
   news:
     ai-selection:
       enabled: false
