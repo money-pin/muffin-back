@@ -133,6 +133,34 @@ class EtfPriceWriterTest {
     }
 
     @Test
+    @DisplayName("이미 SUCCESS인 기준가는 재수집 값으로 덮어쓰지 않는다")
+    void writeBasePrice_doesNotOverwriteExistingSuccess() {
+        etfPriceWriter.writeBasePrice(ETF_ID, PRICE_DATE, 50_000_000L);
+
+        etfPriceWriter.writeBasePrice(ETF_ID, PRICE_DATE, 51_000_000L);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertEquals(50_000_000L, saved.getStartPrice());
+        assertEquals(50_000_000L, saved.getEndPrice());
+    }
+
+    @Test
+    @DisplayName("FAILED 상태였던 기준가는 재수집 값으로 갱신된다")
+    void writeBasePrice_updatesFailedStatus() {
+        etfPriceWriter.markBaseFailed(ETF_ID, PRICE_DATE);
+
+        etfPriceWriter.writeBasePrice(ETF_ID, PRICE_DATE, 50_000_000L);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertEquals(50_000_000L, saved.getStartPrice());
+        assertEquals(50_000_000L, saved.getEndPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getStartPriceStatus());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getEndPriceStatus());
+    }
+
+    @Test
     @DisplayName("코인 기준가 조회에 실패하면 시가·종가 모두 FAILED 상태로 남는다")
     void markBaseFailed_marksBothOpenAndClose() {
         etfPriceWriter.markBaseFailed(ETF_ID, PRICE_DATE);

@@ -2,6 +2,7 @@ package com.muffin.sector.infrastructure;
 
 import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.EtfPriceRepository;
+import com.muffin.sector.domain.etfprice.PriceCollectionStatus;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -44,17 +45,27 @@ public class EtfPriceWriter {
     /**
      * 코인 섹터 기준가를 기록한다. 코인은 24시간 거래되어 시가·종가 구분이 없으므로(§코인 섹터 기준가 정책), 서비스 기준
      * 시각(09:00 KST)의 단일 가격을 시가·종가 두 필드에 동일하게 반영해 기존 정산 계산식을 그대로 재사용한다.
+     *
+     * <p>토스 ETF의 {@code writeOpen}/{@code writeClose}와 달리, 이미 {@code SUCCESS}로 기록된 기준가는 재호출해도
+     * 덮어쓰지 않는다. 토스 캔들은 같은 날짜를 다시 조회해도 항상 같은 값이라 재시도 덮어쓰기가 안전하지만, CoinGecko
+     * `simple/price`는 호출 시점의 실시간가라 같은 날 다시 호출하면 다른 값이 온다. 09:00 기준가가 이후 재실행(다중
+     * 인스턴스 동시 트리거 등)으로 바뀌는 것을 막기 위해, `FAILED` 등 미확정 상태일 때만 갱신을 허용한다.
      */
     @Transactional
     public void writeBasePrice(Long etfId, LocalDate priceDate, Long price) {
         upsert(
                 etfId,
                 priceDate,
-                existing -> {
-                    existing.recordOpen(price);
-                    existing.recordClose(price);
-                },
+                existing -> writeBasePriceIfNotAlreadySucceeded(existing, price),
                 () -> EtfPrice.create(etfId, priceDate, price, price));
+    }
+
+    private static void writeBasePriceIfNotAlreadySucceeded(EtfPrice existing, Long price) {
+        if (existing.getStartPriceStatus() == PriceCollectionStatus.SUCCESS) {
+            return;
+        }
+        existing.recordOpen(price);
+        existing.recordClose(price);
     }
 
     @Transactional

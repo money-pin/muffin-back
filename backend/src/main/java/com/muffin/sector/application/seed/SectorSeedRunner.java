@@ -61,8 +61,7 @@ public class SectorSeedRunner implements ApplicationRunner {
         for (EtfSeed seed : SectorSeedData.ETFS) {
             Etf etf = etfRepository
                     .findByEtfCode(seed.etfCode())
-                    .orElseGet(
-                            () -> etfRepository.save(Etf.create(seed.etfCode(), seed.etfName(), seed.priceProvider())));
+                    .orElseGet(() -> etfRepository.save(Etf.create(seed.etfCode(), seed.etfName())));
             etfIdsByCode.put(seed.etfCode(), etf.getId());
         }
         log.info("ETF 시딩 완료: 대상 {}건", SectorSeedData.ETFS.size());

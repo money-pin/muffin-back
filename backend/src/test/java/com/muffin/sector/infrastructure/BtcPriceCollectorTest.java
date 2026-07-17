@@ -14,7 +14,6 @@ import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
-import com.muffin.sector.domain.etf.PriceProvider;
 import com.muffin.sector.exception.SectorErrorCode;
 import com.muffin.sector.infrastructure.coingecko.CoinGeckoClient;
 import com.muffin.sector.infrastructure.coingecko.exception.CoinGeckoApiException;
@@ -139,7 +138,7 @@ class BtcPriceCollectorTest {
     }
 
     private static Etf btc() {
-        Etf etf = Etf.create("BTC", "비트코인", PriceProvider.COINGECKO);
+        Etf etf = Etf.create("BTC", "비트코인");
         ReflectionTestUtils.setField(etf, "id", BTC_ID);
         return etf;
     }

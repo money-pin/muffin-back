@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.muffin.sector.application.seed.SectorSeedData.EtfSeed;
 import com.muffin.sector.application.seed.SectorSeedData.GroupSeed;
 import com.muffin.sector.application.seed.SectorSeedData.SectorSeed;
-import com.muffin.sector.domain.etf.PriceProvider;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
@@ -21,17 +20,6 @@ class SectorSeedDataTest {
         assertTrue(SectorSeedData.SECTORS.stream()
                 .anyMatch(sector ->
                         sector.sectorCode().equals("CRYPTO") && sector.etfCode().equals("BTC")));
-    }
-
-    @Test
-    @DisplayName("BTC만 CoinGecko가 담당하고 나머지 ETF는 토스증권이 담당한다")
-    void etfs_onlyBtcUsesCoinGecko() {
-        assertTrue(SectorSeedData.ETFS.stream()
-                .filter(etf -> etf.etfCode().equals("BTC"))
-                .allMatch(etf -> etf.priceProvider() == PriceProvider.COINGECKO));
-        assertTrue(SectorSeedData.ETFS.stream()
-                .filter(etf -> !etf.etfCode().equals("BTC"))
-                .allMatch(etf -> etf.priceProvider() == PriceProvider.TOSS));
     }
 
     @Test
