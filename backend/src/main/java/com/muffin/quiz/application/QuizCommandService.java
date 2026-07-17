@@ -96,7 +96,7 @@ public class QuizCommandService {
         }
 
         boolean correct = selectedOption.isCorrect();
-        LocalDateTime submittedAt = LocalDateTime.now();
+        LocalDateTime submittedAt = LocalDateTime.now(KST);
 
         QuizAttempt attempt = session.recordAttempt(
                 quiz.getId(), selectedOption.getId(), correct, quiz.getRewardMoney(), submittedAt);
