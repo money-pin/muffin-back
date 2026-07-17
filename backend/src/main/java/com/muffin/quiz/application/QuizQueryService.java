@@ -45,15 +45,7 @@ public class QuizQueryService {
     @Transactional(readOnly = true)
     public TodayQuizResponse getTodayQuiz(Long userId) {
         LocalDate today = LocalDate.now(KST);
-
-        User user =
-                userRepository.findById(userId).orElseThrow(() -> new GeneralException(GeneralErrorCode.UNAUTHORIZED));
-
-        // 온보딩을 완료한 사용자만 오늘의 퀴즈를 조회할 수 있다.
-        if (!user.isOnboardingCompleted()) {
-            throw new GeneralException(GeneralErrorCode.FORBIDDEN);
-        }
-
+        User user = getValidatedUser(userId);
         String nickname = user.getNickname();
 
         // KST 기준 오늘 날짜의 퀴즈 세트를 조회한다.
@@ -91,15 +83,7 @@ public class QuizQueryService {
     @Transactional(readOnly = true)
     public QuizResultResponse getTodayQuizResult(Long userId) {
         LocalDate today = LocalDate.now(KST);
-
-        // TODO: 임시 userId 기반 인증 단계. 추후 Security 적용 시 인증 객체에서 사용자 식별자를 가져오도록 교체한다.
-        User user =
-                userRepository.findById(userId).orElseThrow(() -> new GeneralException(GeneralErrorCode.UNAUTHORIZED));
-
-        // 온보딩을 완료한 사용자만 퀴즈 결과를 조회할 수 있다.
-        if (!user.isOnboardingCompleted()) {
-            throw new GeneralException(GeneralErrorCode.FORBIDDEN);
-        }
+        getValidatedUser(userId);
 
         // 오늘 공개된 퀴즈 세트가 없으면 결과도 조회할 수 없다.
         QuizSet quizSet = quizSetRepository
@@ -118,6 +102,18 @@ public class QuizQueryService {
         }
 
         return toQuizResultResponse(session);
+    }
+
+    /** 임시 userId 기반 인증 단계. 추후 Security 적용 시 인증 객체에서 사용자 식별자를 가져오도록 교체한다. */
+    private User getValidatedUser(Long userId) {
+        User user =
+                userRepository.findById(userId).orElseThrow(() -> new GeneralException(GeneralErrorCode.UNAUTHORIZED));
+
+        if (!user.isOnboardingCompleted()) {
+            throw new GeneralException(GeneralErrorCode.FORBIDDEN);
+        }
+
+        return user;
     }
 
     /** 오늘의 퀴즈가 없거나 공개 전인 경우 빈 상태 UI를 그릴 수 있는 응답을 만든다. */
