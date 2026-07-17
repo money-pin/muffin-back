@@ -24,6 +24,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -58,13 +59,8 @@ public class InvestmentQueryService {
 
         ZonedDateTime now = now();
         TradingCalendar calendar = tradingCalendarService.getCalendar(now.toLocalDate());
-        TodayInvestmentResponse today = resolveToday(userId, now, calendar);
         boolean settlementPending =
-                switch (today.status()) {
-                    case SETTLEMENT_DELAYED -> true;
-                    case UNAVAILABLE, SETTLING -> hasPendingInvestment(userId, calendar);
-                    default -> false;
-                };
+                !isWeekend(now.toLocalDate()) && calendar.tradingDay() && hasPendingInvestment(userId, calendar);
         return new InvestmentAssetResponse(
                 asset.getTotalAsset(),
                 asset.getDailyChangeAmount(),
@@ -136,7 +132,7 @@ public class InvestmentQueryService {
                         investmentSector,
                         requiredSector(sectorsById, investmentSector.getSectorId()),
                         investment.getTotalAmount()))
-                .sorted((left, right) -> left.sectorCode().compareTo(right.sectorCode()))
+                .sorted(Comparator.comparing(TodayInvestmentSectorResponse::sectorCode))
                 .toList();
 
         OffsetDateTime confirmDeadline =

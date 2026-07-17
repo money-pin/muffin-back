@@ -28,6 +28,7 @@ public class SectorQueryService {
                 .collect(Collectors.groupingBy(Sector::getSectorGroupId));
 
         List<SectorGroupResponse> groups = sectorGroupRepository.findAllByOrderByGroupOrderAsc().stream()
+                .filter(group -> sectorsByGroup.containsKey(group.getId()))
                 .map(group -> new SectorGroupResponse(
                         group.getGroupCode(),
                         group.getName(),

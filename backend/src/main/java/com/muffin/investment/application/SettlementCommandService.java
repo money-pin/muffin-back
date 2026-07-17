@@ -64,9 +64,9 @@ public class SettlementCommandService {
             return SettlementBatchResult.skipped(settlementDate);
         }
 
-        List<Investment> allTargets = investmentRepository.findByStatusInAndSettlementStatusInAndInvestDateLessThan(
+        List<Investment> targets = investmentRepository.findByStatusInAndSettlementStatusInAndInvestDateLessThan(
                 TARGET_STATUSES, REPROCESSABLE, settlementDate);
-        if (allTargets.isEmpty()) {
+        if (targets.isEmpty()) {
             log.info("[settlement] no targets for {}", settlementDate);
             return new SettlementBatchResult(settlementDate, true, 0, 0, 0);
         }
@@ -74,7 +74,6 @@ public class SettlementCommandService {
         // TODO : 확인필요 - 가격 적재일이 아닌 토스 캘린더로 정산 창을 판정하도록 기존 정산 로직을 변경함.
         LocalDate prevTradingDay =
                 tradingCalendarService.getCalendar(settlementDate).previousTradingDay();
-        List<Investment> targets = allTargets;
 
         Map<Long, Long> sectorToEtfId = sectors.stream().collect(Collectors.toMap(Sector::getId, Sector::getEtfId));
         Map<Long, EtfPrice> etfPriceByEtfId =
