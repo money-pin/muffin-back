@@ -36,9 +36,9 @@ include::{snippets}/settlement-result-reason/response-fields.adoc[]
 [[auth-email-verification]]
 == 이메일 인증번호 발송/확인 (Auth-01)
 
-이메일 인증번호를 발송하고 확인한다. 회원가입 이전 단계에서 이메일 소유권을 확인하는 용도이며, 아직 가입되지 않은 이메일에 대해서만 발송된다.
+인증된 사용자(`Authorization: Bearer {accessToken}`)가 본인 계정의 이메일로 인증번호를 발송하고 확인한다. <<auth-signup,회원가입>> 이후 아무 때나 호출할 수 있으며, 이메일은 요청 바디가 아니라 access token으로 식별된 계정의 `Auth.email`을 사용한다.
 
-NOTE: 인증에 성공(`verified=true`)한 기록은 실제 회원가입 시점에 회원가입 서비스가 조회해서 확인할 예정이며, 이 API 자체는 회원가입을 수행하지 않는다. 정리 배치는 만료된 미인증 기록만 삭제하고 인증 성공 기록은 건드리지 않는다.
+NOTE: 확인(`/verification/confirm`) 성공 시 같은 트랜잭션에서 `Auth.emailVerified`가 `true`로 갱신된다. 정리 배치는 만료된 미인증 기록만 삭제하고 인증 성공 기록은 건드리지 않는다.
 
 === 발송 - 성공
 
@@ -46,10 +46,10 @@ include::{snippets}/email-verification-send-success/http-request.adoc[]
 include::{snippets}/email-verification-send-success/http-response.adoc[]
 include::{snippets}/email-verification-send-success/response-fields.adoc[]
 
-=== 발송 - 실패(이미 사용 중인 이메일)
+=== 발송 - 실패(이미 인증이 완료된 이메일)
 
-include::{snippets}/email-verification-send-duplicate/http-response.adoc[]
-include::{snippets}/email-verification-send-duplicate/response-fields.adoc[]
+include::{snippets}/email-verification-send-already-verified/http-response.adoc[]
+include::{snippets}/email-verification-send-already-verified/response-fields.adoc[]
 
 === 확인 - 성공
 
@@ -68,7 +68,9 @@ include::{snippets}/email-verification-confirm-mismatch/response-fields.adoc[]
 |===
 |HTTP|code|message|설명
 
-|409|AUTH_409_001|이미 사용 중인 이메일입니다.|발송 전 이메일 중복 체크 실패
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|COMMON_404_001|요청한 리소스를 찾을 수 없습니다.|access token의 userId에 해당하는 Auth 없음(정상 흐름에서는 발생하지 않음)
+|409|AUTH_409_002|이미 인증이 완료된 이메일입니다.|이미 emailVerified=true인 계정
 |429|AUTH_429_001|잠시 후 다시 시도해주세요.|재발송 쿨다운(기본 30초) 중
 |429|AUTH_429_002|오늘 인증번호 전송 횟수를 초과했습니다.|일일 발송 한도(기본 10회) 초과
 |400|AUTH_400_001|인증번호가 일치하지 않습니다.|코드 불일치, 또는 발송 이력 자체가 없음
