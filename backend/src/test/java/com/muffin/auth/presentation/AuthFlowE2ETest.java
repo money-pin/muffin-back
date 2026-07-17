@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muffin.auth.application.emailverification.EmailSender;
 import com.muffin.auth.domain.Auth;
 import com.muffin.auth.domain.AuthRepository;
+import com.muffin.auth.domain.RefreshTokenRepository;
 import com.muffin.auth.domain.emailverification.EmailVerificationRepository;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.user.domain.UserRepository;
@@ -52,12 +53,16 @@ class AuthFlowE2ETest {
     @Autowired
     private EmailVerificationRepository emailVerificationRepository;
 
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
     @MockitoBean
     private EmailSender emailSender;
 
     @AfterEach
     void cleanUp() {
         emailVerificationRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
         authRepository.deleteAll();
         userRepository.deleteAll();
     }

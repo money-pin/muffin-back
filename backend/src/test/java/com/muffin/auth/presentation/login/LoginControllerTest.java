@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muffin.auth.domain.Auth;
 import com.muffin.auth.domain.AuthRepository;
 import com.muffin.auth.domain.PasswordEncoder;
+import com.muffin.auth.domain.RefreshTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import java.util.UUID;
@@ -46,8 +47,12 @@ class LoginControllerTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
     @AfterEach
     void cleanUp() {
+        refreshTokenRepository.deleteAll();
         authRepository.deleteAll();
         userRepository.deleteAll();
     }

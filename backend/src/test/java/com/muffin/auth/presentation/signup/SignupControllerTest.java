@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muffin.auth.domain.AuthRepository;
+import com.muffin.auth.domain.RefreshTokenRepository;
 import com.muffin.user.domain.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,8 +37,12 @@ class SignupControllerTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
     @AfterEach
     void cleanUp() {
+        refreshTokenRepository.deleteAll();
         authRepository.deleteAll();
         userRepository.deleteAll();
     }
