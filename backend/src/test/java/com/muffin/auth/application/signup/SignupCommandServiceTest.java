@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.*;
 import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.domain.Auth;
 import com.muffin.auth.domain.AuthRepository;
+import com.muffin.auth.domain.DeletedEmail;
+import com.muffin.auth.domain.DeletedEmailRepository;
 import com.muffin.auth.domain.RefreshTokenRepository;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
@@ -36,11 +38,15 @@ class SignupCommandServiceTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private DeletedEmailRepository deletedEmailRepository;
+
     @AfterEach
     void cleanUp() {
         refreshTokenRepository.deleteAll();
         authRepository.deleteAll();
         userRepository.deleteAll();
+        deletedEmailRepository.deleteAll();
     }
 
     @Test
@@ -93,6 +99,20 @@ class SignupCommandServiceTest {
     void signupLocal_invalidPasswordFormat_rollsBack() {
         assertThatThrownBy(() -> signupCommandService.signupLocal(EMAIL, "short1", NAME, true))
                 .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(userRepository.count()).isZero();
+        assertThat(authRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("30일 이내 탈퇴한 이메일이면 RECENTLY_DELETED_EMAIL(AUTH_409_003)")
+    void signupLocal_recentlyDeletedEmail() {
+        deletedEmailRepository.save(DeletedEmail.of(EMAIL));
+
+        assertThatThrownBy(() -> signupCommandService.signupLocal(EMAIL, PASSWORD, NAME, true))
+                .isInstanceOf(GeneralException.class)
+                .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
+                        .isEqualTo("AUTH_409_003"));
 
         assertThat(userRepository.count()).isZero();
         assertThat(authRepository.count()).isZero();

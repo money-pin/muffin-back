@@ -8,6 +8,7 @@ import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.domain.AccessTokenProvider;
 import com.muffin.auth.domain.Auth;
 import com.muffin.auth.domain.AuthRepository;
+import com.muffin.auth.domain.DeletedEmailRepository;
 import com.muffin.auth.domain.PasswordEncoder;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
@@ -39,6 +40,9 @@ class SignupCommandServiceConcurrencyTest {
     private AuthRepository authRepository;
 
     @Mock
+    private DeletedEmailRepository deletedEmailRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -52,7 +56,12 @@ class SignupCommandServiceConcurrencyTest {
     @BeforeEach
     void setUp() {
         signupCommandService = new SignupCommandService(
-                userRepository, authRepository, passwordEncoder, accessTokenProvider, refreshTokenIssuer);
+                userRepository,
+                authRepository,
+                deletedEmailRepository,
+                passwordEncoder,
+                accessTokenProvider,
+                refreshTokenIssuer);
     }
 
     @Test

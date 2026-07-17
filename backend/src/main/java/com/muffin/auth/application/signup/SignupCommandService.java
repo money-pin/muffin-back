@@ -6,10 +6,14 @@ import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.domain.AccessTokenProvider;
 import com.muffin.auth.domain.Auth;
 import com.muffin.auth.domain.AuthRepository;
+import com.muffin.auth.domain.DeletedEmail;
+import com.muffin.auth.domain.DeletedEmailRepository;
 import com.muffin.auth.domain.PasswordEncoder;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -21,8 +25,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SignupCommandService {
 
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final long DELETED_EMAIL_BLOCK_DAYS = 30;
+
     private final UserRepository userRepository;
     private final AuthRepository authRepository;
+    private final DeletedEmailRepository deletedEmailRepository;
     private final PasswordEncoder passwordEncoder;
     private final AccessTokenProvider accessTokenProvider;
     private final RefreshTokenIssuer refreshTokenIssuer;
@@ -31,6 +39,10 @@ public class SignupCommandService {
     public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
         if (!termsAgreed) {
             throw new GeneralException(AuthErrorCode.TERMS_NOT_AGREED);
+        }
+        LocalDateTime cutoff = LocalDateTime.now(KST).minusDays(DELETED_EMAIL_BLOCK_DAYS);
+        if (deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(DeletedEmail.hash(email), cutoff)) {
+            throw new GeneralException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
         }
         if (authRepository.existsByEmail(email)) {
             throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);

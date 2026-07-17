@@ -35,10 +35,11 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/email/**", "/api/auth/logout")
-                        .authenticated()
-                        .anyRequest()
-                        .permitAll())
+                .authorizeHttpRequests(
+                        auth -> auth.requestMatchers("/api/auth/email/**", "/api/auth/logout", "/api/auth/account")
+                                .authenticated()
+                                .anyRequest()
+                                .permitAll())
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(apiAuthenticationEntryPoint)
                         .accessDeniedHandler(apiAccessDeniedHandler))

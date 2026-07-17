@@ -35,7 +35,7 @@ class SignupControllerDocsTest {
     @Test
     @DisplayName("회원가입 성공 문서화")
     void documentSignupSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SignupCommandService stub = new SignupCommandService(null, null, null, null, null) {
+        SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null) {
             @Override
             public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
                 return new TokenPair("access-token-example", "refresh-token-example");
@@ -66,7 +66,7 @@ class SignupControllerDocsTest {
     @Test
     @DisplayName("회원가입 실패(약관 미동의) 문서화")
     void documentSignupTermsNotAgreed(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SignupCommandService stub = new SignupCommandService(null, null, null, null, null) {
+        SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null) {
             @Override
             public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
                 throw new GeneralException(AuthErrorCode.TERMS_NOT_AGREED);
@@ -92,7 +92,7 @@ class SignupControllerDocsTest {
     @Test
     @DisplayName("회원가입 실패(이미 사용 중인 이메일) 문서화")
     void documentSignupDuplicateEmail(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SignupCommandService stub = new SignupCommandService(null, null, null, null, null) {
+        SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null) {
             @Override
             public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
                 throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
@@ -111,6 +111,32 @@ class SignupControllerDocsTest {
                         responseFields(
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드(AUTH_409_001)"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("errorDetail").description("에러 상세 메시지 목록"))));
+    }
+
+    @Test
+    @DisplayName("회원가입 실패(최근 탈퇴한 이메일) 문서화")
+    void documentSignupRecentlyDeletedEmail(RestDocumentationContextProvider restDocumentation) throws Exception {
+        SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null) {
+            @Override
+            public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
+                throw new GeneralException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
+            }
+        };
+        MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
+
+        mockMvc.perform(
+                        post("/api/auth/signup")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"email\":\"user@example.com\",\"password\":\"password1\",\"name\":\"홍길동\",\"termsAgreed\":true}"))
+                .andExpect(status().isConflict())
+                .andDo(document(
+                        "signup-local-recently-deleted-email",
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드(AUTH_409_003)"),
                                 fieldWithPath("message").description("응답 메시지"),
                                 fieldWithPath("errorDetail").description("에러 상세 메시지 목록"))));
     }

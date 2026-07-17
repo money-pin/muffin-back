@@ -19,6 +19,7 @@ public enum AuthErrorCode implements BaseErrorCode {
     SUSPENDED_ACCOUNT(HttpStatus.FORBIDDEN, "AUTH_403_003", "정지된 계정입니다."),
     EMAIL_ALREADY_IN_USE(HttpStatus.CONFLICT, "AUTH_409_001", "이미 사용 중인 이메일입니다."),
     EMAIL_ALREADY_VERIFIED(HttpStatus.CONFLICT, "AUTH_409_002", "이미 인증이 완료된 이메일입니다."),
+    RECENTLY_DELETED_EMAIL(HttpStatus.CONFLICT, "AUTH_409_003", "최근 탈퇴한 이메일입니다. 30일 후 다시 가입할 수 있습니다."),
     EMAIL_VERIFICATION_RESEND_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "AUTH_429_001", "잠시 후 다시 시도해주세요."),
     EMAIL_VERIFICATION_DAILY_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_429_002", "오늘 인증번호 전송 횟수를 초과했습니다."),
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "AUTH_500_001", "인증 메일 발송에 실패했습니다.");
