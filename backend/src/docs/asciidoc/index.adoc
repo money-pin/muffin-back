@@ -193,6 +193,27 @@ include::{snippets}/token-refresh-invalid/response-fields.adoc[]
 |403|AUTH_403_003|정지된 계정입니다.|status=SUSPENDED
 |===
 
+[[auth-logout]]
+== 로그아웃 (Auth-09)
+
+Authorization 헤더의 access token으로 식별된 계정의 refresh token을 무효화하고, refresh token Cookie를 만료(`Max-Age=0`)시킨다.
+
+NOTE: 이미 로그아웃된 상태(=refresh token이 없는 상태)에서 다시 호출해도 에러 없이 200을 반환한다(멱등).
+
+=== 응답 - 성공
+
+include::{snippets}/logout-success/http-response.adoc[]
+include::{snippets}/logout-success/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===
+
 [[stats-summary]]
 == 수익 통계 조회 (STATS-02)
 

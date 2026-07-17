@@ -35,7 +35,7 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/email/**")
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/email/**", "/api/auth/logout")
                         .authenticated()
                         .anyRequest()
                         .permitAll())
