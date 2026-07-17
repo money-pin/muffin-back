@@ -63,6 +63,23 @@ class EtfPriceCollectorTest {
     }
 
     @Test
+    @DisplayName("CoinGecko가 담당하는 BTC는 시딩되어 있어도 토스 API로 조회하지 않는다")
+    void collect_excludesBtc() {
+        Etf toss = Etf.create("459580", "KODEX CD금리액티브(합성)");
+        Etf btc = Etf.create("BTC", "비트코인");
+        when(etfRepository.findAll()).thenReturn(List.of(toss, btc));
+        when(tossMarketDataClient.getDailyCandle("459580", DATE))
+                .thenReturn(Optional.of(
+                        new Candle("2026-07-10T09:05:00+09:00", "10000", "10600", "9900", "10500", "12345", "KRW")));
+
+        EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
+
+        assertEquals(1, summary.successCount());
+        verify(tossMarketDataClient, never()).getDailyCandle(eq("BTC"), any());
+        verify(etfPriceWriter).writeOpen(any(), eq(DATE), eq(10_000L));
+    }
+
+    @Test
     @DisplayName("collectOpen은 시가만 기록하고 종가는 건드리지 않는다")
     void collectOpen_writesOnlyOpenPrice() {
         Etf etf = Etf.create("459580", "KODEX CD금리액티브(합성)");

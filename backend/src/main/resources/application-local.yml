@@ -19,3 +19,7 @@ toss:
     base-url: ${TOSS_API_BASE_URL:https://openapi.tossinvest.com}
     client-id: ${TOSS_CLIENT_ID:}
     client-secret: ${TOSS_CLIENT_SECRET:}
+
+coingecko:
+  api:
+    api-key: ${COINGECKO_API_KEY:}

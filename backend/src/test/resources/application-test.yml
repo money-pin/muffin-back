@@ -18,6 +18,11 @@ toss:
     client-id: test-client-id
     client-secret: test-client-secret
 
+coingecko:
+  api:
+    base-url: https://coingecko-api.test
+    api-key: test-api-key
+
 muffin:
   news:
     ai:

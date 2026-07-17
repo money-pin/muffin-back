@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +20,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
- * 시딩된 모든 ETF의 특정 일자 시세를 토스증권 API에서 가져와 저장한다. ETF 하나가 실패해도 나머지 ETF 수집은 계속 진행한다.
+ * 시딩된 ETF의 특정 일자 시세를 토스증권 API에서 가져와 저장한다. ETF 하나가 실패해도 나머지 ETF 수집은 계속 진행한다.
+ *
+ * <p>{@link #NON_TOSS_ETF_CODES}에 해당하는 종목(BTC 등 CoinGecko로 수집하는 코인 섹터)은 토스 API로 조회할 수
+ * 없으므로 이 수집기의 대상에서 제외한다({@link BtcPriceCollector}가 별도로 담당).
  *
  * <p>시가와 종가는 서로 다른 시각(장 시작 직후 / 장 마감 이후)에 확정되므로 {@link #collectOpen(LocalDate)}와
  * {@link #collectClose(LocalDate)}로 분리했다. 하나의 호출에서 둘 다 기록하면 장중 호출 시 아직 확정되지 않은 종가를
@@ -34,6 +38,9 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class EtfPriceCollector {
+
+    /** 토스증권이 아닌 다른 데이터 제공처로 수집하는 ETF 코드. {@code BtcPriceCollector}의 대상 코드와 맞춰 둔다. */
+    private static final Set<String> NON_TOSS_ETF_CODES = Set.of("BTC");
 
     private final EtfRepository etfRepository;
     private final TradingCalendarService tradingCalendarService;
@@ -57,7 +64,9 @@ public class EtfPriceCollector {
 
     private CollectionSummary collect(LocalDate date, Function<Candle, String> priceField, CollectionTarget target) {
         boolean tradingDay = tradingCalendarService.getCalendar(date).tradingDay();
-        List<Etf> etfs = etfRepository.findAll();
+        List<Etf> etfs = etfRepository.findAll().stream()
+                .filter(etf -> !NON_TOSS_ETF_CODES.contains(etf.getEtfCode()))
+                .toList();
 
         if (!tradingDay) {
             log.info("거래일이 아니라 ETF 시세 수집을 건너뜁니다. date={}", date);

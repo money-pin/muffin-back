@@ -118,4 +118,69 @@ class EtfPriceWriterTest {
         assertEquals(10_000L, saved.getStartPrice());
         assertEquals(PriceCollectionStatus.SUCCESS, saved.getStartPriceStatus());
     }
+
+    @Test
+    @DisplayName("코인 기준가를 기록하면 시가와 종가에 동일한 값이 SUCCESS로 저장된다")
+    void writeBasePrice_createsRecordWithSameOpenAndClose() {
+        etfPriceWriter.writeBasePrice(ETF_ID, PRICE_DATE, 50_000_000L);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertEquals(50_000_000L, saved.getStartPrice());
+        assertEquals(50_000_000L, saved.getEndPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getStartPriceStatus());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getEndPriceStatus());
+    }
+
+    @Test
+    @DisplayName("이미 SUCCESS인 기준가는 재수집 값으로 덮어쓰지 않는다")
+    void writeBasePrice_doesNotOverwriteExistingSuccess() {
+        etfPriceWriter.writeBasePrice(ETF_ID, PRICE_DATE, 50_000_000L);
+
+        etfPriceWriter.writeBasePrice(ETF_ID, PRICE_DATE, 51_000_000L);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertEquals(50_000_000L, saved.getStartPrice());
+        assertEquals(50_000_000L, saved.getEndPrice());
+    }
+
+    @Test
+    @DisplayName("FAILED 상태였던 기준가는 재수집 값으로 갱신된다")
+    void writeBasePrice_updatesFailedStatus() {
+        etfPriceWriter.markBaseFailed(ETF_ID, PRICE_DATE);
+
+        etfPriceWriter.writeBasePrice(ETF_ID, PRICE_DATE, 50_000_000L);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertEquals(50_000_000L, saved.getStartPrice());
+        assertEquals(50_000_000L, saved.getEndPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getStartPriceStatus());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getEndPriceStatus());
+    }
+
+    @Test
+    @DisplayName("코인 기준가 조회에 실패하면 시가·종가 모두 FAILED 상태로 남는다")
+    void markBaseFailed_marksBothOpenAndClose() {
+        etfPriceWriter.markBaseFailed(ETF_ID, PRICE_DATE);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertNull(saved.getStartPrice());
+        assertNull(saved.getEndPrice());
+        assertEquals(PriceCollectionStatus.FAILED, saved.getStartPriceStatus());
+        assertEquals(PriceCollectionStatus.FAILED, saved.getEndPriceStatus());
+    }
+
+    @Test
+    @DisplayName("거래일이 아니면 시가·종가 모두 MARKET_CLOSED 상태로 남는다")
+    void markBaseMarketClosed_marksBothOpenAndClose() {
+        etfPriceWriter.markBaseMarketClosed(ETF_ID, PRICE_DATE);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertEquals(PriceCollectionStatus.MARKET_CLOSED, saved.getStartPriceStatus());
+        assertEquals(PriceCollectionStatus.MARKET_CLOSED, saved.getEndPriceStatus());
+    }
 }
