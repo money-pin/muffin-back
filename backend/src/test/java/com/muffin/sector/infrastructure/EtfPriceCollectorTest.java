@@ -1,23 +1,23 @@
 package com.muffin.sector.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.event.EtfPricesLoadedEvent;
+import com.muffin.sector.application.TradingCalendarService;
+import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
+import com.muffin.sector.exception.SectorErrorCode;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
-import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.BusinessDay;
-import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.Result;
-import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.Session;
-import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.Sessions;
 import com.muffin.sector.infrastructure.toss.exception.TossApiException;
 import java.time.LocalDate;
 import java.util.List;
@@ -45,6 +45,9 @@ class EtfPriceCollectorTest {
     private TossMarketDataClient tossMarketDataClient;
 
     @Mock
+    private TradingCalendarService tradingCalendarService;
+
+    @Mock
     private EtfPriceWriter etfPriceWriter;
 
     @Mock
@@ -54,8 +57,9 @@ class EtfPriceCollectorTest {
 
     @BeforeEach
     void setUp() {
-        collector = new EtfPriceCollector(etfRepository, tossMarketDataClient, etfPriceWriter, eventPublisher);
-        when(tossMarketDataClient.getMarketCalendar(DATE)).thenReturn(tradingDay());
+        collector = new EtfPriceCollector(
+                etfRepository, tradingCalendarService, tossMarketDataClient, etfPriceWriter, eventPublisher);
+        when(tradingCalendarService.getCalendar(DATE)).thenReturn(tradingDay());
     }
 
     @Test
@@ -99,7 +103,7 @@ class EtfPriceCollectorTest {
     void collect_skipsEverything_whenNotTradingDay() {
         Etf etf = Etf.create("459580", "KODEX CD금리액티브(합성)");
         when(etfRepository.findAll()).thenReturn(List.of(etf));
-        when(tossMarketDataClient.getMarketCalendar(DATE)).thenReturn(nonTradingDay());
+        when(tradingCalendarService.getCalendar(DATE)).thenReturn(nonTradingDay());
 
         EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
 
@@ -114,21 +118,15 @@ class EtfPriceCollectorTest {
     }
 
     @Test
-    @DisplayName("Market calendar failure marks every ETF as failed and returns a failure summary")
-    void collect_marksEverythingFailed_whenMarketCalendarFails() {
-        Etf first = Etf.create("459580", "ETF 1");
-        Etf second = Etf.create("132030", "ETF 2");
-        when(etfRepository.findAll()).thenReturn(List.of(first, second));
-        when(tossMarketDataClient.getMarketCalendar(DATE))
-                .thenThrow(new TossApiException("r1", "SERVER_ERROR", null, "calendar failure"));
+    @DisplayName("거래일을 확인할 수 없으면 가격 상태를 변경하지 않고 실행을 중단한다")
+    void collect_aborts_whenMarketCalendarFails() {
+        when(tradingCalendarService.getCalendar(DATE))
+                .thenThrow(new GeneralException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE));
 
-        EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
+        assertThrows(GeneralException.class, () -> collector.collectOpen(DATE));
 
-        assertEquals(0, summary.successCount());
-        assertEquals(0, summary.skippedCount());
-        assertEquals(2, summary.failureCount());
-        assertEquals(List.of("459580", "132030"), summary.failedEtfCodes());
-        verify(etfPriceWriter, times(2)).markOpenFailed(any(), eq(DATE));
+        verify(etfRepository, never()).findAll();
+        verify(etfPriceWriter, never()).markOpenFailed(any(), any());
         verify(tossMarketDataClient, never()).getDailyCandle(any(), any());
         verify(eventPublisher, never()).publishEvent(any());
     }
@@ -236,13 +234,11 @@ class EtfPriceCollectorTest {
         verify(eventPublisher, never()).publishEvent(any());
     }
 
-    private static Result tradingDay() {
-        Sessions sessions =
-                new Sessions(null, new Session("2026-07-10T09:00:00+09:00", "2026-07-10T15:30:00+09:00"), null);
-        return new Result(new BusinessDay(DATE, sessions), null, null);
+    private static TradingCalendar tradingDay() {
+        return new TradingCalendar(DATE, true, DATE.minusDays(1), DATE.plusDays(3));
     }
 
-    private static Result nonTradingDay() {
-        return new Result(new BusinessDay(DATE, null), null, null);
+    private static TradingCalendar nonTradingDay() {
+        return new TradingCalendar(DATE, false, DATE.minusDays(1), DATE.plusDays(3));
     }
 }

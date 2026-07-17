@@ -7,7 +7,7 @@ import java.time.Instant;
 /** 토스증권 API 호출 간 최소 간격을 보장하는 간단한 레이트리미터. ETF 11개 규모의 호출량에 맞춘 최소 구현이다. */
 public class TossRateLimiter {
 
-    private static final Duration DEFAULT_MIN_INTERVAL = Duration.ofMillis(250);
+    static final Duration DEFAULT_MIN_INTERVAL = Duration.ofMillis(350);
 
     private final Clock clock;
     private final Duration minInterval;

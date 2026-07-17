@@ -15,6 +15,12 @@ import org.junit.jupiter.api.Test;
 class TossRateLimiterTest {
 
     @Test
+    @DisplayName("기본 호출 간격은 3 TPS 미만인 350ms이다")
+    void defaultInterval_isThreeHundredFiftyMilliseconds() {
+        assertEquals(Duration.ofMillis(350), TossRateLimiter.DEFAULT_MIN_INTERVAL);
+    }
+
+    @Test
     @DisplayName("첫 호출은 대기하지 않는다")
     void acquire_firstCall_doesNotWait() {
         MutableClock clock = new MutableClock(Instant.parse("2026-07-13T00:00:00Z"));
