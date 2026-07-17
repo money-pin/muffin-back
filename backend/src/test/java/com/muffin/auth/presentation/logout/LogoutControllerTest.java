@@ -9,7 +9,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.domain.AccessTokenProvider;
+import com.muffin.auth.domain.Auth;
+import com.muffin.auth.domain.AuthRepository;
 import com.muffin.auth.domain.RefreshTokenRepository;
+import com.muffin.user.domain.User;
+import com.muffin.user.domain.UserRepository;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,9 +44,17 @@ class LogoutControllerTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private AuthRepository authRepository;
+
     @AfterEach
     void cleanUp() {
         refreshTokenRepository.deleteAll();
+        authRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     private String bearerTokenFor(Long userId) {
@@ -65,5 +78,19 @@ class LogoutControllerTest {
     @DisplayName("Authorization 헤더가 없으면 401")
     void logout_unauthorized() throws Exception {
         mockMvc.perform(post("/api/auth/logout")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("GOOGLE 계정으로 로그인된 상태에서도 로그아웃하면 200, refresh token이 삭제된다")
+    void logout_googleAccount_success() throws Exception {
+        User user = userRepository.save(User.register(null, UUID.randomUUID().toString(), "홍길동", null));
+        authRepository.save(Auth.createGoogle(user.getUserId(), "google-logout@example.com", "google-sub-logout"));
+        refreshTokenIssuer.issue(user.getUserId());
+
+        mockMvc.perform(post("/api/auth/logout").header("Authorization", bearerTokenFor(user.getUserId())))
+                .andExpect(status().isOk())
+                .andExpect(cookie().maxAge("refreshToken", 0));
+
+        assertThat(refreshTokenRepository.findByUserId(user.getUserId())).isEmpty();
     }
 }

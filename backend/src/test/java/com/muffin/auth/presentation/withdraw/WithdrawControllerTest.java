@@ -94,4 +94,20 @@ class WithdrawControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code", is("COMMON_409_001")));
     }
+
+    @Test
+    @DisplayName("GOOGLE 계정도 탈퇴하면 200, WITHDRAWN 상태가 되고 이메일이 익명화된다")
+    void withdraw_googleAccount_success() throws Exception {
+        User user = createUser();
+        Auth auth = authRepository.save(Auth.createGoogle(user.getUserId(), "wd-google@example.com", "google-sub-wd"));
+
+        mockMvc.perform(delete("/api/auth/account").header("Authorization", bearerTokenFor(user.getUserId())))
+                .andExpect(status().isOk())
+                .andExpect(cookie().maxAge("refreshToken", 0));
+
+        assertThat(userRepository.findById(user.getUserId()).orElseThrow().getStatus())
+                .isEqualTo(UserStatus.WITHDRAWN);
+        assertThat(authRepository.findByUserId(user.getUserId()).orElseThrow().getEmail())
+                .isEqualTo("withdrawn-" + auth.getAuthId() + "@deleted.local");
+    }
 }

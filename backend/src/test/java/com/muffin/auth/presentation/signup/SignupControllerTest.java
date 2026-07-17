@@ -43,7 +43,7 @@ class SignupControllerTest {
     }
 
     @Test
-    @DisplayName("가입 성공 시 201, accessToken 반환, refreshToken은 HttpOnly Cookie로 내려간다")
+    @DisplayName("가입 성공 시 200, accessToken 반환, refreshToken은 HttpOnly Cookie로 내려간다")
     void signup_success() throws Exception {
         String body =
                 objectMapper.writeValueAsString(new SignupRequestBody("new@example.com", "password1", "홍길동", true));

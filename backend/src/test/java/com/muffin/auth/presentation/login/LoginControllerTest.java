@@ -98,6 +98,18 @@ class LoginControllerTest {
     }
 
     @Test
+    @DisplayName("같은 이메일이 GOOGLE 계정으로만 가입되어 있으면(LOCAL 없음) 401 (AUTH_401_002)")
+    void login_googleOnlyAccount() throws Exception {
+        User user = userRepository.save(User.register(null, UUID.randomUUID().toString(), "홍길동", null));
+        authRepository.save(Auth.createGoogle(user.getUserId(), EMAIL, "google-sub-login-test"));
+        String body = objectMapper.writeValueAsString(new LoginRequestBody(EMAIL, PASSWORD));
+
+        mockMvc.perform(post("/api/auth/login").contentType("application/json").content(body))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code", is("AUTH_401_002")));
+    }
+
+    @Test
     @DisplayName("탈퇴한 계정이면 403 (AUTH_403_002)")
     void login_withdrawnAccount() throws Exception {
         User user = registerLocalAccount();
