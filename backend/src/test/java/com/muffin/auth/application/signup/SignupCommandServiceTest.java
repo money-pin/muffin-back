@@ -2,6 +2,7 @@ package com.muffin.auth.application.signup;
 
 import static org.assertj.core.api.Assertions.*;
 
+import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.domain.Auth;
 import com.muffin.auth.domain.AuthRepository;
 import com.muffin.auth.domain.RefreshTokenRepository;
@@ -45,7 +46,7 @@ class SignupCommandServiceTest {
     @Test
     @DisplayName("정상 가입 시 User+Auth가 생성되고 access/refresh token이 발급된다")
     void signupLocal_success() {
-        SignupResult result = signupCommandService.signupLocal(EMAIL, PASSWORD, NAME, true);
+        TokenPair result = signupCommandService.signupLocal(EMAIL, PASSWORD, NAME, true);
 
         assertThat(result.accessToken()).isNotBlank();
         assertThat(result.refreshToken()).isNotBlank();

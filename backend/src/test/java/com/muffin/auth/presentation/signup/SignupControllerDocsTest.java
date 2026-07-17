@@ -10,9 +10,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.muffin.auth.application.JwtProperties;
+import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.application.signup.SignupCommandService;
-import com.muffin.auth.application.signup.SignupResult;
 import com.muffin.auth.presentation.RefreshTokenCookieHelper;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
@@ -37,8 +37,8 @@ class SignupControllerDocsTest {
     void documentSignupSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
         SignupCommandService stub = new SignupCommandService(null, null, null, null, null) {
             @Override
-            public SignupResult signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
-                return new SignupResult("access-token-example", "refresh-token-example");
+            public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
+                return new TokenPair("access-token-example", "refresh-token-example");
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
@@ -68,7 +68,7 @@ class SignupControllerDocsTest {
     void documentSignupTermsNotAgreed(RestDocumentationContextProvider restDocumentation) throws Exception {
         SignupCommandService stub = new SignupCommandService(null, null, null, null, null) {
             @Override
-            public SignupResult signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
+            public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
                 throw new GeneralException(AuthErrorCode.TERMS_NOT_AGREED);
             }
         };
@@ -94,7 +94,7 @@ class SignupControllerDocsTest {
     void documentSignupDuplicateEmail(RestDocumentationContextProvider restDocumentation) throws Exception {
         SignupCommandService stub = new SignupCommandService(null, null, null, null, null) {
             @Override
-            public SignupResult signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
+            public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
                 throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
             }
         };

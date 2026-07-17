@@ -1,6 +1,7 @@
 package com.muffin.auth.application.signup;
 
 import com.muffin.auth.application.RefreshTokenIssuer;
+import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.domain.AccessTokenProvider;
 import com.muffin.auth.domain.Auth;
@@ -27,7 +28,7 @@ public class SignupCommandService {
     private final RefreshTokenIssuer refreshTokenIssuer;
 
     @Transactional
-    public SignupResult signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
+    public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
         if (!termsAgreed) {
             throw new GeneralException(AuthErrorCode.TERMS_NOT_AGREED);
         }
@@ -52,6 +53,6 @@ public class SignupCommandService {
                 accessTokenProvider.issue(user.getUserId(), user.getRole().name());
         String refreshToken = refreshTokenIssuer.issue(user.getUserId());
 
-        return new SignupResult(accessToken, refreshToken);
+        return new TokenPair(accessToken, refreshToken);
     }
 }

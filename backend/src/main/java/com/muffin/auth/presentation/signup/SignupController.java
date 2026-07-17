@@ -1,7 +1,7 @@
 package com.muffin.auth.presentation.signup;
 
+import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.application.signup.SignupCommandService;
-import com.muffin.auth.application.signup.SignupResult;
 import com.muffin.auth.presentation.RefreshTokenCookieHelper;
 import com.muffin.auth.presentation.signup.dto.LocalSignupRequest;
 import com.muffin.auth.presentation.signup.dto.SignupResponse;
@@ -29,7 +29,7 @@ public class SignupController implements SignupApi {
     @PostMapping("/signup")
     public ApiResponse<SignupResponse> signupLocal(
             @Valid @RequestBody LocalSignupRequest request, HttpServletResponse response) {
-        SignupResult result = signupCommandService.signupLocal(
+        TokenPair result = signupCommandService.signupLocal(
                 request.email(), request.password(), request.name(), request.termsAgreed());
 
         response.addHeader(

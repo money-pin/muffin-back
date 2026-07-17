@@ -79,6 +79,45 @@ include::{snippets}/email-verification-confirm-mismatch/response-fields.adoc[]
 |500|AUTH_500_001|인증 메일 발송에 실패했습니다.|SMTP 발송 실패(운영 환경)
 |===
 
+[[auth-signup]]
+== 로컬 회원가입 (Auth-02)
+
+이메일/비밀번호/이름과 약관 동의로 로컬 계정을 생성한다. 가입 즉시 로그인 상태가 되어 access token을 응답 바디로, refresh token을 HttpOnly Cookie(`refreshToken`, Path=`/api/auth`, Secure, SameSite=Strict)로 발급한다.
+
+NOTE: 이메일 인증 여부와 무관하게 가입 자체는 즉시 완료된다(emailVerified=false로 시작). 이메일 인증은 가입 후 access token을 실어 별도로 호출한다(<<auth-email-verification>>).
+
+=== 요청 - 성공
+
+include::{snippets}/signup-local-success/http-request.adoc[]
+include::{snippets}/signup-local-success/request-fields.adoc[]
+
+=== 응답 - 성공
+
+include::{snippets}/signup-local-success/http-response.adoc[]
+include::{snippets}/signup-local-success/response-fields.adoc[]
+
+=== 응답 - 실패(약관 미동의)
+
+include::{snippets}/signup-local-terms-not-agreed/http-response.adoc[]
+include::{snippets}/signup-local-terms-not-agreed/response-fields.adoc[]
+
+=== 응답 - 실패(이미 사용 중인 이메일)
+
+include::{snippets}/signup-local-duplicate-email/http-response.adoc[]
+include::{snippets}/signup-local-duplicate-email/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_002|요청 값 검증에 실패했습니다.|이메일 형식 오류 등(errorDetail 참고)
+|400|COMMON_400_001|잘못된 요청입니다.|비밀번호 형식 오류(영문+숫자 8~16자, errorDetail 참고)
+|400|AUTH_400_002|약관에 동의해야 회원가입할 수 있습니다.|termsAgreed=false
+|409|AUTH_409_001|이미 사용 중인 이메일입니다.|이메일 중복
+|===
+
 [[stats-summary]]
 == 수익 통계 조회 (STATS-02)
 
