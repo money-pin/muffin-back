@@ -25,3 +25,6 @@ muffin:
     jwt:
       # 로컬 개발 전용 더미 시크릿
       secret: ${JWT_SECRET:local-dev-only-jwt-secret-please-change-1234567890}
+
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}

@@ -15,6 +15,7 @@ public enum AuthErrorCode implements BaseErrorCode {
     LOGIN_LOCKED(HttpStatus.LOCKED, "AUTH_423_002", "로그인 시도 횟수를 초과하여 계정이 잠겼습니다. 30분 후 다시 시도해 주세요."),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_401_002", "이메일 또는 비밀번호가 일치하지 않습니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_401_003", "유효하지 않은 refresh token입니다."),
+    INVALID_GOOGLE_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_401_004", "유효하지 않은 구글 로그인 토큰입니다."),
     WITHDRAWN_ACCOUNT(HttpStatus.FORBIDDEN, "AUTH_403_002", "탈퇴한 계정입니다."),
     SUSPENDED_ACCOUNT(HttpStatus.FORBIDDEN, "AUTH_403_003", "정지된 계정입니다."),
     EMAIL_ALREADY_IN_USE(HttpStatus.CONFLICT, "AUTH_409_001", "이미 사용 중인 이메일입니다."),

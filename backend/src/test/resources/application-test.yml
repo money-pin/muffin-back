@@ -25,6 +25,9 @@ muffin:
       access-token-expire-minutes: 60
       refresh-token-expire-days: 30
 
+    google:
+      client-id: test-google-client-id
+
     login:
       max-attempts: 5
       lock-minutes: 30

@@ -15,6 +15,8 @@ public interface AuthRepository extends JpaRepository<Auth, Long> {
 
     Optional<Auth> findByProviderAndEmail(AuthProvider provider, String email);
 
+    Optional<Auth> findByProviderAndProviderUserId(AuthProvider provider, String providerUserId);
+
     // 미인증 계정 정리 배치용
     List<Auth> findAllByProviderAndEmailVerifiedFalseAndCreatedAtBefore(AuthProvider provider, LocalDateTime cutoff);
 }
