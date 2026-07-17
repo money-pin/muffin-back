@@ -42,7 +42,7 @@ class NewsReconstructionServiceTest {
         ReflectionTestUtils.setField(sector, "id", 10L);
         when(newsRepository.findById(newsId)).thenReturn(Optional.of(news));
         when(articleContentClient.fetch(originalUrl)).thenReturn("원문 본문");
-        when(sectorRepository.findAllBySectorCodeIn(List.of("GOLD"))).thenReturn(List.of(sector));
+        when(sectorRepository.findBySectorCode("GOLD")).thenReturn(Optional.of(sector));
         when(newsRewriter.rewrite(new NewsReconstructionRequest(
                         news.getTitle(), news.getPublisher(), news.getPublishedAt(), "원문 본문")))
                 .thenReturn(new NewsReconstructionResult(

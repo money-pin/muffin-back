@@ -8,9 +8,6 @@ import com.muffin.news.domain.sectorimpact.NewsSectorImpactRepository;
 import com.muffin.sector.domain.sector.Sector;
 import com.muffin.sector.domain.sector.SectorRepository;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -80,20 +77,11 @@ public class NewsReconstructionService {
     }
 
     private List<NewsSectorImpact> toSectorImpacts(News news, List<SectorImpactResult> results) {
-        Map<String, Sector> sectorsByCode =
-                sectorRepository
-                        .findAllBySectorCodeIn(results.stream()
-                                .map(SectorImpactResult::sectorCode)
-                                .toList())
-                        .stream()
-                        .collect(Collectors.toMap(Sector::getSectorCode, Function.identity()));
-
         return results.stream()
                 .map(result -> {
-                    Sector sector = sectorsByCode.get(result.sectorCode());
-                    if (sector == null) {
-                        throw new IllegalStateException("Sector not found: " + result.sectorCode());
-                    }
+                    Sector sector = sectorRepository
+                            .findBySectorCode(result.sectorCode())
+                            .orElseThrow(() -> new IllegalStateException("Sector not found: " + result.sectorCode()));
                     return NewsSectorImpact.create(news.getId(), sector.getId(), result.impact());
                 })
                 .toList();
