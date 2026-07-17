@@ -20,7 +20,10 @@ public final class SectorSeedData {
             new GroupSeed("FUTURE_TECH", "미래 기술&혁신", null, 2),
             new GroupSeed("REAL_ECONOMY", "실물 경제&인프라", null, 3));
 
-    /** §4.1~4.3에서 확정된 11개 ETF. `CRYPTO`용 ETF는 미정이라 포함하지 않는다. */
+    /**
+     * §4.1~4.3에서 확정된 11개 ETF와 코인 섹터 기준가 정책에 따른 BTC 1건. `BTC`는 토스증권이 아닌 CoinGecko API로
+     * 시세를 수집하므로 종목코드 대신 CoinGecko 코인 id 대응 코드를 쓴다({@link com.muffin.sector.infrastructure.BtcPriceCollector}).
+     */
     public static final List<EtfSeed> ETFS = List.of(
             new EtfSeed("459580", "KODEX CD금리액티브(합성)"),
             new EtfSeed("132030", "KODEX 골드선물(H)"),
@@ -32,12 +35,10 @@ public final class SectorSeedData {
             new EtfSeed("390400", "KODEX 미국스마트모빌리티S&P"),
             new EtfSeed("218420", "KODEX 미국S&P500에너지(합성)"),
             new EtfSeed("453650", "KODEX 미국S&P500금융"),
-            new EtfSeed("494840", "TIGER 미국방산TOP10"));
+            new EtfSeed("494840", "TIGER 미국방산TOP10"),
+            new EtfSeed("BTC", "비트코인"));
 
-    /**
-     * §4.1~4.3의 11개 섹터. `CRYPTO`는 매핑할 ETF가 확정되지 않아 제외한다 (§4.2, §4.3 표 각주 참고). ETF가
-     * 정해지면 이 목록에 한 줄만 추가하면 된다.
-     */
+    /** §4.1~4.3의 11개 섹터와 코인 섹터 기준가 정책에 따라 추가된 `CRYPTO`(BTC) 1건. */
     public static final List<SectorSeed> SECTORS = List.of(
             new SectorSeed("DEPOSIT", "BASE_ASSET", "459580", "예금", "국내 단기금리 기반", 1),
             new SectorSeed("GOLD", "BASE_ASSET", "132030", "금", "글로벌 금 선물 기반", 2),
@@ -46,6 +47,7 @@ public final class SectorSeedData {
             new SectorSeed("TECH", "FUTURE_TECH", "381170", "테크", "미국 빅테크 중심", 1),
             new SectorSeed("SEMICONDUCTOR", "FUTURE_TECH", "381180", "반도체", "미국 반도체 산업 중심", 2),
             new SectorSeed("BIO", "FUTURE_TECH", "203780", "바이오/제약", "미국 바이오·제약 산업 중심", 3),
+            new SectorSeed("CRYPTO", "FUTURE_TECH", "BTC", "코인", "비트코인(BTC) 시세 기반, 매일 09:00 KST 기준가", 4),
             new SectorSeed("AUTO", "REAL_ECONOMY", "390400", "자동차", "미국 자동차·모빌리티 산업 중심", 1),
             new SectorSeed("ENERGY", "REAL_ECONOMY", "218420", "에너지", "미국 에너지 산업 중심", 2),
             new SectorSeed("FINANCE", "REAL_ECONOMY", "453650", "금융", "미국 금융 산업 중심", 3),

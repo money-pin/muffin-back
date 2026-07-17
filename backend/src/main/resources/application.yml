@@ -20,6 +20,11 @@ toss:
     client-id: ${TOSS_CLIENT_ID}
     client-secret: ${TOSS_CLIENT_SECRET}
 
+coingecko:
+  api:
+    base-url: ${COINGECKO_API_BASE_URL:https://api.coingecko.com}
+    api-key: ${COINGECKO_API_KEY}
+
 muffin:
   batch:
     rss:
@@ -32,6 +37,12 @@ muffin:
       # 아래 스케줄러는 이벤트가 아직 연동되지 않은 경우를 위한 안전망이며 멱등하다.
       scheduler-enabled: true
       cron: "0 30 9 * * *"
+      zone: Asia/Seoul
+
+    btc-price:
+      # 코인 섹터 기준가 정책: 매일 09:00 KST에 CoinGecko 시세를 조회해 그날의 기준가로 저장한다.
+      scheduler-enabled: true
+      cron: "0 0 9 * * *"
       zone: Asia/Seoul
 
   auth:

@@ -14,11 +14,12 @@ import org.junit.jupiter.api.Test;
 class SectorSeedDataTest {
 
     @Test
-    @DisplayName("CRYPTO를 제외한 11개 섹터가 정의되어 있다")
-    void sectors_excludeCrypto() {
-        assertEquals(11, SectorSeedData.SECTORS.size());
+    @DisplayName("코인 섹터 기준가 정책에 따라 CRYPTO(BTC)를 포함한 12개 섹터가 정의되어 있다")
+    void sectors_includeCrypto() {
+        assertEquals(12, SectorSeedData.SECTORS.size());
         assertTrue(SectorSeedData.SECTORS.stream()
-                .noneMatch(sector -> sector.sectorCode().equals("CRYPTO")));
+                .anyMatch(sector ->
+                        sector.sectorCode().equals("CRYPTO") && sector.etfCode().equals("BTC")));
     }
 
     @Test
@@ -31,9 +32,9 @@ class SectorSeedDataTest {
     }
 
     @Test
-    @DisplayName("11개 ETF가 정의되어 있고 종목코드가 유일하다")
+    @DisplayName("12개 ETF가 정의되어 있고 종목코드가 유일하다")
     void etfs_areUniqueAndComplete() {
-        assertEquals(11, SectorSeedData.ETFS.size());
+        assertEquals(12, SectorSeedData.ETFS.size());
         Set<String> etfCodes =
                 SectorSeedData.ETFS.stream().map(EtfSeed::etfCode).collect(Collectors.toSet());
         assertEquals(SectorSeedData.ETFS.size(), etfCodes.size());

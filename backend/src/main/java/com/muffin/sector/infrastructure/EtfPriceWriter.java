@@ -41,6 +41,50 @@ public class EtfPriceWriter {
                 () -> EtfPrice.create(etfId, priceDate, null, endPrice));
     }
 
+    /**
+     * 코인 섹터 기준가를 기록한다. 코인은 24시간 거래되어 시가·종가 구분이 없으므로(§코인 섹터 기준가 정책), 서비스 기준
+     * 시각(09:00 KST)의 단일 가격을 시가·종가 두 필드에 동일하게 반영해 기존 정산 계산식을 그대로 재사용한다.
+     */
+    @Transactional
+    public void writeBasePrice(Long etfId, LocalDate priceDate, Long price) {
+        upsert(
+                etfId,
+                priceDate,
+                existing -> {
+                    existing.recordOpen(price);
+                    existing.recordClose(price);
+                },
+                () -> EtfPrice.create(etfId, priceDate, price, price));
+    }
+
+    @Transactional
+    public void markBaseFailed(Long etfId, LocalDate priceDate) {
+        upsert(
+                etfId,
+                priceDate,
+                EtfPriceWriter::markBothFailed,
+                () -> marked(etfId, priceDate, EtfPriceWriter::markBothFailed));
+    }
+
+    @Transactional
+    public void markBaseMarketClosed(Long etfId, LocalDate priceDate) {
+        upsert(
+                etfId,
+                priceDate,
+                EtfPriceWriter::markBothMarketClosed,
+                () -> marked(etfId, priceDate, EtfPriceWriter::markBothMarketClosed));
+    }
+
+    private static void markBothFailed(EtfPrice price) {
+        price.markOpenFailed();
+        price.markCloseFailed();
+    }
+
+    private static void markBothMarketClosed(EtfPrice price) {
+        price.markOpenMarketClosed();
+        price.markCloseMarketClosed();
+    }
+
     @Transactional
     public void markOpenNoData(Long etfId, LocalDate priceDate) {
         upsert(etfId, priceDate, EtfPrice::markOpenNoData, () -> marked(etfId, priceDate, EtfPrice::markOpenNoData));
