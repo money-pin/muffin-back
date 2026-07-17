@@ -3,7 +3,14 @@ package com.muffin.news.application.reconstruction;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.news.enums.NewsStatus;
+import com.muffin.news.domain.sectorimpact.NewsSectorImpact;
+import com.muffin.news.domain.sectorimpact.NewsSectorImpactRepository;
+import com.muffin.sector.domain.sector.Sector;
+import com.muffin.sector.domain.sector.SectorRepository;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,6 +23,8 @@ import org.springframework.stereotype.Service;
 public class NewsReconstructionService {
 
     private final NewsRepository newsRepository;
+    private final NewsSectorImpactRepository newsSectorImpactRepository;
+    private final SectorRepository sectorRepository;
     private final NewsArticleContentClient articleContentClient;
     private final NewsRewriter newsRewriter;
 
@@ -50,9 +59,12 @@ public class NewsReconstructionService {
             NewsReconstructionResult result = newsRewriter.rewrite(new NewsReconstructionRequest(
                     news.getTitle(), news.getPublisher(), news.getPublishedAt(), originalContent));
 
+            List<NewsSectorImpact> sectorImpacts = toSectorImpacts(news, result.sectorImpacts());
+
             news.completeReconstruction(result.summary(), result.rewrittenBody());
 
             newsRepository.save(news);
+            newsSectorImpactRepository.saveAll(sectorImpacts);
 
             if (!result.warningFlags().isEmpty()) {
                 log.warn(
@@ -63,8 +75,28 @@ public class NewsReconstructionService {
         } catch (Exception exception) {
             log.error("News reconstruction failed: newsId={}", newsId, exception);
 
-            markAsFailed(newsId);
+            markAsFailedSafely(newsId);
         }
+    }
+
+    private List<NewsSectorImpact> toSectorImpacts(News news, List<SectorImpactResult> results) {
+        Map<String, Sector> sectorsByCode =
+                sectorRepository
+                        .findAllBySectorCodeIn(results.stream()
+                                .map(SectorImpactResult::sectorCode)
+                                .toList())
+                        .stream()
+                        .collect(Collectors.toMap(Sector::getSectorCode, Function.identity()));
+
+        return results.stream()
+                .map(result -> {
+                    Sector sector = sectorsByCode.get(result.sectorCode());
+                    if (sector == null) {
+                        throw new IllegalStateException("Sector not found: " + result.sectorCode());
+                    }
+                    return NewsSectorImpact.create(news.getId(), sector.getId(), result.impact());
+                })
+                .toList();
     }
 
     private void markAsFailed(Long newsId) {
@@ -74,5 +106,13 @@ public class NewsReconstructionService {
                 newsRepository.save(news);
             }
         });
+    }
+
+    private void markAsFailedSafely(Long newsId) {
+        try {
+            markAsFailed(newsId);
+        } catch (Exception exception) {
+            log.error("Failed to mark news reconstruction as failed: newsId={}", newsId, exception);
+        }
     }
 }

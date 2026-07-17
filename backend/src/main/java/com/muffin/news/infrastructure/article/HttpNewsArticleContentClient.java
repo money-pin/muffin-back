@@ -1,5 +1,7 @@
 package com.muffin.news.infrastructure.article;
 
+import com.muffin.news.application.exception.NewsErrorCode;
+import com.muffin.news.application.exception.NewsException;
 import com.muffin.news.application.reconstruction.NewsArticleContentClient;
 import com.muffin.news.infrastructure.openai.NewsReconstructionProperties;
 import com.muffin.news.infrastructure.retry.RetryExecutor;
@@ -70,14 +72,14 @@ public class HttpNewsArticleContentClient implements NewsArticleContentClient {
             String content = extractContent(document);
 
             if (content.isBlank()) {
-                throw new IllegalStateException("Article content was empty: " + originalUrl);
+                throw new NewsException(NewsErrorCode.ARTICLE_CONTENT_FETCH_FAILED);
             }
 
             return limitLength(content, properties.maxSourceLength());
-        } catch (ArticleAccessException exception) {
-            throw new IllegalStateException("Failed to fetch article: " + originalUrl, exception.getCause());
-        } catch (ArticleHttpStatusException exception) {
-            throw new IllegalStateException("Article server returned HTTP " + exception.statusCode());
+        } catch (NewsException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new NewsException(NewsErrorCode.ARTICLE_CONTENT_FETCH_FAILED, exception);
         }
     }
 

@@ -1,13 +1,19 @@
 package com.muffin.news.infrastructure.openai;
 
+import com.muffin.news.application.exception.NewsErrorCode;
+import com.muffin.news.application.exception.NewsException;
 import com.muffin.news.application.reconstruction.NewsReconstructionRequest;
 import com.muffin.news.application.reconstruction.NewsReconstructionResult;
 import com.muffin.news.application.reconstruction.NewsRewriter;
+import com.muffin.news.application.reconstruction.SectorImpactResult;
+import com.muffin.news.domain.sectorimpact.enums.ImpactType;
 import com.muffin.news.infrastructure.retry.RetryExecutor;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatusCode;
@@ -28,6 +34,10 @@ public class OpenAiRewriter implements NewsRewriter {
     private static final int MAX_BODY_LENGTH = 1_000;
 
     private static final Set<String> WARNING_FLAGS = Set.of("수치_불확실", "날짜_불명확", "주체_모호");
+    private static final List<String> SECTOR_CODES = List.of(
+            "DEPOSIT", "GOLD", "BOND", "USD", "TECH", "SEMICONDUCTOR", "BIO", "AUTO", "ENERGY", "FINANCE", "DEFENSE");
+    private static final List<String> IMPACT_TYPES =
+            Arrays.stream(ImpactType.values()).map(Enum::name).toList();
 
     private static final String INSTRUCTIONS =
             """
@@ -36,8 +46,8 @@ public class OpenAiRewriter implements NewsRewriter {
         제공된 뉴스 원문을 바탕으로 다음 결과를 작성하라.
 
         1. 한 줄 요약(summary)
-        2. 금융 입문자용 재구성 본문(content)
-        3. 12개 자산 섹터별 영향도(sector_impacts)
+        2. 금융 입문자용 재구성 본문(rewritten_body)
+        3. 11개 자산 섹터별 영향도(sector_impacts)
         4. 원문 정보의 불명확성을 나타내는 경고(warning_flags)
 
         [공통 원칙]
@@ -57,7 +67,7 @@ public class OpenAiRewriter implements NewsRewriter {
         - 과장하거나 원문에 없는 결론을 추가하지 마라.
         - "이 기사는", "이번 뉴스는"과 같은 불필요한 표현으로 시작하지 마라.
 
-        [content 작성 규칙]
+        [rewritten_body 작성 규칙]
 
         - 금융 입문자가 이해할 수 있도록 어려운 경제·금융 표현을 쉬운 말로 설명하라.
         - 문장은 짧고 명확하게 작성하라.
@@ -71,11 +81,10 @@ public class OpenAiRewriter implements NewsRewriter {
         - DEPOSIT: 은행 예금, 적금, CD금리, 기준금리
         - GOLD: 실물 금, 금 가격, 귀금속
         - BOND: 국고채, 회사채, 채권금리
-        - DOLLAR: 달러·원 환율, 달러 가치, 외환시장
+        - USD: 달러·원 환율, 달러 가치, 외환시장
         - TECH: 글로벌 IT, 소프트웨어, 플랫폼, 빅테크
         - SEMICONDUCTOR: 반도체 설계, 제조, 소재, 장비
         - BIO: 신약 개발, 제약, 의료기기, 헬스케어
-        - COIN: 비트코인, 이더리움 등 가상자산
         - AUTO: 완성차, 전기차, 자동차 부품
         - ENERGY: 원유, 천연가스, 정유, 신재생에너지
         - FINANCE: 은행, 보험, 증권사 등 금융회사
@@ -91,7 +100,7 @@ public class OpenAiRewriter implements NewsRewriter {
 
         [섹터 영향도 판단 규칙]
 
-        - 12개 섹터를 모두 정확히 한 번씩 포함하라.
+        - 11개 섹터를 모두 정확히 한 번씩 포함하라.
         - 원문에 명확한 근거가 없으면 반드시 NEUTRAL로 판단하라.
         - 단순한 추측이나 약한 간접 연관에는 STRONG_POSITIVE 또는 STRONG_NEGATIVE를 사용하지 마라.
         - STRONG_POSITIVE와 STRONG_NEGATIVE는 해당 섹터가 뉴스의 직접적인 주제일 때만 사용하라.
@@ -115,7 +124,7 @@ public class OpenAiRewriter implements NewsRewriter {
 
         {
           "summary": "뉴스 한 줄 요약",
-          "content": "금융 입문자용으로 재구성된 본문",
+          "rewritten_body": "금융 입문자용으로 재구성된 본문",
           "sector_impacts": [
             {
               "sector_code": "DEPOSIT",
@@ -156,19 +165,25 @@ public class OpenAiRewriter implements NewsRewriter {
     }
 
     private String requestWithRetry(NewsReconstructionRequest request) {
-        return RetryExecutor.execute(
-                "OpenAI reconstruction request",
-                request.title(),
-                "OpenAI reconstruction retry wait was interrupted",
-                () -> restClient
-                        .post()
-                        .uri(openAiProperties.endpoint())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("Authorization", "Bearer " + openAiProperties.apiKey())
-                        .body(requestBody(request))
-                        .retrieve()
-                        .body(String.class),
-                OpenAiRewriter::isRetryableException);
+        try {
+            return RetryExecutor.execute(
+                    "OpenAI reconstruction request",
+                    request.title(),
+                    "OpenAI reconstruction retry wait was interrupted",
+                    () -> restClient
+                            .post()
+                            .uri(openAiProperties.endpoint())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header("Authorization", "Bearer " + openAiProperties.apiKey())
+                            .body(requestBody(request))
+                            .retrieve()
+                            .body(String.class),
+                    OpenAiRewriter::isRetryableException);
+        } catch (NewsException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new NewsException(NewsErrorCode.NEWS_RECONSTRUCTION_REQUEST_FAILED, exception);
+        }
     }
 
     /** OpenAI 네트워크 오류와 408, 429, 5xx 응답만 재시도한다. */
@@ -195,7 +210,7 @@ public class OpenAiRewriter implements NewsRewriter {
                     "published_at", request.publishedAt().toString(),
                     "original_content", request.originalContent()));
         } catch (JacksonException exception) {
-            throw new IllegalStateException("Failed to serialize reconstruction request", exception);
+            throw new NewsException(NewsErrorCode.NEWS_RECONSTRUCTION_REQUEST_FAILED, exception);
         }
 
         Map<String, Object> schema = new LinkedHashMap<>();
@@ -207,13 +222,15 @@ public class OpenAiRewriter implements NewsRewriter {
                         Map.of("type", "string", "maxLength", MAX_SUMMARY_LENGTH),
                         "rewritten_body",
                         Map.of("type", "string", "maxLength", MAX_BODY_LENGTH),
+                        "sector_impacts",
+                        sectorImpactsSchema(),
                         "warning_flags",
                         Map.of(
                                 "type",
                                 "array",
                                 "items",
                                 Map.of("type", "string", "enum", List.copyOf(WARNING_FLAGS)))));
-        schema.put("required", List.of("summary", "rewritten_body", "warning_flags"));
+        schema.put("required", List.of("summary", "rewritten_body", "sector_impacts", "warning_flags"));
         schema.put("additionalProperties", false);
 
         return Map.of(
@@ -237,13 +254,32 @@ public class OpenAiRewriter implements NewsRewriter {
                                 schema)));
     }
 
+    private static Map<String, Object> sectorImpactsSchema() {
+        Map<String, Object> itemSchema = new LinkedHashMap<>();
+        itemSchema.put("type", "object");
+        itemSchema.put(
+                "properties",
+                Map.of(
+                        "sector_code",
+                        Map.of("type", "string", "enum", SECTOR_CODES),
+                        "impact",
+                        Map.of("type", "string", "enum", IMPACT_TYPES),
+                        "reason",
+                        Map.of("type", List.of("string", "null"))));
+        itemSchema.put("required", List.of("sector_code", "impact", "reason"));
+        itemSchema.put("additionalProperties", false);
+
+        return Map.of(
+                "type", "array", "items", itemSchema, "minItems", SECTOR_CODES.size(), "maxItems", SECTOR_CODES.size());
+    }
+
     /** Responses API 응답에서 요약, 본문 및 경고 항목을 추출한다. */
     private NewsReconstructionResult parseResponse(String responseBody) {
-        if (responseBody == null || responseBody.isBlank()) {
-            throw new IllegalStateException("OpenAI returned an empty response");
-        }
-
         try {
+            if (responseBody == null || responseBody.isBlank()) {
+                throw new IllegalStateException("OpenAI returned an empty response");
+            }
+
             JsonNode response = objectMapper.readTree(responseBody);
 
             for (JsonNode output : response.path("output")) {
@@ -253,11 +289,10 @@ public class OpenAiRewriter implements NewsRewriter {
                     }
                 }
             }
-        } catch (JacksonException exception) {
-            throw new IllegalStateException("Failed to parse OpenAI reconstruction response", exception);
+            throw new IllegalStateException("OpenAI response did not contain output_text");
+        } catch (RuntimeException exception) {
+            throw new NewsException(NewsErrorCode.NEWS_RECONSTRUCTION_RESPONSE_INVALID, exception);
         }
-
-        throw new IllegalStateException("OpenAI response did not contain output_text");
     }
 
     private NewsReconstructionResult parseOutputText(String outputText) throws JacksonException {
@@ -265,6 +300,23 @@ public class OpenAiRewriter implements NewsRewriter {
 
         String summary = result.path("summary").asText();
         String rewrittenBody = result.path("rewritten_body").asText();
+        List<SectorImpactResult> sectorImpacts = result.path("sector_impacts")
+                .valueStream()
+                .map(impact -> new SectorImpactResult(
+                        impact.path("sector_code").asText(),
+                        ImpactType.valueOf(impact.path("impact").asText()),
+                        impact.path("reason").isNull()
+                                ? null
+                                : impact.path("reason").asText()))
+                .toList();
+
+        Set<String> returnedSectorCodes =
+                sectorImpacts.stream().map(SectorImpactResult::sectorCode).collect(Collectors.toSet());
+        if (sectorImpacts.size() != SECTOR_CODES.size()
+                || returnedSectorCodes.size() != SECTOR_CODES.size()
+                || !returnedSectorCodes.containsAll(SECTOR_CODES)) {
+            throw new IllegalStateException("OpenAI returned incomplete or duplicate sector impacts");
+        }
 
         List<String> warningFlags =
                 result.path("warning_flags").valueStream().map(JsonNode::asText).toList();
@@ -273,6 +325,6 @@ public class OpenAiRewriter implements NewsRewriter {
             throw new IllegalStateException("OpenAI returned an unsupported warning flag");
         }
 
-        return new NewsReconstructionResult(summary, rewrittenBody, warningFlags);
+        return new NewsReconstructionResult(summary, rewrittenBody, sectorImpacts, warningFlags);
     }
 }

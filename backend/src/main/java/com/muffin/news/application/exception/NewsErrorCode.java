@@ -5,7 +5,12 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
-/** 뉴스 선별 및 재구성 파이프라인에서 사용하는 에러 코드를 정의한다. */
+/**
+ * 뉴스 선별 및 재구성 파이프라인에서 사용하는 에러 코드를 정의한다.
+ *
+ * <p>인프라 계층은 실패 원인에 맞는 코드로 {@link NewsException}을 던지고, 전역 예외 처리기는 상위 타입인
+ * {@code GeneralException}을 통해 HTTP 상태와 표준 오류 응답으로 변환한다.
+ */
 @Getter
 @AllArgsConstructor
 public enum NewsErrorCode implements BaseErrorCode {
