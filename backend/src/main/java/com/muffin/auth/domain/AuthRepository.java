@@ -1,5 +1,6 @@
 package com.muffin.auth.domain;
 
+import com.muffin.auth.domain.enums.AuthProvider;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -9,4 +10,6 @@ public interface AuthRepository extends JpaRepository<Auth, Long> {
     boolean existsByEmail(String email);
 
     Optional<Auth> findByUserId(Long userId);
+
+    Optional<Auth> findByProviderAndEmail(AuthProvider provider, String email);
 }

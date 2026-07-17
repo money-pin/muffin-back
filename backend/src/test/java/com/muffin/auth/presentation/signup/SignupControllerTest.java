@@ -1,5 +1,6 @@
 package com.muffin.auth.presentation.signup;
 
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
@@ -52,7 +53,11 @@ class SignupControllerTest {
                 .andExpect(jsonPath("$.isSuccess", is(true)))
                 .andExpect(jsonPath("$.result.accessToken").exists())
                 .andExpect(cookie().exists("refreshToken"))
-                .andExpect(cookie().httpOnly("refreshToken", true));
+                .andExpect(cookie().httpOnly("refreshToken", true))
+                .andExpect(cookie().secure("refreshToken", true))
+                .andExpect(cookie().sameSite("refreshToken", "Strict"))
+                .andExpect(cookie().path("refreshToken", "/api/auth"))
+                .andExpect(cookie().maxAge("refreshToken", greaterThan(0)));
     }
 
     @Test
@@ -97,6 +102,36 @@ class SignupControllerTest {
         mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code", is("AUTH_409_001")));
+    }
+
+    @Test
+    @DisplayName("이름이 빈 값이면 400 (COMMON_400_002)")
+    void signup_blankName() throws Exception {
+        String body = objectMapper.writeValueAsString(new SignupRequestBody("name@example.com", "password1", "", true));
+
+        mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code", is("COMMON_400_002")));
+    }
+
+    @Test
+    @DisplayName("이메일이 빈 값이면 400 (COMMON_400_002)")
+    void signup_blankEmail() throws Exception {
+        String body = objectMapper.writeValueAsString(new SignupRequestBody("", "password1", "홍길동", true));
+
+        mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code", is("COMMON_400_002")));
+    }
+
+    @Test
+    @DisplayName("비밀번호가 빈 값이면 400 (COMMON_400_002)")
+    void signup_blankPassword() throws Exception {
+        String body = objectMapper.writeValueAsString(new SignupRequestBody("blank-pw@example.com", "", "홍길동", true));
+
+        mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code", is("COMMON_400_002")));
     }
 
     private record SignupRequestBody(String email, String password, String name, boolean termsAgreed) {}

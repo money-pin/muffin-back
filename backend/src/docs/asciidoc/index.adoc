@@ -118,6 +118,53 @@ include::{snippets}/signup-local-duplicate-email/response-fields.adoc[]
 |409|AUTH_409_001|이미 사용 중인 이메일입니다.|이메일 중복
 |===
 
+[[auth-login]]
+== 로컬 로그인 (Auth-03)
+
+이메일/비밀번호로 로그인하고 access token을 응답 바디로, refresh token을 HttpOnly Cookie(`refreshToken`, Path=`/api/auth`, Secure, SameSite=Strict)로 발급한다.
+
+NOTE: 가입되지 않은 이메일과 비밀번호 불일치는 계정 존재 여부가 노출되지 않도록 동일한 에러(`AUTH_401_002`)로 응답한다.
+
+NOTE: 비밀번호를 5회 연속 틀리면 계정이 30분간 잠긴다(`AUTH_423_002`). 잠긴 뒤에는 올바른 비밀번호를 넣어도 비교 자체를 하지 않고 즉시 거부하며, 30분이 지나면 별도 배치 없이 자동으로 해제되고 실패 횟수도 초기화된다. 잠기기 전에 로그인에 성공하면 그 시점에 실패 횟수가 즉시 초기화된다.
+
+=== 요청 - 성공
+
+include::{snippets}/login-local-success/http-request.adoc[]
+include::{snippets}/login-local-success/request-fields.adoc[]
+
+=== 응답 - 성공
+
+include::{snippets}/login-local-success/http-response.adoc[]
+include::{snippets}/login-local-success/response-fields.adoc[]
+
+=== 응답 - 실패(이메일/비밀번호 불일치)
+
+include::{snippets}/login-local-invalid-credentials/http-response.adoc[]
+include::{snippets}/login-local-invalid-credentials/response-fields.adoc[]
+
+=== 응답 - 실패(탈퇴한 계정)
+
+include::{snippets}/login-local-withdrawn-account/http-response.adoc[]
+include::{snippets}/login-local-withdrawn-account/response-fields.adoc[]
+
+=== 응답 - 실패(로그인 시도 잠금)
+
+include::{snippets}/login-local-locked/http-response.adoc[]
+include::{snippets}/login-local-locked/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_002|요청 값 검증에 실패했습니다.|이메일 형식 오류 등(errorDetail 참고)
+|401|AUTH_401_002|이메일 또는 비밀번호가 일치하지 않습니다.|가입되지 않은 이메일 또는 비밀번호 불일치
+|403|AUTH_403_002|탈퇴한 계정입니다.|status=WITHDRAWN
+|403|AUTH_403_003|정지된 계정입니다.|status=SUSPENDED
+|423|AUTH_423_002|로그인 시도 횟수를 초과하여 계정이 잠겼습니다. 30분 후 다시 시도해 주세요.|비밀번호 5회 연속 실패(30분 후 자동 해제)
+|===
+
 [[stats-summary]]
 == 수익 통계 조회 (STATS-02)
 

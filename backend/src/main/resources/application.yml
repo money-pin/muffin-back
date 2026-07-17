@@ -49,6 +49,10 @@ muffin:
       access-token-expire-minutes: 60
       refresh-token-expire-days: 30
 
+    login:
+      max-attempts: 5
+      lock-minutes: 30
+
   news:
     rss:
       publisher: ${NEWS_RSS_PUBLISHER:매일경제}
