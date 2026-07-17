@@ -1,5 +1,6 @@
 package com.muffin.sector.domain.sector;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -7,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SectorRepository extends JpaRepository<Sector, Long> {
 
     Optional<Sector> findBySectorCode(String sectorCode);
+
+    List<Sector> findByIsActiveTrueOrderBySectorOrderAsc();
 }

@@ -4,6 +4,7 @@ import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.InvestmentRepository;
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
 import com.muffin.investment.domain.investment.enums.SettlementStatus;
+import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.EtfPriceRepository;
 import com.muffin.sector.domain.etfprice.PriceCollectionStatus;
@@ -45,6 +46,7 @@ public class SettlementCommandService {
     private final InvestmentRepository investmentRepository;
     private final EtfPriceRepository etfPriceRepository;
     private final SectorRepository sectorRepository;
+    private final TradingCalendarService tradingCalendarService;
     private final SettlementUserProcessor processor;
 
     /**
@@ -62,15 +64,16 @@ public class SettlementCommandService {
             return SettlementBatchResult.skipped(settlementDate);
         }
 
-        List<Investment> allTargets = investmentRepository.findByStatusInAndSettlementStatusInAndInvestDateLessThan(
+        List<Investment> targets = investmentRepository.findByStatusInAndSettlementStatusInAndInvestDateLessThan(
                 TARGET_STATUSES, REPROCESSABLE, settlementDate);
-        // 직전 거래일. 확정 투자가 "정산 창을 놓쳤는지(stale)" 판정에 사용한다.
-        LocalDate prevTradingDay = etfPriceRepository.findLatestPriceDateBefore(settlementDate);
-        List<Investment> targets = filterProcessable(allTargets, prevTradingDay, settlementDate);
         if (targets.isEmpty()) {
             log.info("[settlement] no targets for {}", settlementDate);
             return new SettlementBatchResult(settlementDate, true, 0, 0, 0);
         }
+
+        // TODO : 확인필요 - 가격 적재일이 아닌 토스 캘린더로 정산 창을 판정하도록 기존 정산 로직을 변경함.
+        LocalDate prevTradingDay =
+                tradingCalendarService.getCalendar(settlementDate).previousTradingDay();
 
         Map<Long, Long> sectorToEtfId = sectors.stream().collect(Collectors.toMap(Sector::getId, Sector::getEtfId));
         Map<Long, EtfPrice> etfPriceByEtfId =
@@ -143,32 +146,9 @@ public class SettlementCommandService {
         });
     }
 
-    /**
-     * 이번 실행에서 처리 가능한 대상만 남긴다. 직전 거래일을 구할 수 없으면(첫 적재일/짧은 보존 기간) 확정 투자의 정산 창을 판정할 수 없으므로, 확정 건은 PENDING으로
-     * 남겨 다음 실행으로 미루고 NO_INVEST만 종료 처리한다.
-     */
-    private List<Investment> filterProcessable(
-            List<Investment> targets, LocalDate prevTradingDay, LocalDate settlementDate) {
-        if (prevTradingDay != null) {
-            return targets;
-        }
-        long deferred = targets.stream()
-                .filter(t -> t.getStatus() == InvestmentStatus.CONFIRMED)
-                .count();
-        if (deferred > 0) {
-            log.warn(
-                    "[settlement] no previous trading day before {}, defer {} CONFIRMED (kept PENDING)",
-                    settlementDate,
-                    deferred);
-        }
-        return targets.stream()
-                .filter(t -> t.getStatus() == InvestmentStatus.NO_INVEST)
-                .toList();
-    }
-
     /** 투자일자가 직전 거래일보다 이르면 정산 창을 놓친 것으로 본다(취소 대상). */
     private boolean isStale(Investment investment, LocalDate prevTradingDay) {
-        return prevTradingDay != null && investment.getInvestDate().isBefore(prevTradingDay);
+        return investment.getInvestDate().isBefore(prevTradingDay);
     }
 
     /** 재시도해 볼 만한 일시적 오류인지(락 충돌/데드락/타임아웃 등). 결정적 오류는 재시도하지 않는다. */

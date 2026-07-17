@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -79,6 +80,11 @@ public class QuizSet extends BaseEntity {
     /** 내부 리스트가 외부에서 직접 수정되지 않도록 읽기 전용 뷰를 반환한다. */
     public List<Quiz> getQuizzes() {
         return Collections.unmodifiableList(quizzes);
+    }
+
+    /** 오늘 퀴즈 세트에 속한 문제인지 확인하기 위해 내부 문제 목록에서 찾는다. */
+    public Optional<Quiz> findQuiz(Long quizId) {
+        return quizzes.stream().filter(quiz -> quiz.getId().equals(quizId)).findFirst();
     }
 
     private static void validateQuiz(

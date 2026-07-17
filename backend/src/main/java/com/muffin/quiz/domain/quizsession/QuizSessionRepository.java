@@ -2,6 +2,7 @@ package com.muffin.quiz.domain.quizsession;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 
 /** QuizSession 애그리거트 리포지토리 */
 public interface QuizSessionRepository extends JpaRepository<QuizSession, Long> {
+
+    Optional<QuizSession> findByUserIdAndDailyQuizSetId(Long userId, Long dailyQuizSetId);
 
     // 탈퇴 계정 데이터 정리 배치용: 아직 정리되지 않은(=quiz_session 행이 남아있는) 탈퇴 유저만 대상으로 잡아,
     // 정리가 끝난 유저는 다음 배치 실행부터 자연히 제외되게 한다.
