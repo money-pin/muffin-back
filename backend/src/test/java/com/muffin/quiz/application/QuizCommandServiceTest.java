@@ -291,8 +291,7 @@ class QuizCommandServiceTest {
     }
 
     private User onboardedUser(String nickname) {
-        User user = User.register(
-                1L, UUID.randomUUID().toString(), "세현", nickname, LocalDate.of(2000, 1, 1), "01012345678");
+        User user = User.register(1L, UUID.randomUUID().toString(), "세현", nickname);
         user.completeOnboarding(1, 2, 3);
         return user;
     }
