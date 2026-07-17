@@ -20,5 +20,5 @@ toss:
 
 muffin:
   news:
-    ai-selection:
+    ai:
       enabled: false

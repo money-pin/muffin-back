@@ -23,9 +23,15 @@ toss:
 muffin:
   batch:
     rss:
+      # rss 뉴스피드 수집 스케쥴러
       scheduler-enabled: ${NEWS_RSS_ENABLED:true}
       cron: ${NEWS_RSS_CRON:0 0 6 * * *}
       zone: ${NEWS_RSS_ZONE:Asia/Seoul}
+
+    news-publication:
+      scheduler-enabled: ${NEWS_PUBLICATION_ENABLED:true}
+      cron: ${NEWS_PUBLICATION_CRON:0 0 9 * * *}
+      zone: ${NEWS_PUBLICATION_ZONE:Asia/Seoul}
 
     settlement:
       # ETF 시세 적재 완료 이벤트가 1차 트리거.
@@ -55,9 +61,16 @@ muffin:
         - category: 세계
           url: ${NEWS_RSS_WORLD_URL:https://www.mk.co.kr/rss/30300018/}
 
-    ai-selection:
-      enabled: ${NEWS_AI_SELECTION_ENABLED:false}
+    ai:
+      # AI 기반 기능의 활성화 여부 (비활성화 시 관련 AI 컴포넌트를 등록하지 않음)
+      enabled: ${NEWS_AI_ENABLED:false}
       api-key: ${OPENAI_API_KEY:}
-      model: ${NEWS_AI_SELECTION_MODEL:gpt-5-mini}
       endpoint: ${OPENAI_RESPONSES_URL:https://api.openai.com/v1/responses}
-      max-per-category: ${NEWS_AI_SELECTION_MAX_PER_CATEGORY:5}
+
+      ai-selection:
+        model: ${NEWS_AI_SELECTION_MODEL:gpt-5-mini}
+        max-per-category: ${NEWS_AI_SELECTION_MAX_PER_CATEGORY:5}
+
+      reconstruction:
+        model: ${NEWS_RECONSTRUCTION_MODEL:gpt-4o}
+        max-source-length: ${NEWS_RECONSTRUCTION_MAX_SOURCE_LENGTH:20000}
