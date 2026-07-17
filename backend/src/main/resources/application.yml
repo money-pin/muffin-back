@@ -59,6 +59,12 @@ muffin:
         cleanup-cron: "0 0 * * * *" # 매시 정각
         zone: Asia/Seoul
 
+    withdrawal:
+      data-cleanup:
+        retention-months: 6
+        cleanup-cron: "0 0 3 * * *" # 매일 새벽 3시
+        zone: Asia/Seoul
+
   news:
     rss:
       publisher: ${NEWS_RSS_PUBLISHER:매일경제}

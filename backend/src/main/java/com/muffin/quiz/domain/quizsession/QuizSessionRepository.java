@@ -1,6 +1,32 @@
 package com.muffin.quiz.domain.quizsession;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /** QuizSession 애그리거트 리포지토리 */
-public interface QuizSessionRepository extends JpaRepository<QuizSession, Long> {}
+public interface QuizSessionRepository extends JpaRepository<QuizSession, Long> {
+
+    // 탈퇴 계정 데이터 정리 배치용: 아직 정리되지 않은(=quiz_session 행이 남아있는) 탈퇴 유저만 대상으로 잡아,
+    // 정리가 끝난 유저는 다음 배치 실행부터 자연히 제외되게 한다.
+    @Query(
+            value = "select distinct q.user_id from quiz_session q "
+                    + "join member m on m.user_id = q.user_id "
+                    + "where m.status = 'WITHDRAWN' and m.deleted_at < :cutoff",
+            nativeQuery = true)
+    List<Long> findDistinctUserIdsEligibleForCleanup(@Param("cutoff") LocalDateTime cutoff);
+
+    @Modifying(clearAutomatically = true)
+    @Query(
+            value = "delete from quiz_attempt where quiz_session_id in "
+                    + "(select quiz_session_id from quiz_session where user_id in (:userIds))",
+            nativeQuery = true)
+    int deleteAttemptsByUserIdIn(@Param("userIds") List<Long> userIds);
+
+    @Modifying(clearAutomatically = true)
+    @Query(value = "delete from quiz_session where user_id in (:userIds)", nativeQuery = true)
+    int deleteAllByUserIdIn(@Param("userIds") List<Long> userIds);
+}
