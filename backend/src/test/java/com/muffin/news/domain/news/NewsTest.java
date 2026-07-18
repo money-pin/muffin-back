@@ -15,22 +15,43 @@ class NewsTest {
     private static final LocalDateTime PUBLISHED_AT = LocalDateTime.of(2026, 7, 7, 9, 0);
 
     @Test
-    @DisplayName("뉴스를 생성하면 발행 대기 상태와 조회수 0으로 초기화된다")
-    void create_initializesPendingStatusAndZeroViewCount() {
+    @DisplayName("RSS 뉴스를 생성하면 처리 중 상태와 조회수 0으로 초기화된다")
+    void processing_initializesProcessingStatusAndZeroViewCount() {
         News news = createNews();
 
-        assertEquals(NewsStatus.PENDING, news.getStatus());
+        assertEquals(NewsStatus.PROCESSING, news.getStatus());
         assertEquals(0L, news.getViewCount());
+    }
+
+    @Test
+    @DisplayName("AI 재구성이 완료되면 결과를 저장하고 발행 대기 상태로 변경된다")
+    void completeReconstruction_setsPendingStatusAndContent() {
+        News news = createNews();
+
+        news.completeReconstruction("한 줄 요약", "재구성된 뉴스 본문");
+
+        assertEquals("한 줄 요약", news.getSummary());
+        assertEquals("재구성된 뉴스 본문", news.getContent());
+        assertEquals(NewsStatus.PENDING, news.getStatus());
     }
 
     @Test
     @DisplayName("뉴스 발행이 완료되면 상태가 PUBLISHED로 변경된다")
     void publish_setsPublishedStatus() {
         News news = createNews();
+        news.completeReconstruction("한 줄 요약", "재구성된 뉴스 본문");
 
         news.publish();
 
         assertEquals(NewsStatus.PUBLISHED, news.getStatus());
+    }
+
+    @Test
+    @DisplayName("AI 처리 중인 뉴스는 바로 발행할 수 없다")
+    void publish_throwsWhenNewsIsStillProcessing() {
+        News news = createNews();
+
+        assertThrows(IllegalStateException.class, news::publish);
     }
 
     @Test
@@ -86,13 +107,12 @@ class NewsTest {
     }
 
     private News createNews() {
-        return News.create(
+        return News.processing(
                 CATEGORY_ID,
                 "경제 뉴스",
                 "muffin",
                 PUBLISHED_AT,
                 "https://example.com/thumb.png",
-                "https://example.com/news/1",
-                "뉴스 본문");
+                "https://example.com/news/1");
     }
 }

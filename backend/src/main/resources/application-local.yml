@@ -28,3 +28,7 @@ muffin:
 
     google:
       client-id: ${GOOGLE_CLIENT_ID:}
+
+coingecko:
+  api:
+    api-key: ${COINGECKO_API_KEY:}

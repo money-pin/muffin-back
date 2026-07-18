@@ -23,9 +23,9 @@ class RssFeedWriterTest {
     private final NewsRepository newsRepository = mock(NewsRepository.class);
     private final RssFeedWriter writer = new RssFeedWriter(categoryRepository, newsRepository);
 
-    /** 이미 존재하는 URL의 기사는 건너뛰고, 신규 URL의 기사만 PENDING 상태로 저장한다. */
+    /** 이미 존재하는 URL의 기사는 건너뛰고, 신규 URL의 기사만 PROCESSING 상태로 저장한다. */
     @Test
-    void savesOnlyArticlesWithNewUrlsAsPending() {
+    void savesOnlyArticlesWithNewUrlsAsProcessing() {
         Category category = Category.create("경제", null);
         ReflectionTestUtils.setField(category, "id", 3L);
         RssArticle existing = article("기존", "https://example.com/1");
@@ -47,7 +47,7 @@ class RssFeedWriterTest {
         assertThat(newsCaptor.getValue().getCategoryId()).isEqualTo(3L);
         assertThat(newsCaptor.getValue().getOriginalUrl()).isEqualTo(fresh.url());
         assertThat(newsCaptor.getValue().getContent()).isNull();
-        assertThat(newsCaptor.getValue().getStatus().name()).isEqualTo("PENDING");
+        assertThat(newsCaptor.getValue().getStatus().name()).isEqualTo("PROCESSING");
     }
 
     private static RssArticle article(String title, String url) {
