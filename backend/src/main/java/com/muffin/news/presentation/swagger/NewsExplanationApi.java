@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @Tag(name = "News Explanation", description = "뉴스 해설 카드 API")
 public interface NewsExplanationApi {
@@ -19,5 +20,6 @@ public interface NewsExplanationApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다."),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 뉴스입니다.")
     })
-    ApiResponse<NewsExplanationCardsResponse> getExplanationCards(@Parameter(description = "조회할 뉴스 ID") Long newsId);
+    ApiResponse<NewsExplanationCardsResponse> getExplanationCards(
+            @AuthenticationPrincipal Long userId, @Parameter(description = "조회할 뉴스 ID") Long newsId);
 }

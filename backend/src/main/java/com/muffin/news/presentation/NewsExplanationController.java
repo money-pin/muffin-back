@@ -6,6 +6,7 @@ import com.muffin.news.application.explanation.NewsExplanationQueryService;
 import com.muffin.news.presentation.dto.response.NewsExplanationCardsResponse;
 import com.muffin.news.presentation.swagger.NewsExplanationApi;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,8 +21,8 @@ public class NewsExplanationController implements NewsExplanationApi {
 
     @Override
     @GetMapping("/{newsId}/explanation-cards")
-    // TODO: Security/JWT 적용 후 인증 사용자만 접근 가능하도록 보호 엔드포인트로 전환한다.
-    public ApiResponse<NewsExplanationCardsResponse> getExplanationCards(@PathVariable Long newsId) {
+    public ApiResponse<NewsExplanationCardsResponse> getExplanationCards(
+            @AuthenticationPrincipal Long userId, @PathVariable Long newsId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsExplanationQueryService.getExplanationCards(newsId));
     }
 }
