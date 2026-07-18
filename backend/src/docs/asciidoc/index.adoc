@@ -36,9 +36,9 @@ include::{snippets}/settlement-result-reason/response-fields.adoc[]
 [[auth-email-verification]]
 == 이메일 인증번호 발송/확인 (Auth-01)
 
-이메일 인증번호를 발송하고 확인한다. 회원가입 이전 단계에서 이메일 소유권을 확인하는 용도이며, 아직 가입되지 않은 이메일에 대해서만 발송된다.
+인증된 사용자(`Authorization: Bearer {accessToken}`)가 본인 계정의 이메일로 인증번호를 발송하고 확인한다. <<auth-signup,회원가입>> 이후 아무 때나 호출할 수 있으며, 이메일은 요청 바디가 아니라 access token으로 식별된 계정의 `Auth.email`을 사용한다.
 
-NOTE: 인증에 성공(`verified=true`)한 기록은 실제 회원가입 시점에 회원가입 서비스가 조회해서 확인할 예정이며, 이 API 자체는 회원가입을 수행하지 않는다. 정리 배치는 만료된 미인증 기록만 삭제하고 인증 성공 기록은 건드리지 않는다.
+NOTE: 확인(`/verification/confirm`) 성공 시 같은 트랜잭션에서 `Auth.emailVerified`가 `true`로 갱신된다. 정리 배치는 만료된 미인증 기록만 삭제하고 인증 성공 기록은 건드리지 않는다.
 
 === 발송 - 성공
 
@@ -46,10 +46,10 @@ include::{snippets}/email-verification-send-success/http-request.adoc[]
 include::{snippets}/email-verification-send-success/http-response.adoc[]
 include::{snippets}/email-verification-send-success/response-fields.adoc[]
 
-=== 발송 - 실패(이미 사용 중인 이메일)
+=== 발송 - 실패(이미 인증이 완료된 이메일)
 
-include::{snippets}/email-verification-send-duplicate/http-response.adoc[]
-include::{snippets}/email-verification-send-duplicate/response-fields.adoc[]
+include::{snippets}/email-verification-send-already-verified/http-response.adoc[]
+include::{snippets}/email-verification-send-already-verified/response-fields.adoc[]
 
 === 확인 - 성공
 
@@ -68,13 +68,219 @@ include::{snippets}/email-verification-confirm-mismatch/response-fields.adoc[]
 |===
 |HTTP|code|message|설명
 
-|409|AUTH_409_001|이미 사용 중인 이메일입니다.|발송 전 이메일 중복 체크 실패
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|COMMON_404_001|요청한 리소스를 찾을 수 없습니다.|access token의 userId에 해당하는 Auth 없음(정상 흐름에서는 발생하지 않음)
+|409|AUTH_409_002|이미 인증이 완료된 이메일입니다.|이미 emailVerified=true인 계정
 |429|AUTH_429_001|잠시 후 다시 시도해주세요.|재발송 쿨다운(기본 30초) 중
 |429|AUTH_429_002|오늘 인증번호 전송 횟수를 초과했습니다.|일일 발송 한도(기본 10회) 초과
 |400|AUTH_400_001|인증번호가 일치하지 않습니다.|코드 불일치, 또는 발송 이력 자체가 없음
 |410|AUTH_410_001|인증번호가 만료되었습니다.|만료(기본 5분)
 |423|AUTH_423_001|인증 시도 횟수를 초과하여 잠겼습니다. 인증번호를 다시 요청해 주세요.|연속 시도 한도(기본 5회) 초과
 |500|AUTH_500_001|인증 메일 발송에 실패했습니다.|SMTP 발송 실패(운영 환경)
+|===
+
+[[auth-signup]]
+== 로컬 회원가입 (Auth-01)
+
+이메일/비밀번호/이름과 약관 동의로 로컬 계정을 생성한다. 가입 즉시 로그인 상태가 되어 access token을 응답 바디로, refresh token을 HttpOnly Cookie(`refreshToken`, Path=`/api/auth`, Secure, SameSite=Strict)로 발급한다.
+
+NOTE: 이메일 인증 여부와 무관하게 가입 자체는 즉시 완료된다(emailVerified=false로 시작). 이메일 인증은 가입 후 access token을 실어 별도로 호출한다(<<auth-email-verification>>).
+
+=== 요청 - 성공
+
+include::{snippets}/signup-local-success/http-request.adoc[]
+include::{snippets}/signup-local-success/request-fields.adoc[]
+
+=== 응답 - 성공
+
+include::{snippets}/signup-local-success/http-response.adoc[]
+include::{snippets}/signup-local-success/response-fields.adoc[]
+
+=== 응답 - 실패(약관 미동의)
+
+include::{snippets}/signup-local-terms-not-agreed/http-response.adoc[]
+include::{snippets}/signup-local-terms-not-agreed/response-fields.adoc[]
+
+=== 응답 - 실패(이미 사용 중인 이메일)
+
+include::{snippets}/signup-local-duplicate-email/http-response.adoc[]
+include::{snippets}/signup-local-duplicate-email/response-fields.adoc[]
+
+=== 응답 - 실패(최근 탈퇴한 이메일)
+
+include::{snippets}/signup-local-recently-deleted-email/http-response.adoc[]
+include::{snippets}/signup-local-recently-deleted-email/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_002|요청 값 검증에 실패했습니다.|이메일 형식 오류 등(errorDetail 참고)
+|400|COMMON_400_001|잘못된 요청입니다.|비밀번호 형식 오류(영문+숫자 8~16자, errorDetail 참고)
+|400|AUTH_400_002|약관에 동의해야 회원가입할 수 있습니다.|termsAgreed=false
+|409|AUTH_409_001|이미 사용 중인 이메일입니다.|이메일 중복
+|409|AUTH_409_003|최근 탈퇴한 이메일입니다. 30일 후 다시 가입할 수 있습니다.|탈퇴 후 30일 이내 재가입 시도(<<auth-withdraw>>)
+|===
+
+[[auth-login]]
+== 로컬 로그인 (Auth-02)
+
+이메일/비밀번호로 로그인하고 access token을 응답 바디로, refresh token을 HttpOnly Cookie(`refreshToken`, Path=`/api/auth`, Secure, SameSite=Strict)로 발급한다.
+
+NOTE: 가입되지 않은 이메일과 비밀번호 불일치는 계정 존재 여부가 노출되지 않도록 동일한 에러(`AUTH_401_002`)로 응답한다.
+
+NOTE: 비밀번호를 5회 연속 틀리면 계정이 30분간 잠긴다(`AUTH_423_002`). 잠긴 뒤에는 올바른 비밀번호를 넣어도 비교 자체를 하지 않고 즉시 거부하며, 30분이 지나면 별도 배치 없이 자동으로 해제되고 실패 횟수도 초기화된다. 잠기기 전에 로그인에 성공하면 그 시점에 실패 횟수가 즉시 초기화된다.
+
+=== 요청 - 성공
+
+include::{snippets}/login-local-success/http-request.adoc[]
+include::{snippets}/login-local-success/request-fields.adoc[]
+
+=== 응답 - 성공
+
+include::{snippets}/login-local-success/http-response.adoc[]
+include::{snippets}/login-local-success/response-fields.adoc[]
+
+=== 응답 - 실패(이메일/비밀번호 불일치)
+
+include::{snippets}/login-local-invalid-credentials/http-response.adoc[]
+include::{snippets}/login-local-invalid-credentials/response-fields.adoc[]
+
+=== 응답 - 실패(탈퇴한 계정)
+
+include::{snippets}/login-local-withdrawn-account/http-response.adoc[]
+include::{snippets}/login-local-withdrawn-account/response-fields.adoc[]
+
+=== 응답 - 실패(로그인 시도 잠금)
+
+include::{snippets}/login-local-locked/http-response.adoc[]
+include::{snippets}/login-local-locked/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_002|요청 값 검증에 실패했습니다.|이메일 형식 오류 등(errorDetail 참고)
+|401|AUTH_401_002|이메일 또는 비밀번호가 일치하지 않습니다.|가입되지 않은 이메일 또는 비밀번호 불일치
+|403|AUTH_403_002|탈퇴한 계정입니다.|status=WITHDRAWN
+|403|AUTH_403_003|정지된 계정입니다.|status=SUSPENDED
+|423|AUTH_423_002|로그인 시도 횟수를 초과하여 계정이 잠겼습니다. 잠시 후 다시 시도해 주세요.|비밀번호 5회 연속 실패(30분 후 자동 해제)
+|===
+
+[[auth-token-refresh]]
+== Access Token 재발급 (Auth-02)
+
+요청 Cookie의 refresh token(`refreshToken`)으로 access token을 새로 발급한다. 요청 바디는 없고 `Authorization` 헤더도 필요 없다(만료된 access token을 대체하기 위한 API이므로).
+
+NOTE: 재발급할 때마다 refresh token도 함께 회전(rotate)된다. 새 refresh token이 다시 `Set-Cookie`로 내려가고, 재발급에 쓰인 기존 refresh token은 그 즉시 무효화되어 재사용할 수 없다(탈취 재사용 방지).
+
+=== 응답 - 성공
+
+include::{snippets}/token-refresh-success/http-response.adoc[]
+include::{snippets}/token-refresh-success/response-fields.adoc[]
+
+=== 응답 - 실패(refresh token 쿠키 없음/유효하지 않음)
+
+include::{snippets}/token-refresh-invalid/http-response.adoc[]
+include::{snippets}/token-refresh-invalid/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_003|유효하지 않은 refresh token입니다.|쿠키 없음, 존재하지 않는 토큰, 만료된 토큰을 모두 동일하게 응답
+|403|AUTH_403_002|탈퇴한 계정입니다.|status=WITHDRAWN
+|403|AUTH_403_003|정지된 계정입니다.|status=SUSPENDED
+|===
+
+[[auth-logout]]
+== 로그아웃 (Auth-09)
+
+Authorization 헤더의 access token으로 식별된 계정의 refresh token을 무효화하고, refresh token Cookie를 만료(`Max-Age=0`)시킨다.
+
+NOTE: 이미 로그아웃된 상태(=refresh token이 없는 상태)에서 다시 호출해도 에러 없이 200을 반환한다(멱등).
+
+=== 응답 - 성공
+
+include::{snippets}/logout-success/http-response.adoc[]
+include::{snippets}/logout-success/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===
+
+[[auth-withdraw]]
+== 회원 탈퇴 (Auth-09)
+
+Authorization 헤더의 access token으로 식별된 계정을 탈퇴 처리한다. 이름은 즉시 삭제되고 이메일은 복구 불가능한 값으로 대체되며(원본 이메일의 해시만 별도 보관), refresh token이 무효화되고 refresh token Cookie가 만료(`Max-Age=0`)된다.
+
+NOTE: 탈퇴한 이메일은 30일간 재가입이 제한된다(<<auth-signup>>). 투자/퀴즈 기록은 탈퇴 6개월 후 별도 배치가 삭제하며, 집계 통계는 비식별 상태로 영구 보관된다.
+
+=== 응답 - 성공
+
+include::{snippets}/withdraw-success/http-response.adoc[]
+include::{snippets}/withdraw-success/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|409|COMMON_409_001|요청이 현재 상태와 충돌합니다.|이미 탈퇴했거나 정지된 계정
+|===
+
+[[auth-google]]
+== 구글 로그인/가입 (Auth-02)
+
+구글 Sign-In SDK가 발급한 ID Token을 검증해 기존 계정이면 로그인, 없으면 termsAgreed를 검사해 자동 가입한다(회원가입/로그인을 별도 엔드포인트로 나누지 않음). 구글이 이미 이메일을 검증했으므로 가입 시 `Auth.emailVerified`가 곧바로 `true`로 시작한다.
+
+NOTE: ID Token은 서명(JWKS), 발급자(`iss`), 대상(`aud`)을 모두 검증한 뒤 `sub`(구글 계정 고유 ID)로 기존 가입 여부를 판단한다. `termsAgreed`는 신규 가입일 때만 검사하고, 기존 계정 로그인 시에는 무시한다.
+
+=== 요청 - 성공
+
+include::{snippets}/google-auth-success/http-request.adoc[]
+include::{snippets}/google-auth-success/request-fields.adoc[]
+
+=== 응답 - 성공
+
+include::{snippets}/google-auth-success/http-response.adoc[]
+include::{snippets}/google-auth-success/response-fields.adoc[]
+
+=== 응답 - 실패(신규 가입인데 약관 미동의)
+
+include::{snippets}/google-auth-terms-not-agreed/http-response.adoc[]
+include::{snippets}/google-auth-terms-not-agreed/response-fields.adoc[]
+
+=== 응답 - 실패(유효하지 않은 ID Token)
+
+include::{snippets}/google-auth-invalid-token/http-response.adoc[]
+include::{snippets}/google-auth-invalid-token/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_002|요청 값 검증에 실패했습니다.|idToken 누락 등(errorDetail 참고)
+|400|AUTH_400_002|약관에 동의해야 회원가입할 수 있습니다.|신규 가입인데 termsAgreed=false
+|401|AUTH_401_004|유효하지 않은 구글 로그인 토큰입니다.|서명/발급자/대상 검증 실패
+|403|AUTH_403_002|탈퇴한 계정입니다.|status=WITHDRAWN
+|403|AUTH_403_003|정지된 계정입니다.|status=SUSPENDED
+|409|AUTH_409_003|최근 탈퇴한 이메일입니다. 30일 후 다시 가입할 수 있습니다.|신규 가입인데 탈퇴 후 30일 이내(<<auth-withdraw>>)
 |===
 
 [[stats-summary]]

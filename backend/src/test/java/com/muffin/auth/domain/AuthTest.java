@@ -183,4 +183,82 @@ class AuthTest {
             assertThatThrownBy(() -> auth.changePassword("newPass1", null)).isInstanceOf(NullPointerException.class);
         }
     }
+
+    @Nested
+    @DisplayName("로그인 실패 잠금")
+    class LoginLockout {
+
+        @Test
+        @DisplayName("생성 직후에는 잠겨있지 않고 실패 횟수가 0이다")
+        void notLockedInitially() {
+            Auth auth = Auth.createLocal(1L, "test@example.com", "password1", "encoded");
+
+            assertThat(auth.isLoginLocked()).isFalse();
+            assertThat(auth.getFailedLoginAttempts()).isZero();
+        }
+
+        @Test
+        @DisplayName("실패 횟수가 임계치 미만이면 잠기지 않는다")
+        void notLockedBelowThreshold() {
+            Auth auth = Auth.createLocal(1L, "test@example.com", "password1", "encoded");
+
+            for (int i = 0; i < 4; i++) {
+                auth.recordFailedLogin(5, 30);
+            }
+
+            assertThat(auth.isLoginLocked()).isFalse();
+        }
+
+        @Test
+        @DisplayName("실패 횟수가 임계치에 도달하면 잠긴다")
+        void locksAtThreshold() {
+            Auth auth = Auth.createLocal(1L, "test@example.com", "password1", "encoded");
+
+            for (int i = 0; i < 5; i++) {
+                auth.recordFailedLogin(5, 30);
+            }
+
+            assertThat(auth.isLoginLocked()).isTrue();
+        }
+
+        @Test
+        @DisplayName("잠금 시간이 지나면 자동으로 해제된 것으로 판단한다(lockMinutes=0으로 즉시 만료 재현)")
+        void lockExpiresAfterDuration() {
+            Auth auth = Auth.createLocal(1L, "test@example.com", "password1", "encoded");
+
+            auth.recordFailedLogin(1, 0);
+
+            assertThat(auth.isLoginLocked()).isFalse();
+        }
+
+        @Test
+        @DisplayName("잠금이 만료된 뒤 한 번만 더 틀려도 곧바로 재잠기지 않는다(만료 시 실패 횟수 초기화)")
+        void doesNotRelockImmediatelyAfterExpiry() {
+            Auth auth = Auth.createLocal(1L, "test@example.com", "password1", "encoded");
+            for (int i = 0; i < 5; i++) {
+                auth.recordFailedLogin(5, 0); // lockMinutes=0으로 매번 즉시 만료된 상태 재현
+            }
+            assertThat(auth.isLoginLocked()).isFalse(); // 잠금은 이미 만료됨
+            assertThat(auth.getFailedLoginAttempts()).isEqualTo(5);
+
+            auth.recordFailedLogin(5, 30);
+
+            assertThat(auth.isLoginLocked()).isFalse();
+            assertThat(auth.getFailedLoginAttempts()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("resetLoginAttempts 호출 시 실패 횟수와 잠금이 모두 해제된다")
+        void resetClearsLockAndCount() {
+            Auth auth = Auth.createLocal(1L, "test@example.com", "password1", "encoded");
+            for (int i = 0; i < 5; i++) {
+                auth.recordFailedLogin(5, 30);
+            }
+            assertThat(auth.isLoginLocked()).isTrue();
+
+            auth.resetLoginAttempts();
+
+            assertThat(auth.isLoginLocked()).isFalse();
+        }
+    }
 }

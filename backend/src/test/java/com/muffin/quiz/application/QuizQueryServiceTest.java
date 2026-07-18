@@ -234,7 +234,7 @@ class QuizQueryServiceTest {
     }
 
     private User registeredUser(String nickname) {
-        return User.register(1L, UUID.randomUUID().toString(), "세현", nickname, LocalDate.of(2000, 1, 1), "01012345678");
+        return User.register(1L, UUID.randomUUID().toString(), "세현", nickname);
     }
 
     private QuizSet publishedQuizSet(LocalDate quizDate) {

@@ -61,6 +61,30 @@ muffin:
       cleanup-cron: "0 0 * * * *" # 매시 정각, 만료된 인증 레코드 정리
       zone: Asia/Seoul
 
+    jwt:
+      secret: ${JWT_SECRET}
+      access-token-expire-minutes: 60
+      refresh-token-expire-days: 30
+
+    google:
+      client-id: ${GOOGLE_CLIENT_ID}
+
+    login:
+      max-attempts: 5
+      lock-minutes: 30
+
+    signup:
+      unverified-account-cleanup:
+        ttl-minutes: 1440 # 24시간
+        cleanup-cron: "0 0 * * * *" # 매시 정각
+        zone: Asia/Seoul
+
+    withdrawal:
+      data-cleanup:
+        retention-months: 6
+        cleanup-cron: "0 0 3 * * *" # 매일 새벽 3시
+        zone: Asia/Seoul
+
   news:
     rss:
       publisher: ${NEWS_RSS_PUBLISHER:매일경제}

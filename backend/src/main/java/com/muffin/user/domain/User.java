@@ -4,9 +4,10 @@ import com.muffin.global.entity.BaseEntity;
 import com.muffin.user.domain.enums.UserRole;
 import com.muffin.user.domain.enums.UserStatus;
 import jakarta.persistence.*;
-import java.time.LocalDate;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.regex.Pattern;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,7 +25,7 @@ public class User extends BaseEntity {
     @Column(name = "user_id")
     private Long userId;
 
-    @Column(name = "character_id", nullable = false)
+    @Column(name = "character_id")
     private Long characterId;
 
     @Column(name = "user_uuid", nullable = false, length = 36, updatable = false, unique = true)
@@ -33,14 +34,8 @@ public class User extends BaseEntity {
     @Column(name = "name", length = 10)
     private String name;
 
-    @Column(name = "nickname", nullable = false, length = 20)
+    @Column(name = "nickname", unique = true, length = 6)
     private String nickname;
-
-    @Column(name = "birthday")
-    private LocalDate birthday;
-
-    @Column(name = "phone_number", length = 15)
-    private String phoneNumber;
 
     @Column(name = "onboarding_completed", nullable = false)
     private boolean onboardingCompleted;
@@ -66,37 +61,47 @@ public class User extends BaseEntity {
     private UserOnboarding userOnboarding;
 
     private static final int NAME_MAX_LENGTH = 10;
-    private static final int NICKNAME_MAX_LENGTH = 20;
-    private static final int PHONE_NUMBER_MAX_LENGTH = 15;
+    private static final int NICKNAME_MAX_LENGTH = 6;
+    // 한글/영문/숫자/공백만 허용, 1~6자. 정규화(NFC) 후의 문자열에 대해서만 검증한다.
+    private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[가-힣a-zA-Z0-9 ]{1," + NICKNAME_MAX_LENGTH + "}$");
 
-    private User(
-            Long characterId, String userUuid, String name, String nickname, LocalDate birthday, String phoneNumber) {
-        if (characterId == null) {
-            throw new NullPointerException("characterId는 필수입니다.");
-        }
+    private User(Long characterId, String userUuid, String name, String nickname) {
         this.characterId = characterId;
         if (userUuid == null) {
             throw new NullPointerException("userUuid는 필수입니다.");
         }
         this.userUuid = userUuid;
-        validateNickname(nickname);
-        this.nickname = nickname;
+        String normalizedNickname = normalizeNickname(nickname);
+        validateNicknameFormat(normalizedNickname);
+        this.nickname = normalizedNickname;
         validateOptionalLength(name, NAME_MAX_LENGTH, "name");
         this.name = name;
-        this.birthday = birthday;
-        validateOptionalLength(phoneNumber, PHONE_NUMBER_MAX_LENGTH, "phoneNumber");
-        this.phoneNumber = phoneNumber;
         this.onboardingCompleted = false;
         this.termAgreement = false;
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
     }
 
+    /**
+     * 클라이언트/OS에 따라 한글이 분해형(NFD, 자모 분리)으로 넘어올 수 있어(특히 macOS), 완성형(NFC)으로 정규화한 뒤
+     * 검증·저장한다. 정규화하지 않으면 String.length()가 실제 글자 수보다 많이 잡히고, 정규식도 완성형 음절 범위만 매칭하므로
+     * 정상적인 한글 닉네임이 거부될 수 있다.
+     */
+    private static String normalizeNickname(String nickname) {
+        return nickname == null ? null : Normalizer.normalize(nickname, Normalizer.Form.NFC);
+    }
+
     private static void validateNickname(String nickname) {
         if (nickname == null) {
             throw new NullPointerException("nickname은 필수입니다.");
         }
-        validateOptionalLength(nickname, NICKNAME_MAX_LENGTH, "nickname");
+        validateNicknameFormat(nickname);
+    }
+
+    private static void validateNicknameFormat(String nickname) {
+        if (nickname != null && !NICKNAME_PATTERN.matcher(nickname).matches()) {
+            throw new IllegalArgumentException("닉네임은 한글/영문/숫자/공백만 사용해 " + NICKNAME_MAX_LENGTH + "자 이내로 입력해야 합니다.");
+        }
     }
 
     private static void validateOptionalLength(String value, int maxLength, String fieldName) {
@@ -106,9 +111,8 @@ public class User extends BaseEntity {
     }
 
     // 회원가입 공통 진입점
-    public static User register(
-            Long characterId, String userUuid, String name, String nickname, LocalDate birthday, String phoneNumber) {
-        return new User(characterId, userUuid, name, nickname, birthday, phoneNumber);
+    public static User register(Long characterId, String userUuid, String name, String nickname) {
+        return new User(characterId, userUuid, name, nickname);
     }
 
     public void agreeToTerms() {
@@ -128,7 +132,7 @@ public class User extends BaseEntity {
         this.onboardingCompleted = true;
     }
 
-    // 탈퇴: 이름/전화번호/생년월일 즉시 삭제. 나머지 이력은 별도 배치가 비식별화 후 6개월 뒤 삭제.
+    // 탈퇴: 이름 즉시 삭제. 나머지 이력은 별도 배치가 비식별화 후 6개월 뒤 삭제.
     public void withdraw() {
         if (this.status == UserStatus.WITHDRAWN) {
             throw new IllegalStateException("이미 탈퇴한 사용자입니다.");
@@ -137,8 +141,6 @@ public class User extends BaseEntity {
             throw new IllegalStateException("정지된 사용자는 탈퇴할 수 없습니다.");
         }
         this.name = null;
-        this.phoneNumber = null;
-        this.birthday = null;
         this.status = UserStatus.WITHDRAWN;
         this.deletedAt = LocalDateTime.now(KST);
     }
@@ -161,7 +163,8 @@ public class User extends BaseEntity {
     }
 
     public void changeNickname(String newNickname) {
-        validateNickname(newNickname);
-        this.nickname = newNickname;
+        String normalizedNickname = normalizeNickname(newNickname);
+        validateNickname(normalizedNickname);
+        this.nickname = normalizedNickname;
     }
 }
