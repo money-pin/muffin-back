@@ -23,6 +23,11 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
+muffin:
+  auth:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID}
+
 logging:
   level:
     root: info

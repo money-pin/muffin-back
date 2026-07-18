@@ -20,6 +20,15 @@ toss:
     client-id: ${TOSS_CLIENT_ID:}
     client-secret: ${TOSS_CLIENT_SECRET:}
 
+muffin:
+  auth:
+    jwt:
+      # 로컬 개발 전용 더미 시크릿
+      secret: ${JWT_SECRET:local-dev-only-jwt-secret-please-change-1234567890}
+
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+
 coingecko:
   api:
     api-key: ${COINGECKO_API_KEY:}

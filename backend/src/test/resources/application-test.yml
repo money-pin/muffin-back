@@ -24,6 +24,19 @@ coingecko:
     api-key: test-api-key
 
 muffin:
+  auth:
+    jwt:
+      secret: test-jwt-secret-key-for-automated-tests-only-32bytes-minimum
+      access-token-expire-minutes: 60
+      refresh-token-expire-days: 30
+
+    google:
+      client-id: test-google-client-id
+
+    login:
+      max-attempts: 5
+      lock-minutes: 30
+
   news:
     ai:
       enabled: false

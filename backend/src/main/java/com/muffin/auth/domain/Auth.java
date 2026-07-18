@@ -3,6 +3,8 @@ package com.muffin.auth.domain;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.global.entity.BaseEntity;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.regex.Pattern;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -22,6 +24,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class Auth extends BaseEntity {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     // 비밀번호 형식: 영문, 숫자를 포함한 8~16자리 조합
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,16}$");
@@ -52,6 +56,12 @@ public class Auth extends BaseEntity {
 
     @Column(name = "password", length = 255)
     private String passwordHash;
+
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts;
+
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil;
 
     private Auth(Long userId, AuthProvider provider, String email) {
         if (userId == null) {
@@ -100,6 +110,36 @@ public class Auth extends BaseEntity {
 
     public void verifyEmail() {
         this.emailVerified = true;
+    }
+
+    /** 탈퇴 처리: 원본 이메일을 복구 불가능한 값으로 대체한다(uk_provider_email 유지, 재가입 시 원본과 충돌하지 않음). */
+    public void anonymizeEmail() {
+        this.email = "withdrawn-" + authId + "@deleted.local";
+    }
+
+    public boolean isLoginLocked() {
+        return lockedUntil != null && lockedUntil.isAfter(LocalDateTime.now(KST));
+    }
+
+    /**
+     * 비밀번호 불일치 시 호출한다. 누적 실패 횟수가 maxAttempts에 도달하면 lockMinutes 동안 로그인을 잠근다. 이전 잠금이 이미
+     * 만료된 상태라면 새로 세기 전에 먼저 초기화한다.
+     */
+    public void recordFailedLogin(int maxAttempts, long lockMinutes) {
+        LocalDateTime now = LocalDateTime.now(KST);
+        if (lockedUntil != null && !lockedUntil.isAfter(now)) {
+            resetLoginAttempts();
+        }
+        this.failedLoginAttempts++;
+        if (this.failedLoginAttempts >= maxAttempts) {
+            this.lockedUntil = now.plusMinutes(lockMinutes);
+        }
+    }
+
+    /** 로그인 성공 시 호출해 실패 이력을 초기화한다. */
+    public void resetLoginAttempts() {
+        this.failedLoginAttempts = 0;
+        this.lockedUntil = null;
     }
 
     public void changePassword(String rawPassword, String encodedPassword) {

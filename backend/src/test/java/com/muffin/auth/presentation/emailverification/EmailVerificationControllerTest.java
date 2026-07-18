@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.muffin.auth.domain.AccessTokenProvider;
 import com.muffin.auth.domain.Auth;
 import com.muffin.auth.domain.AuthRepository;
 import com.muffin.auth.domain.PasswordEncoder;
@@ -20,7 +21,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** 이메일 인증번호 발송/확인 API가 실제 서비스/저장소까지 엮여서 동작하는지 검증한다. */
+/** 이메일 인증번호 발송/확인 API가 실제 서비스/저장소/Security까지 엮여서 동작하는지 검증한다. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -40,57 +41,56 @@ class EmailVerificationControllerTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private AccessTokenProvider accessTokenProvider;
+
     @AfterEach
     void cleanUp() {
         emailVerificationRepository.deleteAll();
         authRepository.deleteAll();
     }
 
+    private String bearerTokenFor(Long userId) {
+        return "Bearer " + accessTokenProvider.issue(userId, "USER");
+    }
+
     @Test
-    @DisplayName("발송: 신규 이메일이면 200 성공")
+    @DisplayName("발송: 인증되지 않은 계정이면 200 성공, expiresIn 응답")
     void sendCode_success() throws Exception {
-        String body = objectMapper.writeValueAsString(new SendRequestBody("new@example.com"));
+        Auth auth = authRepository.save(Auth.createLocal(1L, "new@example.com", "password1", "encoded"));
 
-        mockMvc.perform(post("/api/auth/email/verification")
-                        .contentType("application/json")
-                        .content(body))
+        mockMvc.perform(post("/api/auth/email/verification").header("Authorization", bearerTokenFor(auth.getUserId())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.isSuccess", is(true)));
+                .andExpect(jsonPath("$.isSuccess", is(true)))
+                .andExpect(jsonPath("$.result.expiresIn").exists());
     }
 
     @Test
-    @DisplayName("발송: 이메일 형식이 아니면 400 검증 에러")
-    void sendCode_invalidEmailFormat() throws Exception {
-        String body = objectMapper.writeValueAsString(new SendRequestBody("not-an-email"));
-
-        mockMvc.perform(post("/api/auth/email/verification")
-                        .contentType("application/json")
-                        .content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code", is("COMMON_400_002")));
+    @DisplayName("발송: Authorization 헤더가 없으면 401")
+    void sendCode_unauthorized() throws Exception {
+        mockMvc.perform(post("/api/auth/email/verification")).andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("발송: 이미 가입된 이메일이면 409")
-    void sendCode_duplicateEmail() throws Exception {
-        authRepository.save(Auth.createLocal(1L, "used@example.com", "password1", "encoded"));
-        String body = objectMapper.writeValueAsString(new SendRequestBody("used@example.com"));
+    @DisplayName("발송: 이미 인증된 계정이면 409 (AUTH_409_002)")
+    void sendCode_alreadyVerified() throws Exception {
+        Auth auth = authRepository.save(Auth.createGoogle(1L, "verified@example.com", "google-sub-1"));
 
-        mockMvc.perform(post("/api/auth/email/verification")
-                        .contentType("application/json")
-                        .content(body))
+        mockMvc.perform(post("/api/auth/email/verification").header("Authorization", bearerTokenFor(auth.getUserId())))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code", is("AUTH_409_001")));
+                .andExpect(jsonPath("$.code", is("AUTH_409_002")));
     }
 
     @Test
     @DisplayName("확인: 발송된 코드와 일치하면 200 성공")
     void verifyCode_success() throws Exception {
+        Auth auth = authRepository.save(Auth.createLocal(1L, "verify@example.com", "password1", "encoded"));
         emailVerificationRepository.save(
                 EmailVerification.create("verify@example.com", passwordEncoder.encode("123456"), 5));
-        String body = objectMapper.writeValueAsString(new ConfirmRequestBody("verify@example.com", "123456"));
+        String body = objectMapper.writeValueAsString(new ConfirmRequestBody("123456"));
 
         mockMvc.perform(post("/api/auth/email/verification/confirm")
+                        .header("Authorization", bearerTokenFor(auth.getUserId()))
                         .contentType("application/json")
                         .content(body))
                 .andExpect(status().isOk())
@@ -100,18 +100,29 @@ class EmailVerificationControllerTest {
     @Test
     @DisplayName("확인: 코드가 다르면 400 (AUTH_400_001)")
     void verifyCode_mismatch() throws Exception {
+        Auth auth = authRepository.save(Auth.createLocal(1L, "verify2@example.com", "password1", "encoded"));
         emailVerificationRepository.save(
                 EmailVerification.create("verify2@example.com", passwordEncoder.encode("123456"), 5));
-        String body = objectMapper.writeValueAsString(new ConfirmRequestBody("verify2@example.com", "000000"));
+        String body = objectMapper.writeValueAsString(new ConfirmRequestBody("000000"));
 
         mockMvc.perform(post("/api/auth/email/verification/confirm")
+                        .header("Authorization", bearerTokenFor(auth.getUserId()))
                         .contentType("application/json")
                         .content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code", is("AUTH_400_001")));
     }
 
-    private record SendRequestBody(String email) {}
+    @Test
+    @DisplayName("확인: Authorization 헤더가 없으면 401")
+    void verifyCode_unauthorized() throws Exception {
+        String body = objectMapper.writeValueAsString(new ConfirmRequestBody("123456"));
 
-    private record ConfirmRequestBody(String email, String code) {}
+        mockMvc.perform(post("/api/auth/email/verification/confirm")
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private record ConfirmRequestBody(String code) {}
 }

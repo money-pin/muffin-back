@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.muffin.user.domain.enums.UserRole;
 import com.muffin.user.domain.enums.UserStatus;
-import java.time.LocalDate;
+import java.text.Normalizer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 class UserTest {
 
     private User defaultUser() {
-        return User.register(1L, "uuid-1234", "홍길동", "길동이", LocalDate.of(1995, 1, 1), "010-1234-5678");
+        return User.register(1L, "uuid-1234", "홍길동", "길동이");
     }
 
     @Nested
@@ -31,32 +31,21 @@ class UserTest {
         }
 
         @Test
-        @DisplayName("null characterId → NullPointerException")
+        @DisplayName("null characterId → 허용(온보딩에서 나중에 설정)")
         void nullCharacterId() {
-            assertThatThrownBy(() ->
-                            User.register(null, "uuid-1234", "홍길동", "길동이", LocalDate.of(1995, 1, 1), "010-1234-5678"))
-                    .isInstanceOf(NullPointerException.class);
+            assertThatNoException().isThrownBy(() -> User.register(null, "uuid-1234", "홍길동", "길동이"));
         }
 
         @Test
         @DisplayName("null userUuid → NullPointerException")
         void nullUserUuid() {
-            assertThatThrownBy(() -> User.register(1L, null, "홍길동", "길동이", LocalDate.of(1995, 1, 1), "010-1234-5678"))
-                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> User.register(1L, null, "홍길동", "길동이")).isInstanceOf(NullPointerException.class);
         }
 
         @Test
-        @DisplayName("null nickname → NullPointerException")
-        void nullNickname() {
-            assertThatThrownBy(() ->
-                            User.register(1L, "uuid-1234", "홍길동", null, LocalDate.of(1995, 1, 1), "010-1234-5678"))
-                    .isInstanceOf(NullPointerException.class);
-        }
-
-        @Test
-        @DisplayName("name, birthday, phoneNumber는 null 허용")
+        @DisplayName("name, nickname은 null 허용(닉네임은 온보딩에서 나중에 설정)")
         void optionalFieldsNullable() {
-            assertThatNoException().isThrownBy(() -> User.register(1L, "uuid-1234", null, "길동이", null, null));
+            assertThatNoException().isThrownBy(() -> User.register(1L, "uuid-1234", null, null));
         }
     }
 
@@ -151,8 +140,6 @@ class UserTest {
 
             assertThat(user.getStatus()).isEqualTo(UserStatus.WITHDRAWN);
             assertThat(user.getName()).isNull();
-            assertThat(user.getPhoneNumber()).isNull();
-            assertThat(user.getBirthday()).isNull();
             assertThat(user.getDeletedAt()).isNotNull();
         }
 
@@ -273,6 +260,60 @@ class UserTest {
             User user = defaultUser();
 
             assertThatThrownBy(() -> user.changeNickname(null)).isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        @DisplayName("6자 초과 → IllegalArgumentException")
+        void tooLong() {
+            User user = defaultUser();
+
+            assertThatThrownBy(() -> user.changeNickname("일이삼사오육칠")).isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("정확히 6자 → 성공")
+        void exactlySixChars() {
+            User user = defaultUser();
+
+            assertThatNoException().isThrownBy(() -> user.changeNickname("일이삼사오육"));
+        }
+
+        @Test
+        @DisplayName("공백 포함 6자 이내 → 성공")
+        void allowsSpaces() {
+            User user = defaultUser();
+
+            user.changeNickname("길동 이");
+
+            assertThat(user.getNickname()).isEqualTo("길동 이");
+        }
+
+        @Test
+        @DisplayName("특수문자 포함 → IllegalArgumentException")
+        void specialCharacterRejected() {
+            User user = defaultUser();
+
+            assertThatThrownBy(() -> user.changeNickname("길동!")).isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("탭/줄바꿈 포함 → IllegalArgumentException(공백 문자는 리터럴 space만 허용)")
+        void controlWhitespaceRejected() {
+            User user = defaultUser();
+
+            assertThatThrownBy(() -> user.changeNickname("길동\n이")).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changeNickname("길동\t이")).isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("분해형(NFD) 한글 입력 → 완성형(NFC)으로 정규화되어 저장")
+        void normalizesDecomposedHangul() {
+            User user = defaultUser();
+            String decomposed = Normalizer.normalize("닉네임", Normalizer.Form.NFD);
+
+            user.changeNickname(decomposed);
+
+            assertThat(user.getNickname()).isEqualTo("닉네임");
         }
     }
 }
