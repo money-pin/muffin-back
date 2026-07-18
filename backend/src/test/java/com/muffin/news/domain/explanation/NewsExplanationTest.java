@@ -34,4 +34,24 @@ class NewsExplanationTest {
         assertThrows(IllegalArgumentException.class, () -> NewsExplanation.create(1L, 1, "금리", "금리 해설", null));
         assertThrows(IllegalArgumentException.class, () -> NewsExplanation.create(1L, 1, "금리", "금리 해설", " "));
     }
+
+    @Test
+    @DisplayName("해설카드 생성을 완료하면 DONE 상태가 된다")
+    void complete_changesStatusToDone() {
+        NewsExplanation explanation = NewsExplanation.create(1L, 1, "금리", "금리 해설", "금리");
+
+        explanation.complete();
+
+        assertEquals(NewsExplanationStatus.DONE, explanation.getStatus());
+    }
+
+    @Test
+    @DisplayName("해설카드 생성이 실패하면 FAILED 상태가 된다")
+    void fail_changesStatusToFailed() {
+        NewsExplanation explanation = NewsExplanation.create(1L, 1, "금리", "금리 해설", "금리");
+
+        explanation.fail();
+
+        assertEquals(NewsExplanationStatus.FAILED, explanation.getStatus());
+    }
 }
