@@ -4,7 +4,6 @@ import com.muffin.character.domain.CharacterProfile;
 import com.muffin.character.domain.CharacterRecommendedSector;
 import com.muffin.character.domain.CharacterRecommendedSectorRepository;
 import com.muffin.character.domain.CharacterRepository;
-import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.sector.domain.sector.Sector;
 import com.muffin.sector.domain.sector.SectorRepository;
@@ -38,9 +37,8 @@ public class CharacterResultCommandService {
         User user =
                 userRepository.findById(userId).orElseThrow(() -> new GeneralException(UserErrorCode.USER_NOT_FOUND));
 
-        MuffinType muffinType = MuffinType.from(request.muffin());
         CharacterProfile character = characterRepository
-                .findByMuffinType(muffinType)
+                .findByMuffinType(request.muffin())
                 .orElseThrow(() -> new GeneralException(UserErrorCode.CHARACTER_NOT_FOUND));
 
         user.assignCharacter(character.getCharacterId());

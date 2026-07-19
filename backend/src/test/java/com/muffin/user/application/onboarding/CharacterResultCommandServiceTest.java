@@ -83,7 +83,7 @@ class CharacterResultCommandServiceTest {
         when(sectorRepository.findAllById(any())).thenReturn(List.of(gold, semiconductor));
 
         CharacterResultResponse response =
-                characterResultCommandService.submit(USER_ID, new CharacterResultRequest("plain", 1, 2, 3));
+                characterResultCommandService.submit(USER_ID, new CharacterResultRequest(MuffinType.PLAIN, 1, 2, 3));
 
         assertThat(response.characterId()).isEqualTo(CHARACTER_ID);
         assertThat(response.characterType()).isEqualTo("PLAIN");
@@ -100,8 +100,8 @@ class CharacterResultCommandServiceTest {
     void userNotFound() {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() ->
-                        characterResultCommandService.submit(USER_ID, new CharacterResultRequest("plain", 1, 2, 3)))
+        assertThatThrownBy(() -> characterResultCommandService.submit(
+                        USER_ID, new CharacterResultRequest(MuffinType.PLAIN, 1, 2, 3)))
                 .isInstanceOf(GeneralException.class);
     }
 
@@ -110,8 +110,8 @@ class CharacterResultCommandServiceTest {
     void characterNotFound() {
         when(characterRepository.findByMuffinType(MuffinType.SPRINKLE)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() ->
-                        characterResultCommandService.submit(USER_ID, new CharacterResultRequest("sprinkle", 1, 2, 3)))
+        assertThatThrownBy(() -> characterResultCommandService.submit(
+                        USER_ID, new CharacterResultRequest(MuffinType.SPRINKLE, 1, 2, 3)))
                 .isInstanceOf(GeneralException.class);
     }
 
@@ -120,8 +120,8 @@ class CharacterResultCommandServiceTest {
     void alreadyCompleted() {
         user.completeOnboarding(1, 1, 1);
 
-        assertThatThrownBy(() ->
-                        characterResultCommandService.submit(USER_ID, new CharacterResultRequest("plain", 1, 2, 3)))
+        assertThatThrownBy(() -> characterResultCommandService.submit(
+                        USER_ID, new CharacterResultRequest(MuffinType.PLAIN, 1, 2, 3)))
                 .isInstanceOf(IllegalStateException.class);
     }
 }
