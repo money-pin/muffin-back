@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @Tag(name = "News", description = "뉴스 조회 API")
 public interface NewsApi {
@@ -32,7 +33,7 @@ public interface NewsApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다.")
     })
-    ApiResponse<NewsTodayResponse> getTodayNews(@Parameter(hidden = true) Long userId);
+    ApiResponse<NewsTodayResponse> getTodayNews(@AuthenticationPrincipal Long userId);
 
     @Operation(
             summary = "뉴스 상세 조회",
@@ -44,7 +45,7 @@ public interface NewsApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 뉴스입니다.")
     })
     ApiResponse<NewsDetailResponse> getNewsDetail(
-            @Parameter(hidden = true) Long userId, @Parameter(description = "조회할 뉴스 ID") Long newsSummaryId);
+            @AuthenticationPrincipal Long userId, @Parameter(description = "조회할 뉴스 ID") Long newsSummaryId);
 
     @Operation(summary = "뉴스 섹터 영향도 조회", description = "뉴스에 대한 12개 자산 섹터별 영향도를 조회한다. AI 분석 결과가 없는 섹터는 NEUTRAL로 반환한다.")
     @ApiResponses({
@@ -53,5 +54,5 @@ public interface NewsApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 뉴스입니다.")
     })
     ApiResponse<NewsSectorImpactResponse> getSectorImpacts(
-            @Parameter(hidden = true) Long userId, @Parameter(description = "조회할 뉴스 ID") Long newsSummaryId);
+            @AuthenticationPrincipal Long userId, @Parameter(description = "조회할 뉴스 ID") Long newsSummaryId);
 }
