@@ -5,6 +5,7 @@ import com.muffin.global.apiPayload.exception.GeneralException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
@@ -14,15 +15,11 @@ import tools.jackson.databind.ObjectMapper;
  * <p>커서는 클라이언트에게 불투명한 토큰이며, 형식이 조금이라도 어긋나면 {@code COMMON_400_001}로 응답한다.
  */
 @Component
+@RequiredArgsConstructor
 public class NewsCursorCodec {
 
     private static final String INVALID_CURSOR_MESSAGE = "유효하지 않은 뉴스 조회 커서입니다.";
-
     private final ObjectMapper objectMapper;
-
-    public NewsCursorCodec(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
 
     /** 정렬 기준값을 커서 문자열로 인코딩한다. */
     public String encode(LocalDateTime publishedAt, Long newsId) {
