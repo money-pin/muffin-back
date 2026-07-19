@@ -43,6 +43,15 @@ public class NewsExplanationGenerationService {
             log.info("News explanation generation completed: newsId={}, cards={}", newsId, savedCount);
         } catch (Exception exception) {
             log.error("News explanation generation failed: newsId={}", newsId, exception);
+            try {
+                transactionTemplate.execute(status -> {
+                    saveFailureMarker(newsId);
+                    return null;
+                });
+            } catch (Exception failurePersistenceException) {
+                log.error(
+                        "News explanation failure marker save failed: newsId={}", newsId, failurePersistenceException);
+            }
             log.warn("News explanation retry queue is not implemented yet: newsId={}", newsId);
         }
     }
@@ -84,6 +93,18 @@ public class NewsExplanationGenerationService {
 
         newsExplanationRepository.saveAll(explanations);
         return explanations.size();
+    }
+
+    private void saveFailureMarker(Long newsId) {
+        if (!newsRepository.existsById(newsId)) {
+            return;
+        }
+        if (newsExplanationRepository.existsByNewsIdAndStatus(newsId, NewsExplanationStatus.DONE)
+                || newsExplanationRepository.existsByNewsIdAndStatus(newsId, NewsExplanationStatus.FAILED)) {
+            return;
+        }
+
+        newsExplanationRepository.save(NewsExplanation.failed(newsId));
     }
 
     private List<NewsExplanationTermCandidate> toTermCandidates(News news) {

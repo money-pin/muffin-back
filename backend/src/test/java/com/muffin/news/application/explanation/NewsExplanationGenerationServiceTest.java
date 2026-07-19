@@ -3,7 +3,6 @@ package com.muffin.news.application.explanation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -65,15 +64,7 @@ class NewsExplanationGenerationServiceTest {
 
         generationService.generate(newsId);
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<NewsExplanation>> captor = ArgumentCaptor.forClass(List.class);
-        verify(newsExplanationRepository).saveAll(captor.capture());
-        assertThat(captor.getValue()).singleElement().satisfies(explanation -> {
-            assertThat(explanation.getNewsId()).isEqualTo(newsId);
-            assertThat(explanation.getCardOrder()).isEqualTo(1);
-            assertThat(explanation.getTitle()).isEqualTo("기준금리란?");
-            assertThat(explanation.getStatus()).isEqualTo(NewsExplanationStatus.DONE);
-        });
+        assertSavedExplanation(newsId, 1, "기준금리란?", "기준금리는 중앙은행이 돈의 흐름을 조절하기 위해 정하는 대표 금리입니다.", "기준금리");
     }
 
     @Test
@@ -93,7 +84,12 @@ class NewsExplanationGenerationServiceTest {
 
         generationService.generate(newsId);
 
-        verify(newsExplanationRepository).saveAll(org.mockito.ArgumentMatchers.any());
+        assertSavedExplanation(
+                newsId,
+                1,
+                "왜 금리 변화가 생활비와 연결될까?",
+                "금리가 바뀌면 대출과 예금의 부담이 함께 움직입니다. 장바구니 가격을 보고 소비를 조절하듯, 사람들은 이자 부담에 따라 지출과 저축을 조정합니다.",
+                "금리 변화");
     }
 
     @Test
@@ -106,13 +102,23 @@ class NewsExplanationGenerationServiceTest {
         when(newsExplanationRepository.existsByNewsIdAndStatus(newsId, NewsExplanationStatus.DONE))
                 .thenReturn(false);
         when(newsRepository.findById(newsId)).thenReturn(Optional.of(news));
+        when(newsRepository.existsById(newsId)).thenReturn(true);
         when(termDictionaryRepository.findAllById(List.of(10L))).thenReturn(List.of(term));
         when(newsExplanationGenerator.generate(org.mockito.ArgumentMatchers.any()))
                 .thenThrow(new IllegalStateException("OpenAI failed"));
 
         generationService.generate(newsId);
 
-        verify(newsExplanationRepository, never()).saveAll(org.mockito.ArgumentMatchers.any());
+        ArgumentCaptor<NewsExplanation> captor = ArgumentCaptor.forClass(NewsExplanation.class);
+        verify(newsExplanationRepository).save(captor.capture());
+        assertThat(captor.getValue()).satisfies(explanation -> {
+            assertThat(explanation.getNewsId()).isEqualTo(newsId);
+            assertThat(explanation.getCardOrder()).isZero();
+            assertThat(explanation.getTitle()).isEqualTo("해설카드 생성 실패");
+            assertThat(explanation.getContent()).isEqualTo("해설카드 생성에 실패했습니다.");
+            assertThat(explanation.getKeyTerm()).isEqualTo("해설카드");
+            assertThat(explanation.getStatus()).isEqualTo(NewsExplanationStatus.FAILED);
+        });
     }
 
     private static News reconstructedNews(Long newsId) {
@@ -121,5 +127,20 @@ class NewsExplanationGenerationServiceTest {
         ReflectionTestUtils.setField(news, "id", newsId);
         news.completeReconstruction("금리 뉴스 요약", "기준금리가 바뀌면서 대출과 예금 환경에도 변화가 생겼습니다.");
         return news;
+    }
+
+    private void assertSavedExplanation(Long newsId, int cardOrder, String title, String content, String keyTerm) {
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<NewsExplanation>> captor = ArgumentCaptor.forClass(List.class);
+
+        verify(newsExplanationRepository).saveAll(captor.capture());
+        assertThat(captor.getValue()).singleElement().satisfies(explanation -> {
+            assertThat(explanation.getNewsId()).isEqualTo(newsId);
+            assertThat(explanation.getCardOrder()).isEqualTo(cardOrder);
+            assertThat(explanation.getTitle()).isEqualTo(title);
+            assertThat(explanation.getContent()).isEqualTo(content);
+            assertThat(explanation.getKeyTerm()).isEqualTo(keyTerm);
+            assertThat(explanation.getStatus()).isEqualTo(NewsExplanationStatus.DONE);
+        });
     }
 }

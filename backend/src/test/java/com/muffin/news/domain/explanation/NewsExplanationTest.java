@@ -54,4 +54,17 @@ class NewsExplanationTest {
 
         assertEquals(NewsExplanationStatus.FAILED, explanation.getStatus());
     }
+
+    @Test
+    @DisplayName("해설카드 생성 실패 마커는 FAILED 상태로 생성된다")
+    void failed_createsFailedMarker() {
+        NewsExplanation explanation = NewsExplanation.failed(1L);
+
+        assertEquals(NewsExplanationStatus.FAILED, explanation.getStatus());
+        assertEquals(1L, explanation.getNewsId());
+        assertEquals(0, explanation.getCardOrder());
+        assertEquals("해설카드 생성 실패", explanation.getTitle());
+        assertEquals("해설카드 생성에 실패했습니다.", explanation.getContent());
+        assertEquals("해설카드", explanation.getKeyTerm());
+    }
 }
