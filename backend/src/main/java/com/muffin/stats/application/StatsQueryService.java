@@ -1,15 +1,23 @@
 package com.muffin.stats.application;
 
 import com.muffin.stats.application.projection.DailyProfitProjection;
+import com.muffin.stats.application.projection.PeriodProfitProjection;
+import com.muffin.stats.application.projection.SectorHistoryProjection;
 import com.muffin.stats.application.projection.SectorStatProjection;
+import com.muffin.stats.domain.HistorySort;
 import com.muffin.stats.domain.InvestmentType;
 import com.muffin.stats.domain.SectorGroupCode;
+import com.muffin.stats.domain.StatsPeriod;
+import com.muffin.stats.presentation.dto.ProfitHistoryResponse;
+import com.muffin.stats.presentation.dto.ProfitHistoryResponse.SectorHistoryResponse;
+import com.muffin.stats.presentation.dto.ProfitHistoryResponse.SummaryResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.GraphPointResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.InvestmentTypeResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.TopSectorResponse;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -37,6 +45,9 @@ public class StatsQueryService {
 
     private final StatsQueryRepository statsSummaryQueryRepository;
 
+    /** "오늘"을 KST로 얻기 위한 전역 Clock(Asia/Seoul). date 미지정 시 현재 기간 윈도우 계산에 쓴다. */
+    private final Clock clock;
+
     @Transactional(readOnly = true)
     public StatsSummaryResponse getSummary(Long userId) {
         List<DailyProfitProjection> dailyProfits = statsSummaryQueryRepository.findSettledDailyProfits(userId);
@@ -57,6 +68,45 @@ public class StatsQueryService {
                 buildGraph(cumulativeByDate, latestDate),
                 buildTopSectors(sectorStats),
                 buildInvestmentType(sectorStats));
+    }
+
+    /**
+     * 누적 수익 내역 조회. 선택한 기간 윈도우 안에서 발생한 정산 완료 손익을 요약하고, 종목(섹터)별 내역을 정렬해 내려준다.
+     *
+     * @param period 기간 탭(DAY/WEEK/MONTH/YEAR/ALL)
+     * @param dateStr 조회 기준 시점. period 형식에 맞아야 하며 null/blank면 현재 윈도우. ALL이면 무시
+     * @param sort 종목별 정렬 기준
+     */
+    @Transactional(readOnly = true)
+    public ProfitHistoryResponse getHistory(Long userId, StatsPeriod period, String dateStr, HistorySort sort) {
+        StatsPeriod.Window window = period.resolve(dateStr, LocalDate.now(clock));
+
+        PeriodProfitProjection summaryStat =
+                statsSummaryQueryRepository.findPeriodSummary(userId, window.start(), window.end());
+        long profitAmount = valueOrZero(summaryStat == null ? null : summaryStat.totalProfitLoss());
+        long totalInvestment = valueOrZero(summaryStat == null ? null : summaryStat.totalInvestment());
+        SummaryResponse summary =
+                new SummaryResponse(profitAmount, rateOverBaseSafe(profitAmount, totalInvestment), totalInvestment);
+
+        List<SectorHistoryResponse> sectors =
+                statsSummaryQueryRepository.findPeriodSectorStats(userId, window.start(), window.end()).stream()
+                        .map(this::toSectorHistory)
+                        .sorted(sort.comparator(SectorHistoryResponse::profitAmount, SectorHistoryResponse::profitRate))
+                        .toList();
+
+        boolean hasPrev =
+                window.start() != null && statsSummaryQueryRepository.existsSettledBefore(userId, window.start());
+        boolean hasNext = window.end() != null && statsSummaryQueryRepository.existsSettledAfter(userId, window.end());
+
+        return new ProfitHistoryResponse(
+                period.name(), window.label(), hasPrev, hasNext, summary, sort.name(), sectors);
+    }
+
+    private SectorHistoryResponse toSectorHistory(SectorHistoryProjection s) {
+        long profit = valueOrZero(s.totalProfitLoss());
+        long investment = valueOrZero(s.totalInvestment());
+        return new SectorHistoryResponse(
+                s.sectorCode(), s.sectorName(), profit, rateOverBaseSafe(profit, investment), investment);
     }
 
     /** 일자별 손익을 오름차순 누적해 (일자 → 그 날까지 누적손익) 맵을 만든다. */
@@ -171,6 +221,15 @@ public class StatsQueryService {
     /** 기준금액 대비 손익률(%), 소수 첫째자리 반올림. 섹터 손익률(누적 매수금 기준)에 쓴다. */
     private BigDecimal rateOverBase(long amount, long base) {
         return BigDecimal.valueOf(amount).multiply(HUNDRED).divide(BigDecimal.valueOf(base), 1, RoundingMode.HALF_UP);
+    }
+
+    /** 기준금액 대비 손익률(%). 기준금액이 0 이하(해당 기간 매수 없음)면 0.0으로 처리해 0 나눗셈을 피한다. */
+    private BigDecimal rateOverBaseSafe(long amount, long base) {
+        return base <= 0L ? BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP) : rateOverBase(amount, base);
+    }
+
+    private long valueOrZero(Long value) {
+        return value == null ? 0L : value;
     }
 
     /** 정수 비중(%), 반올림. */
