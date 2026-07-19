@@ -24,6 +24,7 @@ public class OnboardingCompletionService {
 
     private final UserRepository userRepository;
     private final UserAssetRepository userAssetRepository;
+    private final InitialAssetGranter initialAssetGranter;
 
     public OnboardingCompleteResponse complete(Long userId) {
         User user =
@@ -38,7 +39,7 @@ public class OnboardingCompletionService {
 
     private UserAsset grantInitialAsset(Long userId) {
         try {
-            return userAssetRepository.saveAndFlush(UserAsset.create(userId, INITIAL_ASSET));
+            return initialAssetGranter.grant(userId, INITIAL_ASSET);
         } catch (DataIntegrityViolationException e) {
             // 중복 호출 레이스: 커밋 전 동시 요청이 먼저 지급을 마쳤을 수 있다. 다른 무결성 위반까지 여기서 삼키지 않도록
             // 실제 위반 제약을 확인한 뒤에만 기존 자산을 재조회해 멱등 응답으로 되돌린다.

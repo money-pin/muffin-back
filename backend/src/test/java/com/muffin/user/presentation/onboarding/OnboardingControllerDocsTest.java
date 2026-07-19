@@ -146,7 +146,7 @@ class OnboardingControllerDocsTest {
     @Test
     @DisplayName("온보딩 완료 및 초기자산 지급 성공 문서화")
     void documentCompleteSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        OnboardingCompletionService stub = new OnboardingCompletionService(null, null) {
+        OnboardingCompletionService stub = new OnboardingCompletionService(null, null, null) {
             @Override
             public OnboardingCompleteResponse complete(Long userId) {
                 return new OnboardingCompleteResponse(1_000_000L);
@@ -168,7 +168,7 @@ class OnboardingControllerDocsTest {
     @Test
     @DisplayName("온보딩 미완료 상태에서 완료 요청 문서화")
     void documentCompleteOnboardingNotCompleted(RestDocumentationContextProvider restDocumentation) throws Exception {
-        OnboardingCompletionService stub = new OnboardingCompletionService(null, null) {
+        OnboardingCompletionService stub = new OnboardingCompletionService(null, null, null) {
             @Override
             public OnboardingCompleteResponse complete(Long userId) {
                 throw new GeneralException(UserErrorCode.ONBOARDING_NOT_COMPLETED);
@@ -197,7 +197,7 @@ class OnboardingControllerDocsTest {
     }
 
     private OnboardingCompletionService stubCompletionService() {
-        return new OnboardingCompletionService(null, null) {
+        return new OnboardingCompletionService(null, null, null) {
             @Override
             public OnboardingCompleteResponse complete(Long userId) {
                 throw new UnsupportedOperationException("이 테스트에서는 사용하지 않음");

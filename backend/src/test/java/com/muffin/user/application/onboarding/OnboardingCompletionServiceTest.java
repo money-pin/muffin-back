@@ -34,6 +34,9 @@ class OnboardingCompletionServiceTest {
     @Mock
     private UserAssetRepository userAssetRepository;
 
+    @Mock
+    private InitialAssetGranter initialAssetGranter;
+
     @InjectMocks
     private OnboardingCompletionService onboardingCompletionService;
 
@@ -50,7 +53,8 @@ class OnboardingCompletionServiceTest {
     void onboardingNotCompleted() {
         assertThatThrownBy(() -> onboardingCompletionService.complete(USER_ID)).isInstanceOf(GeneralException.class);
 
-        verify(userAssetRepository, never()).saveAndFlush(org.mockito.ArgumentMatchers.any());
+        verify(initialAssetGranter, never())
+                .grant(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong());
     }
 
     @Test
@@ -58,8 +62,7 @@ class OnboardingCompletionServiceTest {
     void grantsInitialAsset() {
         user.completeOnboarding(1, 2, 3);
         when(userAssetRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
-        when(userAssetRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(UserAsset.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(initialAssetGranter.grant(USER_ID, 1_000_000L)).thenReturn(UserAsset.create(USER_ID, 1_000_000L));
 
         OnboardingCompleteResponse response = onboardingCompletionService.complete(USER_ID);
 
@@ -76,18 +79,20 @@ class OnboardingCompletionServiceTest {
         OnboardingCompleteResponse response = onboardingCompletionService.complete(USER_ID);
 
         assertThat(response.totalAsset()).isEqualTo(1_045_000L);
-        verify(userAssetRepository, never()).saveAndFlush(org.mockito.ArgumentMatchers.any());
+        verify(initialAssetGranter, never())
+                .grant(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong());
     }
 
     @Test
-    @DisplayName("동시 중복 호출 레이스(unique 제약 위반) → 기존 자산 재조회해 멱등 응답")
+    @DisplayName("동시 중복 호출 레이스(unique 제약 위반) → 별도 트랜잭션(REQUIRES_NEW)에서만 실패하고, "
+            + "호출자 트랜잭션은 오염되지 않아 기존 자산을 재조회해 멱등 응답으로 되돌린다")
     void racesToExistingAssetOnUniqueViolation() {
         user.completeOnboarding(1, 2, 3);
         UserAsset existing = UserAsset.create(USER_ID, 1_000_000L);
         when(userAssetRepository.findByUserId(USER_ID))
                 .thenReturn(Optional.empty())
                 .thenReturn(Optional.of(existing));
-        when(userAssetRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(UserAsset.class)))
+        when(initialAssetGranter.grant(USER_ID, 1_000_000L))
                 .thenThrow(new DataIntegrityViolationException("uk_user_asset_user"));
 
         OnboardingCompleteResponse response = onboardingCompletionService.complete(USER_ID);
@@ -100,7 +105,7 @@ class OnboardingCompletionServiceTest {
     void rethrowsUnrelatedConstraintViolation() {
         user.completeOnboarding(1, 2, 3);
         when(userAssetRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
-        when(userAssetRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(UserAsset.class)))
+        when(initialAssetGranter.grant(USER_ID, 1_000_000L))
                 .thenThrow(new DataIntegrityViolationException("some_other_constraint"));
 
         assertThatThrownBy(() -> onboardingCompletionService.complete(USER_ID))
