@@ -70,6 +70,29 @@ public class NewsExplanation extends BaseEntity {
         return new NewsExplanation(newsId, cardOrder, title, content, keyTerm);
     }
 
+    /** 해설카드 생성 실패 이력을 남기기 위한 내부 마커를 생성한다. 조회 API는 DONE 상태만 노출한다. */
+    public static NewsExplanation failed(Long newsId) {
+        NewsExplanation explanation = new NewsExplanation(newsId, 0, "해설카드 생성 실패", "해설카드 생성에 실패했습니다.", "해설카드");
+        explanation.fail();
+        return explanation;
+    }
+
+    /** AI 해설카드 생성이 정상 완료되었을 때 공개 가능한 상태로 변경한다. */
+    public void complete() {
+        if (status == NewsExplanationStatus.FAILED) {
+            throw new IllegalStateException("실패한 해설카드는 완료 상태로 변경할 수 없습니다.");
+        }
+        this.status = NewsExplanationStatus.DONE;
+    }
+
+    /** AI 해설카드 생성 또는 저장 과정이 실패했을 때 실패 상태로 변경한다. */
+    public void fail() {
+        if (status == NewsExplanationStatus.DONE) {
+            throw new IllegalStateException("완료된 해설카드는 실패 상태로 변경할 수 없습니다.");
+        }
+        this.status = NewsExplanationStatus.FAILED;
+    }
+
     private static void validate(Long newsId, int cardOrder, String title, String content, String keyTerm) {
         if (newsId == null) {
             throw new IllegalArgumentException("newsId는 필수입니다.");

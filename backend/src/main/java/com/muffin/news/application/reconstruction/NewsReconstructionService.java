@@ -11,6 +11,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -24,6 +25,7 @@ public class NewsReconstructionService {
     private final SectorRepository sectorRepository;
     private final NewsArticleContentClient articleContentClient;
     private final NewsRewriter newsRewriter;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** 전달받은 뉴스를 건별로 재구성하며 한 건의 실패가 다음 뉴스에 영향을 주지 않게 처리한다. */
     public void reconstruct(List<Long> newsIds) {
@@ -62,6 +64,7 @@ public class NewsReconstructionService {
 
             newsRepository.save(news);
             newsSectorImpactRepository.saveAll(sectorImpacts);
+            eventPublisher.publishEvent(new NewsReconstructedEvent(news.getId()));
 
             if (!result.warningFlags().isEmpty()) {
                 log.warn(

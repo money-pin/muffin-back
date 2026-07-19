@@ -1,8 +1,10 @@
 package com.muffin.news.domain.news;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.muffin.news.domain.news.enums.NewsStatus;
 import java.time.LocalDateTime;
@@ -89,12 +91,32 @@ class NewsTest {
     void addTerm_addsNewsTerm() {
         News news = createNews();
 
-        news.addTerm(10L);
-        news.addTerm(20L);
+        assertTrue(news.addTerm(10L));
+        assertTrue(news.addTerm(20L));
 
         assertEquals(2, news.getTerms().size());
         assertEquals(10L, news.getTerms().get(0).getTermId());
         assertEquals(20L, news.getTerms().get(1).getTermId());
+    }
+
+    @Test
+    @DisplayName("이미 연결된 용어를 다시 추가하면 중복으로 저장하지 않는다")
+    void addTerm_skipsDuplicatedTerm() {
+        News news = createNews();
+
+        assertTrue(news.addTerm(10L));
+        assertFalse(news.addTerm(10L));
+
+        assertEquals(1, news.getTerms().size());
+        assertEquals(10L, news.getTerms().getFirst().getTermId());
+    }
+
+    @Test
+    @DisplayName("용어 ID가 없으면 추가할 수 없다")
+    void addTerm_throwsWhenTermIdIsNull() {
+        News news = createNews();
+
+        assertThrows(IllegalArgumentException.class, () -> news.addTerm(null));
     }
 
     @Test
