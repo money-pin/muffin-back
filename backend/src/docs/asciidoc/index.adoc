@@ -310,3 +310,51 @@ include::{snippets}/stats-summary/response-fields.adoc[]
 
 include::{snippets}/stats-summary-empty/http-response.adoc[]
 include::{snippets}/stats-summary-empty/response-fields.adoc[]
+
+[[stats-history]]
+== 누적 수익 내역 조회 (STATS-08)
+
+기간 탭(일/주/월/년/전체) 단위로 그 기간에 발생한 누적 손익을 요약하고, 종목(섹터)별 내역을 원하는 기준으로 정렬해 조회한다. 정산 완료(SETTLED)된 투자만 집계한다.
+
+* 요약 손익률: 그 기간 누적 매수금 기준(`기간 손익금 / 기간 매수금 × 100`), 소수 첫째자리. 매수 이력이 없으면 0.0.
+* 종목(섹터) 손익률: 그 섹터의 기간 누적 매수금 기준, 소수 첫째자리.
+* `hasPrev`/`hasNext`: 선택한 기간 윈도우 밖(이전/이후)에 정산 완료 데이터가 있는지로 판단한다. 좌우 화살표 네비게이션 활성화에 쓴다.
+* `date`: `period` 형식에 맞춰 지정한다(DAY=`YYYY-MM-DD`, WEEK=`YYYY-Www`(ISO 주차), MONTH=`YYYY-MM`, YEAR=`YYYY`, ALL=불필요). 미지정 시 해당 `period`의 현재(오늘/이번 주/이번 달/올해, KST)로 처리한다. `period=ALL`이면 응답에서 `date`가 생략된다.
+
+NOTE: 인증은 `Authorization: Bearer {accessToken}`로 처리하며, 사용자는 토큰에서 해석한다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+=== 요청
+
+include::{snippets}/stats-history/http-request.adoc[]
+include::{snippets}/stats-history/query-parameters.adoc[]
+
+=== 응답 - 정상
+
+include::{snippets}/stats-history/http-response.adoc[]
+include::{snippets}/stats-history/response-fields.adoc[]
+
+=== 응답 - 기간 내 정산 데이터 없음(빈 상태)
+
+해당 기간에 정산 완료 데이터가 없으면 `summary`의 금액/비율이 0(0.0)이고 `sectors`가 빈 배열이다.
+
+include::{snippets}/stats-history-empty/http-response.adoc[]
+include::{snippets}/stats-history-empty/response-fields.adoc[]
+
+=== 응답 - 실패(period 값 오류)
+
+허용되지 않는 `period` 값(또는 누락) 등 요청 값 검증 실패는 도메인 에러 코드(`STATS_400_00x`)로 응답하며, `errorDetail`에 허용값/입력값 등 구체적 원인을 담는다.
+
+include::{snippets}/stats-history-invalid-period/http-response.adoc[]
+include::{snippets}/stats-history-invalid-period/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|STATS_400_001|조회 기간(period) 값이 올바르지 않습니다.|`period`가 비어 있거나 DAY/WEEK/MONTH/YEAR/ALL 이외의 값
+|400|STATS_400_002|정렬 기준(sort) 값이 올바르지 않습니다.|`sort`가 AMOUNT_DESC/AMOUNT_ASC/RATE_DESC/RATE_ASC 이외의 값
+|400|STATS_400_003|조회 기준 시점(date) 형식이 조회 기간과 맞지 않습니다.|`date` 형식이 `period` 규격과 불일치(예: MONTH에 `2026-13`)
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===

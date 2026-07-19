@@ -1,6 +1,7 @@
 package com.muffin.stats.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.muffin.global.config.JpaAuditingConfig;
@@ -14,6 +15,8 @@ import com.muffin.sector.domain.sectorgroup.SectorGroup;
 import com.muffin.sector.domain.sectorgroup.SectorGroupRepository;
 import com.muffin.stats.application.StatsQueryRepository;
 import com.muffin.stats.application.projection.DailyProfitProjection;
+import com.muffin.stats.application.projection.PeriodProfitProjection;
+import com.muffin.stats.application.projection.SectorHistoryProjection;
 import com.muffin.stats.application.projection.SectorStatProjection;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -97,6 +100,62 @@ class StatsSummaryQueryRepositoryTest {
     @DisplayName("정산 완료 이력이 없으면 빈 목록을 반환한다")
     void findSettledDailyProfits_emptyWhenNoSettlement() {
         assertTrue(statsSummaryQueryRepository.findSettledDailyProfits(USER_ID).isEmpty());
+    }
+
+    @Test
+    @DisplayName("기간 요약은 윈도우 안의 정산 완료 투자만 합산하고, 경계가 null이면 전체를 합산한다")
+    void findPeriodSummary_windowFilteringAndSums() {
+        Long gold = seedSector("GOLD", "금", "BASE_ASSET");
+        persistSettledInvestment(LocalDate.of(2026, 4, 30), Map.of(gold, sector(100_000L, 1_000L))); // 윈도우 이전
+        persistSettledInvestment(LocalDate.of(2026, 5, 2), Map.of(gold, sector(100_000L, 5_000L)));
+        persistSettledInvestment(LocalDate.of(2026, 5, 20), Map.of(gold, sector(200_000L, 8_000L)));
+        persistSettledInvestment(LocalDate.of(2026, 6, 1), Map.of(gold, sector(100_000L, 2_000L))); // 윈도우 이후
+        persistPendingInvestment(LocalDate.of(2026, 5, 10), gold); // 미정산 → 제외
+
+        PeriodProfitProjection may = statsSummaryQueryRepository.findPeriodSummary(
+                USER_ID, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31));
+        assertEquals(300_000L, may.totalInvestment());
+        assertEquals(13_000L, may.totalProfitLoss());
+
+        PeriodProfitProjection all = statsSummaryQueryRepository.findPeriodSummary(USER_ID, null, null);
+        assertEquals(500_000L, all.totalInvestment());
+        assertEquals(16_000L, all.totalProfitLoss());
+    }
+
+    @Test
+    @DisplayName("기간 섹터 집계는 윈도우 안의 정산 완료 투자만 섹터별로 합산한다")
+    void findPeriodSectorStats_windowGrouping() {
+        Long gold = seedSector("GOLD", "금", "BASE_ASSET");
+        Long tech = seedSector("TECH", "테크", "FUTURE_TECH");
+        persistSettledInvestment(LocalDate.of(2026, 5, 2), Map.of(gold, sector(100_000L, 5_000L)));
+        persistSettledInvestment(
+                LocalDate.of(2026, 5, 20), Map.of(gold, sector(200_000L, 8_000L), tech, sector(100_000L, 2_000L)));
+        persistSettledInvestment(LocalDate.of(2026, 6, 1), Map.of(gold, sector(100_000L, 2_000L))); // 윈도우 이후 → 제외
+
+        Map<String, SectorHistoryProjection> byCode =
+                statsSummaryQueryRepository
+                        .findPeriodSectorStats(USER_ID, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31))
+                        .stream()
+                        .collect(Collectors.toMap(SectorHistoryProjection::sectorCode, Function.identity()));
+
+        assertEquals(2, byCode.size());
+        assertEquals(300_000L, byCode.get("GOLD").totalInvestment());
+        assertEquals(13_000L, byCode.get("GOLD").totalProfitLoss());
+        assertEquals(100_000L, byCode.get("TECH").totalInvestment());
+        assertEquals(2_000L, byCode.get("TECH").totalProfitLoss());
+    }
+
+    @Test
+    @DisplayName("existsSettledBefore/After는 경계 밖 정산 완료 데이터 유무를 반환한다")
+    void existsSettledBeforeAfter() {
+        Long gold = seedSector("GOLD", "금", "BASE_ASSET");
+        persistSettledInvestment(LocalDate.of(2026, 5, 10), Map.of(gold, sector(100_000L, 5_000L)));
+        persistSettledInvestment(LocalDate.of(2026, 5, 20), Map.of(gold, sector(100_000L, 3_000L)));
+
+        assertTrue(statsSummaryQueryRepository.existsSettledBefore(USER_ID, LocalDate.of(2026, 5, 15)));
+        assertFalse(statsSummaryQueryRepository.existsSettledBefore(USER_ID, LocalDate.of(2026, 5, 10)));
+        assertTrue(statsSummaryQueryRepository.existsSettledAfter(USER_ID, LocalDate.of(2026, 5, 15)));
+        assertFalse(statsSummaryQueryRepository.existsSettledAfter(USER_ID, LocalDate.of(2026, 5, 20)));
     }
 
     private record SectorSpec(long amount, long profitLoss) {}
