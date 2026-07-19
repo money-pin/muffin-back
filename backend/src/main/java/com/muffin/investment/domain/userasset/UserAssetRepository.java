@@ -2,8 +2,9 @@ package com.muffin.investment.domain.userasset;
 
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -21,7 +22,7 @@ public interface UserAssetRepository extends JpaRepository<UserAsset, Long> {
     Optional<UserAsset> findByUserIdForUpdate(@Param("userId") Long userId);
 
     // TODO : 확인필요 - 이슈 #40 자정 마감 대상과 사용자별 잠금을 위해 기존 UserAsset Repository 조회를 확장함.
-    List<UserAsset> findByCreatedAtBefore(LocalDateTime cutoff);
+    Slice<UserAsset> findByCreatedAtBefore(LocalDateTime cutoff, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select ua from UserAsset ua where ua.id = :id")

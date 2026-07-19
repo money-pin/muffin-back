@@ -188,6 +188,8 @@ public class Investment extends BaseEntity {
         }
         if (sectors.stream().anyMatch(sector -> sector.getBuyPrice() == null)) {
             failSettlement();
+        } else if (settlementStatus == SettlementStatus.FAILED) {
+            settlementStatus = SettlementStatus.PENDING;
         }
     }
 

@@ -15,7 +15,6 @@ import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.sector.Sector;
 import com.muffin.sector.domain.sector.SectorRepository;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -129,11 +128,7 @@ public class InvestmentQueryService {
 
     private TodayInvestmentSectorResponse sectorResponse(
             InvestmentSector investmentSector, Sector sector, long totalAmount) {
-        BigDecimal ratio = totalAmount == 0L
-                ? BigDecimal.ZERO.setScale(2)
-                : BigDecimal.valueOf(investmentSector.getAmount())
-                        .multiply(BigDecimal.valueOf(100))
-                        .divide(BigDecimal.valueOf(totalAmount), 2, RoundingMode.HALF_UP);
+        BigDecimal ratio = InvestmentRatioCalculator.calculate(investmentSector.getAmount(), totalAmount);
         return new TodayInvestmentSectorResponse(
                 sector.getSectorCode(),
                 sector.getName(),

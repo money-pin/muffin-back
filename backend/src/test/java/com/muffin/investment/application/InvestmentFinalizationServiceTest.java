@@ -23,6 +23,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.SliceImpl;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -63,7 +66,8 @@ class InvestmentFinalizationServiceTest {
         InvestmentFinalizationResult result = service.finalizeInvestments(INVEST_DATE, FINALIZED_AT);
 
         assertEquals(false, result.tradingDay());
-        verify(userAssetRepository, never()).findByCreatedAtBefore(org.mockito.ArgumentMatchers.any());
+        verify(userAssetRepository, never())
+                .findByCreatedAtBefore(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -73,8 +77,9 @@ class InvestmentFinalizationServiceTest {
                 .thenReturn(new TradingCalendar(INVEST_DATE, true, INVEST_DATE.minusDays(3), INVEST_DATE.plusDays(1)));
         UserAsset asset = UserAsset.create(1L, 1_000_000L);
         ReflectionTestUtils.setField(asset, "id", 10L);
-        when(userAssetRepository.findByCreatedAtBefore(INVEST_DATE.plusDays(1).atStartOfDay()))
-                .thenReturn(List.of(asset));
+        var pageRequest = PageRequest.of(0, 500, Sort.by("id").ascending());
+        when(userAssetRepository.findByCreatedAtBefore(INVEST_DATE.plusDays(1).atStartOfDay(), pageRequest))
+                .thenReturn(new SliceImpl<>(List.of(asset), pageRequest, false));
         Sector sector = Sector.create(1L, 100L, "반도체", "", "SEMICONDUCTOR", 1);
         ReflectionTestUtils.setField(sector, "id", 200L);
         when(sectorRepository.findAll()).thenReturn(List.of(sector));
@@ -87,5 +92,31 @@ class InvestmentFinalizationServiceTest {
         assertEquals(1, result.successCount());
         verify(processor)
                 .finalizeUser(10L, INVEST_DATE, FINALIZED_AT, java.util.Map.of(200L, BigDecimal.valueOf(12_345)));
+    }
+
+    @Test
+    void finalizeInvestments_processesAllSlices() {
+        when(tradingCalendarService.getCalendar(INVEST_DATE))
+                .thenReturn(new TradingCalendar(INVEST_DATE, true, INVEST_DATE.minusDays(3), INVEST_DATE.plusDays(1)));
+        UserAsset first = UserAsset.create(1L, 1_000_000L);
+        UserAsset second = UserAsset.create(2L, 1_000_000L);
+        ReflectionTestUtils.setField(first, "id", 10L);
+        ReflectionTestUtils.setField(second, "id", 20L);
+        var firstPage = PageRequest.of(0, 500, Sort.by("id").ascending());
+        var secondPage = firstPage.next();
+        when(userAssetRepository.findByCreatedAtBefore(INVEST_DATE.plusDays(1).atStartOfDay(), firstPage))
+                .thenReturn(new SliceImpl<>(List.of(first), firstPage, true));
+        when(userAssetRepository.findByCreatedAtBefore(INVEST_DATE.plusDays(1).atStartOfDay(), secondPage))
+                .thenReturn(new SliceImpl<>(List.of(second), secondPage, false));
+        when(sectorRepository.findAll()).thenReturn(List.of());
+        when(etfPriceRepository.findByPriceDate(INVEST_DATE)).thenReturn(List.of());
+
+        InvestmentFinalizationResult result = service.finalizeInvestments(INVEST_DATE, FINALIZED_AT);
+
+        assertEquals(2, result.targetCount());
+        assertEquals(2, result.successCount());
+        assertEquals(0, result.failureCount());
+        verify(processor).finalizeUser(10L, INVEST_DATE, FINALIZED_AT, java.util.Map.of());
+        verify(processor).finalizeUser(20L, INVEST_DATE, FINALIZED_AT, java.util.Map.of());
     }
 }

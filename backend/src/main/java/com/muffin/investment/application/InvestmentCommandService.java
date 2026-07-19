@@ -18,7 +18,6 @@ import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.sector.Sector;
 import com.muffin.sector.domain.sector.SectorRepository;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -179,9 +178,7 @@ public class InvestmentCommandService {
         if (sector == null) {
             throw new GeneralException(InvestmentErrorCode.INVALID_SECTOR);
         }
-        BigDecimal ratio = BigDecimal.valueOf(item.getAmount())
-                .multiply(BigDecimal.valueOf(100))
-                .divide(BigDecimal.valueOf(totalAmount), 2, RoundingMode.HALF_UP);
+        BigDecimal ratio = InvestmentRatioCalculator.calculate(item.getAmount(), totalAmount);
         return new TodayInvestmentSectorResponse(
                 sector.getSectorCode(), sector.getName(), item.getQuantity(), item.getAmount(), ratio);
     }

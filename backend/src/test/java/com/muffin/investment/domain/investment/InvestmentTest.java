@@ -202,4 +202,21 @@ class InvestmentTest {
         assertEquals(SettlementStatus.FAILED, investment.getSettlementStatus());
         assertEquals(true, investment.hasMissingBuyPrice());
     }
+
+    @Test
+    void finalizeInvestment_restoresPendingWhenAllBuyPricesAreRecovered() {
+        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        investment.addSector(100L, 1, 100_000L, null);
+        investment.addSector(200L, 1, 100_000L, null);
+        LocalDateTime finalizedAt = INVEST_DATE.plusDays(1).atStartOfDay();
+
+        investment.finalizeInvestment(Map.of(100L, BigDecimal.valueOf(12_345)), finalizedAt);
+        assertEquals(SettlementStatus.FAILED, investment.getSettlementStatus());
+
+        investment.finalizeInvestment(Map.of(200L, BigDecimal.valueOf(23_456)), finalizedAt.plusMinutes(10));
+
+        assertEquals(SettlementStatus.PENDING, investment.getSettlementStatus());
+        assertEquals(false, investment.hasMissingBuyPrice());
+        assertEquals(finalizedAt, investment.getFinalizedAt());
+    }
 }

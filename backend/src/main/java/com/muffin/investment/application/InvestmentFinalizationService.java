@@ -15,6 +15,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 /** 거래일 여부와 종가 스냅샷을 한 번 준비한 뒤 사용자별 독립 트랜잭션으로 자정 마감을 위임한다. */
@@ -22,6 +26,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class InvestmentFinalizationService {
+
+    private static final int FINALIZATION_CHUNK_SIZE = 500;
 
     private final TradingCalendarService tradingCalendarService;
     private final UserAssetRepository userAssetRepository;
@@ -36,27 +42,35 @@ public class InvestmentFinalizationService {
         }
 
         LocalDateTime cutoff = investDate.plusDays(1).atStartOfDay();
-        var targets = userAssetRepository.findByCreatedAtBefore(cutoff);
         Map<Long, BigDecimal> closePricesBySectorId = closePricesBySectorId(investDate);
 
+        int targetCount = 0;
         int success = 0;
         int failure = 0;
-        for (UserAsset target : targets) {
-            try {
-                processor.finalizeUser(target.getId(), investDate, finalizedAt, closePricesBySectorId);
-                success++;
-            } catch (RuntimeException exception) {
-                failure++;
-                log.error(
-                        "[investment-finalization] failed userAssetId={} investDate={}",
-                        target.getId(),
-                        investDate,
-                        exception);
+        Pageable pageable =
+                PageRequest.of(0, FINALIZATION_CHUNK_SIZE, Sort.by("id").ascending());
+        Slice<UserAsset> targets;
+        do {
+            targets = userAssetRepository.findByCreatedAtBefore(cutoff, pageable);
+            targetCount += targets.getNumberOfElements();
+            for (UserAsset target : targets.getContent()) {
+                try {
+                    processor.finalizeUser(target.getId(), investDate, finalizedAt, closePricesBySectorId);
+                    success++;
+                } catch (RuntimeException exception) {
+                    failure++;
+                    log.error(
+                            "[investment-finalization] failed userAssetId={} investDate={}",
+                            target.getId(),
+                            investDate,
+                            exception);
+                }
             }
-        }
+            pageable = targets.nextPageable();
+        } while (targets.hasNext());
 
         InvestmentFinalizationResult result =
-                new InvestmentFinalizationResult(investDate, true, targets.size(), success, failure);
+                new InvestmentFinalizationResult(investDate, true, targetCount, success, failure);
         log.info("[investment-finalization] done {}", result);
         return result;
     }
