@@ -33,6 +33,7 @@ public class NewsTermMappingService {
             return 0;
         }
 
+        // 긴 용어를 먼저 매핑해 짧은 부분 문자열 용어보다 구체적인 후보가 우선 연결되도록 한다.
         List<TermDictionary> matchedTerms = termDictionaryRepository.findAll().stream()
                 .filter(term -> isMatchable(term.getTerm()))
                 .sorted(Comparator.comparingInt(
@@ -41,6 +42,7 @@ public class NewsTermMappingService {
                 .filter(term -> news.getContent().contains(term.getTerm()))
                 .toList();
 
+        // 엔티티 상태 변경은 stream 밖에서 명시적으로 수행해 매핑 후보 추출과 저장 대상 추가를 분리한다.
         int mappedCount = 0;
         for (TermDictionary term : matchedTerms) {
             if (news.addTerm(term.getId())) {

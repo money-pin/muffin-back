@@ -23,6 +23,7 @@ public class NewsReconstructedEventListener {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void handle(NewsReconstructedEvent event) {
+        // 후속 작업 실패가 뉴스 재구성 트랜잭션을 되돌리지 않도록 각 작업을 독립적으로 보호한다.
         mapTerms(event.newsId());
         generateExplanationCards(event.newsId());
     }

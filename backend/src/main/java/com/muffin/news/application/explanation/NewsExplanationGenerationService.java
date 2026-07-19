@@ -30,6 +30,7 @@ public class NewsExplanationGenerationService {
     /** 재구성이 끝난 뉴스와 매핑된 용어를 바탕으로 경제 상식 해설카드를 생성해 저장한다. */
     public void generate(Long newsId) {
         try {
+            // 외부 AI 호출 중 DB 커넥션을 점유하지 않도록 요청 데이터 조회와 결과 저장만 짧은 트랜잭션으로 감싼다.
             Optional<NewsExplanationGenerationRequest> request =
                     transactionTemplate.execute(status -> buildGenerationRequest(newsId));
             if (request.isEmpty()) {
@@ -44,6 +45,7 @@ public class NewsExplanationGenerationService {
         } catch (Exception exception) {
             log.error("News explanation generation failed: newsId={}", newsId, exception);
             try {
+                // 조회 API는 DONE 카드만 노출하므로 실패 마커를 남겨도 사용자 화면은 빈 상태로 유지된다.
                 transactionTemplate.execute(status -> {
                     saveFailureMarker(newsId);
                     return null;
@@ -57,6 +59,7 @@ public class NewsExplanationGenerationService {
     }
 
     private Optional<NewsExplanationGenerationRequest> buildGenerationRequest(Long newsId) {
+        // 이미 생성된 카드가 있으면 재호출되어도 중복 생성하지 않는다.
         if (newsExplanationRepository.existsByNewsIdAndStatus(newsId, NewsExplanationStatus.DONE)) {
             log.info("News explanation generation skipped: already generated, newsId={}", newsId);
             return Optional.empty();
@@ -76,6 +79,7 @@ public class NewsExplanationGenerationService {
     }
 
     private int saveGeneratedCards(Long newsId, NewsExplanationGenerationResult result) {
+        // AI 호출 중 다른 흐름이 먼저 저장했을 수 있으므로 저장 직전에 한 번 더 확인한다.
         if (newsExplanationRepository.existsByNewsIdAndStatus(newsId, NewsExplanationStatus.DONE)) {
             log.info("News explanation generation skipped: already generated before save, newsId={}", newsId);
             return 0;
@@ -96,6 +100,7 @@ public class NewsExplanationGenerationService {
     }
 
     private void saveFailureMarker(Long newsId) {
+        // 실제 카드 order(1~3)와 충돌하지 않는 order 0 실패 마커를 한 번만 저장한다.
         if (!newsRepository.existsById(newsId)) {
             return;
         }

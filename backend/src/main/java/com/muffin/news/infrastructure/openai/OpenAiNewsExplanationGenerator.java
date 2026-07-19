@@ -31,18 +31,8 @@ public class OpenAiNewsExplanationGenerator implements NewsExplanationGenerator 
     private static final int MAX_BODY_LENGTH = 200;
     private static final int MAX_CARD_COUNT = 3;
     private static final int MAX_GENERATION_ATTEMPTS = 2;
-    private static final Set<String> INVESTMENT_ADVICE_KEYWORDS = Set.of(
-            "매수",
-            "매도",
-            "수익 보장",
-            "무조건 오른",
-            "반드시 오른",
-            "투자하세요",
-            "추천합니다",
-            "고려해야 합니다",
-            "유의해야 합니다",
-            "염두에 두어야 합니다",
-            "꼭 확인해야 합니다");
+    private static final Set<String> INVESTMENT_ADVICE_KEYWORDS =
+            Set.of("수익 보장", "무조건 오른", "반드시 오른", "투자하세요", "추천합니다", "고려해야 합니다", "유의해야 합니다", "염두에 두어야 합니다", "꼭 확인해야 합니다");
 
     private static final String INSTRUCTIONS =
             """
@@ -288,11 +278,20 @@ public class OpenAiNewsExplanationGenerator implements NewsExplanationGenerator 
                 .filter(OpenAiNewsExplanationGenerator::isUsableCard)
                 .toList();
 
-        if (cards.isEmpty() || cards.size() > MAX_CARD_COUNT) {
+        if (cards.isEmpty() || cards.size() > MAX_CARD_COUNT || hasDuplicatedOrder(cards)) {
             throw new IllegalStateException("OpenAI returned invalid explanation cards");
         }
 
         return new NewsExplanationGenerationResult(cards);
+    }
+
+    private static boolean hasDuplicatedOrder(List<NewsExplanationCardResult> cards) {
+        long distinctOrderCount = cards.stream()
+                .mapToInt(NewsExplanationCardResult::order)
+                .distinct()
+                .count();
+
+        return distinctOrderCount != cards.size();
     }
 
     private static boolean isUsableCard(NewsExplanationCardResult card) {
