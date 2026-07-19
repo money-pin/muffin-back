@@ -6,7 +6,6 @@ import com.muffin.investment.domain.investment.Investment.SectorAllocation;
 import com.muffin.investment.domain.investment.InvestmentRepository;
 import com.muffin.investment.domain.investment.InvestmentSector;
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
-import com.muffin.investment.domain.investment.enums.SettlementStatus;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
 import com.muffin.investment.exception.InvestmentErrorCode;
@@ -44,13 +43,11 @@ public class InvestmentCommandService {
     private static final long UNIT_AMOUNT = 100_000L;
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final LocalTime INVESTMENT_START = LocalTime.of(10, 0);
-    private static final List<SettlementStatus> REPROCESSABLE =
-            List.of(SettlementStatus.PENDING, SettlementStatus.FAILED);
-
     private final UserAssetRepository userAssetRepository;
     private final InvestmentRepository investmentRepository;
     private final SectorRepository sectorRepository;
     private final TradingCalendarService tradingCalendarService;
+    private final PendingInvestmentChecker pendingInvestmentChecker;
     private final Clock clock;
 
     @Transactional
@@ -115,17 +112,9 @@ public class InvestmentCommandService {
         TradingCalendar calendar = tradingCalendarService.getCalendar(today);
         if (!calendar.tradingDay()
                 || now.toLocalTime().isBefore(INVESTMENT_START)
-                || hasPendingInvestment(userId, calendar)) {
+                || pendingInvestmentChecker.hasPendingInvestment(userId, calendar)) {
             throw new GeneralException(InvestmentErrorCode.INVESTMENT_WINDOW_CLOSED);
         }
-    }
-
-    private boolean hasPendingInvestment(Long userId, TradingCalendar calendar) {
-        return investmentRepository
-                .findByUserIdAndSettlementStatusInAndInvestDateLessThan(userId, REPROCESSABLE, calendar.date())
-                .stream()
-                .anyMatch(investment -> !(investment.getStatus() == InvestmentStatus.CONFIRMED
-                        && investment.getInvestDate().isBefore(calendar.previousTradingDay())));
     }
 
     private NormalizedInvestment normalize(InvestmentRequest request) {

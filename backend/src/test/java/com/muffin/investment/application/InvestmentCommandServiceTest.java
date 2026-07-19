@@ -201,7 +201,12 @@ class InvestmentCommandServiceTest {
     private InvestmentCommandService serviceAt(String timestamp) {
         Clock clock = Clock.fixed(OffsetDateTime.parse(timestamp).toInstant(), KST);
         return new InvestmentCommandService(
-                userAssetRepository, investmentRepository, sectorRepository, tradingCalendarService, clock);
+                userAssetRepository,
+                investmentRepository,
+                sectorRepository,
+                tradingCalendarService,
+                new PendingInvestmentChecker(investmentRepository),
+                clock);
     }
 
     private static InvestmentRequest request(InvestmentSectorRequest... sectors) {
