@@ -1,8 +1,11 @@
 package com.muffin.character.domain;
 
+import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.global.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -23,6 +26,10 @@ public class CharacterProfile extends BaseEntity {
     @Column(name = "character_id")
     private Long characterId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "muffin_type", nullable = false, unique = true, length = 20)
+    private MuffinType muffinType;
+
     @Column(name = "name", nullable = false, length = 20)
     private String name;
 
@@ -32,13 +39,14 @@ public class CharacterProfile extends BaseEntity {
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
-    private CharacterProfile(String name, String description, String imageUrl) {
+    private CharacterProfile(MuffinType muffinType, String name, String description, String imageUrl) {
+        this.muffinType = muffinType;
         this.name = name;
         this.description = description;
         this.imageUrl = imageUrl;
     }
 
-    public static CharacterProfile create(String name, String description, String imageUrl) {
-        return new CharacterProfile(name, description, imageUrl);
+    public static CharacterProfile create(MuffinType muffinType, String name, String description, String imageUrl) {
+        return new CharacterProfile(muffinType, name, description, imageUrl);
     }
 }
