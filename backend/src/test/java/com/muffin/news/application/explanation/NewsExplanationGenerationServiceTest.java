@@ -104,8 +104,7 @@ class NewsExplanationGenerationServiceTest {
         when(newsRepository.findById(newsId)).thenReturn(Optional.of(news));
         when(newsRepository.existsById(newsId)).thenReturn(true);
         when(termDictionaryRepository.findAllById(List.of(10L))).thenReturn(List.of(term));
-        when(newsExplanationGenerator.generate(org.mockito.ArgumentMatchers.any()))
-                .thenThrow(new IllegalStateException("OpenAI failed"));
+        when(newsExplanationGenerator.generate(any())).thenThrow(new IllegalStateException("OpenAI failed"));
 
         generationService.generate(newsId);
 
