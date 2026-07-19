@@ -30,7 +30,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -178,12 +180,26 @@ public class NewsQueryService {
         return impactBySectorId;
     }
 
+    /**
+     * 열람 기록을 upsert한다. 동시 조회 시 findByUserIdAndNewsId가 둘 다 빈 값을 반환해 저장이 경합할 수 있으므로,
+     * {@code (user_id, news_id)} 유니크 제약 위반은 상대가 먼저 생성한 것으로 보고 그 행을 다시 조회해 갱신한다
+     * ({@link com.muffin.sector.infrastructure.EtfPriceWriter#upsert}와 동일한 방어 패턴).
+     */
     private void upsertReadHistory(Long userId, Long newsId) {
-        readHistoryRepository
-                .findByUserIdAndNewsId(userId, newsId)
-                .ifPresentOrElse(
-                        ReadHistory::updateReadAt,
-                        () -> readHistoryRepository.save(ReadHistory.create(userId, newsId)));
+        Optional<ReadHistory> existing = readHistoryRepository.findByUserIdAndNewsId(userId, newsId);
+        if (existing.isPresent()) {
+            existing.get().updateReadAt();
+            return;
+        }
+
+        try {
+            readHistoryRepository.saveAndFlush(ReadHistory.create(userId, newsId));
+        } catch (DataIntegrityViolationException exception) {
+            readHistoryRepository
+                    .findByUserIdAndNewsId(userId, newsId)
+                    .orElseThrow(() -> exception)
+                    .updateReadAt();
+        }
     }
 
     /**
