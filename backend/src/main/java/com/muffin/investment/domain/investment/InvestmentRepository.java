@@ -46,17 +46,6 @@ public interface InvestmentRepository extends JpaRepository<Investment, Long> {
     List<Investment> findByUserIdAndSettlementStatusInAndInvestDateLessThan(
             Long userId, Collection<SettlementStatus> settlementStatuses, LocalDate investDate);
 
-    // TODO : 확인필요 - 이슈 #40 과거 미마감 날짜 복구를 위해 기존 Repository에 날짜별 마감 완료 건수 조회를 추가함.
-    /** 지정 투자일에 사용자별 자정 마감이 완전히 끝난 건수. NO_INVEST는 마감 시각, 확정 투자는 마감 시각과 모든 매수가를 확인한다. */
-    @Query(
-            value = "select count(*) from investment i "
-                    + "where i.invest_date = :investDate and i.finalized_at is not null "
-                    + "and (i.status = 'NO_INVEST' or not exists ("
-                    + "select 1 from investment_sector s "
-                    + "where s.investment_id = i.investment_id and s.buy_price is null))",
-            nativeQuery = true)
-    long countCompletedFinalizationsByInvestDate(@Param("investDate") LocalDate investDate);
-
     // 탈퇴 계정 데이터 정리 배치용: 아직 정리되지 않은(=investment 행이 남아있는) 탈퇴 유저만 대상으로 잡아,
     // 정리가 끝난 유저는 다음 배치 실행부터 자연히 제외되게 한다.
     @Query(

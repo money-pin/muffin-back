@@ -23,9 +23,6 @@ public interface UserAssetRepository extends JpaRepository<UserAsset, Long> {
     // TODO : 확인필요 - 이슈 #40 자정 마감 대상과 사용자별 잠금을 위해 기존 UserAsset Repository 조회를 확장함.
     List<UserAsset> findByCreatedAtBefore(LocalDateTime cutoff);
 
-    // TODO : 확인필요 - 이슈 #40 날짜별 마감 완료 여부를 판정하기 위해 기존 UserAsset Repository에 대상 건수 조회를 추가함.
-    long countByCreatedAtBefore(LocalDateTime cutoff);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select ua from UserAsset ua where ua.id = :id")
     Optional<UserAsset> findByIdForUpdate(@Param("id") Long id);

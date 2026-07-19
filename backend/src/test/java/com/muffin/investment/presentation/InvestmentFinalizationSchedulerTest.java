@@ -23,14 +23,14 @@ class InvestmentFinalizationSchedulerTest {
     private InvestmentFinalizationService service;
 
     @Test
-    @DisplayName("자정 스케줄은 전날을 마감 대상으로 사용한다")
+    @DisplayName("08시 50분 재시도도 정확히 전날을 마감 대상으로 사용한다")
     void run_finalizesPreviousDay() {
-        Clock clock = clockAt("2026-07-14T00:00:00+09:00");
+        Clock clock = clockAt("2026-07-14T08:50:00+09:00");
         InvestmentFinalizationScheduler scheduler = new InvestmentFinalizationScheduler(service, clock);
 
         scheduler.run();
 
-        verify(service).finalizePendingDates(LocalDate.of(2026, 7, 13), LocalDateTime.of(2026, 7, 14, 0, 0));
+        verify(service).finalizeInvestments(LocalDate.of(2026, 7, 13), LocalDateTime.of(2026, 7, 14, 8, 50));
     }
 
     @Test
@@ -38,21 +38,10 @@ class InvestmentFinalizationSchedulerTest {
     void run_catchesFailureForNextRetry() {
         Clock clock = clockAt("2026-07-14T00:10:00+09:00");
         InvestmentFinalizationScheduler scheduler = new InvestmentFinalizationScheduler(service, clock);
-        when(service.finalizePendingDates(LocalDate.of(2026, 7, 13), LocalDateTime.of(2026, 7, 14, 0, 10)))
+        when(service.finalizeInvestments(LocalDate.of(2026, 7, 13), LocalDateTime.of(2026, 7, 14, 0, 10)))
                 .thenThrow(new IllegalStateException("calendar unavailable"));
 
         assertDoesNotThrow(scheduler::run);
-    }
-
-    @Test
-    @DisplayName("복구 스케줄도 과거 미완료 날짜 마감 흐름을 실행한다")
-    void recover_runsPendingDateFinalization() {
-        Clock clock = clockAt("2026-07-14T02:00:00+09:00");
-        InvestmentFinalizationScheduler scheduler = new InvestmentFinalizationScheduler(service, clock);
-
-        scheduler.recover();
-
-        verify(service).finalizePendingDates(LocalDate.of(2026, 7, 13), LocalDateTime.of(2026, 7, 14, 2, 0));
     }
 
     private static Clock clockAt(String timestamp) {
