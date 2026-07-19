@@ -109,3 +109,6 @@ muffin:
       reconstruction:
         model: ${NEWS_RECONSTRUCTION_MODEL:gpt-4o}
         max-source-length: ${NEWS_RECONSTRUCTION_MAX_SOURCE_LENGTH:20000}
+
+      explanation:
+        model: ${NEWS_EXPLANATION_MODEL:gpt-4o}

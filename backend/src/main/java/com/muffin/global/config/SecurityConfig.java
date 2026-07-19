@@ -38,6 +38,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                         auth -> auth.requestMatchers("/api/auth/email/**", "/api/auth/logout", "/api/auth/account")
                                 .authenticated()
+                                .requestMatchers("/api/news/*/explanation-cards")
+                                .authenticated()
                                 .anyRequest()
                                 .permitAll())
                 .exceptionHandling(exception -> exception

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class NewsReconstructionServiceTest {
@@ -28,8 +29,14 @@ class NewsReconstructionServiceTest {
     private final SectorRepository sectorRepository = mock(SectorRepository.class);
     private final NewsArticleContentClient articleContentClient = mock(NewsArticleContentClient.class);
     private final NewsRewriter newsRewriter = mock(NewsRewriter.class);
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final NewsReconstructionService reconstructionService = new NewsReconstructionService(
-            newsRepository, newsSectorImpactRepository, sectorRepository, articleContentClient, newsRewriter);
+            newsRepository,
+            newsSectorImpactRepository,
+            sectorRepository,
+            articleContentClient,
+            newsRewriter,
+            eventPublisher);
 
     /** PROCESSING 뉴스를 재구성하면 결과를 저장하고 PENDING 상태로 전환한다. */
     @Test
@@ -67,6 +74,7 @@ class NewsReconstructionServiceTest {
             assertThat(impact.getSectorId()).isEqualTo(10L);
             assertThat(impact.getImpact()).isEqualTo(ImpactType.POSITIVE);
         });
+        verify(eventPublisher).publishEvent(new NewsReconstructedEvent(newsId));
     }
 
     @Test
