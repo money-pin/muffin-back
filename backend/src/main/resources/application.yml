@@ -38,6 +38,11 @@ muffin:
       cron: ${NEWS_PUBLICATION_CRON:0 0 9 * * *}
       zone: ${NEWS_PUBLICATION_ZONE:Asia/Seoul}
 
+    quiz-publication:
+      scheduler-enabled: ${QUIZ_PUBLICATION_ENABLED:true}
+      cron: ${QUIZ_PUBLICATION_CRON:0 0 9 * * *}
+      zone: ${QUIZ_PUBLICATION_ZONE:Asia/Seoul}
+
     settlement:
       # ETF 시세 적재 완료 이벤트가 1차 트리거.
       # 아래 스케줄러는 이벤트가 아직 연동되지 않은 경우를 위한 안전망이며 멱등하다.
@@ -112,3 +117,6 @@ muffin:
 
       explanation:
         model: ${NEWS_EXPLANATION_MODEL:gpt-4o}
+
+      quiz:
+        model: ${QUIZ_GENERATION_MODEL:gpt-4o}
