@@ -15,7 +15,7 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum NewsErrorCode implements BaseErrorCode {
     NEWS_NOT_PUBLISHED(HttpStatus.FORBIDDEN, "CONTENT_403_001", "아직 공개되지 않은 뉴스입니다."),
-    NEWS_RECONSTRUCTION_NOT_COMPLETED(HttpStatus.CONFLICT, "CONTENT_409_001", "뉴스 재구성 결과가 아직 완료되지 않았습니다."),
+    NEWS_EXPLANATION_NOT_COMPLETED(HttpStatus.CONFLICT, "CONTENT_409_001", "뉴스 해설 카드 생성이 아직 완료되지 않았습니다."),
     NEWS_NOT_FOUND(HttpStatus.NOT_FOUND, "CONTENT_404_001", "존재하지 않는 뉴스입니다."),
     NEWS_TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "CONTENT_404_002", "존재하지 않는 용어입니다."),
 
