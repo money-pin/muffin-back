@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @Tag(name = "Nickname", description = "닉네임 중복 조회 API")
@@ -19,5 +20,5 @@ public interface NicknameApi {
                 description = "인증이 필요합니다. (AUTH_401_001)")
     })
     ApiResponse<NicknameCheckResponse> checkNickname(
-            @AuthenticationPrincipal Long userId, @Parameter(description = "중복 확인할 닉네임") String nickname);
+            @AuthenticationPrincipal Long userId, @Parameter(description = "중복 확인할 닉네임") @NotBlank String nickname);
 }
