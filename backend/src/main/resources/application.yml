@@ -45,10 +45,10 @@ muffin:
       cron: "0 30 9 * * *"
       zone: Asia/Seoul
 
-    btc-price:
-      # 코인 섹터 기준가 정책: 매일 09:00 KST에 CoinGecko 시세를 조회해 그날의 기준가로 저장한다.
+    open-price:
       scheduler-enabled: true
-      cron: "0 0 9 * * *"
+      collection-cron: "0 0/5 9 * * *"
+      finalization-cron: "0 0 10 * * *"
       zone: Asia/Seoul
 
     # TODO : 확인필요 - 이슈 #40 확정 정책에 맞춰 종가 수집과 자정 투자 마감 스케줄을 추가함.

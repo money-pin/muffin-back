@@ -1,15 +1,15 @@
 package com.muffin.sector.infrastructure;
 
-import com.muffin.global.event.EtfPricesLoadedEvent;
 import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
+import com.muffin.sector.domain.etfprice.EtfPriceRepository;
+import com.muffin.sector.domain.etfprice.PriceCollectionStatus;
 import com.muffin.sector.infrastructure.coingecko.CoinGeckoClient;
 import com.muffin.sector.infrastructure.coingecko.exception.CoinGeckoApiException;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
@@ -31,7 +31,7 @@ public class BtcPriceCollector {
     private final TradingCalendarService tradingCalendarService;
     private final CoinGeckoClient coinGeckoClient;
     private final EtfPriceWriter etfPriceWriter;
-    private final ApplicationEventPublisher eventPublisher;
+    private final EtfPriceRepository etfPriceRepository;
 
     public void collect(LocalDate date) {
         boolean tradingDay = tradingCalendarService.getCalendar(date).tradingDay();
@@ -44,6 +44,10 @@ public class BtcPriceCollector {
         if (!tradingDay) {
             log.info("거래일이 아니라 코인 시세 수집을 건너뜁니다. date={}", date);
             etfPriceWriter.markBaseMarketClosed(btc.getId(), date);
+            return;
+        }
+
+        if (basePriceAlreadyCollected(btc.getId(), date)) {
             return;
         }
 
@@ -63,8 +67,13 @@ public class BtcPriceCollector {
             markFailedSafely(btc.getId(), date);
             return;
         }
+    }
 
-        eventPublisher.publishEvent(new EtfPricesLoadedEvent(date));
+    private boolean basePriceAlreadyCollected(Long etfId, LocalDate date) {
+        return etfPriceRepository
+                .findByEtfIdAndPriceDate(etfId, date)
+                .map(price -> price.getStartPriceStatus() == PriceCollectionStatus.SUCCESS)
+                .orElse(false);
     }
 
     private void markFailedSafely(Long etfId, LocalDate date) {

@@ -156,6 +156,17 @@ class InvestmentQueryServiceTest {
     }
 
     @Test
+    @DisplayName("거래일 09:59:59까지 SETTLING 상태다")
+    void getToday_returnsSettlingUntilBeforeTen() {
+        service = serviceAt("2026-07-13T09:59:59+09:00");
+        mockTradingMonday();
+
+        TodayInvestmentResponse response = service.getToday(USER_ID);
+
+        assertEquals(TodayInvestmentStatus.SETTLING, response.status());
+    }
+
+    @Test
     @DisplayName("10시 이후 직전 거래일의 미정산 투자가 있으면 SETTLEMENT_DELAYED이다")
     void getToday_returnsSettlementDelayedForPendingInvestment() {
         mockTradingMonday();

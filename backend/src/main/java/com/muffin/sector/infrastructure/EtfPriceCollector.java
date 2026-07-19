@@ -1,6 +1,5 @@
 package com.muffin.sector.infrastructure;
 
-import com.muffin.global.event.EtfPricesLoadedEvent;
 import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
@@ -18,7 +17,6 @@ import java.util.Set;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
@@ -34,7 +32,7 @@ import org.springframework.stereotype.Component;
  * <p>{@link TradingCalendarService}로 거래일 여부를 먼저 확인해, 거래일이 아니면 API 호출 없이 전체를
  * MARKET_CLOSED로 기록한다. 거래일인데 특정 ETF만 캔들이 없는 경우는 거래정지인지 데이터 반영 지연인지 이 시점에서 단정할 수 없으므로
  * NO_DATA로 기록한다. API·파싱·저장 실패는 FAILED로 기록해 가격 null과 실패 원인을 구분한다.
- * 시가가 모두 정상 수집된 경우에만 정산 시작 이벤트를 발행하며, 10:00 FINAL_MISSING 전환과 0% 폴백은 정산 배치의 책임이다.
+ * 완료 이벤트 발행과 10:00 FINAL_MISSING 전환은 통합 시가 수집 오케스트레이터가 담당한다.
  */
 @Slf4j
 @Component
@@ -48,17 +46,12 @@ public class EtfPriceCollector {
     private final TradingCalendarService tradingCalendarService;
     private final TossMarketDataClient tossMarketDataClient;
     private final EtfPriceWriter etfPriceWriter;
-    private final ApplicationEventPublisher eventPublisher;
     // TODO : 확인필요 - 이슈 #40 종가 재시도에서 이미 성공한 종목의 외부 API 재호출을 피하기 위해 기존 수집기에 상태 조회를 추가함.
     private final EtfPriceRepository etfPriceRepository;
 
     /** 장 시작 이후 호출해 시가를 수집한다. */
     public CollectionSummary collectOpen(LocalDate date) {
-        CollectionSummary summary = collect(date, Candle::openPrice, CollectionTarget.OPEN);
-        if (summary.isFullySuccessful()) {
-            eventPublisher.publishEvent(new EtfPricesLoadedEvent(date));
-        }
-        return summary;
+        return collect(date, Candle::openPrice, CollectionTarget.OPEN);
     }
 
     /** 장 마감 이후 호출해 종가를 수집한다. */
@@ -99,7 +92,7 @@ public class EtfPriceCollector {
         List<String> failedEtfCodes = new ArrayList<>();
 
         for (Etf etf : etfs) {
-            if (target == CollectionTarget.CLOSE && closeAlreadyCollected(etf.getId(), date)) {
+            if (alreadyCollected(target, etf.getId(), date)) {
                 successCount++;
                 continue;
             }
@@ -154,10 +147,12 @@ public class EtfPriceCollector {
                 List.copyOf(failedEtfCodes));
     }
 
-    private boolean closeAlreadyCollected(Long etfId, LocalDate date) {
+    private boolean alreadyCollected(CollectionTarget target, Long etfId, LocalDate date) {
         return etfPriceRepository
                 .findByEtfIdAndPriceDate(etfId, date)
-                .map(price -> price.getEndPriceStatus() == PriceCollectionStatus.SUCCESS)
+                .map(price -> target == CollectionTarget.OPEN
+                        ? price.getStartPriceStatus() == PriceCollectionStatus.SUCCESS
+                        : price.getEndPriceStatus() == PriceCollectionStatus.SUCCESS)
                 .orElse(false);
     }
 
@@ -232,10 +227,5 @@ public class EtfPriceCollector {
             int skippedCount,
             int failureCount,
             List<String> skippedEtfCodes,
-            List<String> failedEtfCodes) {
-
-        public boolean isFullySuccessful() {
-            return successCount > 0 && skippedCount == 0 && failureCount == 0;
-        }
-    }
+            List<String> failedEtfCodes) {}
 }
