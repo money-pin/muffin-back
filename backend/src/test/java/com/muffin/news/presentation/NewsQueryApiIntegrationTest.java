@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.muffin.auth.domain.AccessTokenProvider;
 import com.muffin.news.domain.category.Category;
 import com.muffin.news.domain.category.CategoryRepository;
 import com.muffin.news.domain.news.News;
@@ -56,6 +57,11 @@ class NewsQueryApiIntegrationTest {
 
     @Autowired
     private SectorRepository sectorRepository;
+
+    @Autowired
+    private AccessTokenProvider accessTokenProvider;
+
+    private static final Long USER_ID = 1L;
 
     private Long categoryId;
     private Long news1Id; // 가장 오래된 발행
@@ -118,6 +124,10 @@ class NewsQueryApiIntegrationTest {
         return newsRepository.save(news).getId();
     }
 
+    private String bearerToken() {
+        return "Bearer " + accessTokenProvider.issue(USER_ID, "USER");
+    }
+
     @Test
     @DisplayName("목록은 최신 발행순으로 커서 페이지네이션되고 PROCESSING은 제외된다")
     void getNews_cursorPagination() throws Exception {
@@ -177,7 +187,7 @@ class NewsQueryApiIntegrationTest {
     @Test
     @DisplayName("오늘의 뉴스는 당일 공개 뉴스를 최신순 최대 3건 반환한다")
     void getTodayNews() throws Exception {
-        mockMvc.perform(get("/api/news/today").header("X-User-Id", "1"))
+        mockMvc.perform(get("/api/news/today").header("Authorization", bearerToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.items.length()").value(3))
                 .andExpect(jsonPath("$.result.items[0].title").value("뉴스3"));
@@ -186,7 +196,7 @@ class NewsQueryApiIntegrationTest {
     @Test
     @DisplayName("상세 조회 시 조회수가 증가하고 TEXT 세그먼트를 반환한다")
     void getNewsDetail() throws Exception {
-        mockMvc.perform(post("/api/news/{id}", news3Id).header("X-User-Id", "1"))
+        mockMvc.perform(post("/api/news/{id}", news3Id).header("Authorization", bearerToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.newsSummaryId").value(news3Id))
                 .andExpect(jsonPath("$.result.newsId").value(news3Id))
@@ -201,7 +211,7 @@ class NewsQueryApiIntegrationTest {
     @Test
     @DisplayName("공개되지 않은 뉴스 상세는 403")
     void getNewsDetail_notPublished() throws Exception {
-        mockMvc.perform(post("/api/news/{id}", processingNewsId).header("X-User-Id", "1"))
+        mockMvc.perform(post("/api/news/{id}", processingNewsId).header("Authorization", bearerToken()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("CONTENT_403_001"));
     }
@@ -209,7 +219,7 @@ class NewsQueryApiIntegrationTest {
     @Test
     @DisplayName("존재하지 않는 뉴스 상세는 404")
     void getNewsDetail_notFound() throws Exception {
-        mockMvc.perform(post("/api/news/{id}", 9_999_999L).header("X-User-Id", "1"))
+        mockMvc.perform(post("/api/news/{id}", 9_999_999L).header("Authorization", bearerToken()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("CONTENT_404_001"));
     }
@@ -217,7 +227,7 @@ class NewsQueryApiIntegrationTest {
     @Test
     @DisplayName("섹터 영향도는 마스터의 12개 섹터를 표시 순서로 반환하며 분석 결과가 없으면 NEUTRAL이다")
     void getSectorImpacts_defaultNeutral() throws Exception {
-        mockMvc.perform(get("/api/news/{id}/sector-impacts", news1Id).header("X-User-Id", "1"))
+        mockMvc.perform(get("/api/news/{id}/sector-impacts", news1Id).header("Authorization", bearerToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.newsSummaryId").value(news1Id))
                 .andExpect(jsonPath("$.result.sectorImpacts.length()").value(12))
@@ -227,5 +237,19 @@ class NewsQueryApiIntegrationTest {
                 .andExpect(jsonPath("$.result.sectorImpacts[7].sectorName").value("코인"))
                 .andExpect(jsonPath("$.result.sectorImpacts[11].sectorCode").value("DEFENSE"))
                 .andExpect(jsonPath("$.result.sectorImpacts[5].impact").value("NEUTRAL"));
+    }
+
+    @Test
+    @DisplayName("목록 조회는 인증 없이도 200을 반환한다")
+    void getNews_allowsAnonymous() throws Exception {
+        mockMvc.perform(get("/api/news")).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("인증이 필요한 뉴스 API는 토큰이 없으면 401을 반환한다")
+    void authenticatedEndpoints_rejectAnonymous() throws Exception {
+        mockMvc.perform(get("/api/news/today")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/news/{id}", news3Id)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/news/{id}/sector-impacts", news1Id)).andExpect(status().isUnauthorized());
     }
 }
