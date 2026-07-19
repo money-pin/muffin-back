@@ -32,7 +32,7 @@ import org.springframework.stereotype.Component;
  * <p>{@link TradingCalendarService}로 거래일 여부를 먼저 확인해, 거래일이 아니면 API 호출 없이 전체를
  * MARKET_CLOSED로 기록한다. 거래일인데 특정 ETF만 캔들이 없는 경우는 거래정지인지 데이터 반영 지연인지 이 시점에서 단정할 수 없으므로
  * NO_DATA로 기록한다. API·파싱·저장 실패는 FAILED로 기록해 가격 null과 실패 원인을 구분한다.
- * 완료 이벤트 발행과 10:00 FINAL_MISSING 전환은 통합 시가 수집 오케스트레이터가 담당한다.
+ * 완료 이벤트 발행과 09:30 FINAL_MISSING 전환은 통합 시가 수집 오케스트레이터가 담당한다.
  */
 @Slf4j
 @Component

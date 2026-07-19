@@ -19,7 +19,7 @@ public class OpenPriceCollectionScheduler {
     private final Clock clock;
 
     @Scheduled(
-            cron = "${muffin.batch.open-price.collection-cron:0 0/5 9 * * *}",
+            cron = "${muffin.batch.open-price.collection-cron:0 0-25/5 9 * * *}",
             zone = "${muffin.batch.open-price.zone:Asia/Seoul}")
     public void collect() {
         LocalDate priceDate = LocalDate.now(clock);
@@ -28,7 +28,7 @@ public class OpenPriceCollectionScheduler {
     }
 
     @Scheduled(
-            cron = "${muffin.batch.open-price.finalization-cron:0 0 10 * * *}",
+            cron = "${muffin.batch.open-price.finalization-cron:0 30 9 * * *}",
             zone = "${muffin.batch.open-price.zone:Asia/Seoul}")
     public void finalizeMissing() {
         LocalDate priceDate = LocalDate.now(clock);
