@@ -35,11 +35,17 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(
-                        auth -> auth.requestMatchers("/api/auth/email/**", "/api/auth/logout", "/api/auth/account")
-                                .authenticated()
-                                .anyRequest()
-                                .permitAll())
+                .authorizeHttpRequests(auth -> auth.requestMatchers(
+                                // TODO : 확인필요 - 이슈 #40에서 병합된 JWT 인증 방식에 맞춰 투자 API를 인증 대상으로 추가함.
+                                "/api/investments",
+                                "/api/investments/asset",
+                                "/api/investments/today",
+                                "/api/auth/email/**",
+                                "/api/auth/logout",
+                                "/api/auth/account")
+                        .authenticated()
+                        .anyRequest()
+                        .permitAll())
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(apiAuthenticationEntryPoint)
                         .accessDeniedHandler(apiAccessDeniedHandler))
