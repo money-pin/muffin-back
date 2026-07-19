@@ -5,6 +5,7 @@ import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.term.TermDictionary;
 import com.muffin.news.domain.term.TermDictionaryRepository;
 import java.util.Comparator;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,14 +33,20 @@ public class NewsTermMappingService {
             return 0;
         }
 
-        int mappedCount = termDictionaryRepository.findAll().stream()
+        List<TermDictionary> matchedTerms = termDictionaryRepository.findAll().stream()
                 .filter(term -> isMatchable(term.getTerm()))
                 .sorted(Comparator.comparingInt(
                                 (TermDictionary term) -> term.getTerm().length())
                         .reversed())
                 .filter(term -> news.getContent().contains(term.getTerm()))
-                .mapToInt(term -> news.addTerm(term.getId()) ? 1 : 0)
-                .sum();
+                .toList();
+
+        int mappedCount = 0;
+        for (TermDictionary term : matchedTerms) {
+            if (news.addTerm(term.getId())) {
+                mappedCount++;
+            }
+        }
 
         if (mappedCount > 0) {
             newsRepository.save(news);

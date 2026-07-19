@@ -1,6 +1,7 @@
 package com.muffin.news.application.explanation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -19,6 +20,9 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 
 class NewsExplanationGenerationServiceTest {
 
@@ -26,8 +30,18 @@ class NewsExplanationGenerationServiceTest {
     private final TermDictionaryRepository termDictionaryRepository = mock(TermDictionaryRepository.class);
     private final NewsExplanationRepository newsExplanationRepository = mock(NewsExplanationRepository.class);
     private final NewsExplanationGenerator newsExplanationGenerator = mock(NewsExplanationGenerator.class);
+    private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    private final TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
     private final NewsExplanationGenerationService generationService = new NewsExplanationGenerationService(
-            newsRepository, termDictionaryRepository, newsExplanationRepository, newsExplanationGenerator);
+            newsRepository,
+            termDictionaryRepository,
+            newsExplanationRepository,
+            newsExplanationGenerator,
+            transactionTemplate);
+
+    NewsExplanationGenerationServiceTest() {
+        when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+    }
 
     @Test
     void generate_savesDoneCards() {
