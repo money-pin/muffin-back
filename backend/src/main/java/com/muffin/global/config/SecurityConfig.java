@@ -3,6 +3,7 @@ package com.muffin.global.config;
 import com.muffin.auth.infrastructure.jwt.JwtAuthenticationFilter;
 import com.muffin.global.apiPayload.handler.ApiAccessDeniedHandler;
 import com.muffin.global.apiPayload.handler.ApiAuthenticationEntryPoint;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
@@ -16,8 +17,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 /**
  * 세션을 쓰지 않는 stateless API 서버 구성. 인가 규칙은 지금은 전부 permitAll이고, 로그아웃/탈퇴 등 인증이 필요한
@@ -56,6 +55,9 @@ public class SecurityConfig {
                                 .authenticated()
                                 .requestMatchers("/api/news/*/sector-impacts")
                                 .authenticated()
+                                // TODO : 확인필요 - 이슈 #40 기존 정산 결과 API의 임시 X-User-Id 계약을 유지하기 위해 인증 예외로 둠.
+                                .requestMatchers("/api/investments/settlement/result")
+                                .permitAll()
                                 .requestMatchers("/api/investments/**")
                                 .authenticated()
                                 .anyRequest()
