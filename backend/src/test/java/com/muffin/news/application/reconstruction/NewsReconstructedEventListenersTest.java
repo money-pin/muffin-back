@@ -62,4 +62,28 @@ class NewsReconstructedEventListenersTest {
 
         verify(newsTermMappingService).mapTerms(newsId);
     }
+
+    @Test
+    void handle_doesNotThrowWhenExplanationGenerationFails() {
+        Long newsId = 1L;
+        doThrow(new IllegalStateException("explanation failed"))
+                .when(newsExplanationGenerationService)
+                .generate(newsId);
+
+        explanationGenerationListener.handle(new NewsReconstructedEvent(newsId));
+
+        verify(newsExplanationGenerationService).generate(newsId);
+    }
+
+    @Test
+    void handle_doesNotThrowWhenQuizGenerationFails() {
+        Long newsId = 1L;
+        doThrow(new IllegalStateException("quiz failed"))
+                .when(dailyQuizGenerationService)
+                .generateToday();
+
+        quizGenerationListener.handle(new NewsReconstructedEvent(newsId));
+
+        verify(dailyQuizGenerationService).generateToday();
+    }
 }

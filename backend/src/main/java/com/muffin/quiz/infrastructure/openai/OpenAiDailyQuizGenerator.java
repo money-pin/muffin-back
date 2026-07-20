@@ -8,6 +8,7 @@ import com.muffin.quiz.application.generation.DailyQuizGenerator;
 import com.muffin.quiz.application.generation.DailyQuizNewsSource;
 import com.muffin.quiz.application.generation.DailyQuizOptionResult;
 import com.muffin.quiz.application.generation.DailyQuizQuestionResult;
+import com.muffin.quiz.domain.quizset.QuizQuestionPolicy;
 import com.muffin.quiz.domain.quizset.enums.QuizDifficulty;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,8 +37,6 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
     private static final int MAX_GENERATION_ATTEMPTS = 2;
     private static final Set<String> FORBIDDEN_QUESTION_PHRASES =
             Set.of("투자해야", "베팅", "유리할까요", "추천", "사야 할까요", "팔아야 할까요", "오를까요", "내릴까요");
-    private static final Set<String> NUMERIC_RECALL_QUESTION_PHRASES =
-            Set.of("몇 년", "몇 개월", "몇 %", "몇 퍼센트", "몇 조", "몇 원", "얼마입니까", "얼마인가요");
 
     private static final String INSTRUCTIONS =
             """
@@ -336,7 +335,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
     private DailyQuizGenerationResult parseOutputText(DailyQuizGenerationRequest request, String outputText)
             throws JacksonException {
         Map<String, DailyQuizNewsSource> sourceByTitle = request.newsSources().stream()
-                .collect(Collectors.toMap(DailyQuizNewsSource::title, Function.identity()));
+                .collect(Collectors.toMap(source -> normalizeText(source.title()), Function.identity()));
 
         List<DailyQuizQuestionResult> questions = objectMapper
                 .readTree(outputText)
@@ -435,7 +434,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
 
     private static boolean containsForbiddenQuestionPhrase(String questionText) {
         return FORBIDDEN_QUESTION_PHRASES.stream().anyMatch(questionText::contains)
-                || NUMERIC_RECALL_QUESTION_PHRASES.stream().anyMatch(questionText::contains);
+                || QuizQuestionPolicy.NUMERIC_RECALL_QUESTION_PHRASES.stream().anyMatch(questionText::contains);
     }
 
     private static boolean isBlank(String value) {

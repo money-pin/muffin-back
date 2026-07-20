@@ -4,6 +4,7 @@ import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.news.enums.NewsStatus;
 import com.muffin.quiz.domain.quizset.Quiz;
+import com.muffin.quiz.domain.quizset.QuizQuestionPolicy;
 import com.muffin.quiz.domain.quizset.QuizSet;
 import com.muffin.quiz.domain.quizset.QuizSetRepository;
 import java.time.LocalDate;
@@ -12,6 +13,8 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -30,13 +33,12 @@ public class DailyQuizGenerationService {
     private static final int DAILY_QUIZ_COUNT = 3;
     private static final int OPTION_COUNT = 3;
     private static final long REWARD_MONEY = 100000L;
-    private static final Set<String> NUMERIC_RECALL_QUESTION_PHRASES =
-            Set.of("몇 년", "몇 개월", "몇 %", "몇 퍼센트", "몇 조", "몇 원", "얼마입니까", "얼마인가요");
 
     private final NewsRepository newsRepository;
     private final QuizSetRepository quizSetRepository;
     private final DailyQuizGenerator dailyQuizGenerator;
     private final TransactionTemplate transactionTemplate;
+    private final ConcurrentMap<LocalDate, Object> generationLocks = new ConcurrentHashMap<>();
 
     /** 오늘 날짜 기준으로 발행 대기 뉴스 3개를 골라 하루치 퀴즈를 생성한다. */
     public void generateToday() {
@@ -51,6 +53,18 @@ public class DailyQuizGenerationService {
      * 빈 퀴즈 세트를 이용 불가 상태로 저장한다.
      */
     public void generate(LocalDate quizDate) {
+        Object lock = generationLocks.computeIfAbsent(quizDate, ignored -> new Object());
+        synchronized (lock) {
+            try {
+                generateLocked(quizDate);
+            } finally {
+                generationLocks.remove(quizDate, lock);
+            }
+        }
+    }
+
+    /** 같은 날짜 퀴즈 생성은 하나의 JVM 안에서 순차 실행해 OpenAI 중복 호출과 중복 저장을 방지한다. */
+    private void generateLocked(LocalDate quizDate) {
         if (quizSetExists(quizDate)) {
             log.info("Daily quiz generation skipped: quizDate={} already exists", quizDate);
             return;
@@ -73,7 +87,11 @@ public class DailyQuizGenerationService {
                     quizDate,
                     result.questions().size());
         } catch (RuntimeException exception) {
-            saveUnavailableQuizSet(quizDate);
+            if (quizSetExists(quizDate)) {
+                log.info("Daily quiz unavailable save skipped: quizDate={} already exists", quizDate);
+            } else {
+                saveUnavailableQuizSet(quizDate);
+            }
             log.error("Daily quiz generation failed: quizDate={}", quizDate, exception);
         }
     }
@@ -188,7 +206,7 @@ public class DailyQuizGenerationService {
     }
 
     private static boolean containsNumericRecallPhrase(String questionText) {
-        return NUMERIC_RECALL_QUESTION_PHRASES.stream().anyMatch(questionText::contains);
+        return QuizQuestionPolicy.NUMERIC_RECALL_QUESTION_PHRASES.stream().anyMatch(questionText::contains);
     }
 
     /** AI 생성 실패가 사용자 조회 API에서 명확히 드러나도록 이용 불가 상태의 빈 퀴즈 세트를 저장한다. */

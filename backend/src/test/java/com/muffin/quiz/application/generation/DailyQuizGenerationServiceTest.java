@@ -255,6 +255,27 @@ class DailyQuizGenerationServiceTest {
         assertUnavailableQuizSetSaved();
     }
 
+    @Test
+    @DisplayName("AI 실패 후 이미 퀴즈 세트가 생성되어 있으면 UNAVAILABLE 저장을 건너뛴다")
+    void generate_skipsUnavailableSaveWhenQuizSetWasCreatedConcurrently() {
+        List<News> newsSources = defaultNewsSources();
+        QuizSet existingQuizSet = QuizSet.create(QUIZ_DATE);
+
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(existingQuizSet));
+        when(newsRepository.findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
+                        NewsStatus.PENDING,
+                        QUIZ_DATE.atStartOfDay(),
+                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                .thenReturn(newsSources);
+        when(dailyQuizGenerator.generate(any())).thenThrow(new IllegalStateException("OpenAI failed"));
+
+        generationService.generate(QUIZ_DATE);
+
+        verify(quizSetRepository, never()).save(any());
+    }
+
     private void assertUnavailableQuizSetSaved() {
         ArgumentCaptor<QuizSet> captor = ArgumentCaptor.forClass(QuizSet.class);
         verify(quizSetRepository).save(captor.capture());
