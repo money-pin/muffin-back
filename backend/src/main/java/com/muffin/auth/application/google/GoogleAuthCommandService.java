@@ -27,9 +27,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 구글 OAuth 통합 유스케이스. ID Token을 검증한 뒤 Auth(GOOGLE, sub)가 있으면 로그인, 없으면 termsAgreed를
- * 검사해 자동 가입한다(가입/로그인을 별도 엔드포인트로 나누지 않음). 구글이 이미 이메일을 검증했으므로
- * Auth.createGoogle이 emailVerified=true로 시작한다.
+ * 구글 OAuth 통합 유스케이스. ID Token을 검증한 뒤 Auth(GOOGLE, sub)가 있으면 로그인, 없으면 자동 가입한다(가입/로그인을
+ * 별도 엔드포인트로 나누지 않음). 구글 자체 동의 화면을 거쳐 로그인했다고 보고 서비스 약관도 자동 동의로 간주한다.
+ * 구글이 이미 이메일을 검증했으므로 Auth.createGoogle이 emailVerified=true로 시작한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -47,12 +47,12 @@ public class GoogleAuthCommandService {
     private final EntityManager entityManager;
 
     @Transactional
-    public TokenPair authenticate(String idToken, boolean termsAgreed) {
+    public TokenPair authenticate(String idToken) {
         GoogleIdTokenPayload payload = googleIdTokenVerifier.verify(idToken);
 
         Auth auth = authRepository
                 .findByProviderAndProviderUserId(AuthProvider.GOOGLE, payload.sub())
-                .orElseGet(() -> signup(payload, termsAgreed));
+                .orElseGet(() -> signup(payload));
 
         User user = userRepository
                 .findById(auth.getUserId())
@@ -71,10 +71,7 @@ public class GoogleAuthCommandService {
         return new TokenPair(accessToken, refreshToken);
     }
 
-    private Auth signup(GoogleIdTokenPayload payload, boolean termsAgreed) {
-        if (!termsAgreed) {
-            throw new GeneralException(AuthErrorCode.TERMS_NOT_AGREED);
-        }
+    private Auth signup(GoogleIdTokenPayload payload) {
         LocalDateTime cutoff = LocalDateTime.now(KST).minusDays(DELETED_EMAIL_BLOCK_DAYS);
         if (deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(DeletedEmail.hash(payload.email()), cutoff)) {
             throw new GeneralException(AuthErrorCode.RECENTLY_DELETED_EMAIL);

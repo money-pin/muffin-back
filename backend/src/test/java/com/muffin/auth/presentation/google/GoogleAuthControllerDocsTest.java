@@ -37,7 +37,7 @@ class GoogleAuthControllerDocsTest {
     void documentGoogleAuthSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
         GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null) {
             @Override
-            public TokenPair authenticate(String idToken, boolean termsAgreed) {
+            public TokenPair authenticate(String idToken) {
                 return new TokenPair("access-token-example", "refresh-token-example");
             }
         };
@@ -45,13 +45,11 @@ class GoogleAuthControllerDocsTest {
 
         mockMvc.perform(post("/api/auth/google")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"idToken\":\"google-id-token-example\",\"termsAgreed\":true}"))
+                        .content("{\"idToken\":\"google-id-token-example\"}"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "google-auth-success",
-                        requestFields(
-                                fieldWithPath("idToken").description("구글 Sign-In SDK가 발급한 ID Token"),
-                                fieldWithPath("termsAgreed").description("약관 동의 여부(신규 가입일 때만 검사)")),
+                        requestFields(fieldWithPath("idToken").description("구글 Sign-In SDK가 발급한 ID Token")),
                         responseFields(
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드"),
@@ -60,35 +58,11 @@ class GoogleAuthControllerDocsTest {
     }
 
     @Test
-    @DisplayName("구글 가입 실패(약관 미동의) 문서화")
-    void documentGoogleAuthTermsNotAgreed(RestDocumentationContextProvider restDocumentation) throws Exception {
-        GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null) {
-            @Override
-            public TokenPair authenticate(String idToken, boolean termsAgreed) {
-                throw new GeneralException(AuthErrorCode.TERMS_NOT_AGREED);
-            }
-        };
-        MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
-
-        mockMvc.perform(post("/api/auth/google")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"idToken\":\"google-id-token-example\",\"termsAgreed\":false}"))
-                .andExpect(status().isBadRequest())
-                .andDo(document(
-                        "google-auth-terms-not-agreed",
-                        responseFields(
-                                fieldWithPath("isSuccess").description("성공 여부"),
-                                fieldWithPath("code").description("응답 코드(AUTH_400_002)"),
-                                fieldWithPath("message").description("응답 메시지"),
-                                fieldWithPath("errorDetail").description("에러 상세 메시지 목록"))));
-    }
-
-    @Test
     @DisplayName("구글 인증 실패(유효하지 않은 ID Token) 문서화")
     void documentGoogleAuthInvalidToken(RestDocumentationContextProvider restDocumentation) throws Exception {
         GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null) {
             @Override
-            public TokenPair authenticate(String idToken, boolean termsAgreed) {
+            public TokenPair authenticate(String idToken) {
                 throw new GeneralException(AuthErrorCode.INVALID_GOOGLE_TOKEN);
             }
         };
@@ -96,7 +70,7 @@ class GoogleAuthControllerDocsTest {
 
         mockMvc.perform(post("/api/auth/google")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"idToken\":\"bogus-token\",\"termsAgreed\":true}"))
+                        .content("{\"idToken\":\"bogus-token\"}"))
                 .andExpect(status().isUnauthorized())
                 .andDo(document(
                         "google-auth-invalid-token",

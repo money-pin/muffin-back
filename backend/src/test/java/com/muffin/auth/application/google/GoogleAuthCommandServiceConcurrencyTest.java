@@ -98,7 +98,7 @@ class GoogleAuthCommandServiceConcurrencyTest {
         when(accessTokenProvider.issue(1L, "USER")).thenReturn("access-token");
         when(refreshTokenIssuer.issue(1L)).thenReturn("refresh-token");
 
-        TokenPair result = googleAuthCommandService.authenticate(ID_TOKEN, true);
+        TokenPair result = googleAuthCommandService.authenticate(ID_TOKEN);
 
         assertThat(result.accessToken()).isEqualTo("access-token");
         assertThat(result.refreshToken()).isEqualTo("refresh-token");
@@ -123,7 +123,7 @@ class GoogleAuthCommandServiceConcurrencyTest {
         when(authRepository.findByProviderAndProviderUserId(AuthProvider.GOOGLE, SUB))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN, true))
+        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN))
                 .isInstanceOf(GeneralException.class)
                 .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
                         .isEqualTo("AUTH_409_001"));
@@ -147,7 +147,7 @@ class GoogleAuthCommandServiceConcurrencyTest {
         when(authRepository.findByProviderAndProviderUserId(AuthProvider.GOOGLE, SUB))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN, true))
+        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN))
                 .isSameAs(unrelated);
     }
 }
