@@ -55,11 +55,8 @@ public class DailyQuizGenerationService {
     public void generate(LocalDate quizDate) {
         Object lock = generationLocks.computeIfAbsent(quizDate, ignored -> new Object());
         synchronized (lock) {
-            try {
-                generateLocked(quizDate);
-            } finally {
-                generationLocks.remove(quizDate, lock);
-            }
+            // 날짜별 락 객체를 유지해 대기 중인 호출과 새 호출이 서로 다른 락을 잡는 상황을 막는다.
+            generateLocked(quizDate);
         }
     }
 
@@ -107,10 +104,7 @@ public class DailyQuizGenerationService {
         LocalDateTime startInclusive = quizDate.atStartOfDay();
         LocalDateTime endExclusive = quizDate.plusDays(1).atStartOfDay();
 
-        return newsRepository
-                .findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
-                        NewsStatus.PENDING, startInclusive, endExclusive)
-                .stream()
+        return newsRepository.findQuizCandidates(NewsStatus.PENDING, startInclusive, endExclusive).stream()
                 .filter(News::hasReconstructionResult)
                 .limit(DAILY_QUIZ_COUNT)
                 .toList();

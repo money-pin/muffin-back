@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,6 +20,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,7 +65,7 @@ class DailyQuizGenerationServiceTest {
                 pendingNews(3L, "뉴스3", "금융당국이 토스를 금융복합기업집단으로 지정했습니다."));
 
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
-        when(newsRepository.findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
+        when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay()))
@@ -80,10 +87,52 @@ class DailyQuizGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("같은 날짜 퀴즈 생성이 동시에 호출되어도 AI 생성은 한 번만 실행한다")
+    void generate_serializesSameDateGeneration() throws Exception {
+        List<News> newsSources = defaultNewsSources();
+        AtomicBoolean saved = new AtomicBoolean(false);
+        CountDownLatch generatorStarted = new CountDownLatch(1);
+        CountDownLatch releaseGenerator = new CountDownLatch(1);
+
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE))
+                .thenAnswer(invocation -> saved.get() ? Optional.of(QuizSet.create(QUIZ_DATE)) : Optional.empty());
+        when(newsRepository.findQuizCandidates(
+                        NewsStatus.PENDING,
+                        QUIZ_DATE.atStartOfDay(),
+                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                .thenReturn(newsSources);
+        when(dailyQuizGenerator.generate(any())).thenAnswer(invocation -> {
+            generatorStarted.countDown();
+            assertThat(releaseGenerator.await(1, TimeUnit.SECONDS)).isTrue();
+            return generationResult();
+        });
+        when(quizSetRepository.save(any())).thenAnswer(invocation -> {
+            saved.set(true);
+            return invocation.getArgument(0);
+        });
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> first = executor.submit(() -> generationService.generate(QUIZ_DATE));
+            assertThat(generatorStarted.await(1, TimeUnit.SECONDS)).isTrue();
+
+            Future<?> second = executor.submit(() -> generationService.generate(QUIZ_DATE));
+            releaseGenerator.countDown();
+
+            first.get(1, TimeUnit.SECONDS);
+            second.get(1, TimeUnit.SECONDS);
+        } finally {
+            executor.shutdownNow();
+        }
+
+        verify(dailyQuizGenerator, times(1)).generate(any());
+    }
+
+    @Test
     @DisplayName("재구성 완료 뉴스가 3개보다 적으면 퀴즈 생성을 건너뛰고 AI를 호출하지 않는다")
     void generate_skipsWhenSourceNewsIsNotEnough() {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
-        when(newsRepository.findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
+        when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay()))
@@ -104,7 +153,7 @@ class DailyQuizGenerationServiceTest {
                 pendingNews(3L, "뉴스3", "금융당국이 토스를 금융복합기업집단으로 지정했습니다."));
 
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
-        when(newsRepository.findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
+        when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay()))
@@ -124,7 +173,7 @@ class DailyQuizGenerationServiceTest {
         List<News> newsSources = defaultNewsSources();
 
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
-        when(newsRepository.findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
+        when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay()))
@@ -144,7 +193,7 @@ class DailyQuizGenerationServiceTest {
         List<News> newsSources = defaultNewsSources();
 
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
-        when(newsRepository.findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
+        when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay()))
@@ -166,7 +215,7 @@ class DailyQuizGenerationServiceTest {
         List<News> newsSources = defaultNewsSources();
 
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
-        when(newsRepository.findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
+        when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay()))
@@ -192,7 +241,7 @@ class DailyQuizGenerationServiceTest {
         List<News> newsSources = defaultNewsSources();
 
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
-        when(newsRepository.findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
+        when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay()))
@@ -221,7 +270,7 @@ class DailyQuizGenerationServiceTest {
         List<News> newsSources = defaultNewsSources();
 
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
-        when(newsRepository.findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
+        when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay()))
@@ -243,7 +292,7 @@ class DailyQuizGenerationServiceTest {
         List<News> newsSources = defaultNewsSources();
 
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
-        when(newsRepository.findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
+        when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay()))
@@ -264,7 +313,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE))
                 .thenReturn(Optional.empty())
                 .thenReturn(Optional.of(existingQuizSet));
-        when(newsRepository.findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
+        when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay()))

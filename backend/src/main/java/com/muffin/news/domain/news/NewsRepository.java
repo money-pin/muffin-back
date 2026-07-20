@@ -4,6 +4,8 @@ import com.muffin.news.domain.news.enums.NewsStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /** News aggregate root repository. NewsTerm is saved and loaded through News. */
 public interface NewsRepository extends JpaRepository<News, Long> {
@@ -12,6 +14,18 @@ public interface NewsRepository extends JpaRepository<News, Long> {
 
     List<News> findAllByStatus(NewsStatus status);
 
-    List<News> findAllByStatusAndPublishedAtBetweenAndDeletedAtIsNullOrderByPublishedAtDesc(
-            NewsStatus status, LocalDateTime startInclusive, LocalDateTime endExclusive);
+    @Query(
+            """
+            SELECT n
+            FROM News n
+            WHERE n.status = :status
+              AND n.publishedAt >= :startInclusive
+              AND n.publishedAt < :endExclusive
+              AND n.deletedAt IS NULL
+            ORDER BY n.publishedAt DESC
+            """)
+    List<News> findQuizCandidates(
+            @Param("status") NewsStatus status,
+            @Param("startInclusive") LocalDateTime startInclusive,
+            @Param("endExclusive") LocalDateTime endExclusive);
 }
