@@ -48,17 +48,17 @@ class NewsExplanationQueryServiceTest {
     }
 
     @Test
-    @DisplayName("뉴스는 있지만 완료된 해설 카드가 없으면 빈 목록을 반환한다")
-    void getExplanationCards_returnsEmptyListWhenDoneCardsDoNotExist() {
+    @DisplayName("완료된 해설 카드가 없으면 CONTENT_409_001 예외를 던진다")
+    void getExplanationCards_throwsWhenDoneCardsDoNotExist() {
         Long newsId = 1L;
         when(newsRepository.existsById(newsId)).thenReturn(true);
         when(newsExplanationRepository.findTop3ByNewsIdAndStatusOrderByCardOrderAsc(newsId, NewsExplanationStatus.DONE))
                 .thenReturn(List.of());
 
-        NewsExplanationCardsResponse response = newsExplanationQueryService.getExplanationCards(newsId);
-
-        assertThat(response.newsId()).isEqualTo(newsId);
-        assertThat(response.cards()).isEmpty();
+        assertThatThrownBy(() -> newsExplanationQueryService.getExplanationCards(newsId))
+                .isInstanceOf(NewsException.class)
+                .extracting("errorCode")
+                .isEqualTo(NewsErrorCode.NEWS_EXPLANATION_NOT_COMPLETED);
     }
 
     @Test
@@ -76,10 +76,10 @@ class NewsExplanationQueryServiceTest {
 
         assertThat(response.newsId()).isEqualTo(newsId);
         assertThat(response.cards()).hasSize(2);
-        assertThat(response.cards().get(0).cardOrder()).isEqualTo(1);
-        assertThat(response.cards().get(0).title()).isEqualTo("기준금리란?");
-        assertThat(response.cards().get(0).keyTerm()).isEqualTo("기준금리");
-        assertThat(response.cards().get(0).content()).isEqualTo("기준금리 해설");
+        assertThat(response.cards().getFirst().cardOrder()).isEqualTo(1);
+        assertThat(response.cards().getFirst().title()).isEqualTo("기준금리란?");
+        assertThat(response.cards().getFirst().keyTerm()).isEqualTo("기준금리");
+        assertThat(response.cards().getFirst().content()).isEqualTo("기준금리 해설");
         assertThat(response.cards().get(1).cardOrder()).isEqualTo(2);
     }
 }
