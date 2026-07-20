@@ -109,4 +109,14 @@ class InvestmentCommandControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_400_002"));
     }
+
+    @Test
+    @DisplayName("null 섹터 요소는 검증 오류로 거부한다")
+    void confirm_nullSectorReturns400() throws Exception {
+        mockMvc.perform(post("/api/investments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sectors\":[null]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_400_002"));
+    }
 }
