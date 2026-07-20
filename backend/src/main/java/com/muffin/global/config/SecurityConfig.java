@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -39,6 +40,12 @@ public class SecurityConfig {
                         auth -> auth.requestMatchers("/api/auth/email/**", "/api/auth/logout", "/api/auth/account")
                                 .authenticated()
                                 .requestMatchers("/api/news/*/explanation-cards")
+                                .authenticated()
+                                .requestMatchers("/api/news/today")
+                                .authenticated()
+                                .requestMatchers(HttpMethod.POST, "/api/news/*")
+                                .authenticated()
+                                .requestMatchers("/api/news/*/sector-impacts")
                                 .authenticated()
                                 .anyRequest()
                                 .permitAll())
