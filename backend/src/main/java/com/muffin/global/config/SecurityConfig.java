@@ -40,6 +40,8 @@ public class SecurityConfig {
                                 .authenticated()
                                 .requestMatchers("/api/news/*/explanation-cards")
                                 .authenticated()
+                                .requestMatchers("/api/terms/**")
+                                .authenticated()
                                 .anyRequest()
                                 .permitAll())
                 .exceptionHandling(exception -> exception
