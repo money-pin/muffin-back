@@ -236,8 +236,8 @@ class DailyQuizGenerationServiceTest {
     }
 
     @Test
-    @DisplayName("AI 결과의 정답 번호에 해당하는 선택지가 없으면 UNAVAILABLE 퀴즈 세트를 저장한다")
-    void generate_savesUnavailableWhenCorrectOptionDoesNotExist() {
+    @DisplayName("AI 결과의 선택지 순서가 유효하지 않으면 UNAVAILABLE 퀴즈 세트를 저장한다")
+    void generate_savesUnavailableWhenOptionOrderIsInvalid() {
         List<News> newsSources = defaultNewsSources();
 
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
