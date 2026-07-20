@@ -75,6 +75,38 @@ class UserTest {
     }
 
     @Nested
+    @DisplayName("assignCharacter")
+    class AssignCharacter {
+
+        @Test
+        @DisplayName("정상 할당 → characterId 반영")
+        void success() {
+            User user = defaultUser();
+
+            user.assignCharacter(2L);
+
+            assertThat(user.getCharacterId()).isEqualTo(2L);
+        }
+
+        @Test
+        @DisplayName("null characterId → NullPointerException")
+        void nullCharacterId() {
+            User user = defaultUser();
+
+            assertThatThrownBy(() -> user.assignCharacter(null)).isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        @DisplayName("온보딩 완료 후 재할당 → IllegalStateException")
+        void cannotReassignAfterOnboardingCompleted() {
+            User user = defaultUser();
+            user.completeOnboarding(1, 2, 3);
+
+            assertThatThrownBy(() -> user.assignCharacter(2L)).isInstanceOf(IllegalStateException.class);
+        }
+    }
+
+    @Nested
     @DisplayName("completeOnboarding")
     class CompleteOnboarding {
 

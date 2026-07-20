@@ -29,7 +29,7 @@ public class GoogleAuthController implements GoogleAuthApi {
     @PostMapping("/google")
     public ApiResponse<GoogleAuthResponse> authenticate(
             @Valid @RequestBody GoogleAuthRequest request, HttpServletResponse response) {
-        TokenPair result = googleAuthCommandService.authenticate(request.idToken(), request.termsAgreed());
+        TokenPair result = googleAuthCommandService.authenticate(request.idToken());
 
         response.addHeader(
                 HttpHeaders.SET_COOKIE,
