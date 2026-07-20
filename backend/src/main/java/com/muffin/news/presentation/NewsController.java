@@ -9,10 +9,10 @@ import com.muffin.news.presentation.dto.NewsSectorImpactResponse;
 import com.muffin.news.presentation.dto.NewsTodayResponse;
 import com.muffin.news.presentation.swagger.NewsApi;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,25 +35,21 @@ public class NewsController implements NewsApi {
 
     @Override
     @GetMapping("/today")
-    public ApiResponse<NewsTodayResponse> getTodayNews(
-            // TODO: 인증(Security/JWT) 구현 후 @AuthenticationPrincipal 등으로 교체하고 요청에서 hidden 처리. 현재는 임시 헤더.
-            @RequestHeader("X-User-Id") Long userId) {
+    public ApiResponse<NewsTodayResponse> getTodayNews(@AuthenticationPrincipal Long userId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getTodayNews());
     }
 
     @Override
     @PostMapping("/{newsSummaryId}")
     public ApiResponse<NewsDetailResponse> getNewsDetail(
-            // TODO: 인증(Security/JWT) 구현 후 @AuthenticationPrincipal 등으로 교체. 현재는 임시 헤더.
-            @RequestHeader("X-User-Id") Long userId, @PathVariable Long newsSummaryId) {
+            @AuthenticationPrincipal Long userId, @PathVariable Long newsSummaryId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getNewsDetail(userId, newsSummaryId));
     }
 
     @Override
     @GetMapping("/{newsSummaryId}/sector-impacts")
     public ApiResponse<NewsSectorImpactResponse> getSectorImpacts(
-            // TODO: 인증(Security/JWT) 구현 후 @AuthenticationPrincipal 등으로 교체. 현재는 임시 헤더.
-            @RequestHeader("X-User-Id") Long userId, @PathVariable Long newsSummaryId) {
+            @AuthenticationPrincipal Long userId, @PathVariable Long newsSummaryId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getSectorImpacts(newsSummaryId));
     }
 }
