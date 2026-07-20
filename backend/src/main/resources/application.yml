@@ -26,6 +26,9 @@ coingecko:
     api-key: ${COINGECKO_API_KEY}
 
 muffin:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,https://muffin-front.vercel.app}
+
   batch:
     rss:
       # rss 뉴스피드 수집 스케쥴러

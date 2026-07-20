@@ -66,14 +66,14 @@ class GoogleAuthControllerTest {
     }
 
     @Test
-    @DisplayName("신규 구글 계정 + termsAgreed=true면 200, 자동 가입되고 쿠키가 내려간다")
+    @DisplayName("신규 구글 계정이면 200, 약관 자동 동의로 가입되고 쿠키가 내려간다")
     void authenticate_newAccount_success() throws Exception {
         when(googleIdTokenVerifier.verify("valid-id-token"))
                 .thenReturn(new GoogleIdTokenPayload("google-sub-x", "x@example.com", "홍길동"));
 
         mockMvc.perform(post("/api/auth/google")
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new RequestBody("valid-id-token", true))))
+                        .content(objectMapper.writeValueAsString(new RequestBody("valid-id-token"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.accessToken").exists())
                 .andExpect(cookie().exists("refreshToken"))
@@ -84,24 +84,11 @@ class GoogleAuthControllerTest {
     }
 
     @Test
-    @DisplayName("신규 구글 계정 + termsAgreed=false면 400 (AUTH_400_002)")
-    void authenticate_newAccount_termsNotAgreed() throws Exception {
-        when(googleIdTokenVerifier.verify("valid-id-token-2"))
-                .thenReturn(new GoogleIdTokenPayload("google-sub-y", "y@example.com", "홍길동"));
-
-        mockMvc.perform(post("/api/auth/google")
-                        .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new RequestBody("valid-id-token-2", false))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code", is("AUTH_400_002")));
-    }
-
-    @Test
     @DisplayName("idToken이 비어있으면 400 (COMMON_400_002)")
     void authenticate_blankIdToken() throws Exception {
         mockMvc.perform(post("/api/auth/google")
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new RequestBody("", true))))
+                        .content(objectMapper.writeValueAsString(new RequestBody(""))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code", is("COMMON_400_002")));
     }
@@ -116,7 +103,7 @@ class GoogleAuthControllerTest {
 
         mockMvc.perform(post("/api/auth/google")
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new RequestBody("existing-id-token", false))))
+                        .content(objectMapper.writeValueAsString(new RequestBody("existing-id-token"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.accessToken").exists());
 
@@ -135,7 +122,7 @@ class GoogleAuthControllerTest {
 
         mockMvc.perform(post("/api/auth/google")
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new RequestBody("withdrawn-id-token", false))))
+                        .content(objectMapper.writeValueAsString(new RequestBody("withdrawn-id-token"))))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code", is("AUTH_403_002")));
     }
@@ -152,7 +139,7 @@ class GoogleAuthControllerTest {
 
         mockMvc.perform(post("/api/auth/google")
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new RequestBody("suspended-id-token", false))))
+                        .content(objectMapper.writeValueAsString(new RequestBody("suspended-id-token"))))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code", is("AUTH_403_003")));
     }
@@ -165,12 +152,12 @@ class GoogleAuthControllerTest {
 
         mockMvc.perform(post("/api/auth/google")
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new RequestBody("bogus-id-token", true))))
+                        .content(objectMapper.writeValueAsString(new RequestBody("bogus-id-token"))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code", is("AUTH_401_004")));
 
         assertThat(authRepository.count()).isZero();
     }
 
-    private record RequestBody(String idToken, boolean termsAgreed) {}
+    private record RequestBody(String idToken) {}
 }
