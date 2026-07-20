@@ -4,7 +4,6 @@ import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.InvestmentRepository;
 import com.muffin.investment.domain.investment.InvestmentSector;
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
-import com.muffin.investment.domain.investment.enums.SettlementStatus;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
 import com.muffin.investment.presentation.dto.AssetChangeDirection;
@@ -16,7 +15,6 @@ import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.sector.Sector;
 import com.muffin.sector.domain.sector.SectorRepository;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -42,13 +40,11 @@ public class InvestmentQueryService {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final LocalTime SETTLEMENT_START = LocalTime.of(9, 0);
     private static final LocalTime INVESTMENT_START = LocalTime.of(10, 0);
-    private static final List<SettlementStatus> REPROCESSABLE =
-            List.of(SettlementStatus.PENDING, SettlementStatus.FAILED);
-
     private final UserAssetRepository userAssetRepository;
     private final InvestmentRepository investmentRepository;
     private final SectorRepository sectorRepository;
     private final TradingCalendarService tradingCalendarService;
+    private final PendingInvestmentChecker pendingInvestmentChecker;
     private final Clock clock;
 
     public InvestmentAssetResponse getAsset(Long userId) {
@@ -60,7 +56,8 @@ public class InvestmentQueryService {
         ZonedDateTime now = now();
         LocalDate today = now.toLocalDate();
         TradingCalendar calendar = tradingCalendarService.getCalendar(today);
-        boolean settlementPending = calendar.tradingDay() && hasPendingInvestment(userId, calendar);
+        boolean settlementPending =
+                calendar.tradingDay() && pendingInvestmentChecker.hasPendingInvestment(userId, calendar);
         return new InvestmentAssetResponse(
                 asset.getTotalAsset(),
                 asset.getDailyChangeAmount(),
@@ -92,7 +89,7 @@ public class InvestmentQueryService {
         if (time.isBefore(INVESTMENT_START)) {
             return TodayInvestmentResponse.settling();
         }
-        if (hasPendingInvestment(userId, calendar)) {
+        if (pendingInvestmentChecker.hasPendingInvestment(userId, calendar)) {
             return TodayInvestmentResponse.delayed();
         }
 
@@ -104,18 +101,6 @@ public class InvestmentQueryService {
 
     private ZonedDateTime now() {
         return ZonedDateTime.now(clock).withZoneSameInstant(KST);
-    }
-
-    private boolean hasPendingInvestment(Long userId, TradingCalendar calendar) {
-        return investmentRepository
-                .findByUserIdAndSettlementStatusInAndInvestDateLessThan(userId, REPROCESSABLE, calendar.date())
-                .stream()
-                .anyMatch(investment -> !isStaleConfirmed(investment, calendar.previousTradingDay()));
-    }
-
-    private boolean isStaleConfirmed(Investment investment, LocalDate previousTradingDay) {
-        return investment.getStatus() == InvestmentStatus.CONFIRMED
-                && investment.getInvestDate().isBefore(previousTradingDay);
     }
 
     private TodayInvestmentResponse confirmedResponse(Investment investment, long totalAsset) {
@@ -143,11 +128,7 @@ public class InvestmentQueryService {
 
     private TodayInvestmentSectorResponse sectorResponse(
             InvestmentSector investmentSector, Sector sector, long totalAmount) {
-        BigDecimal ratio = totalAmount == 0L
-                ? BigDecimal.ZERO.setScale(2)
-                : BigDecimal.valueOf(investmentSector.getAmount())
-                        .multiply(BigDecimal.valueOf(100))
-                        .divide(BigDecimal.valueOf(totalAmount), 2, RoundingMode.HALF_UP);
+        BigDecimal ratio = InvestmentRatioCalculator.calculate(investmentSector.getAmount(), totalAmount);
         return new TodayInvestmentSectorResponse(
                 sector.getSectorCode(),
                 sector.getName(),

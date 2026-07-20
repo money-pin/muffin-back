@@ -4,6 +4,8 @@ import com.muffin.global.event.EtfPricesLoadedEvent;
 import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
+import com.muffin.sector.domain.etfprice.EtfPriceRepository;
+import com.muffin.sector.domain.etfprice.PriceCollectionStatus;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
 import com.muffin.sector.infrastructure.toss.exception.TossApiException;
@@ -47,6 +49,8 @@ public class EtfPriceCollector {
     private final TossMarketDataClient tossMarketDataClient;
     private final EtfPriceWriter etfPriceWriter;
     private final ApplicationEventPublisher eventPublisher;
+    // TODO : 확인필요 - 이슈 #40 종가 재시도에서 이미 성공한 종목의 외부 API 재호출을 피하기 위해 기존 수집기에 상태 조회를 추가함.
+    private final EtfPriceRepository etfPriceRepository;
 
     /** 장 시작 이후 호출해 시가를 수집한다. */
     public CollectionSummary collectOpen(LocalDate date) {
@@ -95,6 +99,10 @@ public class EtfPriceCollector {
         List<String> failedEtfCodes = new ArrayList<>();
 
         for (Etf etf : etfs) {
+            if (target == CollectionTarget.CLOSE && closeAlreadyCollected(etf.getId(), date)) {
+                successCount++;
+                continue;
+            }
             Optional<Candle> candle;
             try {
                 candle = tossMarketDataClient.getDailyCandle(etf.getEtfCode(), date);
@@ -144,6 +152,13 @@ public class EtfPriceCollector {
                 failedEtfCodes.size(),
                 List.copyOf(skippedEtfCodes),
                 List.copyOf(failedEtfCodes));
+    }
+
+    private boolean closeAlreadyCollected(Long etfId, LocalDate date) {
+        return etfPriceRepository
+                .findByEtfIdAndPriceDate(etfId, date)
+                .map(price -> price.getEndPriceStatus() == PriceCollectionStatus.SUCCESS)
+                .orElse(false);
     }
 
     private void writePrice(CollectionTarget target, Long etfId, LocalDate date, Long price) {

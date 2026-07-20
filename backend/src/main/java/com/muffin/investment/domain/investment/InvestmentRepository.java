@@ -2,6 +2,7 @@ package com.muffin.investment.domain.investment;
 
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
 import com.muffin.investment.domain.investment.enums.SettlementStatus;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,6 +32,16 @@ public interface InvestmentRepository extends JpaRepository<Investment, Long> {
     @EntityGraph(attributePaths = "sectors")
     Optional<Investment> findWithSectorsByUserIdAndInvestDateAndStatus(
             Long userId, LocalDate investDate, InvestmentStatus status);
+
+    // TODO : 확인필요 - 이슈 #40 멱등 POST와 PATCH-자정 마감 경합 처리를 위해 기존 Repository 조회를 확장함.
+    @EntityGraph(attributePaths = "sectors")
+    Optional<Investment> findWithSectorsByUserIdAndInvestDate(Long userId, LocalDate investDate);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = "sectors")
+    @Query("select i from Investment i where i.userId = :userId and i.investDate = :investDate")
+    Optional<Investment> findWithSectorsForUpdate(
+            @Param("userId") Long userId, @Param("investDate") LocalDate investDate);
 
     List<Investment> findByUserIdAndSettlementStatusInAndInvestDateLessThan(
             Long userId, Collection<SettlementStatus> settlementStatuses, LocalDate investDate);
