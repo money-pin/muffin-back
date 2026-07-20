@@ -26,5 +26,10 @@ public record NewsDetailResponse(
         public static BodySegment text(String text) {
             return new BodySegment("TEXT", text, null);
         }
+
+        /** 용어 사전과 연결되는 하이라이트 세그먼트를 만든다. */
+        public static BodySegment highlight(String text, Long termId) {
+            return new BodySegment("HIGHLIGHT", text, termId);
+        }
     }
 }
