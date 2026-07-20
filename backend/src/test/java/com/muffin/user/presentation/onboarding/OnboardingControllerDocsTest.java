@@ -53,7 +53,7 @@ class OnboardingControllerDocsTest {
     @Test
     @DisplayName("캐릭터 결과 저장 성공 문서화")
     void documentCharacterResultSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        CharacterResultCommandService stub = new CharacterResultCommandService(null, null, null, null) {
+        CharacterResultCommandService stub = new CharacterResultCommandService(null, null, null, null, null) {
             @Override
             public CharacterResultResponse submit(Long userId, CharacterResultRequest request) {
                 return new CharacterResultResponse(
@@ -98,7 +98,7 @@ class OnboardingControllerDocsTest {
     @Test
     @DisplayName("캐릭터 결과 재제출(이미 온보딩 완료) 문서화")
     void documentCharacterResultAlreadyCompleted(RestDocumentationContextProvider restDocumentation) throws Exception {
-        CharacterResultCommandService stub = new CharacterResultCommandService(null, null, null, null) {
+        CharacterResultCommandService stub = new CharacterResultCommandService(null, null, null, null, null) {
             @Override
             public CharacterResultResponse submit(Long userId, CharacterResultRequest request) {
                 throw new IllegalStateException("이미 온보딩을 완료한 사용자입니다.");
@@ -122,7 +122,7 @@ class OnboardingControllerDocsTest {
     @Test
     @DisplayName("존재하지 않는 캐릭터 문서화")
     void documentCharacterResultCharacterNotFound(RestDocumentationContextProvider restDocumentation) throws Exception {
-        CharacterResultCommandService stub = new CharacterResultCommandService(null, null, null, null) {
+        CharacterResultCommandService stub = new CharacterResultCommandService(null, null, null, null, null) {
             @Override
             public CharacterResultResponse submit(Long userId, CharacterResultRequest request) {
                 throw new GeneralException(UserErrorCode.CHARACTER_NOT_FOUND);
@@ -188,7 +188,7 @@ class OnboardingControllerDocsTest {
     }
 
     private CharacterResultCommandService stubCharacterResultService() {
-        return new CharacterResultCommandService(null, null, null, null) {
+        return new CharacterResultCommandService(null, null, null, null, null) {
             @Override
             public CharacterResultResponse submit(Long userId, CharacterResultRequest request) {
                 throw new UnsupportedOperationException("이 테스트에서는 사용하지 않음");

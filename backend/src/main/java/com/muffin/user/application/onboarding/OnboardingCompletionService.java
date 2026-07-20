@@ -33,8 +33,16 @@ public class OnboardingCompletionService {
             throw new GeneralException(UserErrorCode.ONBOARDING_NOT_COMPLETED);
         }
 
-        UserAsset asset = userAssetRepository.findByUserId(userId).orElseGet(() -> grantInitialAsset(userId));
+        UserAsset asset = ensureInitialAssetGranted(userId);
         return new OnboardingCompleteResponse(asset.getTotalAsset());
+    }
+
+    /**
+     * 온보딩 완료(캐릭터 확정) 시점에 지급을 시도하지만, 그 순간 실패하더라도 이 API가 다시 호출되면 없는 경우에만
+     * 보정 지급한다(멱등).
+     */
+    public UserAsset ensureInitialAssetGranted(Long userId) {
+        return userAssetRepository.findByUserId(userId).orElseGet(() -> grantInitialAsset(userId));
     }
 
     private UserAsset grantInitialAsset(Long userId) {

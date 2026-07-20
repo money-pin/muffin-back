@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.muffin.character.domain.CharacterProfile;
@@ -47,6 +48,9 @@ class CharacterResultCommandServiceTest {
 
     @Mock
     private SectorRepository sectorRepository;
+
+    @Mock
+    private OnboardingCompletionService onboardingCompletionService;
 
     @InjectMocks
     private CharacterResultCommandService characterResultCommandService;
@@ -93,6 +97,7 @@ class CharacterResultCommandServiceTest {
         assertThat(response.recommendedSectors().get(1).sectorCode()).isEqualTo("GOLD");
         assertThat(user.getCharacterId()).isEqualTo(CHARACTER_ID);
         assertThat(user.isOnboardingCompleted()).isTrue();
+        verify(onboardingCompletionService).ensureInitialAssetGranted(USER_ID);
     }
 
     @Test
