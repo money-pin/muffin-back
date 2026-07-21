@@ -20,16 +20,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.SimpleTransactionStatus;
@@ -74,6 +70,8 @@ class DailyQuizGenerationServiceTest {
 
         generationService.generate(QUIZ_DATE);
 
+        verify(quizSetRepository).saveAndFlush(any(QuizSet.class));
+
         ArgumentCaptor<QuizSet> captor = ArgumentCaptor.forClass(QuizSet.class);
         verify(quizSetRepository).save(captor.capture());
         QuizSet quizSet = captor.getValue();
@@ -105,6 +103,7 @@ class DailyQuizGenerationServiceTest {
 
         verify(quizSetRepository).delete(unavailableQuizSet);
         verify(quizSetRepository).flush();
+        verify(quizSetRepository).saveAndFlush(any(QuizSet.class));
 
         ArgumentCaptor<QuizSet> captor = ArgumentCaptor.forClass(QuizSet.class);
         verify(quizSetRepository).save(captor.capture());
@@ -122,6 +121,7 @@ class DailyQuizGenerationServiceTest {
 
         verify(dailyQuizGenerator, never()).generate(any());
         verify(quizSetRepository, never()).delete(any());
+        verify(quizSetRepository, never()).saveAndFlush(any());
         verify(quizSetRepository, never()).save(any());
     }
 
@@ -153,45 +153,41 @@ class DailyQuizGenerationServiceTest {
     }
 
     @Test
-    @DisplayName("같은 날짜 퀴즈 생성이 동시에 호출되어도 AI 생성은 한 번만 실행한다")
-    void generate_serializesSameDateGeneration() throws Exception {
+    @DisplayName("같은 날짜 퀴즈 생성이 다시 호출되면 DB 예약 세트로 중복 AI 생성을 막는다")
+    void generate_skipsWhenGenerationReservationExists() {
         List<News> newsSources = defaultNewsSources();
-        AtomicBoolean saved = new AtomicBoolean(false);
-        CountDownLatch generatorStarted = new CountDownLatch(1);
-        CountDownLatch releaseGenerator = new CountDownLatch(1);
+        AtomicBoolean reserved = new AtomicBoolean(false);
 
         when(quizSetRepository.findByQuizDate(QUIZ_DATE))
-                .thenAnswer(invocation -> saved.get() ? Optional.of(QuizSet.create(QUIZ_DATE)) : Optional.empty());
+                .thenAnswer(invocation -> reserved.get() ? Optional.of(QuizSet.create(QUIZ_DATE)) : Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay()))
                 .thenReturn(newsSources);
-        when(dailyQuizGenerator.generate(any())).thenAnswer(invocation -> {
-            generatorStarted.countDown();
-            assertThat(releaseGenerator.await(1, TimeUnit.SECONDS)).isTrue();
-            return generationResult();
-        });
-        when(quizSetRepository.save(any())).thenAnswer(invocation -> {
-            saved.set(true);
+        when(dailyQuizGenerator.generate(any())).thenReturn(generationResult());
+        when(quizSetRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            reserved.set(true);
             return invocation.getArgument(0);
         });
 
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        try {
-            Future<?> first = executor.submit(() -> generationService.generate(QUIZ_DATE));
-            assertThat(generatorStarted.await(1, TimeUnit.SECONDS)).isTrue();
-
-            Future<?> second = executor.submit(() -> generationService.generate(QUIZ_DATE));
-            releaseGenerator.countDown();
-
-            first.get(1, TimeUnit.SECONDS);
-            second.get(1, TimeUnit.SECONDS);
-        } finally {
-            executor.shutdownNow();
-        }
+        generationService.generate(QUIZ_DATE);
+        generationService.generate(QUIZ_DATE);
 
         verify(dailyQuizGenerator, times(1)).generate(any());
+    }
+
+    @Test
+    @DisplayName("DB 예약 생성이 유니크 제약에 걸리면 AI 호출 없이 생성을 건너뛴다")
+    void generate_skipsWhenReservationInsertConflicts() {
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
+        when(quizSetRepository.saveAndFlush(any()))
+                .thenThrow(new DataIntegrityViolationException("duplicate quizDate"));
+
+        generationService.generate(QUIZ_DATE);
+
+        verify(dailyQuizGenerator, never()).generate(any());
+        verify(quizSetRepository, never()).save(any());
     }
 
     @Test
@@ -206,8 +202,10 @@ class DailyQuizGenerationServiceTest {
 
         generationService.generate(QUIZ_DATE);
 
-        verify(quizSetRepository, never()).save(any());
         verify(dailyQuizGenerator, never()).generate(any());
+        verify(quizSetRepository).saveAndFlush(any(QuizSet.class));
+        verify(quizSetRepository).delete(any(QuizSet.class));
+        verify(quizSetRepository, never()).save(any());
     }
 
     @Test
@@ -371,26 +369,6 @@ class DailyQuizGenerationServiceTest {
     }
 
     @Test
-    @DisplayName("AI 실패 후 이미 퀴즈 세트가 생성되어 있으면 UNAVAILABLE 저장을 건너뛴다")
-    void generate_skipsUnavailableSaveWhenQuizSetWasCreatedConcurrently() {
-        List<News> newsSources = defaultNewsSources();
-        QuizSet existingQuizSet = QuizSet.create(QUIZ_DATE);
-
-        when(quizSetRepository.findByQuizDate(QUIZ_DATE))
-                .thenReturn(Optional.empty())
-                .thenReturn(Optional.of(existingQuizSet));
-        when(newsRepository.findQuizCandidates(
-                        NewsStatus.PENDING,
-                        QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
-                .thenReturn(newsSources);
-        when(dailyQuizGenerator.generate(any())).thenThrow(new IllegalStateException("OpenAI failed"));
-
-        generationService.generate(QUIZ_DATE);
-
-        verify(quizSetRepository, never()).save(any());
-    }
-
     private void assertUnavailableQuizSetSaved() {
         ArgumentCaptor<QuizSet> captor = ArgumentCaptor.forClass(QuizSet.class);
         verify(quizSetRepository).save(captor.capture());
