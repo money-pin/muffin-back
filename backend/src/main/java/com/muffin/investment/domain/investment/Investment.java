@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -74,14 +75,13 @@ public class Investment extends BaseEntity {
     @Column(name = "settled_at")
     private LocalDateTime settledAt;
 
-    // TODO : 확인필요 - 자정 마감 여부와 정산 예정일을 조회하기 위해 기존 엔티티에 추가 필요할 예정 - 검토를 위해 주석처리
+    // TODO : 확인필요 - 이슈 #40 자정 마감과 PATCH 경합을 제어하기 위해 기존 Investment에 마감 시각을 추가함.
+    @Column(name = "finalized_at")
+    private LocalDateTime finalizedAt;
+
     //    자정 마감 배치 구현할 때 필요할 예정
     //    @Column(name = "settlement_due_date")
     //    private LocalDate settlementDueDate;
-    //
-    //    00시 투자 마감 배치와 투자 수정 API를 구현할 때 필요할 예정
-    //    @Column(name = "finalized_at")
-    //    private LocalDateTime finalizedAt;
 
     // InvestmentSector는 이 애그리거트 내부 엔티티이므로 루트가 관리한다.
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
@@ -112,8 +112,16 @@ public class Investment extends BaseEntity {
     /** 섹터 추가: 항상 이 메서드를 통해서만 추가해 "총 투자금 = 섹터 금액 합" 불변식을 유지한다. */
     public void addSector(Long sectorId, int quantity, long amount, BigDecimal buyPrice) {
         sectors.add(new InvestmentSector(sectorId, quantity, amount, buyPrice));
-        this.totalAmount =
-                sectors.stream().mapToLong(InvestmentSector::getAmount).sum();
+        recalculateTotalAmount();
+    }
+
+    // TODO : 확인필요 - 이슈 #40 PATCH와 자정 마감을 애그리거트 루트에서 처리하도록 기존 도메인 동작을 확장함.
+    /** 투자 수정 시 전달된 최종 구성으로 섹터를 전부 교체한다. 매수가는 자정 마감 전까지 비워 둔다. */
+    public void replaceSectors(List<SectorAllocation> allocations) {
+        sectors.clear();
+        allocations.forEach(allocation -> sectors.add(
+                new InvestmentSector(allocation.sectorId(), allocation.quantity(), allocation.amount(), null)));
+        recalculateTotalAmount();
     }
 
     /** 섹터별 정산 결과를 루트를 통해 반영한다(계산된 값 주입형). */
@@ -167,6 +175,38 @@ public class Investment extends BaseEntity {
         this.settlementStatus = SettlementStatus.FAILED;
     }
 
+    /** 자정 마감 시 최종 투자 구성을 동결한다. 이미 동결된 경우에도 누락된 매수가는 재반영할 수 있다. */
+    public void finalizeInvestment(Map<Long, BigDecimal> buyPrices, LocalDateTime finalizedAt) {
+        for (InvestmentSector sector : sectors) {
+            BigDecimal buyPrice = buyPrices.get(sector.getSectorId());
+            if (buyPrice != null) {
+                sector.assignBuyPrice(buyPrice);
+            }
+        }
+        if (this.finalizedAt == null) {
+            this.finalizedAt = finalizedAt;
+        }
+        if (sectors.stream().anyMatch(sector -> sector.getBuyPrice() == null)) {
+            failSettlement();
+        } else if (settlementStatus == SettlementStatus.FAILED) {
+            settlementStatus = SettlementStatus.PENDING;
+        }
+    }
+
+    /** 미투자 레코드를 자정 마감 완료 상태로 동결한다. */
+    public void finalizeNoInvest(LocalDateTime finalizedAt) {
+        if (status != InvestmentStatus.NO_INVEST) {
+            throw new IllegalStateException("미투자 레코드만 이 방식으로 마감할 수 있습니다.");
+        }
+        if (this.finalizedAt == null) {
+            this.finalizedAt = finalizedAt;
+        }
+    }
+
+    public boolean hasMissingBuyPrice() {
+        return sectors.stream().anyMatch(sector -> sector.getBuyPrice() == null);
+    }
+
     /** 정산 창(다음 거래일)을 놓친 확정 투자를 취소한다. 자산에 영향을 주지 않으며 손익 0으로 종료한다. */
     public void cancelSettlement(LocalDateTime cancelledAt) {
         this.totalProfitLoss = 0L;
@@ -187,4 +227,11 @@ public class Investment extends BaseEntity {
     public List<InvestmentSector> getSectors() {
         return Collections.unmodifiableList(sectors);
     }
+
+    private void recalculateTotalAmount() {
+        this.totalAmount =
+                sectors.stream().mapToLong(InvestmentSector::getAmount).sum();
+    }
+
+    public record SectorAllocation(Long sectorId, int quantity, long amount) {}
 }

@@ -15,6 +15,8 @@ import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
+import com.muffin.sector.domain.etfprice.EtfPrice;
+import com.muffin.sector.domain.etfprice.EtfPriceRepository;
 import com.muffin.sector.exception.SectorErrorCode;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
@@ -32,6 +34,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class EtfPriceCollectorTest {
@@ -53,12 +56,20 @@ class EtfPriceCollectorTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private EtfPriceRepository etfPriceRepository;
+
     private EtfPriceCollector collector;
 
     @BeforeEach
     void setUp() {
         collector = new EtfPriceCollector(
-                etfRepository, tradingCalendarService, tossMarketDataClient, etfPriceWriter, eventPublisher);
+                etfRepository,
+                tradingCalendarService,
+                tossMarketDataClient,
+                etfPriceWriter,
+                eventPublisher,
+                etfPriceRepository);
         when(tradingCalendarService.getCalendar(DATE)).thenReturn(tradingDay());
     }
 
@@ -113,6 +124,22 @@ class EtfPriceCollectorTest {
         verify(etfPriceWriter).writeClose(any(), eq(DATE), eq(10_500L));
         verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
         verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("종가 재시도는 이미 성공한 종목을 외부 API로 다시 조회하지 않는다")
+    void collectClose_skipsAlreadySuccessfulPrice() {
+        Etf etf = Etf.create("459580", "KODEX CD금리액티브(합성)");
+        ReflectionTestUtils.setField(etf, "id", 1L);
+        EtfPrice price = EtfPrice.create(1L, DATE, null, 10_500L);
+        when(etfRepository.findAll()).thenReturn(List.of(etf));
+        when(etfPriceRepository.findByEtfIdAndPriceDate(1L, DATE)).thenReturn(Optional.of(price));
+
+        EtfPriceCollector.CollectionSummary summary = collector.collectClose(DATE);
+
+        assertEquals(1, summary.successCount());
+        verify(tossMarketDataClient, never()).getDailyCandle(any(), any());
+        verify(etfPriceWriter, never()).writeClose(any(), any(), any());
     }
 
     @Test

@@ -140,9 +140,16 @@ public class News extends BaseEntity {
         this.status = NewsStatus.FAILED;
     }
 
-    /** 뉴스에 포함된 용어를 루트를 통해 추가한다. */
-    public void addTerm(Long termId) {
+    /** 뉴스에 포함된 용어를 루트를 통해 추가한다. 이미 연결된 용어라면 건너뛴다. */
+    public boolean addTerm(Long termId) {
+        if (termId == null) {
+            throw new IllegalArgumentException("termId는 필수입니다.");
+        }
+        if (terms.stream().anyMatch(term -> term.getTermId().equals(termId))) {
+            return false;
+        }
         this.terms.add(NewsTerm.create(termId));
+        return true;
     }
 
     /** 뉴스에 연결된 용어 목록을 읽기 전용으로 반환한다. */

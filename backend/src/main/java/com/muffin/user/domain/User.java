@@ -123,6 +123,17 @@ public class User extends BaseEntity {
         this.termAgreedAt = LocalDateTime.now(KST);
     }
 
+    // 온보딩 중 캐릭터 결과 확정. 온보딩 완료 후에는 재할당할 수 없다.
+    public void assignCharacter(Long characterId) {
+        if (this.onboardingCompleted) {
+            throw new IllegalStateException("이미 온보딩을 완료한 사용자입니다.");
+        }
+        if (characterId == null) {
+            throw new NullPointerException("characterId는 필수입니다.");
+        }
+        this.characterId = characterId;
+    }
+
     // 온보딩 완료
     public void completeOnboarding(int firstQuestion, int secondQuestion, int thirdQuestion) {
         if (this.onboardingCompleted) {

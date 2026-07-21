@@ -1,6 +1,9 @@
 package com.muffin.news.domain;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.muffin.global.config.JpaAuditingConfig;
 import com.muffin.news.domain.category.Category;
@@ -81,13 +84,14 @@ class NewsUniqueConstraintTest {
     }
 
     @Test
-    @DisplayName("같은 뉴스에 같은 용어를 두 번 추가하면 UNIQUE 제약 위반이 발생한다")
-    void newsTerm_duplicateNewsAndTerm_violatesUnique() {
+    @DisplayName("같은 뉴스에 같은 용어를 두 번 추가하면 애그리거트에서 중복을 건너뛴다")
+    void newsTerm_duplicateNewsAndTerm_skipsDuplicate() {
         News news = createNews("https://example.com/news/2");
-        news.addTerm(10L);
-        news.addTerm(10L);
+        assertTrue(news.addTerm(10L));
+        assertFalse(news.addTerm(10L));
 
-        assertThrows(DataIntegrityViolationException.class, () -> newsRepository.saveAndFlush(news));
+        News saved = newsRepository.saveAndFlush(news);
+        assertEquals(1, saved.getTerms().size());
     }
 
     private News createNews(String originalUrl) {

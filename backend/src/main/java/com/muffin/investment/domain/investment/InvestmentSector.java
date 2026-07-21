@@ -71,6 +71,21 @@ public class InvestmentSector extends BaseEntity {
         this.priceDataSource = priceDataSource;
     }
 
+    // TODO : 확인필요 - 이슈 #40 자정 마감에서 종가 스냅샷을 반영하기 위해 기존 내부 엔티티 동작을 확장함.
+    /** 자정 마감 시 종가를 매수가로 스냅샷한다. 같은 가격 재반영은 허용하되 다른 가격 덮어쓰기는 거부한다. */
+    void assignBuyPrice(BigDecimal buyPrice) {
+        if (buyPrice == null || buyPrice.signum() <= 0) {
+            throw new IllegalArgumentException("매수가는 0보다 커야 합니다.");
+        }
+        if (this.buyPrice == null) {
+            this.buyPrice = buyPrice;
+            return;
+        }
+        if (this.buyPrice.compareTo(buyPrice) != 0) {
+            throw new IllegalStateException("이미 확정된 매수가와 다른 가격은 반영할 수 없습니다: sectorId=" + sectorId);
+        }
+    }
+
     /**
      * 당일 시가(sellPrice)로 손익을 직접 계산해 반영한다(정상 정산). 루트(Investment.settleSector)를 통해서만 호출된다.
      *

@@ -224,7 +224,12 @@ class InvestmentQueryServiceTest {
     private InvestmentQueryService serviceAt(String instant) {
         Clock clock = Clock.fixed(OffsetDateTime.parse(instant).toInstant(), KST);
         return new InvestmentQueryService(
-                userAssetRepository, investmentRepository, sectorRepository, tradingCalendarService, clock);
+                userAssetRepository,
+                investmentRepository,
+                sectorRepository,
+                tradingCalendarService,
+                new PendingInvestmentChecker(investmentRepository),
+                clock);
     }
 
     private void mockTradingMonday() {

@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -154,5 +155,68 @@ class InvestmentTest {
         List<InvestmentSector> sectors = investment.getSectors();
 
         assertThrows(UnsupportedOperationException.class, () -> sectors.add(null));
+    }
+
+    @Test
+    @DisplayName("투자 수정은 기존 섹터를 전부 교체하고 총투자금을 다시 계산한다")
+    void replaceSectors_replacesAllAndRecalculatesTotal() {
+        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        investment.addSector(100L, 1, 100_000L, null);
+
+        investment.replaceSectors(List.of(
+                new Investment.SectorAllocation(200L, 2, 200_000L),
+                new Investment.SectorAllocation(300L, 3, 300_000L)));
+
+        assertEquals(2, investment.getSectors().size());
+        assertEquals(500_000L, investment.getTotalAmount());
+        assertEquals(
+                List.of(200L, 300L),
+                investment.getSectors().stream()
+                        .map(InvestmentSector::getSectorId)
+                        .toList());
+    }
+
+    @Test
+    @DisplayName("자정 마감은 종가를 매수가로 반영하고 finalizedAt을 기록한다")
+    void finalizeInvestment_assignsBuyPricesAndFinalizedAt() {
+        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        investment.addSector(100L, 1, 100_000L, null);
+        LocalDateTime finalizedAt = INVEST_DATE.plusDays(1).atStartOfDay();
+
+        investment.finalizeInvestment(Map.of(100L, BigDecimal.valueOf(12_345)), finalizedAt);
+
+        assertEquals(
+                BigDecimal.valueOf(12_345), investment.getSectors().getFirst().getBuyPrice());
+        assertEquals(finalizedAt, investment.getFinalizedAt());
+        assertEquals(SettlementStatus.PENDING, investment.getSettlementStatus());
+    }
+
+    @Test
+    @DisplayName("종가가 누락된 투자는 동결하되 FAILED 재처리 대상으로 둔다")
+    void finalizeInvestment_marksFailedWhenBuyPriceMissing() {
+        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        investment.addSector(100L, 1, 100_000L, null);
+
+        investment.finalizeInvestment(Map.of(), INVEST_DATE.plusDays(1).atStartOfDay());
+
+        assertEquals(SettlementStatus.FAILED, investment.getSettlementStatus());
+        assertEquals(true, investment.hasMissingBuyPrice());
+    }
+
+    @Test
+    void finalizeInvestment_restoresPendingWhenAllBuyPricesAreRecovered() {
+        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        investment.addSector(100L, 1, 100_000L, null);
+        investment.addSector(200L, 1, 100_000L, null);
+        LocalDateTime finalizedAt = INVEST_DATE.plusDays(1).atStartOfDay();
+
+        investment.finalizeInvestment(Map.of(100L, BigDecimal.valueOf(12_345)), finalizedAt);
+        assertEquals(SettlementStatus.FAILED, investment.getSettlementStatus());
+
+        investment.finalizeInvestment(Map.of(200L, BigDecimal.valueOf(23_456)), finalizedAt.plusMinutes(10));
+
+        assertEquals(SettlementStatus.PENDING, investment.getSettlementStatus());
+        assertEquals(false, investment.hasMissingBuyPrice());
+        assertEquals(finalizedAt, investment.getFinalizedAt());
     }
 }

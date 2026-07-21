@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum NewsErrorCode implements BaseErrorCode {
     NEWS_NOT_PUBLISHED(HttpStatus.FORBIDDEN, "CONTENT_403_001", "아직 공개되지 않은 뉴스입니다."),
+    NEWS_EXPLANATION_NOT_COMPLETED(HttpStatus.CONFLICT, "CONTENT_409_001", "뉴스 해설 카드 생성이 아직 완료되지 않았습니다."),
     NEWS_NOT_FOUND(HttpStatus.NOT_FOUND, "CONTENT_404_001", "존재하지 않는 뉴스입니다."),
     NEWS_TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "CONTENT_404_002", "존재하지 않는 용어입니다."),
 
@@ -22,7 +23,9 @@ public enum NewsErrorCode implements BaseErrorCode {
     NEWS_SELECTION_RESPONSE_INVALID(HttpStatus.BAD_GATEWAY, "CONTENT_502_002", "뉴스 선별 AI 응답 형식이 올바르지 않습니다."),
     ARTICLE_CONTENT_FETCH_FAILED(HttpStatus.BAD_GATEWAY, "CONTENT_502_003", "뉴스 원문을 불러오지 못했습니다."),
     NEWS_RECONSTRUCTION_REQUEST_FAILED(HttpStatus.BAD_GATEWAY, "CONTENT_502_004", "뉴스 재구성 AI 요청에 실패했습니다."),
-    NEWS_RECONSTRUCTION_RESPONSE_INVALID(HttpStatus.BAD_GATEWAY, "CONTENT_502_005", "뉴스 재구성 AI 응답 형식이 올바르지 않습니다.");
+    NEWS_RECONSTRUCTION_RESPONSE_INVALID(HttpStatus.BAD_GATEWAY, "CONTENT_502_005", "뉴스 재구성 AI 응답 형식이 올바르지 않습니다."),
+    NEWS_EXPLANATION_REQUEST_FAILED(HttpStatus.BAD_GATEWAY, "CONTENT_502_006", "뉴스 해설카드 AI 요청에 실패했습니다."),
+    NEWS_EXPLANATION_RESPONSE_INVALID(HttpStatus.BAD_GATEWAY, "CONTENT_502_007", "뉴스 해설카드 AI 응답 형식이 올바르지 않습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

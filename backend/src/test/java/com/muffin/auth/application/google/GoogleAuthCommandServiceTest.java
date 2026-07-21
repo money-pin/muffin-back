@@ -61,11 +61,11 @@ class GoogleAuthCommandServiceTest {
     }
 
     @Test
-    @DisplayName("처음 로그인하는 구글 계정이면 termsAgreed=true일 때 자동 가입되고 토큰이 발급된다")
+    @DisplayName("처음 로그인하는 구글 계정이면 자동 가입되고 토큰이 발급된다(약관도 자동 동의)")
     void authenticate_newAccount_signsUp() {
         stubPayload("google-sub-1", "new@example.com", "홍길동");
 
-        TokenPair result = googleAuthCommandService.authenticate(ID_TOKEN, true);
+        TokenPair result = googleAuthCommandService.authenticate(ID_TOKEN);
 
         assertThat(result.accessToken()).isNotBlank();
         assertThat(result.refreshToken()).isNotBlank();
@@ -82,26 +82,13 @@ class GoogleAuthCommandServiceTest {
     }
 
     @Test
-    @DisplayName("처음 로그인하는 구글 계정인데 termsAgreed=false면 TERMS_NOT_AGREED(AUTH_400_002)")
-    void authenticate_newAccount_termsNotAgreed() {
-        stubPayload("google-sub-2", "new2@example.com", "홍길동");
-
-        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN, false))
-                .isInstanceOf(GeneralException.class)
-                .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
-                        .isEqualTo("AUTH_400_002"));
-
-        assertThat(authRepository.count()).isZero();
-    }
-
-    @Test
-    @DisplayName("이미 가입된 구글 계정이면 termsAgreed와 무관하게 로그인만 처리되고 새 계정을 만들지 않는다")
+    @DisplayName("이미 가입된 구글 계정이면 로그인만 처리되고 새 계정을 만들지 않는다")
     void authenticate_existingAccount_logsIn() {
         stubPayload("google-sub-3", "existing@example.com", "홍길동");
-        googleAuthCommandService.authenticate(ID_TOKEN, true);
+        googleAuthCommandService.authenticate(ID_TOKEN);
         assertThat(authRepository.count()).isEqualTo(1);
 
-        TokenPair result = googleAuthCommandService.authenticate(ID_TOKEN, false);
+        TokenPair result = googleAuthCommandService.authenticate(ID_TOKEN);
 
         assertThat(result.accessToken()).isNotBlank();
         assertThat(authRepository.count()).isEqualTo(1);
@@ -113,7 +100,7 @@ class GoogleAuthCommandServiceTest {
         deletedEmailRepository.save(DeletedEmail.of("deleted@example.com"));
         stubPayload("google-sub-4", "deleted@example.com", "홍길동");
 
-        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN, true))
+        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN))
                 .isInstanceOf(GeneralException.class)
                 .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
                         .isEqualTo("AUTH_409_003"));
@@ -123,7 +110,7 @@ class GoogleAuthCommandServiceTest {
     @DisplayName("탈퇴한 계정이면 WITHDRAWN_ACCOUNT(AUTH_403_002)")
     void authenticate_withdrawnAccount() {
         stubPayload("google-sub-5", "withdrawn@example.com", "홍길동");
-        googleAuthCommandService.authenticate(ID_TOKEN, true);
+        googleAuthCommandService.authenticate(ID_TOKEN);
         User user = userRepository
                 .findById(authRepository
                         .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-5")
@@ -133,7 +120,7 @@ class GoogleAuthCommandServiceTest {
         user.withdraw();
         userRepository.save(user);
 
-        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN, false))
+        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN))
                 .isInstanceOf(GeneralException.class)
                 .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
                         .isEqualTo("AUTH_403_002"));

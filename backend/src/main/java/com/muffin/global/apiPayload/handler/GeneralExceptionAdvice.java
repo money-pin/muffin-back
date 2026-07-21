@@ -16,6 +16,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -120,6 +121,16 @@ public class GeneralExceptionAdvice {
         BaseErrorCode ec = GeneralErrorCode.UNSUPPORTED_MEDIA_TYPE;
 
         String detail = "지원하지 않는 Content-Type 입니다: " + ex.getContentType();
+        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(detail)));
+    }
+
+    // 존재하지 않는 URL 또는 정적 리소스 요청 (404)
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<?>> handleNoResourceFound(NoResourceFoundException ex) {
+        BaseErrorCode ec = GeneralErrorCode.NOT_FOUND;
+
+        String detail = "요청한 경로를 찾을 수 없습니다: " + ex.getResourcePath();
+        log.debug("[NoResourceFound] {}", detail);
         return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(detail)));
     }
 
