@@ -87,6 +87,72 @@ class DailyQuizGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("이전 실패로 UNAVAILABLE 퀴즈 세트가 있으면 삭제 후 다시 생성한다")
+    void generate_retriesWhenUnavailableQuizSetExists() {
+        QuizSet unavailableQuizSet = QuizSet.create(QUIZ_DATE);
+        unavailableQuizSet.unavailable();
+        List<News> newsSources = defaultNewsSources();
+
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.of(unavailableQuizSet));
+        when(newsRepository.findQuizCandidates(
+                        NewsStatus.PENDING,
+                        QUIZ_DATE.atStartOfDay(),
+                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                .thenReturn(newsSources);
+        when(dailyQuizGenerator.generate(any())).thenReturn(generationResult());
+
+        generationService.generate(QUIZ_DATE);
+
+        verify(quizSetRepository).delete(unavailableQuizSet);
+        verify(quizSetRepository).flush();
+
+        ArgumentCaptor<QuizSet> captor = ArgumentCaptor.forClass(QuizSet.class);
+        verify(quizSetRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(QuizSetStatus.READY);
+    }
+
+    @Test
+    @DisplayName("이미 유효한 퀴즈 세트가 있으면 재시도 스케줄러가 호출해도 생성을 건너뛴다")
+    void generate_skipsWhenNonRetryableQuizSetExists() {
+        QuizSet readyQuizSet = readyQuizSet(QUIZ_DATE);
+
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.of(readyQuizSet));
+
+        generationService.generate(QUIZ_DATE);
+
+        verify(dailyQuizGenerator, never()).generate(any());
+        verify(quizSetRepository, never()).delete(any());
+        verify(quizSetRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("AI 근거 문장과 뉴스 본문의 공백 차이는 정규화해서 검증한다")
+    void generate_normalizesSourceSentenceWhitespace() {
+        List<News> newsSources = List.of(
+                pendingNews(1L, "뉴스1", "기준금리가 올랐습니다.\n\n대출 이자 부담이 커졌습니다."),
+                pendingNews(2L, "뉴스2", "코픽스가 상승했습니다. 주택담보대출 금리가 오를 수 있습니다."),
+                pendingNews(3L, "뉴스3", "금융당국이 토스를 금융복합기업집단으로 지정했습니다."));
+
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
+        when(newsRepository.findQuizCandidates(
+                        NewsStatus.PENDING,
+                        QUIZ_DATE.atStartOfDay(),
+                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                .thenReturn(newsSources);
+        when(dailyQuizGenerator.generate(any()))
+                .thenReturn(new DailyQuizGenerationResult(List.of(
+                        question(1, 1L, "기준금리가 올랐습니다. 대출 이자 부담이 커졌습니다."),
+                        question(2, 2L, "코픽스가 상승했습니다."),
+                        question(3, 3L, "금융당국이 토스를 금융복합기업집단으로 지정했습니다."))));
+
+        generationService.generate(QUIZ_DATE);
+
+        ArgumentCaptor<QuizSet> captor = ArgumentCaptor.forClass(QuizSet.class);
+        verify(quizSetRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(QuizSetStatus.READY);
+    }
+
+    @Test
     @DisplayName("같은 날짜 퀴즈 생성이 동시에 호출되어도 AI 생성은 한 번만 실행한다")
     void generate_serializesSameDateGeneration() throws Exception {
         List<News> newsSources = defaultNewsSources();
@@ -344,6 +410,15 @@ class DailyQuizGenerationServiceTest {
         ReflectionTestUtils.setField(news, "id", newsId);
         news.completeReconstruction(title + " 요약", content);
         return news;
+    }
+
+    private static QuizSet readyQuizSet(LocalDate quizDate) {
+        QuizSet quizSet = QuizSet.create(quizDate);
+        quizSet.addQuiz(1L, "질문1", "해설1", 100L, 1, "근거 문장1", QuizDifficulty.EASY);
+        quizSet.addQuiz(2L, "질문2", "해설2", 100L, 2, "근거 문장2", QuizDifficulty.EASY);
+        quizSet.addQuiz(3L, "질문3", "해설3", 100L, 3, "근거 문장3", QuizDifficulty.MEDIUM);
+        quizSet.ready();
+        return quizSet;
     }
 
     private static DailyQuizGenerationResult generationResult() {

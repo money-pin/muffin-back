@@ -7,6 +7,7 @@ import com.muffin.quiz.domain.quizset.Quiz;
 import com.muffin.quiz.domain.quizset.QuizQuestionPolicy;
 import com.muffin.quiz.domain.quizset.QuizSet;
 import com.muffin.quiz.domain.quizset.QuizSetRepository;
+import com.muffin.quiz.domain.quizset.enums.QuizSetStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -62,8 +63,7 @@ public class DailyQuizGenerationService {
 
     /** 같은 날짜 퀴즈 생성은 하나의 JVM 안에서 순차 실행해 OpenAI 중복 호출과 중복 저장을 방지한다. */
     private void generateLocked(LocalDate quizDate) {
-        if (quizSetExists(quizDate)) {
-            log.info("Daily quiz generation skipped: quizDate={} already exists", quizDate);
+        if (!prepareGeneration(quizDate)) {
             return;
         }
 
@@ -83,17 +83,43 @@ public class DailyQuizGenerationService {
                     "Daily quiz generation completed: quizDate={} questionCount={}",
                     quizDate,
                     result.questions().size());
+        } catch (DailyQuizGenerationException exception) {
+            saveUnavailableQuizSetIfAbsent(quizDate);
+            log.error(
+                    "Daily quiz generation validation failed: quizDate={} reason={}",
+                    quizDate,
+                    exception.getReason(),
+                    exception);
         } catch (RuntimeException exception) {
-            if (quizSetExists(quizDate)) {
-                log.info("Daily quiz unavailable save skipped: quizDate={} already exists", quizDate);
-            } else {
-                saveUnavailableQuizSet(quizDate);
-            }
+            saveUnavailableQuizSetIfAbsent(quizDate);
             log.error("Daily quiz generation failed: quizDate={}", quizDate, exception);
         }
     }
 
-    /** 이미 오늘 퀴즈 세트가 있으면 중복 생성하지 않는다. */
+    /**
+     * 생성 시작 전 날짜별 기존 퀴즈 세트를 확인한다.
+     *
+     * <p>READY/PUBLISHED 등 유효한 세트가 있으면 중복 생성을 막고, 이전 생성 실패로 남은 UNAVAILABLE 세트는 삭제해 재시도할 수
+     * 있게 한다.
+     */
+    private boolean prepareGeneration(LocalDate quizDate) {
+        return Boolean.TRUE.equals(transactionTemplate.execute(status -> quizSetRepository
+                .findByQuizDate(quizDate)
+                .map(quizSet -> {
+                    if (quizSet.getStatus() != QuizSetStatus.UNAVAILABLE) {
+                        log.info("Daily quiz generation skipped: quizDate={} status={}", quizDate, quizSet.getStatus());
+                        return false;
+                    }
+
+                    quizSetRepository.delete(quizSet);
+                    quizSetRepository.flush();
+                    log.info("Daily quiz unavailable set cleared for retry: quizDate={}", quizDate);
+                    return true;
+                })
+                .orElse(true)));
+    }
+
+    /** 이미 오늘 퀴즈 세트가 있으면 이용 불가 상태 저장을 건너뛴다. */
     private boolean quizSetExists(LocalDate quizDate) {
         return Boolean.TRUE.equals(transactionTemplate.execute(
                 status -> quizSetRepository.findByQuizDate(quizDate).isPresent()));
@@ -142,17 +168,18 @@ public class DailyQuizGenerationService {
     /** 하루 3문항, 뉴스당 1문항이라는 일일 퀴즈 생성 정책을 저장 전에 검증한다. */
     private void validateResult(List<News> newsSources, DailyQuizGenerationResult result) {
         if (result.questions().size() != DAILY_QUIZ_COUNT) {
-            throw new IllegalStateException("일일 퀴즈는 3문항이어야 합니다.");
+            throw generationException(DailyQuizGenerationFailureReason.INVALID_QUESTION_COUNT, "일일 퀴즈는 3문항이어야 합니다.");
         }
         if (hasDuplicatedQuestionOrder(result.questions())) {
-            throw new IllegalStateException("퀴즈 문항 순서가 중복되었습니다.");
+            throw generationException(DailyQuizGenerationFailureReason.DUPLICATED_QUESTION_ORDER, "퀴즈 문항 순서가 중복되었습니다.");
         }
 
         Map<Long, News> newsById = newsSources.stream().collect(Collectors.toMap(News::getId, Function.identity()));
         Set<Long> questionNewsIds =
                 result.questions().stream().map(DailyQuizQuestionResult::newsId).collect(Collectors.toSet());
         if (!questionNewsIds.equals(newsById.keySet())) {
-            throw new IllegalStateException("각 뉴스마다 정확히 1문항씩 생성되어야 합니다.");
+            throw generationException(
+                    DailyQuizGenerationFailureReason.QUESTION_NEWS_MISMATCH, "각 뉴스마다 정확히 1문항씩 생성되어야 합니다.");
         }
 
         for (DailyQuizQuestionResult question : result.questions()) {
@@ -163,25 +190,31 @@ public class DailyQuizGenerationService {
     /** 문항별 선택지 수, 정답 번호, 근거 문장이 올바른지 확인한다. */
     private void validateQuestion(News news, DailyQuizQuestionResult question) {
         if (question.order() < 1 || question.order() > DAILY_QUIZ_COUNT) {
-            throw new IllegalStateException("퀴즈 문항 순서는 1부터 3 사이여야 합니다.");
+            throw generationException(
+                    DailyQuizGenerationFailureReason.INVALID_QUESTION_ORDER, "퀴즈 문항 순서는 1부터 3 사이여야 합니다.");
         }
         if (question.options().size() != OPTION_COUNT) {
-            throw new IllegalStateException("퀴즈 선택지는 3개여야 합니다.");
+            throw generationException(DailyQuizGenerationFailureReason.INVALID_OPTION_COUNT, "퀴즈 선택지는 3개여야 합니다.");
         }
         if (hasInvalidOptionOrder(question.options())) {
-            throw new IllegalStateException("퀴즈 선택지 순서는 1부터 3까지 중복 없이 존재해야 합니다.");
+            throw generationException(
+                    DailyQuizGenerationFailureReason.INVALID_OPTION_ORDER, "퀴즈 선택지 순서는 1부터 3까지 중복 없이 존재해야 합니다.");
         }
         if (question.correctOptionOrder() < 1 || question.correctOptionOrder() > OPTION_COUNT) {
-            throw new IllegalStateException("정답 선택지 번호는 1부터 3 사이여야 합니다.");
+            throw generationException(
+                    DailyQuizGenerationFailureReason.INVALID_CORRECT_OPTION_ORDER, "정답 선택지 번호는 1부터 3 사이여야 합니다.");
         }
         if (containsNumericRecallPhrase(question.questionText())) {
-            throw new IllegalStateException("단순 수치 암기형 문항은 저장할 수 없습니다.");
+            throw generationException(
+                    DailyQuizGenerationFailureReason.NUMERIC_RECALL_QUESTION, "단순 수치 암기형 문항은 저장할 수 없습니다.");
         }
         if (question.options().stream().noneMatch(option -> option.order() == question.correctOptionOrder())) {
-            throw new IllegalStateException("정답 선택지 번호에 해당하는 선택지가 없습니다.");
+            throw generationException(
+                    DailyQuizGenerationFailureReason.CORRECT_OPTION_NOT_FOUND, "정답 선택지 번호에 해당하는 선택지가 없습니다.");
         }
-        if (!news.getContent().contains(question.sourceSentence())) {
-            throw new IllegalStateException("sourceSentence는 뉴스 본문에 존재해야 합니다.");
+        if (!normalizeText(news.getContent()).contains(normalizeText(question.sourceSentence()))) {
+            throw generationException(
+                    DailyQuizGenerationFailureReason.SOURCE_SENTENCE_NOT_FOUND, "sourceSentence는 뉴스 본문에 존재해야 합니다.");
         }
     }
 
@@ -201,6 +234,23 @@ public class DailyQuizGenerationService {
 
     private static boolean containsNumericRecallPhrase(String questionText) {
         return QuizQuestionPolicy.NUMERIC_RECALL_QUESTION_PHRASES.stream().anyMatch(questionText::contains);
+    }
+
+    private static String normalizeText(String value) {
+        return value == null ? "" : value.replaceAll("\\s+", " ").trim();
+    }
+
+    private static DailyQuizGenerationException generationException(
+            DailyQuizGenerationFailureReason reason, String message) {
+        return new DailyQuizGenerationException(reason, message);
+    }
+
+    private void saveUnavailableQuizSetIfAbsent(LocalDate quizDate) {
+        if (quizSetExists(quizDate)) {
+            log.info("Daily quiz unavailable save skipped: quizDate={} already exists", quizDate);
+            return;
+        }
+        saveUnavailableQuizSet(quizDate);
     }
 
     /** AI 생성 실패가 사용자 조회 API에서 명확히 드러나도록 이용 불가 상태의 빈 퀴즈 세트를 저장한다. */

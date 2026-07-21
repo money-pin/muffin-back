@@ -402,7 +402,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 || containsForbiddenQuestionPhrase(question.questionText())) {
             throw new IllegalStateException("OpenAI returned invalid quiz question");
         }
-        if (!source.rewrittenBody().contains(question.sourceSentence())) {
+        if (!normalizeText(source.rewrittenBody()).contains(normalizeText(question.sourceSentence()))) {
             throw new IllegalStateException("OpenAI returned source_sentence that is not in news body");
         }
         if (question.options().size() != OPTION_COUNT || hasDuplicatedOptionOrder(question.options())) {
