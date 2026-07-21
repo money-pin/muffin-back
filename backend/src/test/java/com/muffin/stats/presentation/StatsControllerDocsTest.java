@@ -1,7 +1,5 @@
 package com.muffin.stats.presentation;
 
-import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
-import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
@@ -72,12 +70,10 @@ class StatsControllerDocsTest {
                 InvestmentTypeResponse.of(InvestmentType.GROWTH, "기초 자산 44%, 기술주 56%, 실물 경제 0%"));
         MockMvc mockMvc = mockMvcWith(summaryStub(response), restDocumentation);
 
-        mockMvc.perform(get("/api/stats/summary").header("X-User-Id", "1"))
+        mockMvc.perform(get("/api/stats/summary"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "stats-summary",
-                        requestHeaders(
-                                headerWithName("X-User-Id").description("사용자 식별자(임시). 인증 구현 후 토큰에서 해석되어 요청에서 제거될 예정")),
                         responseFields(
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드"),
@@ -112,7 +108,7 @@ class StatsControllerDocsTest {
                 new StatsSummaryResponse(null, 0L, new BigDecimal("0.0"), List.of(), List.of(), null);
         MockMvc mockMvc = mockMvcWith(summaryStub(response), restDocumentation);
 
-        mockMvc.perform(get("/api/stats/summary").header("X-User-Id", "1"))
+        mockMvc.perform(get("/api/stats/summary"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "stats-summary-empty",

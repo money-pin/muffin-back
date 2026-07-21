@@ -55,9 +55,6 @@ public class SecurityConfig {
                                 .authenticated()
                                 .requestMatchers("/api/news/*/sector-impacts")
                                 .authenticated()
-                                // TODO : 확인필요 - 이슈 #40 기존 정산 결과 API의 임시 X-User-Id 계약을 유지하기 위해 인증 예외로 둠.
-                                .requestMatchers("/api/investments/settlement/result")
-                                .permitAll()
                                 .requestMatchers("/api/investments/**", "/api/stats/**")
                                 .authenticated()
                                 .anyRequest()
