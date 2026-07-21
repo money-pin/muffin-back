@@ -20,7 +20,6 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -37,7 +36,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class InvestmentQueryService {
 
     private static final long INITIAL_ASSET = 1_000_000L;
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final LocalTime SETTLEMENT_START = LocalTime.of(9, 0);
     private static final LocalTime INVESTMENT_START = LocalTime.of(10, 0);
     private final UserAssetRepository userAssetRepository;
@@ -100,7 +98,7 @@ public class InvestmentQueryService {
     }
 
     private ZonedDateTime now() {
-        return ZonedDateTime.now(clock).withZoneSameInstant(KST);
+        return ZonedDateTime.now(clock);
     }
 
     private TodayInvestmentResponse confirmedResponse(Investment investment, long totalAsset) {
@@ -120,8 +118,11 @@ public class InvestmentQueryService {
                 .sorted(Comparator.comparing(TodayInvestmentSectorResponse::sectorCode))
                 .toList();
 
-        OffsetDateTime confirmDeadline =
-                investment.getInvestDate().plusDays(1).atStartOfDay(KST).toOffsetDateTime();
+        OffsetDateTime confirmDeadline = investment
+                .getInvestDate()
+                .plusDays(1)
+                .atStartOfDay(clock.getZone())
+                .toOffsetDateTime();
         return TodayInvestmentResponse.confirmed(
                 confirmDeadline, totalAsset - investment.getTotalAmount(), investment.getTotalAmount(), sectors);
     }
@@ -167,6 +168,6 @@ public class InvestmentQueryService {
     }
 
     private OffsetDateTime investmentStartAt(LocalDate date) {
-        return date.atTime(INVESTMENT_START).atZone(KST).toOffsetDateTime();
+        return date.atTime(INVESTMENT_START).atZone(clock.getZone()).toOffsetDateTime();
     }
 }
