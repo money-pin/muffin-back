@@ -37,6 +37,9 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
     implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
     implementation "org.jsoup:jsoup:1.22.2"
+    // Spring Boot 4부터 자동설정이 모듈별로 분리되어, flyway-core만으로는 마이그레이션이 실행되지 않는다.
+    // spring-boot-flyway가 FlywayAutoConfiguration을 제공한다.
+    implementation 'org.springframework.boot:spring-boot-flyway'
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-mysql'
     annotationProcessor "com.querydsl:querydsl-apt:${querydslVersion}:jakarta"

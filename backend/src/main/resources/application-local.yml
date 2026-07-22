@@ -6,13 +6,17 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      # 로컬도 운영과 동일하게 Flyway가 스키마를 관리하고 Hibernate는 검증만 한다.
+      # 이렇게 해야 마이그레이션 파일과 엔티티의 불일치(drift)를 배포 전에 로컬에서 바로 발견할 수 있다.
+      ddl-auto: validate
     show-sql: true
   flyway:
-    # MVP 개발 중에는 로컬 스키마를 Hibernate(ddl-auto: update)가 관리한다.
-    # 마이그레이션 파일(V1__init.sql)은 첫 배포 전에 1회 생성한다.
-    # 운영 적용 이후의 스키마 변경은 기존 파일을 수정하지 않고 V2__, V3__ 새 버전으로 누적한다.
-    enabled: false
+    # 스키마 변경 방법:
+    #  - 첫 운영 배포 "전"(현재): V1__init.sql을 재생성해도 된다.
+    #    scripts/generate-flyway-baseline.sh --force 실행 후, 팀원 전원 로컬 DB drop 후 재기동 (공지 필수)
+    #  - 첫 운영 배포 "후": 기존 파일은 절대 수정하지 않고 V2__, V3__ 새 버전 파일로만 누적한다.
+    #    (Flyway가 체크섬을 저장하므로 기존 파일을 고치면 배포가 깨진다)
+    enabled: true
 
 logging:
   level:
