@@ -32,7 +32,12 @@ public class RssFeedWriter {
                 continue;
             }
             News news = News.processing(
-                    category.getId(), article.title(), publisher, article.publishedAt(), null, article.url());
+                    category.getId(),
+                    article.title(),
+                    publisher,
+                    article.publishedAt(),
+                    article.thumbnailUrl(),
+                    article.url());
             collectedIds.add(newsRepository.save(news).getId());
         }
         return collectedIds;

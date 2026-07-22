@@ -106,8 +106,12 @@ public class HttpRssFeedClient implements RssFeedClient {
             if (title.isBlank() || url.isBlank()) {
                 continue;
             }
-            articles.add(
-                    new RssArticle(title, url, text(item, "description"), parsePublishedAt(text(item, "pubDate"))));
+            articles.add(new RssArticle(
+                    title,
+                    url,
+                    text(item, "description"),
+                    thumbnailUrl(item),
+                    parsePublishedAt(text(item, "pubDate"))));
         }
         return articles;
     }
@@ -116,6 +120,45 @@ public class HttpRssFeedClient implements RssFeedClient {
     private static String text(Element element, String tagName) {
         NodeList nodes = element.getElementsByTagName(tagName);
         return nodes.getLength() == 0 ? "" : nodes.item(0).getTextContent().strip();
+    }
+
+    /** news.thumbnail_url 컬럼 길이. 넘는 URL은 잘라 저장할 수 없으므로 버린다. */
+    private static final int MAX_THUMBNAIL_URL_LENGTH = 1_000;
+
+    /**
+     * item에서 대표 이미지 URL을 추출한다. 매일경제는 {@code <media:content medium="image" url="..."/>}를 쓰며,
+     * 다른 피드 대비 {@code <media:thumbnail>}과 {@code <enclosure type="image/...">}도 순서대로 확인한다. 없으면 null.
+     */
+    private static String thumbnailUrl(Element item) {
+        String mediaContent = attributeOf(item, "media:content", "url");
+        if (mediaContent != null) {
+            return mediaContent;
+        }
+        String mediaThumbnail = attributeOf(item, "media:thumbnail", "url");
+        if (mediaThumbnail != null) {
+            return mediaThumbnail;
+        }
+        NodeList enclosures = item.getElementsByTagName("enclosure");
+        for (int index = 0; index < enclosures.getLength(); index++) {
+            Element enclosure = (Element) enclosures.item(index);
+            if (enclosure.getAttribute("type").startsWith("image/")) {
+                return normalizeUrl(enclosure.getAttribute("url"));
+            }
+        }
+        return null;
+    }
+
+    private static String attributeOf(Element item, String tagName, String attributeName) {
+        NodeList nodes = item.getElementsByTagName(tagName);
+        return nodes.getLength() == 0 ? null : normalizeUrl(((Element) nodes.item(0)).getAttribute(attributeName));
+    }
+
+    private static String normalizeUrl(String url) {
+        String stripped = url.strip();
+        if (stripped.isEmpty() || stripped.length() > MAX_THUMBNAIL_URL_LENGTH) {
+            return null;
+        }
+        return stripped;
     }
 
     /** RSS 발행 시각을 KST 기준으로 변환하고 파싱 실패 시 현재 시각을 사용한다. */

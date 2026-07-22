@@ -87,6 +87,6 @@ class RssCollectionServiceTest {
     }
 
     private static RssArticle article(String title, String url) {
-        return new RssArticle(title, url, "요약", LocalDateTime.of(2026, 7, 12, 6, 0));
+        return new RssArticle(title, url, "요약", null, LocalDateTime.of(2026, 7, 12, 6, 0));
     }
 }
