@@ -121,7 +121,7 @@ class ScrapControllerDocsTest {
     }
 
     private ScrapCommandService stubReturning(ScrapResponse response) {
-        return new ScrapCommandService(null, null, null) {
+        return new ScrapCommandService(null, null, null, null) {
             @Override
             public ScrapResponse scrap(Long userId, Long newsId) {
                 return response;
@@ -135,7 +135,7 @@ class ScrapControllerDocsTest {
     }
 
     private ScrapCommandService stubThrowing(NewsErrorCode errorCode) {
-        return new ScrapCommandService(null, null, null) {
+        return new ScrapCommandService(null, null, null, null) {
             @Override
             public ScrapResponse scrap(Long userId, Long newsId) {
                 throw new NewsException(errorCode);

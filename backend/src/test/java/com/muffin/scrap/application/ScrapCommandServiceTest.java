@@ -24,6 +24,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /** 스크랩/해제의 멱등성과 뉴스 존재/공개 검증을 단위로 검증한다. 저장소는 Mockito mock으로 대체한다. */
@@ -35,15 +36,17 @@ class ScrapCommandServiceTest {
     private static final LocalDateTime FIRST_SCRAPPED_AT = LocalDateTime.of(2026, 5, 8, 14, 30, 0);
 
     private ScrapRepository scrapRepository;
+    private ScrapWriter scrapWriter;
     private NewsRepository newsRepository;
     private ScrapCommandService scrapCommandService;
 
     @BeforeEach
     void setUp() {
         scrapRepository = mock(ScrapRepository.class);
+        scrapWriter = mock(ScrapWriter.class);
         newsRepository = mock(NewsRepository.class);
         Clock clock = Clock.fixed(FIRST_SCRAPPED_AT.atZone(KST).toInstant(), KST);
-        scrapCommandService = new ScrapCommandService(scrapRepository, newsRepository, clock);
+        scrapCommandService = new ScrapCommandService(scrapRepository, scrapWriter, newsRepository, clock);
     }
 
     @Test
@@ -51,14 +54,14 @@ class ScrapCommandServiceTest {
     void scrap_savesWhenAbsent() {
         givenPublishedNews();
         when(scrapRepository.findByUserIdAndNewsId(USER_ID, NEWS_ID)).thenReturn(Optional.empty());
-        when(scrapRepository.saveAndFlush(any(Scrap.class))).thenReturn(scrapWithCreatedAt(FIRST_SCRAPPED_AT));
+        when(scrapWriter.insert(USER_ID, NEWS_ID)).thenReturn(scrapWithCreatedAt(FIRST_SCRAPPED_AT));
 
         ScrapResponse response = scrapCommandService.scrap(USER_ID, NEWS_ID);
 
         assertThat(response.newsId()).isEqualTo(NEWS_ID);
         assertThat(response.isScrapped()).isTrue();
         assertThat(response.scrappedAt()).isEqualTo(OffsetDateTime.parse("2026-05-08T14:30:00+09:00"));
-        verify(scrapRepository).saveAndFlush(any(Scrap.class));
+        verify(scrapWriter).insert(USER_ID, NEWS_ID);
     }
 
     @Test
@@ -72,7 +75,7 @@ class ScrapCommandServiceTest {
 
         assertThat(response.isScrapped()).isTrue();
         assertThat(response.scrappedAt()).isEqualTo(OffsetDateTime.parse("2026-05-08T14:30:00+09:00"));
-        verify(scrapRepository, never()).saveAndFlush(any(Scrap.class));
+        verify(scrapWriter, never()).insert(any(), any());
     }
 
     @Test
@@ -84,7 +87,7 @@ class ScrapCommandServiceTest {
                 .isInstanceOf(NewsException.class)
                 .extracting("errorCode")
                 .isEqualTo(NewsErrorCode.NEWS_NOT_FOUND);
-        verify(scrapRepository, never()).saveAndFlush(any(Scrap.class));
+        verify(scrapWriter, never()).insert(any(), any());
     }
 
     @Test
@@ -99,7 +102,34 @@ class ScrapCommandServiceTest {
                 .isInstanceOf(NewsException.class)
                 .extracting("errorCode")
                 .isEqualTo(NewsErrorCode.NEWS_NOT_PUBLISHED);
-        verify(scrapRepository, never()).saveAndFlush(any(Scrap.class));
+        verify(scrapWriter, never()).insert(any(), any());
+    }
+
+    @Test
+    @DisplayName("동시 스크랩으로 삽입이 유니크 제약에 걸리면 이미 저장된 행을 재조회해 반환한다")
+    void scrap_recoversExistingOnConcurrentInsert() {
+        givenPublishedNews();
+        // 첫 조회는 없음(삽입 시도) → 삽입이 동시 삽입과 충돌 → 두 번째 조회에서 이미 저장된 행 발견
+        when(scrapRepository.findByUserIdAndNewsId(USER_ID, NEWS_ID))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(scrapWithCreatedAt(FIRST_SCRAPPED_AT)));
+        when(scrapWriter.insert(USER_ID, NEWS_ID)).thenThrow(new DataIntegrityViolationException("duplicate"));
+
+        ScrapResponse response = scrapCommandService.scrap(USER_ID, NEWS_ID);
+
+        assertThat(response.isScrapped()).isTrue();
+        assertThat(response.scrappedAt()).isEqualTo(OffsetDateTime.parse("2026-05-08T14:30:00+09:00"));
+    }
+
+    @Test
+    @DisplayName("삽입 충돌 후에도 행을 찾지 못하면 원래 예외를 다시 던진다")
+    void scrap_rethrowsWhenRecoveryFindsNothing() {
+        givenPublishedNews();
+        when(scrapRepository.findByUserIdAndNewsId(USER_ID, NEWS_ID)).thenReturn(Optional.empty());
+        when(scrapWriter.insert(USER_ID, NEWS_ID)).thenThrow(new DataIntegrityViolationException("duplicate"));
+
+        assertThatThrownBy(() -> scrapCommandService.scrap(USER_ID, NEWS_ID))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
