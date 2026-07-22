@@ -10,7 +10,8 @@ spring:
     show-sql: true
   flyway:
     # MVP 개발 중에는 로컬 스키마를 Hibernate(ddl-auto: update)가 관리한다.
-    # 마이그레이션 파일(V1__init.sql)은 첫 배포 직전에 생성/갱신한다.
+    # 마이그레이션 파일(V1__init.sql)은 첫 배포 전에 1회 생성한다.
+    # 운영 적용 이후의 스키마 변경은 기존 파일을 수정하지 않고 V2__, V3__ 새 버전으로 누적한다.
     enabled: false
 
 logging:
