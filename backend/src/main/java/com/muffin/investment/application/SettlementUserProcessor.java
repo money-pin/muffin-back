@@ -12,6 +12,7 @@ import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.PriceCollectionStatus;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -39,6 +40,7 @@ public class SettlementUserProcessor {
     private final InvestmentRepository investmentRepository;
     private final UserAssetRepository userAssetRepository;
     private final ProfitSummaryRepository profitSummaryRepository;
+    private final Clock clock;
 
     /**
      * 유저 1명의 확정 투자를 정산한다.
@@ -72,7 +74,7 @@ public class SettlementUserProcessor {
             }
         }
 
-        LocalDateTime settledAt = LocalDateTime.now();
+        LocalDateTime settledAt = LocalDateTime.now(clock);
         investment.settle(settledAt);
 
         applyToUserAsset(investment, settledAt);
@@ -88,7 +90,7 @@ public class SettlementUserProcessor {
         if (isTerminal(investment)) {
             return;
         }
-        LocalDateTime settledAt = LocalDateTime.now();
+        LocalDateTime settledAt = LocalDateTime.now(clock);
         investment.cancelSettlement(settledAt);
         applyNoChangeToUserAsset(investment, settledAt); // 총자산 유지, 일간 변동 0/정산 시각 갱신
         upsertProfitSummary(investment); // 손익 0행
@@ -103,7 +105,7 @@ public class SettlementUserProcessor {
         if (isTerminal(investment)) {
             return;
         }
-        LocalDateTime settledAt = LocalDateTime.now();
+        LocalDateTime settledAt = LocalDateTime.now(clock);
         investment.markNoSettlement(settledAt);
         applyNoChangeToUserAsset(investment, settledAt); // 총자산 유지, 일간 변동 0/정산 시각 갱신
         upsertProfitSummary(investment); // 손익 0행

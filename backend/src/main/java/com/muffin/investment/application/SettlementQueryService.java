@@ -3,8 +3,8 @@ package com.muffin.investment.application;
 import com.muffin.investment.application.projection.SettlementResultProjection;
 import com.muffin.investment.presentation.dto.SettlementReason;
 import com.muffin.investment.presentation.dto.SettlementResultResponse;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,13 +16,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SettlementQueryService {
 
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
-
     private final SettlementQueryRepository settlementQueryRepository;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public SettlementResultResponse getRecentSettlementResult(Long userId) {
-        LocalDate today = LocalDate.now(KST);
+        LocalDate today = LocalDate.now(clock);
         return settlementQueryRepository
                 .findRecentDueSettlement(userId, today)
                 .map(this::toResponse)

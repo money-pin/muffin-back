@@ -41,9 +41,17 @@ class InvestmentSecurityIntegrationTest {
     }
 
     @Test
-    @DisplayName("다른 담당자의 정산 결과 API는 기존 임시 헤더 계약을 유지한다")
-    void settlementResult_keepsExistingHeaderContract() throws Exception {
-        mockMvc.perform(get("/api/investments/settlement/result").header("X-User-Id", 1L))
+    @DisplayName("정산 결과 API는 JWT 인증이 없으면 401을 반환한다")
+    void settlementResult_requiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/investments/settlement/result")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("정산 결과 API는 JWT 사용자 ID를 사용한다")
+    void settlementResult_usesAuthenticatedUser() throws Exception {
+        String bearer = "Bearer " + accessTokenProvider.issue(1L, "USER");
+
+        mockMvc.perform(get("/api/investments/settlement/result").header("Authorization", bearer))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.reason").value("NO_INVESTMENT"));
     }
