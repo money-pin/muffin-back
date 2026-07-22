@@ -114,7 +114,12 @@ public class HttpNewsArticleContentClient implements NewsArticleContentClient {
         if (content.length() <= maxLength) {
             return content;
         }
-        return content.substring(0, maxLength);
+        int end = maxLength;
+        // 이모지 같은 보충 문자(서로게이트 쌍)의 중간을 자르면 깨진 문자가 AI 요청에 섞이므로 경계를 한 칸 당긴다.
+        if (Character.isHighSurrogate(content.charAt(end - 1))) {
+            end--;
+        }
+        return content.substring(0, end);
     }
 
     /** 네트워크 오류 또는 재시도 가능한 HTTP 상태인지 확인한다. */

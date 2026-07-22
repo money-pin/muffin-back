@@ -9,6 +9,7 @@ import com.muffin.news.application.reconstruction.SectorImpactResult;
 import com.muffin.news.domain.sectorimpact.enums.ImpactType;
 import com.muffin.news.infrastructure.retry.RetryExecutor;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,12 +35,48 @@ public class OpenAiRewriter implements NewsRewriter {
     private static final int MAX_BODY_LENGTH = 1_000;
 
     private static final Set<String> WARNING_FLAGS = Set.of("수치_불확실", "날짜_불명확", "주체_모호");
-    private static final List<String> SECTOR_CODES = List.of(
-            "DEPOSIT", "GOLD", "BOND", "USD", "TECH", "SEMICONDUCTOR", "BIO", "AUTO", "ENERGY", "FINANCE", "DEFENSE");
+
+    /**
+     * 분석 대상 섹터 코드와 프롬프트용 설명. 이 맵이 프롬프트의 [분석 대상 섹터] 목록과 JSON Schema enum의 단일
+     * 소스다. {@link com.muffin.sector.application.seed.SectorSeedData#SECTORS}의 12개 코드와 일치해야 하며,
+     * 어긋나면 저장 시점의 섹터 조회에서 실패해 해당 뉴스가 FAILED 처리된다.
+     */
+    private static final Map<String, String> SECTOR_DESCRIPTIONS = sectorDescriptions();
+
+    private static final List<String> SECTOR_CODES = List.copyOf(SECTOR_DESCRIPTIONS.keySet());
     private static final List<String> IMPACT_TYPES =
             Arrays.stream(ImpactType.values()).map(Enum::name).toList();
 
-    private static final String INSTRUCTIONS =
+    private static Map<String, String> sectorDescriptions() {
+        Map<String, String> descriptions = new LinkedHashMap<>();
+        descriptions.put("DEPOSIT", "은행 예금, 적금, CD금리, 기준금리");
+        descriptions.put("GOLD", "실물 금, 금 가격, 귀금속");
+        descriptions.put("BOND", "국고채, 회사채, 채권금리");
+        descriptions.put("USD", "달러·원 환율, 달러 가치, 외환시장");
+        descriptions.put("TECH", "글로벌 IT, 소프트웨어, 플랫폼, 빅테크");
+        descriptions.put("SEMICONDUCTOR", "반도체 설계, 제조, 소재, 장비");
+        descriptions.put("BIO", "신약 개발, 제약, 의료기기, 헬스케어");
+        descriptions.put("CRYPTO", "비트코인 등 암호화폐, 가상자산 시장, 관련 규제");
+        descriptions.put("AUTO", "완성차, 전기차, 자동차 부품");
+        descriptions.put("ENERGY", "원유, 천연가스, 정유, 신재생에너지");
+        descriptions.put("FINANCE", "은행, 보험, 증권사 등 금융회사");
+        descriptions.put("DEFENSE", "방위산업, 무기체계, 항공우주");
+        return Collections.unmodifiableMap(descriptions);
+    }
+
+    // 섹터 목록과 개수를 SECTOR_DESCRIPTIONS에서 생성해 프롬프트와 스키마가 어긋날 수 없게 한다.
+    private static final String INSTRUCTIONS = buildInstructions();
+
+    private static String buildInstructions() {
+        return INSTRUCTIONS_TEMPLATE.formatted(
+                SECTOR_CODES.size(),
+                SECTOR_DESCRIPTIONS.entrySet().stream()
+                        .map(entry -> "- " + entry.getKey() + ": " + entry.getValue())
+                        .collect(Collectors.joining("\n")),
+                SECTOR_CODES.size());
+    }
+
+    private static final String INSTRUCTIONS_TEMPLATE =
             """
         당신은 금융 입문자를 위한 경제 뉴스 편집자이자 금융시장 분석가다.
 
@@ -47,7 +84,7 @@ public class OpenAiRewriter implements NewsRewriter {
 
         1. 한 줄 요약(summary)
         2. 금융 입문자용 재구성 본문(rewritten_body)
-        3. 11개 자산 섹터별 영향도(sector_impacts)
+        3. %d개 자산 섹터별 영향도(sector_impacts)
         4. 원문 정보의 불명확성을 나타내는 경고(warning_flags)
 
         [공통 원칙]
@@ -78,17 +115,7 @@ public class OpenAiRewriter implements NewsRewriter {
 
         [분석 대상 섹터]
 
-        - DEPOSIT: 은행 예금, 적금, CD금리, 기준금리
-        - GOLD: 실물 금, 금 가격, 귀금속
-        - BOND: 국고채, 회사채, 채권금리
-        - USD: 달러·원 환율, 달러 가치, 외환시장
-        - TECH: 글로벌 IT, 소프트웨어, 플랫폼, 빅테크
-        - SEMICONDUCTOR: 반도체 설계, 제조, 소재, 장비
-        - BIO: 신약 개발, 제약, 의료기기, 헬스케어
-        - AUTO: 완성차, 전기차, 자동차 부품
-        - ENERGY: 원유, 천연가스, 정유, 신재생에너지
-        - FINANCE: 은행, 보험, 증권사 등 금융회사
-        - DEFENSE: 방위산업, 무기체계, 항공우주
+        %s
 
         [영향도 등급]
 
@@ -100,14 +127,11 @@ public class OpenAiRewriter implements NewsRewriter {
 
         [섹터 영향도 판단 규칙]
 
-        - 11개 섹터를 모두 정확히 한 번씩 포함하라.
+        - %d개 섹터를 모두 정확히 한 번씩 포함하라.
         - 원문에 명확한 근거가 없으면 반드시 NEUTRAL로 판단하라.
         - 단순한 추측이나 약한 간접 연관에는 STRONG_POSITIVE 또는 STRONG_NEGATIVE를 사용하지 마라.
         - STRONG_POSITIVE와 STRONG_NEGATIVE는 해당 섹터가 뉴스의 직접적인 주제일 때만 사용하라.
         - 긍정적 영향과 부정적 영향이 함께 존재하면 원문에서 더 직접적이고 명확한 영향을 기준으로 판단하라.
-        - NEUTRAL인 경우 reason은 null로 작성하라.
-        - NEUTRAL이 아닌 경우 원문에 근거한 이유를 한 문장으로 작성하라.
-        - reason에는 투자 권유나 원문에 없는 전망을 포함하지 마라.
 
         [warning_flags 작성 규칙]
 
@@ -128,13 +152,11 @@ public class OpenAiRewriter implements NewsRewriter {
           "sector_impacts": [
             {
               "sector_code": "DEPOSIT",
-              "impact": "NEUTRAL",
-              "reason": null
+              "impact": "NEUTRAL"
             },
             {
               "sector_code": "GOLD",
-              "impact": "POSITIVE",
-              "reason": "금융시장 불확실성이 커지면서 안전자산인 금에 대한 관심이 높아질 수 있습니다."
+              "impact": "POSITIVE"
             }
           ],
           "warning_flags": []
@@ -263,10 +285,8 @@ public class OpenAiRewriter implements NewsRewriter {
                         "sector_code",
                         Map.of("type", "string", "enum", SECTOR_CODES),
                         "impact",
-                        Map.of("type", "string", "enum", IMPACT_TYPES),
-                        "reason",
-                        Map.of("type", List.of("string", "null"))));
-        itemSchema.put("required", List.of("sector_code", "impact", "reason"));
+                        Map.of("type", "string", "enum", IMPACT_TYPES)));
+        itemSchema.put("required", List.of("sector_code", "impact"));
         itemSchema.put("additionalProperties", false);
 
         return Map.of(
@@ -304,10 +324,7 @@ public class OpenAiRewriter implements NewsRewriter {
                 .valueStream()
                 .map(impact -> new SectorImpactResult(
                         impact.path("sector_code").asText(),
-                        ImpactType.valueOf(impact.path("impact").asText()),
-                        impact.path("reason").isNull()
-                                ? null
-                                : impact.path("reason").asText()))
+                        ImpactType.valueOf(impact.path("impact").asText())))
                 .toList();
 
         Set<String> returnedSectorCodes =

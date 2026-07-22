@@ -24,7 +24,9 @@ public class NewsPublicationService {
 
         for (News news : pendingNews) {
             if (!news.hasReconstructionResult()) {
-                log.warn("News publication skipped: reconstruction result is missing, newsId={}", news.getId());
+                // 재구성 결과 없는 PENDING은 다시 처리될 경로가 없으므로, 매일 스킵을 반복하지 않고 실패로 종결한다.
+                log.error("News publication failed: reconstruction result is missing, newsId={}", news.getId());
+                news.fail();
                 continue;
             }
 

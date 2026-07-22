@@ -64,14 +64,11 @@ class NewsReconstructionServiceTest {
         ReflectionTestUtils.setField(sector, "id", 10L);
         when(newsRepository.findById(newsId)).thenReturn(Optional.of(news));
         when(articleContentClient.fetch(originalUrl)).thenReturn("원문 본문");
-        when(sectorRepository.findBySectorCode("GOLD")).thenReturn(Optional.of(sector));
+        when(sectorRepository.findAll()).thenReturn(List.of(sector));
         when(newsRewriter.rewrite(new NewsReconstructionRequest(
                         news.getTitle(), news.getPublisher(), news.getPublishedAt(), "원문 본문")))
                 .thenReturn(new NewsReconstructionResult(
-                        "한 줄 요약",
-                        "재구성된 본문",
-                        List.of(new SectorImpactResult("GOLD", ImpactType.POSITIVE, "금 가격 상승 가능성")),
-                        List.of()));
+                        "한 줄 요약", "재구성된 본문", List.of(new SectorImpactResult("GOLD", ImpactType.POSITIVE)), List.of()));
 
         reconstructionService.reconstruct(List.of(newsId));
 
@@ -112,14 +109,11 @@ class NewsReconstructionServiceTest {
 
         when(newsRepository.findById(newsId)).thenReturn(Optional.of(news), Optional.of(afterRollback));
         when(articleContentClient.fetch(originalUrl)).thenReturn("원문 본문");
-        when(sectorRepository.findBySectorCode("GOLD")).thenReturn(Optional.of(sector));
+        when(sectorRepository.findAll()).thenReturn(List.of(sector));
         when(newsRewriter.rewrite(new NewsReconstructionRequest(
                         news.getTitle(), news.getPublisher(), news.getPublishedAt(), "원문 본문")))
                 .thenReturn(new NewsReconstructionResult(
-                        "한 줄 요약",
-                        "재구성된 본문",
-                        List.of(new SectorImpactResult("GOLD", ImpactType.POSITIVE, "금 가격 상승 가능성")),
-                        List.of()));
+                        "한 줄 요약", "재구성된 본문", List.of(new SectorImpactResult("GOLD", ImpactType.POSITIVE)), List.of()));
         when(newsSectorImpactRepository.saveAll(anyList())).thenThrow(new IllegalStateException("db unavailable"));
 
         reconstructionService.reconstruct(List.of(newsId));
