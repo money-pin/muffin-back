@@ -8,6 +8,10 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+  flyway:
+    # MVP 개발 중에는 로컬 스키마를 Hibernate(ddl-auto: update)가 관리한다.
+    # 마이그레이션 파일(V1__init.sql)은 첫 배포 직전에 생성/갱신한다.
+    enabled: false
 
 logging:
   level:
