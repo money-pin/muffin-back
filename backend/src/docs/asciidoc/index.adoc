@@ -455,3 +455,54 @@ include::{snippets}/stats-history-invalid-period/response-fields.adoc[]
 |400|STATS_400_003|조회 기준 시점(date) 형식이 조회 기간과 맞지 않습니다.|`date` 형식이 `period` 규격과 불일치(예: MONTH에 `2026-13`)
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |===
+
+[[news-scrap]]
+== 뉴스 스크랩 / 해제 (CONTENT-06)
+
+관심 있는 뉴스를 저장하거나 저장을 해제한다. 둘 다 **멱등** 연산이라 같은 요청을 여러 번 보내도 상태가 같다.
+
+* `PUT /api/news/{newsId}/scrap`: 스크랩. 이미 스크랩한 뉴스에 다시 요청해도 최초 저장 시각(`scrappedAt`)을 유지한 채 성공한다. 공개(PUBLISHED)된 뉴스만 스크랩할 수 있다.
+* `DELETE /api/news/{newsId}/scrap`: 스크랩 해제. 스크랩하지 않은 뉴스에 요청해도 성공하며, 공개 상태와 무관하게 해제할 수 있다.
+
+NOTE: `scrappedAt`은 KST 오프셋(`+09:00`)을 포함하며, 해제 응답에서는 생략된다.
+
+=== 요청 - 스크랩
+
+include::{snippets}/scrap-create/http-request.adoc[]
+include::{snippets}/scrap-create/path-parameters.adoc[]
+
+=== 응답 - 스크랩 성공
+
+include::{snippets}/scrap-create/http-response.adoc[]
+include::{snippets}/scrap-create/response-fields.adoc[]
+
+=== 요청 - 스크랩 해제
+
+include::{snippets}/scrap-delete/http-request.adoc[]
+include::{snippets}/scrap-delete/path-parameters.adoc[]
+
+=== 응답 - 해제 성공
+
+include::{snippets}/scrap-delete/http-response.adoc[]
+include::{snippets}/scrap-delete/response-fields.adoc[]
+
+=== 응답 - 실패(존재하지 않는 뉴스)
+
+include::{snippets}/scrap-not-found/http-response.adoc[]
+include::{snippets}/scrap-not-found/response-fields.adoc[]
+
+=== 응답 - 실패(아직 공개되지 않은 뉴스, 스크랩 시)
+
+include::{snippets}/scrap-not-published/http-response.adoc[]
+include::{snippets}/scrap-not-published/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|403|CONTENT_403_001|아직 공개되지 않은 뉴스입니다.|스크랩(PUT) 시 대상 뉴스가 PUBLISHED 상태가 아님(해제에는 적용 안 함)
+|404|CONTENT_404_001|존재하지 않는 뉴스입니다.|해당 `newsId`의 뉴스가 없거나 삭제됨
+|===
