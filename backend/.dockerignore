@@ -1,0 +1,20 @@
+# 빌드 컨텍스트를 최소화한다.
+# 주의: Dockerfile이 build/libs 의 jar를 복사하므로 build/ 전체를 제외하면 안 된다.
+build/*
+!build/libs
+build/libs/*
+!build/libs/*-SNAPSHOT.jar
+
+src/
+.gradle/
+gradle/
+gradlew
+gradlew.bat
+build.gradle
+settings.gradle
+scripts/
+
+.git/
+.idea/
+*.iml
+.DS_Store

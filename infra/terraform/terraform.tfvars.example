@@ -1,0 +1,23 @@
+# 이 파일을 terraform.tfvars로 복사해서 값 채우고, .gitignore에 terraform.tfvars 추가하세요.
+# db_password는 여기 적지 말고 환경변수로 넘기는 걸 추천:
+#   export TF_VAR_db_password="..."
+
+aws_region   = "ap-northeast-2"
+project_name = "muffin"
+environment  = "prod"
+
+ssh_public_key_path = "~/.ssh/muffin-ec2.pub"
+
+# 기본 t3.micro(프리티어). 1GB라 swap+힙제한으로 운용하며, 무거워지면 t3.small(~$19/월)로 상향
+ec2_instance_type = "t3.micro"
+
+# 비워두면 최신 Amazon Linux 2023 자동 선택.
+# 최초 apply 후 `terraform output` 또는 콘솔에서 확인한 실제 AMI ID를 박아두면
+# 이후 apply에서 예기치 않은 인스턴스 재생성을 막을 수 있다. 예: "ami-0abc123..."
+# ec2_ami_id = ""
+
+db_name     = "muffin"
+db_username = "muffin_admin"
+# db_password는 tfvars에 넣지 말 것
+
+s3_bucket_prefix = "muffin-app-storage"

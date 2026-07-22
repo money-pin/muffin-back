@@ -1,0 +1,132 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # 수동 재배포용
+
+# 배포가 겹치지 않도록 직렬화 (진행 중인 배포는 끝까지 두고 대기)
+concurrency:
+  group: cd-prod
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-2
+  CONTAINER_NAME: muffin
+  # 앱 시크릿을 보관하는 SSM Parameter Store 경로
+  SSM_PATH: /muffin/prod
+
+permissions:
+  id-token: write # OIDC 토큰 발급 (AWS 역할 assume에 필요)
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & Deploy to EC2
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build bootJar
+        run: ./gradlew clean bootJar
+
+      # 액세스키 없이 OIDC로 단기 자격증명을 받는다.
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & push image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          TAG: ${{ github.sha }}
+        run: |
+          docker build -t "$REGISTRY/$REPOSITORY:$TAG" -t "$REGISTRY/$REPOSITORY:latest" .
+          docker push "$REGISTRY/$REPOSITORY:$TAG"
+          docker push "$REGISTRY/$REPOSITORY:latest"
+
+      - name: Deploy to EC2 over SSH
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          TAG: ${{ github.sha }}
+        run: |
+          install -m 600 /dev/null deploy_key
+          echo "${{ secrets.EC2_SSH_KEY }}" > deploy_key
+
+          ssh -i deploy_key \
+              -o StrictHostKeyChecking=accept-new \
+              ec2-user@${{ secrets.EC2_HOST }} \
+              "IMAGE='$REGISTRY/$REPOSITORY:$TAG' \
+               REGISTRY='$REGISTRY' \
+               REGION='${{ env.AWS_REGION }}' \
+               NAME='${{ env.CONTAINER_NAME }}' \
+               SSM_PATH='${{ env.SSM_PATH }}' \
+               bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          # EC2의 IAM Role로 ECR 인증 (서버에 저장된 비밀번호 없음)
+          aws ecr get-login-password --region "$REGION" \
+            | docker login --username AWS --password-stdin "$REGISTRY"
+
+          docker pull "$IMAGE"
+
+          # 앱 시크릿을 SSM에서 조회한다. 평문 파일을 디스크에 남기지 않도록
+          # tmpfs(/dev/shm)에 임시로 쓰고 컨테이너 기동 후 즉시 삭제한다.
+          ENV_FILE="$(mktemp /dev/shm/muffin-env.XXXXXX)"
+          chmod 600 "$ENV_FILE"
+          trap 'rm -f "$ENV_FILE"' EXIT
+
+          aws ssm get-parameters-by-path \
+            --path "$SSM_PATH" \
+            --recursive \
+            --with-decryption \
+            --region "$REGION" \
+            --query "Parameters[].[Name,Value]" \
+            --output text \
+          | while IFS=$'\t' read -r pname pvalue; do
+              printf '%s=%s\n' "${pname##*/}" "$pvalue"
+            done > "$ENV_FILE"
+
+          if [ ! -s "$ENV_FILE" ]; then
+            echo "ERROR: $SSM_PATH 에서 파라미터를 하나도 읽지 못했습니다." >&2
+            exit 1
+          fi
+
+          docker rm -f "$NAME" 2>/dev/null || true
+
+          docker run -d \
+            --name "$NAME" \
+            --restart unless-stopped \
+            -p 8080:8080 \
+            --env-file "$ENV_FILE" \
+            --log-opt max-size=10m --log-opt max-file=3 \
+            "$IMAGE"
+
+          # 디스크가 작으므로(20GB) 오래된 이미지 정리
+          docker image prune -af --filter "until=168h"
+          REMOTE
+
+      - name: Remove deploy key
+        if: always()
+        run: rm -f deploy_key
