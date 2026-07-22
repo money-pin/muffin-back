@@ -29,6 +29,14 @@ muffin:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,https://muffin-front.vercel.app}
 
+  storage:
+    s3:
+      # 로컬 기본 꺼짐: AWS 자격증명 없이도 앱이 뜨고, presigned URL 발급은 null로 폴백된다.
+      enabled: ${S3_ENABLED:false}
+      bucket: ${S3_BUCKET:}
+      region: ${S3_REGION:ap-northeast-2}
+      presign-duration-minutes: ${S3_PRESIGN_DURATION_MINUTES:60}
+
   batch:
     rss:
       # rss 뉴스피드 수집 스케쥴러
@@ -112,6 +120,11 @@ muffin:
         zone: Asia/Seoul
 
   news:
+    thumbnail:
+      # 크게 노출되는 화면(오늘의 뉴스 히어로 카드, 상세 페이지) 전용 기본 이미지의 S3 오브젝트 키.
+      # 목록용 카테고리별 기본 이미지와 노출 크기가 달라 별도 에셋을 쓴다. S3 비활성화 시 카테고리 이미지로 폴백.
+      today-default-key: ${NEWS_TODAY_THUMBNAIL_KEY:images/news/today-default.png}
+
     rss:
       publisher: ${NEWS_RSS_PUBLISHER:매일경제}
       feeds:

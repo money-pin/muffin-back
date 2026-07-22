@@ -3,12 +3,14 @@ package com.muffin.news.application.query;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.muffin.global.storage.StorageUrlProvider;
 import com.muffin.news.domain.category.CategoryRepository;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
@@ -18,6 +20,7 @@ import com.muffin.news.domain.sectorimpact.NewsSectorImpactRepository;
 import com.muffin.news.domain.term.TermDictionary;
 import com.muffin.news.domain.term.TermDictionaryRepository;
 import com.muffin.news.presentation.dto.NewsDetailResponse;
+import com.muffin.news.presentation.dto.NewsTodayResponse;
 import com.muffin.scrap.domain.ScrapRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -39,6 +42,9 @@ class NewsQueryServiceTest {
     private final ScrapRepository scrapRepository = mock(ScrapRepository.class);
     private final NewsCursorCodec newsCursorCodec = mock(NewsCursorCodec.class);
     private final Clock clock = Clock.systemDefaultZone();
+    private final StorageUrlProvider storageUrlProvider = mock(StorageUrlProvider.class);
+    private final NewsThumbnailProperties thumbnailProperties =
+            new NewsThumbnailProperties("images/news/today-default.png");
 
     private final NewsQueryService newsQueryService = new NewsQueryService(
             newsRepository,
@@ -49,7 +55,9 @@ class NewsQueryServiceTest {
             readHistoryRepository,
             scrapRepository,
             newsCursorCodec,
-            clock);
+            clock,
+            storageUrlProvider,
+            thumbnailProperties);
 
     /**
      * 동시 조회로 두 요청이 모두 findByUserIdAndNewsId에서 빈 값을 본 뒤 저장을 시도하면, 나중에 flush되는 쪽은
@@ -124,5 +132,73 @@ class NewsQueryServiceTest {
         TermDictionary dictionary = TermDictionary.create(term, term + " 설명");
         ReflectionTestUtils.setField(dictionary, "id", termId);
         return dictionary;
+    }
+
+    /**
+     * 오늘의 뉴스 썸네일 정책: 원본이 없으면 순서와 무관하게 전용 기본 이미지(S3)를 쓰고, 원본이 있으면 그대로 쓴다.
+     */
+    @Test
+    void getTodayNews_appliesTodayDefaultToAllItemsWithoutThumbnail() {
+        when(storageUrlProvider.issueDownloadUrl("images/news/today-default.png"))
+                .thenReturn("https://s3.presigned/today-default.png");
+        when(newsQueryRepository.findTodayPublishedNews(any(), any(), anyInt()))
+                .thenReturn(List.of(
+                        summaryRow(1L, null, "https://cdn/category-a.png"),
+                        summaryRow(2L, null, "https://cdn/category-b.png"),
+                        summaryRow(3L, "https://origin/3.jpg", "https://cdn/category-c.png")));
+
+        NewsTodayResponse response = newsQueryService.getTodayNews();
+
+        assertThat(response.items())
+                .extracting(NewsTodayResponse.NewsTodayItem::thumbnailUrl)
+                .containsExactly(
+                        "https://s3.presigned/today-default.png",
+                        "https://s3.presigned/today-default.png",
+                        "https://origin/3.jpg");
+    }
+
+    /** S3가 비활성화되어 전용 기본 이미지를 발급하지 못하면 첫 번째 카드도 카테고리 기본 이미지로 폴백한다. */
+    @Test
+    void getTodayNews_fallsBackToCategoryDefaultWhenS3Unavailable() {
+        when(storageUrlProvider.issueDownloadUrl(any())).thenReturn(null);
+        when(newsQueryRepository.findTodayPublishedNews(any(), any(), anyInt()))
+                .thenReturn(List.of(summaryRow(1L, null, "https://cdn/category-a.png")));
+
+        NewsTodayResponse response = newsQueryService.getTodayNews();
+
+        assertThat(response.items())
+                .extracting(NewsTodayResponse.NewsTodayItem::thumbnailUrl)
+                .containsExactly("https://cdn/category-a.png");
+    }
+
+    /** 상세 페이지는 원본 썸네일이 없으면 카테고리 이미지가 아니라 히어로 전용 기본 이미지(S3)를 쓴다. */
+    @Test
+    void getNewsDetail_usesHeroDefaultWhenThumbnailMissing() {
+        Long userId = 1L;
+        Long newsId = 10L;
+        News news = publishedNews(newsId);
+        when(newsRepository.findById(newsId)).thenReturn(Optional.of(news));
+        when(readHistoryRepository.findByUserIdAndNewsId(userId, newsId)).thenReturn(Optional.empty());
+        when(scrapRepository.existsByUserIdAndNewsId(userId, newsId)).thenReturn(false);
+        when(categoryRepository.findById(news.getCategoryId())).thenReturn(Optional.empty());
+        when(storageUrlProvider.issueDownloadUrl("images/news/today-default.png"))
+                .thenReturn("https://s3.presigned/today-default.png");
+
+        assertThat(newsQueryService.getNewsDetail(userId, newsId).thumbnailUrl())
+                .isEqualTo("https://s3.presigned/today-default.png");
+    }
+
+    private static NewsSummaryRow summaryRow(Long newsId, String thumbnailUrl, String categoryFallbackUrl) {
+        return new NewsSummaryRow(
+                newsId,
+                1L,
+                "경제",
+                "제목 " + newsId,
+                "요약",
+                "매일경제",
+                LocalDateTime.of(2026, 7, 18, 9, 0),
+                thumbnailUrl,
+                0L,
+                categoryFallbackUrl);
     }
 }

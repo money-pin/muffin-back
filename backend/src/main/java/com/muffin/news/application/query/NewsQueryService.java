@@ -2,6 +2,7 @@ package com.muffin.news.application.query;
 
 import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.global.storage.StorageUrlProvider;
 import com.muffin.news.application.exception.NewsErrorCode;
 import com.muffin.news.application.exception.NewsException;
 import com.muffin.news.domain.category.Category;
@@ -56,6 +57,8 @@ public class NewsQueryService {
     private final ScrapRepository scrapRepository;
     private final NewsCursorCodec newsCursorCodec;
     private final Clock clock;
+    private final StorageUrlProvider storageUrlProvider;
+    private final NewsThumbnailProperties thumbnailProperties;
 
     /** 공개 뉴스를 커서 기반으로 최신순 조회한다. 인증이 필요 없다. */
     @Transactional(readOnly = true)
@@ -79,7 +82,7 @@ public class NewsQueryService {
                         row.summary(),
                         row.publisher(),
                         row.publishedAt(),
-                        row.thumbnailUrl(),
+                        resolveThumbnail(row.thumbnailUrl(), row.categoryFallbackThumbnailUrl()),
                         row.viewCount()))
                 .toList();
 
@@ -103,8 +106,7 @@ public class NewsQueryService {
                 newsQueryRepository.findTodayPublishedNews(startOfDay, startOfNextDay, TODAY_NEWS_LIMIT);
 
         List<NewsTodayItem> items = new ArrayList<>(rows.size());
-        for (int index = 0; index < rows.size(); index++) {
-            NewsSummaryRow row = rows.get(index);
+        for (NewsSummaryRow row : rows) {
             items.add(new NewsTodayItem(
                     row.newsId(),
                     row.categoryId(),
@@ -113,7 +115,7 @@ public class NewsQueryService {
                     row.summary(),
                     row.publisher(),
                     row.publishedAt(),
-                    resolveThumbnail(row, index == 0),
+                    resolveHeroThumbnail(row.thumbnailUrl(), row.categoryFallbackThumbnailUrl()),
                     row.viewCount()));
         }
 
@@ -135,10 +137,10 @@ public class NewsQueryService {
         upsertReadHistory(userId, newsId);
 
         boolean scrapped = scrapRepository.existsByUserIdAndNewsId(userId, newsId);
-        String categoryName = categoryRepository
-                .findById(news.getCategoryId())
-                .map(Category::getName)
-                .orElse(null);
+        Optional<Category> category = categoryRepository.findById(news.getCategoryId());
+        String categoryName = category.map(Category::getName).orElse(null);
+        String fallbackThumbnailUrl =
+                category.map(Category::getFallbackThumbnailUrl).orElse(null);
 
         List<BodySegment> bodySegments = toBodySegments(news);
 
@@ -150,7 +152,7 @@ public class NewsQueryService {
                 news.getViewCount(),
                 news.getPublisher(),
                 news.getPublishedAt(),
-                news.getThumbnailUrl(),
+                resolveHeroThumbnail(news.getThumbnailUrl(), fallbackThumbnailUrl),
                 news.getOriginalUrl(),
                 bodySegments,
                 scrapped);
@@ -294,15 +296,25 @@ public class NewsQueryService {
     }
 
     /**
-     * 오늘의 뉴스 썸네일 정책. ①원본 썸네일 → ②(첫 번째 뉴스) 공통 기본 이미지 → ③카테고리별 대체 이미지 순으로 반환한다.
-     *
-     * <p>TODO(S3): {@code isFirst}일 때 반환할 공통 기본 이미지는 추후 S3 presigned URL로 발급한다. 발급 경로가 생기기
-     * 전까지는 첫 번째 뉴스도 카테고리 대체 이미지로 폴백한다.
+     * 오늘의 뉴스·상세 페이지의 썸네일 정책: ①원본 → ②전용 기본 이미지(S3, 큰 사이즈) → ③카테고리별 기본 이미지.
+     * 카테고리 기본 이미지는 목록용이라 크기가 달라 마지막 안전망으로만 쓴다.
      */
-    private String resolveThumbnail(NewsSummaryRow row, boolean isFirst) {
-        if (row.thumbnailUrl() != null && !row.thumbnailUrl().isBlank()) {
-            return row.thumbnailUrl();
+    private String resolveHeroThumbnail(String thumbnailUrl, String categoryFallbackUrl) {
+        if (thumbnailUrl != null && !thumbnailUrl.isBlank()) {
+            return thumbnailUrl;
         }
-        return row.categoryFallbackThumbnailUrl();
+        String heroDefaultUrl = storageUrlProvider.issueDownloadUrl(thumbnailProperties.todayDefaultKey());
+        if (heroDefaultUrl != null) {
+            return heroDefaultUrl;
+        }
+        return categoryFallbackUrl;
+    }
+
+    /** 전체 목록의 썸네일 정책: 원본이 없으면 카테고리별 기본 이미지를 쓴다. */
+    private static String resolveThumbnail(String thumbnailUrl, String fallbackThumbnailUrl) {
+        if (thumbnailUrl != null && !thumbnailUrl.isBlank()) {
+            return thumbnailUrl;
+        }
+        return fallbackThumbnailUrl;
     }
 }

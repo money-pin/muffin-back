@@ -37,6 +37,9 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
     implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
     implementation "org.jsoup:jsoup:1.22.2"
+    // S3 presigned URL 발급 (기본 썸네일 등 프라이빗 버킷 오브젝트 제공용)
+    implementation platform('software.amazon.awssdk:bom:2.29.45')
+    implementation 'software.amazon.awssdk:s3'
     annotationProcessor "com.querydsl:querydsl-apt:${querydslVersion}:jakarta"
     annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
     annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
