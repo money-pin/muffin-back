@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -119,6 +120,9 @@ class ScrapCommandServiceTest {
 
         assertThat(response.isScrapped()).isTrue();
         assertThat(response.scrappedAt()).isEqualTo(OffsetDateTime.parse("2026-05-08T14:30:00+09:00"));
+        // 삽입을 실제로 시도한 뒤(재조회만 하는 잘못된 구현 방지) 충돌 시 재조회했는지 검증한다.
+        verify(scrapWriter).insert(USER_ID, NEWS_ID);
+        verify(scrapRepository, times(2)).findByUserIdAndNewsId(USER_ID, NEWS_ID);
     }
 
     @Test
@@ -126,10 +130,13 @@ class ScrapCommandServiceTest {
     void scrap_rethrowsWhenRecoveryFindsNothing() {
         givenPublishedNews();
         when(scrapRepository.findByUserIdAndNewsId(USER_ID, NEWS_ID)).thenReturn(Optional.empty());
-        when(scrapWriter.insert(USER_ID, NEWS_ID)).thenThrow(new DataIntegrityViolationException("duplicate"));
+        DataIntegrityViolationException exception = new DataIntegrityViolationException("duplicate");
+        when(scrapWriter.insert(USER_ID, NEWS_ID)).thenThrow(exception);
 
-        assertThatThrownBy(() -> scrapCommandService.scrap(USER_ID, NEWS_ID))
-                .isInstanceOf(DataIntegrityViolationException.class);
+        // 재조회로도 못 찾으면 삼켜서 null을 만들지 않고 원래 예외 인스턴스를 그대로 다시 던진다.
+        assertThatThrownBy(() -> scrapCommandService.scrap(USER_ID, NEWS_ID)).isSameAs(exception);
+        verify(scrapWriter).insert(USER_ID, NEWS_ID);
+        verify(scrapRepository, times(2)).findByUserIdAndNewsId(USER_ID, NEWS_ID);
     }
 
     @Test
