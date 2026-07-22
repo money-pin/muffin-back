@@ -57,7 +57,8 @@ CREATE TABLE `character_recommended_sector` (
   `updated_at` datetime(6) DEFAULT NULL,
   `character_id` bigint NOT NULL,
   `sector_id` bigint NOT NULL,
-  PRIMARY KEY (`recommended_sector_id`)
+  PRIMARY KEY (`recommended_sector_id`),
+  UNIQUE KEY `uk_character_recommended_sector_character_sector` (`character_id`,`sector_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -218,6 +219,7 @@ CREATE TABLE `news_sector_impact` (
   `created_at` datetime(6) NOT NULL,
   `updated_at` datetime(6) DEFAULT NULL,
   `impact` enum('NEGATIVE','NEUTRAL','POSITIVE','STRONG_NEGATIVE','STRONG_POSITIVE') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reason` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `news_id` bigint NOT NULL,
   `sector_id` bigint NOT NULL,
   PRIMARY KEY (`news_sector_impact_id`),
