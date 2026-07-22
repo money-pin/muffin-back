@@ -26,6 +26,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.SimpleTransactionStatus;
@@ -64,7 +65,8 @@ class DailyQuizGenerationServiceTest {
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 3)))
                 .thenReturn(newsSources);
         when(dailyQuizGenerator.generate(any())).thenReturn(generationResult());
 
@@ -95,7 +97,8 @@ class DailyQuizGenerationServiceTest {
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 3)))
                 .thenReturn(newsSources);
         when(dailyQuizGenerator.generate(any())).thenReturn(generationResult());
 
@@ -137,7 +140,8 @@ class DailyQuizGenerationServiceTest {
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 3)))
                 .thenReturn(newsSources);
         when(dailyQuizGenerator.generate(any()))
                 .thenReturn(new DailyQuizGenerationResult(List.of(
@@ -163,7 +167,8 @@ class DailyQuizGenerationServiceTest {
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 3)))
                 .thenReturn(newsSources);
         when(dailyQuizGenerator.generate(any())).thenReturn(generationResult());
         when(quizSetRepository.saveAndFlush(any())).thenAnswer(invocation -> {
@@ -197,7 +202,8 @@ class DailyQuizGenerationServiceTest {
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 3)))
                 .thenReturn(List.of(pendingNews(1L, "뉴스1", "기준금리가 올랐습니다.")));
 
         generationService.generate(QUIZ_DATE);
@@ -220,7 +226,8 @@ class DailyQuizGenerationServiceTest {
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 3)))
                 .thenReturn(newsSources);
         when(dailyQuizGenerator.generate(any())).thenReturn(invalidSourceSentenceResult());
 
@@ -240,7 +247,8 @@ class DailyQuizGenerationServiceTest {
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 3)))
                 .thenReturn(newsSources);
         when(dailyQuizGenerator.generate(any()))
                 .thenReturn(new DailyQuizGenerationResult(
@@ -260,7 +268,8 @@ class DailyQuizGenerationServiceTest {
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 3)))
                 .thenReturn(newsSources);
         when(dailyQuizGenerator.generate(any()))
                 .thenReturn(new DailyQuizGenerationResult(List.of(
@@ -282,7 +291,8 @@ class DailyQuizGenerationServiceTest {
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 3)))
                 .thenReturn(newsSources);
         when(dailyQuizGenerator.generate(any()))
                 .thenReturn(new DailyQuizGenerationResult(List.of(
@@ -308,7 +318,8 @@ class DailyQuizGenerationServiceTest {
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 3)))
                 .thenReturn(newsSources);
         when(dailyQuizGenerator.generate(any()))
                 .thenReturn(new DailyQuizGenerationResult(List.of(
@@ -337,7 +348,8 @@ class DailyQuizGenerationServiceTest {
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 3)))
                 .thenReturn(newsSources);
         when(dailyQuizGenerator.generate(any()))
                 .thenReturn(new DailyQuizGenerationResult(List.of(
@@ -359,7 +371,8 @@ class DailyQuizGenerationServiceTest {
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
                         QUIZ_DATE.atStartOfDay(),
-                        QUIZ_DATE.plusDays(1).atStartOfDay()))
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 3)))
                 .thenReturn(newsSources);
         when(dailyQuizGenerator.generate(any())).thenThrow(new IllegalStateException("OpenAI failed"));
 

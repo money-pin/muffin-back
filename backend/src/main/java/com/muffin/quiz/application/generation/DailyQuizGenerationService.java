@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -137,10 +138,8 @@ public class DailyQuizGenerationService {
         LocalDateTime startInclusive = quizDate.atStartOfDay();
         LocalDateTime endExclusive = quizDate.plusDays(1).atStartOfDay();
 
-        return newsRepository.findQuizCandidates(NewsStatus.PENDING, startInclusive, endExclusive).stream()
-                .filter(News::hasReconstructionResult)
-                .limit(DAILY_QUIZ_COUNT)
-                .toList();
+        return newsRepository.findQuizCandidates(
+                NewsStatus.PENDING, startInclusive, endExclusive, PageRequest.of(0, DAILY_QUIZ_COUNT));
     }
 
     private DailyQuizGenerationRequest toRequest(LocalDate quizDate, List<News> newsSources) {
