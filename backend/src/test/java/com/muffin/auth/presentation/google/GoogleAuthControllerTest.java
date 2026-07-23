@@ -71,7 +71,7 @@ class GoogleAuthControllerTest {
         when(googleIdTokenVerifier.verify("valid-id-token"))
                 .thenReturn(new GoogleIdTokenPayload("google-sub-x", "x@example.com", "홍길동"));
 
-        mockMvc.perform(post("/api/auth/google")
+        mockMvc.perform(post("/auth/google")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(new RequestBody("valid-id-token"))))
                 .andExpect(status().isOk())
@@ -86,7 +86,7 @@ class GoogleAuthControllerTest {
     @Test
     @DisplayName("idToken이 비어있으면 400 (COMMON_400_002)")
     void authenticate_blankIdToken() throws Exception {
-        mockMvc.perform(post("/api/auth/google")
+        mockMvc.perform(post("/auth/google")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(new RequestBody(""))))
                 .andExpect(status().isBadRequest())
@@ -101,7 +101,7 @@ class GoogleAuthControllerTest {
         when(googleIdTokenVerifier.verify("existing-id-token"))
                 .thenReturn(new GoogleIdTokenPayload("google-sub-existing", "existing@example.com", "홍길동"));
 
-        mockMvc.perform(post("/api/auth/google")
+        mockMvc.perform(post("/auth/google")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(new RequestBody("existing-id-token"))))
                 .andExpect(status().isOk())
@@ -120,7 +120,7 @@ class GoogleAuthControllerTest {
         when(googleIdTokenVerifier.verify("withdrawn-id-token"))
                 .thenReturn(new GoogleIdTokenPayload("google-sub-withdrawn", "withdrawn@example.com", "홍길동"));
 
-        mockMvc.perform(post("/api/auth/google")
+        mockMvc.perform(post("/auth/google")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(new RequestBody("withdrawn-id-token"))))
                 .andExpect(status().isForbidden())
@@ -137,7 +137,7 @@ class GoogleAuthControllerTest {
         when(googleIdTokenVerifier.verify("suspended-id-token"))
                 .thenReturn(new GoogleIdTokenPayload("google-sub-suspended", "suspended@example.com", "홍길동"));
 
-        mockMvc.perform(post("/api/auth/google")
+        mockMvc.perform(post("/auth/google")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(new RequestBody("suspended-id-token"))))
                 .andExpect(status().isForbidden())
@@ -150,7 +150,7 @@ class GoogleAuthControllerTest {
         when(googleIdTokenVerifier.verify("bogus-id-token"))
                 .thenThrow(new GeneralException(AuthErrorCode.INVALID_GOOGLE_TOKEN));
 
-        mockMvc.perform(post("/api/auth/google")
+        mockMvc.perform(post("/auth/google")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(new RequestBody("bogus-id-token"))))
                 .andExpect(status().isUnauthorized())
