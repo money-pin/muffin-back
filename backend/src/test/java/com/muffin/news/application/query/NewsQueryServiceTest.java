@@ -10,7 +10,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.muffin.global.storage.StorageUrlProvider;
 import com.muffin.news.domain.category.CategoryRepository;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
@@ -20,6 +19,7 @@ import com.muffin.news.domain.sectorimpact.NewsSectorImpactRepository;
 import com.muffin.news.domain.term.TermDictionary;
 import com.muffin.news.domain.term.TermDictionaryRepository;
 import com.muffin.news.presentation.dto.NewsDetailResponse;
+import com.muffin.news.presentation.dto.NewsListResponse;
 import com.muffin.news.presentation.dto.NewsTodayResponse;
 import com.muffin.scrap.domain.ScrapRepository;
 import java.time.Clock;
@@ -42,9 +42,6 @@ class NewsQueryServiceTest {
     private final ScrapRepository scrapRepository = mock(ScrapRepository.class);
     private final NewsCursorCodec newsCursorCodec = mock(NewsCursorCodec.class);
     private final Clock clock = Clock.systemDefaultZone();
-    private final StorageUrlProvider storageUrlProvider = mock(StorageUrlProvider.class);
-    private final NewsThumbnailProperties thumbnailProperties =
-            new NewsThumbnailProperties("images/news/today-default.png");
 
     private final NewsQueryService newsQueryService = new NewsQueryService(
             newsRepository,
@@ -55,9 +52,7 @@ class NewsQueryServiceTest {
             readHistoryRepository,
             scrapRepository,
             newsCursorCodec,
-            clock,
-            storageUrlProvider,
-            thumbnailProperties);
+            clock);
 
     /**
      * 동시 조회로 두 요청이 모두 findByUserIdAndNewsId에서 빈 값을 본 뒤 저장을 시도하면, 나중에 flush되는 쪽은
@@ -134,46 +129,35 @@ class NewsQueryServiceTest {
         return dictionary;
     }
 
-    /**
-     * 오늘의 뉴스 썸네일 정책: 원본이 없으면 순서와 무관하게 전용 기본 이미지(S3)를 쓰고, 원본이 있으면 그대로 쓴다.
-     */
+    /** 오늘의 뉴스 썸네일: 원본이 있으면 그 URL을, 없으면 null을 담는다(기본 이미지는 프론트가 처리). */
     @Test
-    void getTodayNews_appliesTodayDefaultToAllItemsWithoutThumbnail() {
-        when(storageUrlProvider.issueDownloadUrl("images/news/today-default.png"))
-                .thenReturn("https://s3.presigned/today-default.png");
+    void getTodayNews_returnsOriginalThumbnailOrNull() {
         when(newsQueryRepository.findTodayPublishedNews(any(), any(), anyInt()))
-                .thenReturn(List.of(
-                        summaryRow(1L, null, "https://cdn/category-a.png"),
-                        summaryRow(2L, null, "https://cdn/category-b.png"),
-                        summaryRow(3L, "https://origin/3.jpg", "https://cdn/category-c.png")));
+                .thenReturn(List.of(summaryRow(1L, null), summaryRow(2L, "https://origin/2.jpg")));
 
         NewsTodayResponse response = newsQueryService.getTodayNews();
 
         assertThat(response.items())
                 .extracting(NewsTodayResponse.NewsTodayItem::thumbnailUrl)
-                .containsExactly(
-                        "https://s3.presigned/today-default.png",
-                        "https://s3.presigned/today-default.png",
-                        "https://origin/3.jpg");
+                .containsExactly(null, "https://origin/2.jpg");
     }
 
-    /** S3가 비활성화되어 전용 기본 이미지를 발급하지 못하면 첫 번째 카드도 카테고리 기본 이미지로 폴백한다. */
+    /** 목록 썸네일: 원본이 있으면 그 URL을, 없으면 null을 담는다(기본 이미지는 프론트가 처리). */
     @Test
-    void getTodayNews_fallsBackToCategoryDefaultWhenS3Unavailable() {
-        when(storageUrlProvider.issueDownloadUrl(any())).thenReturn(null);
-        when(newsQueryRepository.findTodayPublishedNews(any(), any(), anyInt()))
-                .thenReturn(List.of(summaryRow(1L, null, "https://cdn/category-a.png")));
+    void getNewsList_returnsOriginalThumbnailOrNull() {
+        when(newsQueryRepository.findPublishedNewsPage(any(), any(), anyInt()))
+                .thenReturn(List.of(summaryRow(1L, null), summaryRow(2L, "https://origin/2.jpg")));
 
-        NewsTodayResponse response = newsQueryService.getTodayNews();
+        NewsListResponse response = newsQueryService.getNewsList(null, 10, null);
 
         assertThat(response.items())
-                .extracting(NewsTodayResponse.NewsTodayItem::thumbnailUrl)
-                .containsExactly("https://cdn/category-a.png");
+                .extracting(NewsListResponse.NewsListItem::thumbnailUrl)
+                .containsExactly(null, "https://origin/2.jpg");
     }
 
-    /** 상세 페이지는 원본 썸네일이 없으면 카테고리 이미지가 아니라 히어로 전용 기본 이미지(S3)를 쓴다. */
+    /** 상세 썸네일: 원본이 없으면 thumbnailUrl은 null이다(기본 이미지는 프론트가 처리). */
     @Test
-    void getNewsDetail_usesHeroDefaultWhenThumbnailMissing() {
+    void getNewsDetail_returnsNullThumbnailWhenMissing() {
         Long userId = 1L;
         Long newsId = 10L;
         News news = publishedNews(newsId);
@@ -181,24 +165,13 @@ class NewsQueryServiceTest {
         when(readHistoryRepository.findByUserIdAndNewsId(userId, newsId)).thenReturn(Optional.empty());
         when(scrapRepository.existsByUserIdAndNewsId(userId, newsId)).thenReturn(false);
         when(categoryRepository.findById(news.getCategoryId())).thenReturn(Optional.empty());
-        when(storageUrlProvider.issueDownloadUrl("images/news/today-default.png"))
-                .thenReturn("https://s3.presigned/today-default.png");
 
         assertThat(newsQueryService.getNewsDetail(userId, newsId).thumbnailUrl())
-                .isEqualTo("https://s3.presigned/today-default.png");
+                .isNull();
     }
 
-    private static NewsSummaryRow summaryRow(Long newsId, String thumbnailUrl, String categoryFallbackUrl) {
+    private static NewsSummaryRow summaryRow(Long newsId, String thumbnailUrl) {
         return new NewsSummaryRow(
-                newsId,
-                1L,
-                "경제",
-                "제목 " + newsId,
-                "요약",
-                "매일경제",
-                LocalDateTime.of(2026, 7, 18, 9, 0),
-                thumbnailUrl,
-                0L,
-                categoryFallbackUrl);
+                newsId, 1L, "경제", "제목 " + newsId, "요약", "매일경제", LocalDateTime.of(2026, 7, 18, 9, 0), thumbnailUrl, 0L);
     }
 }

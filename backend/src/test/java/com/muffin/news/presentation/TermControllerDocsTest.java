@@ -89,7 +89,7 @@ class TermControllerDocsTest {
     }
 
     private TermQueryService stubReturning(TermResponse response) {
-        return new TermQueryService(null, null) {
+        return new TermQueryService(null, null, null) {
             @Override
             public TermResponse getTerm(Long userId, Long termId) {
                 return response;
@@ -98,7 +98,7 @@ class TermControllerDocsTest {
     }
 
     private TermQueryService stubThrowingNotFound() {
-        return new TermQueryService(null, null) {
+        return new TermQueryService(null, null, null) {
             @Override
             public TermResponse getTerm(Long userId, Long termId) {
                 throw new NewsException(NewsErrorCode.NEWS_TERM_NOT_FOUND);

@@ -3,7 +3,12 @@ package com.muffin.news.presentation.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** 오늘의 뉴스(당일 수집 공개 뉴스 최대 3건) 응답. thumbnailUrl은 대체 정책까지 적용된 최종 값이다. */
+/**
+ * 오늘의 뉴스(당일 수집 공개 뉴스 최대 3건) 응답.
+ *
+ * <p>{@code thumbnailUrl}은 원본 썸네일이 있으면 그 URL, 없으면 null이다. 원본이 없을 때의 기본 이미지는 백엔드가
+ * 관여하지 않고 프론트가 자체 에셋으로 렌더링한다.
+ */
 public record NewsTodayResponse(List<NewsTodayItem> items) {
 
     public record NewsTodayItem(

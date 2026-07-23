@@ -119,7 +119,6 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
                 news.publisher,
                 news.publishedAt,
                 news.thumbnailUrl,
-                news.viewCount,
-                category.fallbackThumbnailUrl);
+                news.viewCount);
     }
 }
