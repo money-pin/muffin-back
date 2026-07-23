@@ -130,9 +130,9 @@ public class HttpRssFeedClient implements RssFeedClient {
      * 다른 피드 대비 {@code <media:thumbnail>}과 {@code <enclosure type="image/...">}도 순서대로 확인한다. 없으면 null.
      */
     private static String thumbnailUrl(Element item) {
-        String mediaContent = attributeOf(item, "media:content", "url");
-        if (mediaContent != null) {
-            return mediaContent;
+        String imageMediaContent = imageMediaContentUrl(item);
+        if (imageMediaContent != null) {
+            return imageMediaContent;
         }
         String mediaThumbnail = attributeOf(item, "media:thumbnail", "url");
         if (mediaThumbnail != null) {
@@ -146,6 +146,30 @@ public class HttpRssFeedClient implements RssFeedClient {
             }
         }
         return null;
+    }
+
+    /**
+     * {@code media:content}는 이미지뿐 아니라 video/audio/document도 표현할 수 있으므로, {@code medium="image"}
+     * 또는 {@code type="image/*"}로 이미지임이 명시된 항목만 채택한다. 비이미지(예: 앞선 video)는 건너뛰고 다음
+     * 후보로 넘어가, 뒤에 오는 유효한 {@code media:thumbnail} 폴백이 막히지 않도록 한다.
+     */
+    private static String imageMediaContentUrl(Element item) {
+        NodeList mediaContents = item.getElementsByTagName("media:content");
+        for (int index = 0; index < mediaContents.getLength(); index++) {
+            Element mediaContent = (Element) mediaContents.item(index);
+            if (isImageMedia(mediaContent)) {
+                String url = normalizeUrl(mediaContent.getAttribute("url"));
+                if (url != null) {
+                    return url;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static boolean isImageMedia(Element mediaContent) {
+        return "image".equalsIgnoreCase(mediaContent.getAttribute("medium"))
+                || mediaContent.getAttribute("type").startsWith("image/");
     }
 
     private static String attributeOf(Element item, String tagName, String attributeName) {
