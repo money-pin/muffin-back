@@ -47,13 +47,14 @@ class RecentNewsQueryRepositoryTest {
     @Autowired
     private ReadHistoryRepository readHistoryRepository;
 
+    private Long categoryId;
     private Long newsAId;
     private Long newsBId;
     private Long newsCId;
 
     @BeforeEach
     void setUp() {
-        Long categoryId = categoryRepository
+        categoryId = categoryRepository
                 .save(Category.create("반도체", "https://fallback.png"))
                 .getId();
 
@@ -91,6 +92,27 @@ class RecentNewsQueryRepositoryTest {
 
         List<RecentNewsProjection> secondPage = recentNewsQueryRepository.findRecentNewsPage(USER_ID, cursor, 2);
         assertThat(secondPage).extracting(RecentNewsProjection::newsId).containsExactly(newsAId);
+    }
+
+    @Test
+    @DisplayName("열람 시각이 같으면 read_history.id 내림차순으로 정렬하고 커서 타이브레이크가 동작한다")
+    void findRecentNewsPage_breaksTieByReadHistoryIdDesc() {
+        // 기존 최근 열람(최대 05-08 22:00)보다 뒤인 같은 시각으로 두 건을 열람: id로만 순서가 갈린다.
+        LocalDateTime sameReadAt = LocalDateTime.of(2026, 5, 9, 10, 0);
+        Long newsDId = savePublished(categoryId, "뉴스D", LocalDateTime.of(2026, 5, 3, 9, 0), 1L);
+        Long newsEId = savePublished(categoryId, "뉴스E", LocalDateTime.of(2026, 5, 2, 9, 0), 1L);
+        saveRead(USER_ID, newsDId, sameReadAt); // 먼저 저장 → 작은 read_history.id
+        saveRead(USER_ID, newsEId, sameReadAt); // 나중 저장 → 큰 read_history.id
+
+        List<RecentNewsProjection> firstPage = recentNewsQueryRepository.findRecentNewsPage(USER_ID, null, 2);
+        // 같은 열람 시각이면 id 내림차순 → 나중 저장한 E가 먼저.
+        assertThat(firstPage).extracting(RecentNewsProjection::newsId).containsExactly(newsEId, newsDId);
+
+        // E(큰 id) 커서 다음은 같은 시각의 D(작은 id)여야 한다(타이브레이크 predicate 검증).
+        RecentNewsProjection first = firstPage.getFirst();
+        RecentNewsCursor cursor = new RecentNewsCursor(first.viewedAt(), first.readHistoryId());
+        List<RecentNewsProjection> nextPage = recentNewsQueryRepository.findRecentNewsPage(USER_ID, cursor, 1);
+        assertThat(nextPage).extracting(RecentNewsProjection::newsId).containsExactly(newsDId);
     }
 
     @Test

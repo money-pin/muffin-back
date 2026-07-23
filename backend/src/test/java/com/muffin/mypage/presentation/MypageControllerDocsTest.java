@@ -31,7 +31,7 @@ import org.springframework.security.web.method.annotation.AuthenticationPrincipa
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-/** MYPAGE-04 스크랩한 뉴스 목록 조회 API의 REST Docs 스니펫을 생성한다(정상/빈 상태/400/404). */
+/** MYPAGE-04-1 스크랩한 뉴스 목록 조회 API의 REST Docs 스니펫을 생성한다(정상/빈 상태/400/404). */
 @ExtendWith(RestDocumentationExtension.class)
 class MypageControllerDocsTest {
 

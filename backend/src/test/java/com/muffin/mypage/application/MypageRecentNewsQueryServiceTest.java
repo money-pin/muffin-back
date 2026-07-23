@@ -58,6 +58,18 @@ class MypageRecentNewsQueryServiceTest {
     }
 
     @Test
+    @DisplayName("size가 1 미만이면 MYPAGE_400_004로 거부하고 사용자 조회/커서 디코딩으로 넘어가지 않는다")
+    void getRecentNews_throwsWhenSizeBelowMin() {
+        assertThatThrownBy(() -> service.getRecentNews(USER_ID, "CURSOR", 0))
+                .isInstanceOf(MypageException.class)
+                .extracting("errorCode")
+                .isEqualTo(MypageErrorCode.INVALID_PAGE_REQUEST);
+        verify(userRepository, never()).existsById(anyLong());
+        verify(recentNewsCursorCodec, never()).decode(any());
+        verify(recentNewsQueryRepository, never()).findRecentNewsPage(any(), any(), anyInt());
+    }
+
+    @Test
     @DisplayName("사용자가 존재하지 않으면 MYPAGE_404_001 예외를 던진다")
     void getRecentNews_throwsWhenUserNotFound() {
         when(userRepository.existsById(USER_ID)).thenReturn(false);
@@ -100,6 +112,34 @@ class MypageRecentNewsQueryServiceTest {
         assertThat(response.items()).hasSize(1);
         assertThat(response.hasNext()).isFalse();
         assertThat(response.nextCursor()).isNull();
+    }
+
+    @Test
+    @DisplayName("커서가 있으면 디코딩해 그대로 저장소 조회에 전달한다")
+    void getRecentNews_decodesCursorAndPassesToRepository() {
+        RecentNewsCursor cursor = new RecentNewsCursor(VIEWED_AT, 100L);
+        when(userRepository.existsById(USER_ID)).thenReturn(true);
+        when(recentNewsCursorCodec.decode("CURSOR")).thenReturn(cursor);
+        when(recentNewsQueryRepository.findRecentNewsPage(USER_ID, cursor, 3))
+                .thenReturn(List.of(projection(10L, 100L)));
+
+        RecentNewsResponse response = service.getRecentNews(USER_ID, "CURSOR", 2);
+
+        assertThat(response.items()).hasSize(1);
+        verify(recentNewsCursorCodec).decode("CURSOR");
+        verify(recentNewsQueryRepository).findRecentNewsPage(USER_ID, cursor, 3);
+    }
+
+    @Test
+    @DisplayName("공백 커서는 디코딩하지 않고 첫 페이지(cursor=null)로 조회한다")
+    void getRecentNews_blankCursorSkipsDecode() {
+        when(userRepository.existsById(USER_ID)).thenReturn(true);
+        when(recentNewsQueryRepository.findRecentNewsPage(USER_ID, null, 3)).thenReturn(List.of());
+
+        service.getRecentNews(USER_ID, "   ", 2);
+
+        verify(recentNewsCursorCodec, never()).decode(any());
+        verify(recentNewsQueryRepository).findRecentNewsPage(USER_ID, null, 3);
     }
 
     @Test

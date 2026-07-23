@@ -12,8 +12,8 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * 최근 읽은 뉴스 목록 커서를 base64url(JSON)로 인코딩/디코딩한다.
  *
- * <p>커서는 클라이언트에게 불투명한 토큰이며, 형식이 조금이라도 어긋나거나 기준 키(열람 시각)가 비면 {@code MYPAGE_400_004}로 응답한다. 열람 시각이
- * 없으면 저장소가 {@code lt(null)} 비교식을 만들게 되므로, 조작된 커서를 디코딩 단계에서 미리 거부한다.
+ * <p>커서는 클라이언트에게 불투명한 토큰이며, 형식이 조금이라도 어긋나거나 기준 키(열람 시각, 타이브레이크 id)가 비거나 id가 양수가 아니면
+ * {@code MYPAGE_400_004}로 응답한다. 열람 시각이 없으면 저장소가 {@code lt(null)} 비교식을 만들게 되므로, 조작된 커서를 디코딩 단계에서 미리 거부한다.
  */
 @Component
 @RequiredArgsConstructor
@@ -35,7 +35,7 @@ public class RecentNewsCursorCodec {
             byte[] decoded = Base64.getUrlDecoder().decode(cursor);
             CursorPayload payload =
                     objectMapper.readValue(new String(decoded, StandardCharsets.UTF_8), CursorPayload.class);
-            if (payload.t() == null) {
+            if (payload.t() == null || payload.id() == null || payload.id() <= 0) {
                 throw invalidCursor();
             }
             return new RecentNewsCursor(LocalDateTime.parse(payload.t()), payload.id());
@@ -50,5 +50,5 @@ public class RecentNewsCursorCodec {
         return new MypageException(MypageErrorCode.INVALID_PAGE_REQUEST, INVALID_CURSOR_MESSAGE);
     }
 
-    private record CursorPayload(String t, long id) {}
+    private record CursorPayload(String t, Long id) {}
 }

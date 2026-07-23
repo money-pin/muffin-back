@@ -13,7 +13,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 public interface MypageApi {
 
     @Operation(
-            summary = "스크랩한 뉴스 목록 조회 (MYPAGE-04)",
+            summary = "스크랩한 뉴스 목록 조회 (MYPAGE-04-1)",
             description = "마이페이지에서 스크랩한 뉴스를 지정한 정렬(최근 저장순/업로드순/조회수순)로 커서 페이지네이션 조회한다. "
                     + "sort 미지정 시 SAVED_DESC(최근 저장순), size 미지정 시 10. nextCursor는 다음 페이지가 있을 때만 내려간다.")
     @ApiResponses({
@@ -37,7 +37,7 @@ public interface MypageApi {
             @Parameter(description = "페이지 크기 (1~50, 기본 10)") int size);
 
     @Operation(
-            summary = "최근 읽은 뉴스 목록 조회 (MYPAGE-04)",
+            summary = "최근 읽은 뉴스 목록 조회 (MYPAGE-04-2)",
             description = "마이페이지에서 최근 읽은 뉴스를 열람 시각(read_at) 최신순으로 커서 페이지네이션 조회한다. "
                     + "size 미지정 시 10. nextCursor는 다음 페이지가 있을 때만 내려간다.")
     @ApiResponses({

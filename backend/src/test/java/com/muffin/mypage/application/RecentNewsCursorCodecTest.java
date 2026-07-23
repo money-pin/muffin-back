@@ -39,11 +39,27 @@ class RecentNewsCursorCodecTest {
     }
 
     @Test
-    @DisplayName("열람 시각이 비어 있는 조작 커서는 MYPAGE_400_004로 거부한다")
+    @DisplayName("열람 시각 키가 없는 조작 커서는 MYPAGE_400_004로 거부한다")
     void decode_rejectsCursorWithoutTimeKey() {
-        String tampered = base64Url("{\"t\":null,\"id\":55}");
+        String tampered = base64Url("{\"id\":55}");
 
         assertThatThrownBy(() -> codec.decode(tampered))
+                .isInstanceOf(MypageException.class)
+                .extracting("errorCode")
+                .isEqualTo(MypageErrorCode.INVALID_PAGE_REQUEST);
+    }
+
+    @Test
+    @DisplayName("타이브레이크 id가 없거나 양수가 아닌 조작 커서는 MYPAGE_400_004로 거부한다")
+    void decode_rejectsCursorWithoutPositiveId() {
+        String missingId = base64Url("{\"t\":\"2026-05-08T20:15:00\"}");
+        String nonPositiveId = base64Url("{\"t\":\"2026-05-08T20:15:00\",\"id\":0}");
+
+        assertThatThrownBy(() -> codec.decode(missingId))
+                .isInstanceOf(MypageException.class)
+                .extracting("errorCode")
+                .isEqualTo(MypageErrorCode.INVALID_PAGE_REQUEST);
+        assertThatThrownBy(() -> codec.decode(nonPositiveId))
                 .isInstanceOf(MypageException.class)
                 .extracting("errorCode")
                 .isEqualTo(MypageErrorCode.INVALID_PAGE_REQUEST);
