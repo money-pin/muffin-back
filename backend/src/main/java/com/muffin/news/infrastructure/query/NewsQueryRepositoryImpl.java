@@ -3,10 +3,12 @@ package com.muffin.news.infrastructure.query;
 import com.muffin.news.application.query.NewsCursor;
 import com.muffin.news.application.query.NewsQueryRepository;
 import com.muffin.news.application.query.NewsSummaryRow;
+import com.muffin.news.application.query.RecentReadNewsRow;
 import com.muffin.news.application.sectorimpact.SectorRow;
 import com.muffin.news.domain.category.QCategory;
 import com.muffin.news.domain.news.QNews;
 import com.muffin.news.domain.news.enums.NewsStatus;
+import com.muffin.news.domain.readhistory.QReadHistory;
 import com.muffin.sector.domain.sector.QSector;
 import com.muffin.sector.domain.sectorgroup.QSectorGroup;
 import com.querydsl.core.BooleanBuilder;
@@ -81,6 +83,23 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
                 .on(sectorGroup.id.eq(sector.sectorGroupId))
                 .where(sector.isActive.isTrue())
                 .orderBy(sectorGroup.groupOrder.asc(), sector.sectorOrder.asc())
+                .fetch();
+    }
+
+    @Override
+    public List<RecentReadNewsRow> findRecentReadNews(Long userId, int limit) {
+        QReadHistory readHistory = QReadHistory.readHistory;
+        QNews news = QNews.news;
+
+        return queryFactory
+                .select(Projections.constructor(
+                        RecentReadNewsRow.class, news.id, news.title, news.thumbnailUrl, readHistory.readAt))
+                .from(readHistory)
+                .join(news)
+                .on(news.id.eq(readHistory.newsId))
+                .where(readHistory.userId.eq(userId))
+                .orderBy(readHistory.readAt.desc(), readHistory.id.desc())
+                .limit(limit)
                 .fetch();
     }
 

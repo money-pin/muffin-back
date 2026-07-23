@@ -295,19 +295,35 @@ class UserTest {
         }
 
         @Test
-        @DisplayName("6자 초과 → IllegalArgumentException")
+        @DisplayName("10자 초과 → IllegalArgumentException")
         void tooLong() {
             User user = defaultUser();
 
-            assertThatThrownBy(() -> user.changeNickname("일이삼사오육칠")).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changeNickname("일이삼사오육칠팔구십일")).isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
-        @DisplayName("정확히 6자 → 성공")
-        void exactlySixChars() {
+        @DisplayName("2자 미만 → IllegalArgumentException")
+        void tooShort() {
             User user = defaultUser();
 
-            assertThatNoException().isThrownBy(() -> user.changeNickname("일이삼사오육"));
+            assertThatThrownBy(() -> user.changeNickname("일")).isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("정확히 10자 → 성공")
+        void exactlyTenChars() {
+            User user = defaultUser();
+
+            assertThatNoException().isThrownBy(() -> user.changeNickname("일이삼사오육칠팔구십"));
+        }
+
+        @Test
+        @DisplayName("정확히 2자 → 성공")
+        void exactlyTwoChars() {
+            User user = defaultUser();
+
+            assertThatNoException().isThrownBy(() -> user.changeNickname("일이"));
         }
 
         @Test
