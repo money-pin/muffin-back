@@ -9,20 +9,27 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 닉네임 중복 조회 유스케이스. */
+/** 닉네임 변경 유스케이스. */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
-public class NicknameQueryService {
+@Transactional
+public class NicknameCommandService {
 
     private final UserRepository userRepository;
     private final NicknameProfanityPolicy profanityPolicy;
 
-    public boolean isAvailable(String nickname) {
-        String normalized = User.normalizeAndValidateNickname(nickname);
+    public String changeNickname(Long userId, String newNickname) {
+        String normalized = User.normalizeAndValidateNickname(newNickname);
         if (profanityPolicy.isProfane(normalized)) {
             throw new GeneralException(UserErrorCode.NICKNAME_CONTAINS_PROFANITY);
         }
-        return !userRepository.existsByNickname(normalized);
+        if (userRepository.existsByNickname(normalized)) {
+            throw new GeneralException(UserErrorCode.NICKNAME_DUPLICATED);
+        }
+
+        User user =
+                userRepository.findById(userId).orElseThrow(() -> new GeneralException(UserErrorCode.USER_NOT_FOUND));
+        user.changeNickname(normalized);
+        return user.getNickname();
     }
 }

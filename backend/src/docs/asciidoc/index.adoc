@@ -228,7 +228,10 @@ include::{snippets}/nickname-check-taken/response-fields.adoc[]
 |===
 |HTTP|code|message|설명
 
+|400|COMMON_400_001|닉네임은 한글/영문/숫자/공백만 사용해 2~10자로 입력해야 합니다.|형식/길이 위반
+|400|USER_400_001|닉네임에 부적절한 표현이 포함되어 있습니다.|비속어 포함
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+
 |===
 
 [[onboarding-character-result]]
@@ -378,6 +381,40 @@ include::{snippets}/google-auth-invalid-token/response-fields.adoc[]
 |403|AUTH_403_002|탈퇴한 계정입니다.|status=WITHDRAWN
 |403|AUTH_403_003|정지된 계정입니다.|status=SUSPENDED
 |409|AUTH_409_003|최근 탈퇴한 이메일입니다. 30일 후 다시 가입할 수 있습니다.|신규 가입인데 탈퇴 후 30일 이내(<<auth-withdraw>>)
+|===
+
+[[user-nickname-change]]
+== 닉네임 변경(MYPAGE-02)
+
+마이페이지에서 사용자의 닉네임을 변경한다. 닉네임은 2~10자(한글/영문/숫자/공백)여야 하며, 비속어를 포함하거나 이미 사용 중이면 변경할 수 없다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+=== 요청
+
+include::{snippets}/nickname-change-success/http-request.adoc[]
+include::{snippets}/nickname-change-success/request-fields.adoc[]
+
+=== 응답 - 변경 성공
+
+include::{snippets}/nickname-change-success/http-response.adoc[]
+include::{snippets}/nickname-change-success/response-fields.adoc[]
+
+=== 응답 - 이미 사용 중인 닉네임(409)
+
+include::{snippets}/nickname-change-duplicated/http-response.adoc[]
+include::{snippets}/nickname-change-duplicated/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_001|닉네임은 한글/영문/숫자/공백만 사용해 2~10자로 입력해야 합니다.|형식/길이 위반
+|400|USER_400_001|닉네임에 부적절한 표현이 포함되어 있습니다.|비속어 포함
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|409|USER_409_002|이미 사용 중인 닉네임입니다.|중복 닉네임
 |===
 
 [[stats-summary]]

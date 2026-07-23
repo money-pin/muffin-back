@@ -49,7 +49,7 @@ public class SecurityConfig {
                                 .authenticated()
                                 .requestMatchers("/api/terms/**")
                                 .authenticated()
-                                .requestMatchers("/api/users/**", "/api/onboarding/**")
+                                .requestMatchers("/api/users/**", "/api/onboarding/**", "/api/mypage/**")
                                 .authenticated()
                                 .requestMatchers("/api/news/today")
                                 .authenticated()
