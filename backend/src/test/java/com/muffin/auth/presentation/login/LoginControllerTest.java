@@ -69,7 +69,7 @@ class LoginControllerTest {
         registerLocalAccount();
         String body = objectMapper.writeValueAsString(new LoginRequestBody(EMAIL, PASSWORD));
 
-        mockMvc.perform(post("/api/auth/login").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/login").contentType("application/json").content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess", is(true)))
                 .andExpect(jsonPath("$.result.accessToken").exists())
@@ -77,7 +77,7 @@ class LoginControllerTest {
                 .andExpect(cookie().httpOnly("refreshToken", true))
                 .andExpect(cookie().secure("refreshToken", true))
                 .andExpect(cookie().sameSite("refreshToken", "Strict"))
-                .andExpect(cookie().path("refreshToken", "/api/auth"))
+                .andExpect(cookie().path("refreshToken", "/auth"))
                 .andExpect(cookie().maxAge("refreshToken", greaterThan(0)));
     }
 
@@ -87,7 +87,7 @@ class LoginControllerTest {
         registerLocalAccount();
         String body = objectMapper.writeValueAsString(new LoginRequestBody(EMAIL, "wrongpass1"));
 
-        mockMvc.perform(post("/api/auth/login").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/login").contentType("application/json").content(body))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code", is("AUTH_401_002")));
     }
@@ -97,7 +97,7 @@ class LoginControllerTest {
     void login_emailNotFound() throws Exception {
         String body = objectMapper.writeValueAsString(new LoginRequestBody("nobody@example.com", PASSWORD));
 
-        mockMvc.perform(post("/api/auth/login").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/login").contentType("application/json").content(body))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code", is("AUTH_401_002")));
     }
@@ -109,7 +109,7 @@ class LoginControllerTest {
         authRepository.save(Auth.createGoogle(user.getUserId(), EMAIL, "google-sub-login-test"));
         String body = objectMapper.writeValueAsString(new LoginRequestBody(EMAIL, PASSWORD));
 
-        mockMvc.perform(post("/api/auth/login").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/login").contentType("application/json").content(body))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code", is("AUTH_401_002")));
     }
@@ -122,7 +122,7 @@ class LoginControllerTest {
         userRepository.save(user);
         String body = objectMapper.writeValueAsString(new LoginRequestBody(EMAIL, PASSWORD));
 
-        mockMvc.perform(post("/api/auth/login").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/login").contentType("application/json").content(body))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code", is("AUTH_403_002")));
     }
@@ -135,7 +135,7 @@ class LoginControllerTest {
         userRepository.save(user);
         String body = objectMapper.writeValueAsString(new LoginRequestBody(EMAIL, PASSWORD));
 
-        mockMvc.perform(post("/api/auth/login").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/login").contentType("application/json").content(body))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code", is("AUTH_403_003")));
     }
@@ -145,7 +145,7 @@ class LoginControllerTest {
     void login_blankEmail() throws Exception {
         String body = objectMapper.writeValueAsString(new LoginRequestBody("", PASSWORD));
 
-        mockMvc.perform(post("/api/auth/login").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/login").contentType("application/json").content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code", is("COMMON_400_002")));
     }
@@ -155,7 +155,7 @@ class LoginControllerTest {
     void login_blankPassword() throws Exception {
         String body = objectMapper.writeValueAsString(new LoginRequestBody(EMAIL, ""));
 
-        mockMvc.perform(post("/api/auth/login").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/login").contentType("application/json").content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code", is("COMMON_400_002")));
     }
@@ -167,14 +167,12 @@ class LoginControllerTest {
         String wrongBody = objectMapper.writeValueAsString(new LoginRequestBody(EMAIL, "wrongpass1"));
 
         for (int i = 0; i < 5; i++) {
-            mockMvc.perform(post("/api/auth/login")
-                            .contentType("application/json")
-                            .content(wrongBody))
+            mockMvc.perform(post("/auth/login").contentType("application/json").content(wrongBody))
                     .andExpect(status().isUnauthorized());
         }
 
         String correctBody = objectMapper.writeValueAsString(new LoginRequestBody(EMAIL, PASSWORD));
-        mockMvc.perform(post("/api/auth/login").contentType("application/json").content(correctBody))
+        mockMvc.perform(post("/auth/login").contentType("application/json").content(correctBody))
                 .andExpect(status().isLocked())
                 .andExpect(jsonPath("$.code", is("AUTH_423_002")))
                 .andExpect(jsonPath("$.message", is("로그인 시도 횟수를 초과하여 계정이 잠겼습니다. 잠시 후 다시 시도해 주세요.")));
