@@ -483,6 +483,32 @@ include::{snippets}/mypage-saved-terms-get/response-fields.adoc[]
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |===
 
+[[mypage-home]]
+== 마이페이지 홈 조회(MYPAGE-01)
+
+닉네임, 캐릭터, 연속 참여(스트릭)/이번 주 활동, 최근 읽은 뉴스(최신순 최대 3건)를 한 번에 조회한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+NOTE: currentStreak은 오늘 아직 퀴즈를 풀지 않았어도 끊기지 않는다(어제까지 연속 기록을 그대로 보여줌). 오늘도 어제도 완료하지 않았을 때만 0이 된다. maxStreak은 지금까지의 최장 연속 기록이다. weeklyActivity는 이번 주 일요일부터 토요일까지 7일이다.
+
+=== 응답
+
+include::{snippets}/mypage-home-get/http-response.adoc[]
+include::{snippets}/mypage-home-get/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|USER_404_001|존재하지 않는 사용자입니다.|access token의 userId에 해당하는 User 없음(정상 흐름에서는 발생하지 않음)
+|404|USER_404_002|존재하지 않는 캐릭터입니다.|User.characterId에 해당하는 캐릭터 없음(정상 흐름에서는 발생하지 않음)
+|409|USER_409_001|온보딩을 먼저 완료해야 합니다.|User.characterId가 아직 없음(온보딩 미완료)
+|===
+
 [[stats-summary]]
 == 수익 통계 조회 (STATS-02)
 

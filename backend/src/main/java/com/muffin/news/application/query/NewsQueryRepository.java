@@ -21,4 +21,7 @@ public interface NewsQueryRepository {
 
     /** 활성 섹터를 그룹·섹터 표시 순서(groupOrder, sectorOrder)대로 조회한다(섹터 영향도 응답의 고정 목록). */
     List<SectorRow> findActiveSectorsInDisplayOrder();
+
+    /** 마이페이지 홈에 표시할 사용자의 최근 열람 뉴스를 열람 시각 최신순으로 조회한다. */
+    List<RecentReadNewsRow> findRecentReadNews(Long userId, int limit);
 }

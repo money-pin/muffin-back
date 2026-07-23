@@ -1,5 +1,7 @@
 package com.muffin.quiz.domain.quizsession;
 
+import com.muffin.quiz.domain.quizsession.enums.QuizSessionStatus;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +14,10 @@ import org.springframework.data.repository.query.Param;
 public interface QuizSessionRepository extends JpaRepository<QuizSession, Long> {
 
     Optional<QuizSession> findByUserIdAndDailyQuizSetId(Long userId, Long dailyQuizSetId);
+
+    /** 마이페이지 홈의 스트릭(연속 참여) 계산용: 사용자가 완료(FINISHED)한 퀴즈 세션의 날짜 목록. */
+    @Query("select q.date from QuizSession q where q.userId = :userId and q.status = :status")
+    List<LocalDate> findDatesByUserIdAndStatus(@Param("userId") Long userId, @Param("status") QuizSessionStatus status);
 
     // 탈퇴 계정 데이터 정리 배치용: 아직 정리되지 않은(=quiz_session 행이 남아있는) 탈퇴 유저만 대상으로 잡아,
     // 정리가 끝난 유저는 다음 배치 실행부터 자연히 제외되게 한다.
