@@ -49,6 +49,8 @@ public class SecurityConfig {
                                 .authenticated()
                                 .requestMatchers("/api/terms/**")
                                 .authenticated()
+                                .requestMatchers("/api/quizzes/**")
+                                .authenticated()
                                 .requestMatchers("/api/users/**", "/api/onboarding/**")
                                 .authenticated()
                                 .requestMatchers("/api/news/today")
