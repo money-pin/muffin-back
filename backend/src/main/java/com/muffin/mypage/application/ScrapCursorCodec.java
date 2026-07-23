@@ -41,8 +41,14 @@ public class ScrapCursorCodec {
             LocalDateTime timeKey = payload.t() == null ? null : LocalDateTime.parse(payload.t());
             boolean hasTime = timeKey != null;
             boolean hasNumber = payload.n() != null;
-            // 정렬별로 정확히 하나의 기준 키만 있어야 한다(둘 다/둘 다 없음은 변조).
-            if (hasTime == hasNumber) {
+            // 정렬별로 맞는 기준 키가 정확히 하나만 있어야 한다. 시간 정렬엔 timeKey만, 조회수 정렬엔 numberKey만
+            // 허용한다(반대 키/둘 다/둘 다 없음은 변조로 보고 거부해, 저장소가 null 비교식을 만들지 않게 한다).
+            boolean validKey =
+                    switch (sort) {
+                        case SAVED_DESC, PUBLISHED_DESC -> hasTime && !hasNumber;
+                        case VIEW_DESC -> !hasTime && hasNumber;
+                    };
+            if (!validKey) {
                 throw invalidCursor();
             }
             return new ScrapCursor(sort, timeKey, payload.n(), payload.id());

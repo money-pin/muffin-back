@@ -14,7 +14,7 @@ public interface MypageApi {
     @Operation(
             summary = "스크랩한 뉴스 목록 조회 (MYPAGE-04)",
             description = "마이페이지에서 스크랩한 뉴스를 지정한 정렬(최근 저장순/업로드순/조회수순)로 커서 페이지네이션 조회한다. "
-                    + "sort 미지정 시 SAVED_DESC(최근 저장순), size 미지정 시 10. next_cursor는 다음 페이지가 있을 때만 내려간다.")
+                    + "sort 미지정 시 SAVED_DESC(최근 저장순), size 미지정 시 10. nextCursor는 다음 페이지가 있을 때만 내려간다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "200",

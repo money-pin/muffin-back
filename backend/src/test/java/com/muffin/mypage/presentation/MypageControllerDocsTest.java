@@ -71,7 +71,7 @@ class MypageControllerDocsTest {
                                         .optional()
                                         .description("정렬. SAVED_DESC/PUBLISHED_DESC/VIEW_DESC (기본 SAVED_DESC)"),
                                 parameterWithName("cursor").optional().description("이전 응답의 nextCursor"),
-                                parameterWithName("size").optional().description("페이지 크기 (1~50, 기본 20)")),
+                                parameterWithName("size").optional().description("페이지 크기 (1~50, 기본 10)")),
                         responseFields(
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드"),

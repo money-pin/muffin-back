@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.muffin.mypage.domain.ScrapSort;
 import com.muffin.mypage.domain.exception.MypageException;
 import com.muffin.mypage.domain.exception.code.MypageErrorCode;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
@@ -50,5 +52,31 @@ class ScrapCursorCodecTest {
                 .isInstanceOf(MypageException.class)
                 .extracting("errorCode")
                 .isEqualTo(MypageErrorCode.INVALID_PAGE_REQUEST);
+    }
+
+    @Test
+    @DisplayName("시각 정렬에 numberKey만 담긴 조작 커서는 MYPAGE_400_004로 거부한다")
+    void decode_rejectsTimeSortWithNumberKey() {
+        String tampered = base64Url("{\"s\":\"SAVED_DESC\",\"t\":null,\"n\":3120,\"id\":101}");
+
+        assertThatThrownBy(() -> codec.decode(tampered))
+                .isInstanceOf(MypageException.class)
+                .extracting("errorCode")
+                .isEqualTo(MypageErrorCode.INVALID_PAGE_REQUEST);
+    }
+
+    @Test
+    @DisplayName("조회수 정렬에 timeKey만 담긴 조작 커서는 MYPAGE_400_004로 거부한다")
+    void decode_rejectsViewSortWithTimeKey() {
+        String tampered = base64Url("{\"s\":\"VIEW_DESC\",\"t\":\"2026-05-08T14:30:00\",\"n\":null,\"id\":55}");
+
+        assertThatThrownBy(() -> codec.decode(tampered))
+                .isInstanceOf(MypageException.class)
+                .extracting("errorCode")
+                .isEqualTo(MypageErrorCode.INVALID_PAGE_REQUEST);
+    }
+
+    private String base64Url(String json) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes(StandardCharsets.UTF_8));
     }
 }
