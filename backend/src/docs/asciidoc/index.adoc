@@ -14,7 +14,7 @@
 * `SETTLEMENT_PENDING`: 정산 배치가 아직 완료되지 않음(정산 중)
 * `NO_INVESTMENT`: 최근 정산 대상 투자가 없음(미투자/취소 포함)
 
-NOTE: 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
 FE 담당자는 invest_date를 로컬에 저장하여 같은 투자 결과 팝업을 1회만 보여줄 수 있도록 한다.
 
 === 요청
@@ -390,7 +390,7 @@ include::{snippets}/google-auth-invalid-token/response-fields.adoc[]
 * TOP3 섹터: 섹터 누적 수익률(그 섹터 누적 매수금 기준) 내림차순 3개.
 * 투자 성향: 섹터 그룹별 누적 매수 비중으로 판정(STABLE/BALANCED/GROWTH/AGGRESSIVE).
 
-NOTE: 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
 
 === 요청
 
@@ -454,4 +454,102 @@ include::{snippets}/stats-history-invalid-period/response-fields.adoc[]
 |400|STATS_400_002|정렬 기준(sort) 값이 올바르지 않습니다.|`sort`가 AMOUNT_DESC/AMOUNT_ASC/RATE_DESC/RATE_ASC 이외의 값
 |400|STATS_400_003|조회 기준 시점(date) 형식이 조회 기간과 맞지 않습니다.|`date` 형식이 `period` 규격과 불일치(예: MONTH에 `2026-13`)
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===
+
+[[news-scrap]]
+== 뉴스 스크랩 / 해제 (CONTENT-06)
+
+관심 있는 뉴스를 저장하거나 저장을 해제한다. 둘 다 **멱등** 연산이라 같은 요청을 여러 번 보내도 상태가 같다.
+
+* `PUT /api/news/{newsId}/scrap`: 스크랩. 이미 스크랩한 뉴스에 다시 요청해도 최초 저장 시각(`scrappedAt`)을 유지한 채 성공한다. 공개(PUBLISHED)된 뉴스만 스크랩할 수 있다.
+* `DELETE /api/news/{newsId}/scrap`: 스크랩 해제. 스크랩하지 않은 뉴스에 요청해도 성공하며, 공개 상태와 무관하게 해제할 수 있다.
+
+NOTE: `scrappedAt`은 KST 오프셋(`+09:00`)을 포함하며, 해제 응답에서는 생략된다.
+
+=== 요청 - 스크랩
+
+include::{snippets}/scrap-create/http-request.adoc[]
+include::{snippets}/scrap-create/path-parameters.adoc[]
+
+=== 응답 - 스크랩 성공
+
+include::{snippets}/scrap-create/http-response.adoc[]
+include::{snippets}/scrap-create/response-fields.adoc[]
+
+=== 요청 - 스크랩 해제
+
+include::{snippets}/scrap-delete/http-request.adoc[]
+include::{snippets}/scrap-delete/path-parameters.adoc[]
+
+=== 응답 - 해제 성공
+
+include::{snippets}/scrap-delete/http-response.adoc[]
+include::{snippets}/scrap-delete/response-fields.adoc[]
+
+=== 응답 - 실패(존재하지 않는 뉴스)
+
+include::{snippets}/scrap-not-found/http-response.adoc[]
+include::{snippets}/scrap-not-found/response-fields.adoc[]
+
+=== 응답 - 실패(아직 공개되지 않은 뉴스, 스크랩 시)
+
+include::{snippets}/scrap-not-published/http-response.adoc[]
+include::{snippets}/scrap-not-published/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|403|CONTENT_403_001|아직 공개되지 않은 뉴스입니다.|스크랩(PUT) 시 대상 뉴스가 PUBLISHED 상태가 아님(해제에는 적용 안 함)
+|404|CONTENT_404_001|존재하지 않는 뉴스입니다.|해당 `newsId`의 뉴스가 없거나 삭제됨
+|===
+
+[[mypage-scraps]]
+== 스크랩한 뉴스 목록 조회 (MYPAGE-04)
+
+마이페이지에서 스크랩한 뉴스를 지정한 정렬로 커서 페이지네이션 조회한다. 미삭제 뉴스만 대상으로 하며, 본인 스크랩만 조회한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
+
+* `sort`: `SAVED_DESC`(최근 저장순, 기본) / `PUBLISHED_DESC`(업로드순) / `VIEW_DESC`(조회수순).
+* `cursor`/`size`(1~50, 기본 10): 커서 페이지네이션. `nextCursor`는 다음 페이지가 있을 때만 내려간다(없으면 응답에서 생략).
+* 응답 필드는 camelCase로 통일했다(`newsId`/`categoryName`/`thumbnailUrl`/`viewCount`/`publishedAt`/`scrappedAt`/`nextCursor`/`hasNext`). `category`는 코드가 없어 표시명(`categoryName`)으로 내린다. 시각은 KST 오프셋(`+09:00`)을 포함한다.
+
+=== 요청
+
+include::{snippets}/scrap-list/http-request.adoc[]
+include::{snippets}/scrap-list/query-parameters.adoc[]
+
+=== 응답 - 정상
+
+include::{snippets}/scrap-list/http-response.adoc[]
+include::{snippets}/scrap-list/response-fields.adoc[]
+
+=== 응답 - 스크랩 없음(빈 상태)
+
+include::{snippets}/scrap-list-empty/http-response.adoc[]
+include::{snippets}/scrap-list-empty/response-fields.adoc[]
+
+=== 응답 - 실패(요청 값 오류)
+
+include::{snippets}/scrap-list-invalid/http-response.adoc[]
+include::{snippets}/scrap-list-invalid/response-fields.adoc[]
+
+=== 응답 - 실패(사용자 없음)
+
+include::{snippets}/scrap-list-user-not-found/http-response.adoc[]
+include::{snippets}/scrap-list-user-not-found/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|MYPAGE_400_004|페이지 요청 값이 올바르지 않습니다.|`size`가 1~50 밖, `sort` 허용값 아님, 또는 `cursor` 형식 오류/정렬 불일치
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|MYPAGE_404_001|사용자 정보를 찾을 수 없습니다.|access token의 userId에 해당하는 사용자 없음
 |===
