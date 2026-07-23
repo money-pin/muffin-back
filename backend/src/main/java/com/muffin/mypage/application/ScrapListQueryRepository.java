@@ -1,5 +1,6 @@
 package com.muffin.mypage.application;
 
+import com.muffin.mypage.application.projection.ScrapListProjection;
 import com.muffin.mypage.domain.ScrapSort;
 import java.util.List;
 
@@ -12,5 +13,5 @@ public interface ScrapListQueryRepository {
      * @param cursor 최초 조회 시 {@code null}
      * @param limit 조회 개수
      */
-    List<ScrapListRow> findScrapPage(Long userId, ScrapSort sort, ScrapCursor cursor, int limit);
+    List<ScrapListProjection> findScrapPage(Long userId, ScrapSort sort, ScrapCursor cursor, int limit);
 }

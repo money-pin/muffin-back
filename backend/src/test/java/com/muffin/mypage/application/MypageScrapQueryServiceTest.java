@@ -11,6 +11,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.muffin.mypage.application.projection.ScrapListProjection;
 import com.muffin.mypage.domain.ScrapSort;
 import com.muffin.mypage.domain.exception.MypageException;
 import com.muffin.mypage.domain.exception.code.MypageErrorCode;
@@ -95,7 +96,7 @@ class MypageScrapQueryServiceTest {
     void getScraps_paginatesAndEncodesNextCursor() {
         when(userRepository.existsById(USER_ID)).thenReturn(true);
         when(scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.SAVED_DESC, null, 3))
-                .thenReturn(List.of(row(10L, 100L), row(11L, 101L), row(12L, 102L)));
+                .thenReturn(List.of(projection(10L, 100L), projection(11L, 101L), projection(12L, 102L)));
         when(scrapCursorCodec.encode(eq(ScrapSort.SAVED_DESC), any(), any(), anyLong()))
                 .thenReturn("NEXT");
 
@@ -118,7 +119,7 @@ class MypageScrapQueryServiceTest {
     void getScraps_lastPageHasNoNextCursor() {
         when(userRepository.existsById(USER_ID)).thenReturn(true);
         when(scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.SAVED_DESC, null, 3))
-                .thenReturn(List.of(row(10L, 100L)));
+                .thenReturn(List.of(projection(10L, 100L)));
 
         ScrapListResponse response = service.getScraps(USER_ID, null, null, 2);
 
@@ -141,8 +142,8 @@ class MypageScrapQueryServiceTest {
         assertThat(response.nextCursor()).isNull();
     }
 
-    private ScrapListRow row(Long newsId, Long scrapId) {
-        return new ScrapListRow(
+    private ScrapListProjection projection(Long newsId, Long scrapId) {
+        return new ScrapListProjection(
                 newsId, "제목" + newsId, "반도체", "https://thumb/" + newsId, 100L, PUBLISHED_AT, SCRAPPED_AT, scrapId);
     }
 }
