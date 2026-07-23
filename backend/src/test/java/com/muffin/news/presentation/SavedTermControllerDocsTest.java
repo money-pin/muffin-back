@@ -73,10 +73,15 @@ class SavedTermControllerDocsTest {
                 .andDo(document(
                         "mypage-saved-terms-get",
                         queryParameters(
-                                parameterWithName("page").description("페이지 번호(0부터 시작, 기본 0)"),
-                                parameterWithName("size").description("페이지 크기(최대 50, 기본 20)"),
+                                parameterWithName("page")
+                                        .description("페이지 번호(0부터 시작, 기본 0)")
+                                        .optional(),
+                                parameterWithName("size")
+                                        .description("페이지 크기(최대 50, 기본 20)")
+                                        .optional(),
                                 parameterWithName("sort")
-                                        .description("정렬 기준: recent(기본, 최근 저장순) 또는 alphabetical(가나다순)")),
+                                        .description("정렬 기준: recent(기본, 최근 저장순) 또는 alphabetical(가나다순)")
+                                        .optional()),
                         responseFields(
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드"),
