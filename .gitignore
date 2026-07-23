@@ -10,3 +10,24 @@
 .claude/
 
 .env
+
+# 내부 설계 문서
+docs/
+
+# Terraform
+# state에는 RDS 마스터 비밀번호 등 시크릿이 평문으로 저장되므로 절대 커밋 금지
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# .terraform.lock.hcl은 프로바이더 버전 고정용이라 커밋함 (일부러 제외하지 않음)

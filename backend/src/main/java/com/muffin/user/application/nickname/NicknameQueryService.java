@@ -1,7 +1,10 @@
 package com.muffin.user.application.nickname;
 
+import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.user.domain.NicknameProfanityPolicy;
+import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
-import java.text.Normalizer;
+import com.muffin.user.exception.UserErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,9 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class NicknameQueryService {
 
     private final UserRepository userRepository;
+    private final NicknameProfanityPolicy profanityPolicy;
 
     public boolean isAvailable(String nickname) {
-        String normalized = Normalizer.normalize(nickname, Normalizer.Form.NFC);
+        String normalized = User.normalizeAndValidateNickname(nickname);
+        if (profanityPolicy.isProfane(normalized)) {
+            throw new GeneralException(UserErrorCode.NICKNAME_CONTAINS_PROFANITY);
+        }
         return !userRepository.existsByNickname(normalized);
     }
 }

@@ -11,11 +11,11 @@ import com.muffin.quiz.presentation.dto.response.TodayQuizResponse;
 import com.muffin.quiz.presentation.swagger.QuizApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -29,25 +29,20 @@ public class QuizController implements QuizApi {
 
     @Override
     @GetMapping("/today")
-    public ApiResponse<TodayQuizResponse> getTodayQuiz(
-            // TODO: 인증(Security/JWT) 구현 후 @AuthenticationPrincipal 등으로 교체. 현재는 임시 헤더.
-            @RequestHeader("X-User-Id") Long userId) {
+    public ApiResponse<TodayQuizResponse> getTodayQuiz(@AuthenticationPrincipal Long userId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizQueryService.getTodayQuiz(userId));
     }
 
     @Override
     @GetMapping("/today/result")
-    public ApiResponse<QuizResultResponse> getTodayQuizResult(
-            // TODO: 인증(Security/JWT) 구현 후 @AuthenticationPrincipal 등으로 교체. 현재는 임시 헤더.
-            @RequestHeader("X-User-Id") Long userId) {
+    public ApiResponse<QuizResultResponse> getTodayQuizResult(@AuthenticationPrincipal Long userId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizQueryService.getTodayQuizResult(userId));
     }
 
     @Override
     @PostMapping("/{quizId}/attempt")
     public ApiResponse<QuizAttemptResponse> submitAnswer(
-            // TODO: 인증(Security/JWT) 구현 후 @AuthenticationPrincipal 등으로 교체. 현재는 임시 헤더.
-            @RequestHeader("X-User-Id") Long userId,
+            @AuthenticationPrincipal Long userId,
             @PathVariable Long quizId,
             @Valid @RequestBody QuizAttemptRequest request) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizCommandService.submitAnswer(userId, quizId, request));

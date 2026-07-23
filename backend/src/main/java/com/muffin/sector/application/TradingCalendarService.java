@@ -31,7 +31,7 @@ public class TradingCalendarService {
         }
 
         if (result == null || !isRequestedDay(result.today(), date)) {
-            throw unavailable();
+            throw unavailable(date, "requested date mismatch");
         }
 
         BusinessDay previous = result.previousBusinessDay();
@@ -40,13 +40,13 @@ public class TradingCalendarService {
                 || !isCompleteTradingDay(next)
                 || !previous.date().isBefore(date)
                 || !next.date().isAfter(date)) {
-            throw unavailable();
+            throw unavailable(date, "previous or next trading day is incomplete");
         }
 
         BusinessDay today = result.today();
         boolean tradingDay = hasRegularMarket(today);
         if (tradingDay && !hasCompleteRegularMarket(today)) {
-            throw unavailable();
+            throw unavailable(date, "regular market session is incomplete");
         }
 
         return new TradingCalendar(date, tradingDay, previous.date(), next.date());
@@ -77,6 +77,11 @@ public class TradingCalendarService {
 
     private GeneralException unavailable() {
         return new GeneralException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE);
+    }
+
+    private GeneralException unavailable(LocalDate date, String reason) {
+        log.warn("거래일 API 응답을 사용할 수 없습니다. date={}, reason={}", date, reason);
+        return unavailable();
     }
 
     public record TradingCalendar(
