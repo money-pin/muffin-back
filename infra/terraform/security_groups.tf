@@ -29,16 +29,6 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  ingress {
-    # Nginx를 붙이기 전 임시 테스트용. 리버스 프록시 구성 후에는 이 규칙을 제거하는 것을 권장.
-    # (AWS는 description에 ASCII만 허용하므로 한글 설명은 주석으로 둔다)
-    description = "App direct access (temporary, remove after Nginx)"
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   egress {
     from_port   = 0
     to_port     = 0
