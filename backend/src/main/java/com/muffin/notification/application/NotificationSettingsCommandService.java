@@ -1,7 +1,6 @@
 package com.muffin.notification.application;
 
 import com.muffin.notification.domain.NotificationSettings;
-import com.muffin.notification.domain.NotificationSettingsRepository;
 import com.muffin.notification.presentation.dto.MyPageSettingsResponse;
 import com.muffin.notification.presentation.dto.NotificationSettingsItem;
 import com.muffin.notification.presentation.dto.NotificationSettingsUpdateRequest;
@@ -15,12 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class NotificationSettingsCommandService {
 
-    private final NotificationSettingsRepository notificationSettingsRepository;
+    private final NotificationSettingsFinder notificationSettingsFinder;
 
     public MyPageSettingsResponse updateSettings(Long userId, NotificationSettingsUpdateRequest request) {
-        NotificationSettings settings = notificationSettingsRepository
-                .findById(userId)
-                .orElseGet(() -> notificationSettingsRepository.save(NotificationSettings.createDefault(userId)));
+        NotificationSettings settings = notificationSettingsFinder.findOrCreate(userId);
 
         settings.updateNewsUpdatePush(request.newsUpdate());
         settings.updateQuizPush(request.dailyQuiz());

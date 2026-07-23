@@ -17,6 +17,7 @@ import com.muffin.quiz.domain.quizsession.QuizSession;
 import com.muffin.quiz.domain.quizsession.QuizSessionRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -71,8 +72,25 @@ class MyPageHomeControllerTest {
     }
 
     private User createOnboardedUser(Long characterId) {
-        User user = User.register(characterId, UUID.randomUUID().toString(), "홍길동", "길동이");
+        return createOnboardedUser(
+                characterId, "길동" + UUID.randomUUID().toString().substring(0, 4));
+    }
+
+    private User createOnboardedUser(Long characterId, String nickname) {
+        User user = User.register(characterId, UUID.randomUUID().toString(), "홍길동", nickname);
         return userRepository.save(user);
+    }
+
+    private int sundayBasedIndex(DayOfWeek dayOfWeek) {
+        return switch (dayOfWeek) {
+            case SUNDAY -> 0;
+            case MONDAY -> 1;
+            case TUESDAY -> 2;
+            case WEDNESDAY -> 3;
+            case THURSDAY -> 4;
+            case FRIDAY -> 5;
+            case SATURDAY -> 6;
+        };
     }
 
     private void finishQuizSession(Long userId, Long dailyQuizSetId, LocalDate date) {
@@ -95,7 +113,7 @@ class MyPageHomeControllerTest {
     @DisplayName("닉네임/캐릭터/스트릭/최근 뉴스를 조합해서 200으로 응답한다")
     void getHome_success() throws Exception {
         CharacterProfile character = seedCharacter();
-        User user = createOnboardedUser(character.getCharacterId());
+        User user = createOnboardedUser(character.getCharacterId(), "길동이");
         finishQuizSession(user.getUserId(), 1L, LocalDate.now());
         saveReadNews(user.getUserId(), "뉴스1", "http://origin/1");
         saveReadNews(user.getUserId(), "뉴스2", "http://origin/2");
@@ -108,6 +126,64 @@ class MyPageHomeControllerTest {
                 .andExpect(jsonPath("$.result.streak.currentStreak", is(1)))
                 .andExpect(jsonPath("$.result.recentNews.length()", is(2)))
                 .andExpect(jsonPath("$.result.recentNews[0].title", is("뉴스2")));
+    }
+
+    @Test
+    @DisplayName("과거의 더 긴 연속 기록이 maxStreak에 반영되고, weeklyActivity는 이번 주 참여 현황을 정확히 보여준다")
+    void getHome_maxStreakAndWeeklyActivity() throws Exception {
+        CharacterProfile character = seedCharacter();
+        User user = createOnboardedUser(character.getCharacterId());
+        LocalDate today = LocalDate.now();
+        finishQuizSession(user.getUserId(), 1L, today);
+        // 이번 주 범위 밖(20일 전)의 4일 연속 기록: currentStreak(1)보다 긴 maxStreak를 만든다.
+        finishQuizSession(user.getUserId(), 2L, today.minusDays(20));
+        finishQuizSession(user.getUserId(), 3L, today.minusDays(19));
+        finishQuizSession(user.getUserId(), 4L, today.minusDays(18));
+        finishQuizSession(user.getUserId(), 5L, today.minusDays(17));
+
+        var result = mockMvc.perform(get("/api/mypage/home").header("Authorization", bearerTokenFor(user.getUserId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.streak.currentStreak", is(1)))
+                .andExpect(jsonPath("$.result.streak.maxStreak", is(4)))
+                .andExpect(jsonPath("$.result.streak.weeklyActivity.length()", is(7)));
+
+        int todayIndex = sundayBasedIndex(today.getDayOfWeek());
+        for (int i = 0; i < 7; i++) {
+            result.andExpect(jsonPath("$.result.streak.weeklyActivity[" + i + "].participated", is(i == todayIndex)));
+        }
+    }
+
+    @Test
+    @DisplayName("읽은 뉴스가 3건보다 많아도 최신순 상위 3건만 반환한다")
+    void getHome_recentNewsTruncatedToThree() throws Exception {
+        CharacterProfile character = seedCharacter();
+        User user = createOnboardedUser(character.getCharacterId());
+        saveReadNews(user.getUserId(), "뉴스1", "http://origin/1");
+        saveReadNews(user.getUserId(), "뉴스2", "http://origin/2");
+        saveReadNews(user.getUserId(), "뉴스3", "http://origin/3");
+        saveReadNews(user.getUserId(), "뉴스4", "http://origin/4");
+
+        mockMvc.perform(get("/api/mypage/home").header("Authorization", bearerTokenFor(user.getUserId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.recentNews.length()", is(3)))
+                .andExpect(jsonPath("$.result.recentNews[0].title", is("뉴스4")))
+                .andExpect(jsonPath("$.result.recentNews[2].title", is("뉴스2")));
+    }
+
+    @Test
+    @DisplayName("다른 유저의 퀴즈 기록/열람 이력은 내 스트릭/최근 뉴스에 섞이지 않는다")
+    void getHome_excludesOtherUsersData() throws Exception {
+        CharacterProfile character = seedCharacter();
+        User me = createOnboardedUser(character.getCharacterId(), "나야나");
+        User other = createOnboardedUser(character.getCharacterId(), "다른사람");
+
+        finishQuizSession(other.getUserId(), 1L, LocalDate.now());
+        saveReadNews(other.getUserId(), "남의뉴스", "http://origin/other");
+
+        mockMvc.perform(get("/api/mypage/home").header("Authorization", bearerTokenFor(me.getUserId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.streak.currentStreak", is(0)))
+                .andExpect(jsonPath("$.result.recentNews.length()", is(0)));
     }
 
     @Test

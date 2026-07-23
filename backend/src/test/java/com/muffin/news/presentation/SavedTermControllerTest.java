@@ -26,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class SavedTermControllerTest {
 
     private static final Long USER_ID = 200L;
+    private static final Long OTHER_USER_ID = 201L;
 
     @Autowired
     private MockMvc mockMvc;
@@ -54,7 +55,11 @@ class SavedTermControllerTest {
     }
 
     private void save(Long termId) {
-        userSavedTermRepository.save(UserSavedTerm.create(USER_ID, termId));
+        save(USER_ID, termId);
+    }
+
+    private void save(Long userId, Long termId) {
+        userSavedTermRepository.save(UserSavedTerm.create(userId, termId));
     }
 
     @Test
@@ -109,6 +114,38 @@ class SavedTermControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.savedTerms.length()", is(2)))
                 .andExpect(jsonPath("$.result.hasNext", is(true)));
+    }
+
+    @Test
+    @DisplayName("size만큼 가져온 후 다음 페이지를 요청하면 나머지가 반환되고 hasNext=false가 된다")
+    void getSavedTerms_pagination_secondPage() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            TermDictionary t = term("용어" + i, "설명" + i);
+            save(t.getId());
+        }
+
+        mockMvc.perform(get("/api/mypage/saved-terms")
+                        .header("Authorization", bearerToken())
+                        .param("page", "1")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.savedTerms.length()", is(1)))
+                .andExpect(jsonPath("$.result.page", is(1)))
+                .andExpect(jsonPath("$.result.hasNext", is(false)));
+    }
+
+    @Test
+    @DisplayName("다른 유저가 저장한 용어는 내 목록에 섞이지 않는다")
+    void getSavedTerms_excludesOtherUsersTerms() throws Exception {
+        TermDictionary mine = term("내가저장한용어", "설명1");
+        save(mine.getId());
+        TermDictionary others = term("남이저장한용어", "설명2");
+        save(OTHER_USER_ID, others.getId());
+
+        mockMvc.perform(get("/api/mypage/saved-terms").header("Authorization", bearerToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.savedTerms.length()", is(1)))
+                .andExpect(jsonPath("$.result.savedTerms[0].term", is("내가저장한용어")));
     }
 
     @Test

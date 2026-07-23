@@ -13,7 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "member")
+@Table(name = "member", uniqueConstraints = @UniqueConstraint(name = "uk_member_nickname", columnNames = "nickname"))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class User extends BaseEntity {
@@ -34,7 +34,7 @@ public class User extends BaseEntity {
     @Column(name = "name", length = 10)
     private String name;
 
-    @Column(name = "nickname", unique = true, length = 10)
+    @Column(name = "nickname", length = 10)
     private String nickname;
 
     @Column(name = "onboarding_completed", nullable = false)
