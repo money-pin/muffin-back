@@ -219,7 +219,6 @@ CREATE TABLE `news_sector_impact` (
   `created_at` datetime(6) NOT NULL,
   `updated_at` datetime(6) DEFAULT NULL,
   `impact` enum('NEGATIVE','NEUTRAL','POSITIVE','STRONG_NEGATIVE','STRONG_POSITIVE') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `reason` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `news_id` bigint NOT NULL,
   `sector_id` bigint NOT NULL,
   PRIMARY KEY (`news_sector_impact_id`),
