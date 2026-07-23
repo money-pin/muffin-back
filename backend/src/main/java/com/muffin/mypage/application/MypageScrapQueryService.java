@@ -1,5 +1,6 @@
 package com.muffin.mypage.application;
 
+import com.muffin.mypage.application.projection.ScrapListProjection;
 import com.muffin.mypage.domain.ScrapSort;
 import com.muffin.mypage.domain.exception.MypageException;
 import com.muffin.mypage.domain.exception.code.MypageErrorCode;
@@ -50,27 +51,27 @@ public class MypageScrapQueryService {
             throw new MypageException(MypageErrorCode.USER_NOT_FOUND, null);
         }
 
-        List<ScrapListRow> rows = scrapListQueryRepository.findScrapPage(userId, sort, cursor, size + 1);
-        boolean hasNext = rows.size() > size;
-        List<ScrapListRow> pageRows = hasNext ? rows.subList(0, size) : rows;
+        List<ScrapListProjection> projections = scrapListQueryRepository.findScrapPage(userId, sort, cursor, size + 1);
+        boolean hasNext = projections.size() > size;
+        List<ScrapListProjection> pageProjections = hasNext ? projections.subList(0, size) : projections;
 
-        List<ScrapItem> items = pageRows.stream().map(this::toItem).toList();
-        String nextCursor = hasNext ? encodeCursor(sort, pageRows.get(pageRows.size() - 1)) : null;
+        List<ScrapItem> items = pageProjections.stream().map(this::toItem).toList();
+        String nextCursor = hasNext ? encodeCursor(sort, pageProjections.get(pageProjections.size() - 1)) : null;
         return new ScrapListResponse(items, nextCursor, hasNext);
     }
 
-    private ScrapItem toItem(ScrapListRow row) {
+    private ScrapItem toItem(ScrapListProjection projection) {
         return new ScrapItem(
-                row.newsId(),
-                row.title(),
-                row.categoryName(),
-                row.thumbnailUrl(),
-                row.viewCount(),
-                toKst(row.publishedAt()),
-                toKst(row.scrappedAt()));
+                projection.newsId(),
+                projection.title(),
+                projection.categoryName(),
+                projection.thumbnailUrl(),
+                projection.viewCount(),
+                toKst(projection.publishedAt()),
+                toKst(projection.scrappedAt()));
     }
 
-    private String encodeCursor(ScrapSort sort, ScrapListRow last) {
+    private String encodeCursor(ScrapSort sort, ScrapListProjection last) {
         return switch (sort) {
             case SAVED_DESC -> scrapCursorCodec.encode(sort, last.scrappedAt(), null, last.scrapId());
             case PUBLISHED_DESC -> scrapCursorCodec.encode(sort, last.publishedAt(), null, last.newsId());

@@ -39,4 +39,20 @@ class MypageSecurityIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("MYPAGE_404_001"));
     }
+
+    @Test
+    @DisplayName("최근 읽은 뉴스 API는 JWT 인증이 없으면 401을 반환한다")
+    void getRecentNews_requiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/mypage/recent-news")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("인증된 최근 읽은 뉴스 요청은 보안 필터를 통과해 컨트롤러에 도달한다(없는 사용자면 404)")
+    void getRecentNews_authenticatedReachesController() throws Exception {
+        String bearer = "Bearer " + accessTokenProvider.issue(999_999L, "USER");
+
+        mockMvc.perform(get("/api/mypage/recent-news").header("Authorization", bearer))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("MYPAGE_404_001"));
+    }
 }
