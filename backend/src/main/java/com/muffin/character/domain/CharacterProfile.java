@@ -17,7 +17,8 @@ import lombok.NoArgsConstructor;
 /** 캐릭터 애그리거트 루트. */
 @Getter
 @Entity
-@Table(name = "character")
+// character는 MySQL 예약어라 백틱 없이는 DDL이 실패한다. 엔티티명에 맞춰 character_profile을 쓴다.
+@Table(name = "character_profile")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CharacterProfile extends BaseEntity {
 

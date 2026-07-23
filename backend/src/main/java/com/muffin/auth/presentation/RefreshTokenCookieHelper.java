@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 public class RefreshTokenCookieHelper {
 
     private static final String COOKIE_NAME = "refreshToken";
-    private static final String COOKIE_PATH = "/api/auth";
+    private static final String COOKIE_PATH = "/auth";
 
     private final JwtProperties jwtProperties;
 

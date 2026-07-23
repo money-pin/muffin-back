@@ -79,7 +79,7 @@ public class NewsQueryService {
                         row.summary(),
                         row.publisher(),
                         row.publishedAt(),
-                        row.thumbnailUrl(),
+                        originalThumbnail(row.thumbnailUrl()),
                         row.viewCount()))
                 .toList();
 
@@ -103,8 +103,7 @@ public class NewsQueryService {
                 newsQueryRepository.findTodayPublishedNews(startOfDay, startOfNextDay, TODAY_NEWS_LIMIT);
 
         List<NewsTodayItem> items = new ArrayList<>(rows.size());
-        for (int index = 0; index < rows.size(); index++) {
-            NewsSummaryRow row = rows.get(index);
+        for (NewsSummaryRow row : rows) {
             items.add(new NewsTodayItem(
                     row.newsId(),
                     row.categoryId(),
@@ -113,7 +112,7 @@ public class NewsQueryService {
                     row.summary(),
                     row.publisher(),
                     row.publishedAt(),
-                    resolveThumbnail(row, index == 0),
+                    originalThumbnail(row.thumbnailUrl()),
                     row.viewCount()));
         }
 
@@ -135,10 +134,8 @@ public class NewsQueryService {
         upsertReadHistory(userId, newsId);
 
         boolean scrapped = scrapRepository.existsByUserIdAndNewsId(userId, newsId);
-        String categoryName = categoryRepository
-                .findById(news.getCategoryId())
-                .map(Category::getName)
-                .orElse(null);
+        Optional<Category> category = categoryRepository.findById(news.getCategoryId());
+        String categoryName = category.map(Category::getName).orElse(null);
 
         List<BodySegment> bodySegments = toBodySegments(news);
 
@@ -150,7 +147,7 @@ public class NewsQueryService {
                 news.getViewCount(),
                 news.getPublisher(),
                 news.getPublishedAt(),
-                news.getThumbnailUrl(),
+                originalThumbnail(news.getThumbnailUrl()),
                 news.getOriginalUrl(),
                 bodySegments,
                 scrapped);
@@ -294,15 +291,10 @@ public class NewsQueryService {
     }
 
     /**
-     * 오늘의 뉴스 썸네일 정책. ①원본 썸네일 → ②(첫 번째 뉴스) 공통 기본 이미지 → ③카테고리별 대체 이미지 순으로 반환한다.
-     *
-     * <p>TODO(S3): {@code isFirst}일 때 반환할 공통 기본 이미지는 추후 S3 presigned URL로 발급한다. 발급 경로가 생기기
-     * 전까지는 첫 번째 뉴스도 카테고리 대체 이미지로 폴백한다.
+     * 원본 썸네일이 있으면 그대로, 없으면 null을 반환한다. 원본이 없을 때의 기본 이미지는 백엔드가 관여하지 않고
+     * 프론트가 화면/카테고리에 맞춰 자체 에셋으로 렌더링한다.
      */
-    private String resolveThumbnail(NewsSummaryRow row, boolean isFirst) {
-        if (row.thumbnailUrl() != null && !row.thumbnailUrl().isBlank()) {
-            return row.thumbnailUrl();
-        }
-        return row.categoryFallbackThumbnailUrl();
+    private static String originalThumbnail(String thumbnailUrl) {
+        return (thumbnailUrl != null && !thumbnailUrl.isBlank()) ? thumbnailUrl : null;
     }
 }

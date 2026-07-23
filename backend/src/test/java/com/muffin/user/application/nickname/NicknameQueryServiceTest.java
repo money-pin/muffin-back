@@ -1,10 +1,14 @@
 package com.muffin.user.application.nickname;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
+import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.user.domain.NicknameProfanityPolicy;
 import com.muffin.user.domain.UserRepository;
+import com.muffin.user.exception.UserErrorCode;
 import java.text.Normalizer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +22,9 @@ class NicknameQueryServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private NicknameProfanityPolicy profanityPolicy;
 
     @InjectMocks
     private NicknameQueryService nicknameQueryService;
@@ -45,5 +52,32 @@ class NicknameQueryServiceTest {
         when(userRepository.existsByNickname("닉네임")).thenReturn(false);
 
         assertTrue(nicknameQueryService.isAvailable(decomposed));
+    }
+
+    @Test
+    @DisplayName("2자 미만 → IllegalArgumentException")
+    void tooShort() {
+        assertThatThrownBy(() -> nicknameQueryService.isAvailable("일")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("10자 초과 → IllegalArgumentException")
+    void tooLong() {
+        assertThatThrownBy(() -> nicknameQueryService.isAvailable("일이삼사오육칠팔구십일"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("비속어 포함 → NICKNAME_CONTAINS_PROFANITY")
+    void containsProfanity() {
+        when(profanityPolicy.isProfane("나쁜말포함")).thenReturn(true);
+
+        assertThatThrownBy(() -> nicknameQueryService.isAvailable("나쁜말포함"))
+                .isInstanceOf(GeneralException.class)
+                .satisfies(ex -> {
+                    GeneralException generalException = (GeneralException) ex;
+                    org.assertj.core.api.Assertions.assertThat(generalException.getErrorCode())
+                            .isEqualTo(UserErrorCode.NICKNAME_CONTAINS_PROFANITY);
+                });
     }
 }
