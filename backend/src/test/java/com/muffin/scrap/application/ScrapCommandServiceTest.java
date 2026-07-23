@@ -37,17 +37,15 @@ class ScrapCommandServiceTest {
     private static final LocalDateTime FIRST_SCRAPPED_AT = LocalDateTime.of(2026, 5, 8, 14, 30, 0);
 
     private ScrapRepository scrapRepository;
-    private ScrapWriter scrapWriter;
     private NewsRepository newsRepository;
     private ScrapCommandService scrapCommandService;
 
     @BeforeEach
     void setUp() {
         scrapRepository = mock(ScrapRepository.class);
-        scrapWriter = mock(ScrapWriter.class);
         newsRepository = mock(NewsRepository.class);
         Clock clock = Clock.fixed(FIRST_SCRAPPED_AT.atZone(KST).toInstant(), KST);
-        scrapCommandService = new ScrapCommandService(scrapRepository, scrapWriter, newsRepository, clock);
+        scrapCommandService = new ScrapCommandService(scrapRepository, newsRepository, clock);
     }
 
     @Test
@@ -55,14 +53,14 @@ class ScrapCommandServiceTest {
     void scrap_savesWhenAbsent() {
         givenPublishedNews();
         when(scrapRepository.findByUserIdAndNewsId(USER_ID, NEWS_ID)).thenReturn(Optional.empty());
-        when(scrapWriter.insert(USER_ID, NEWS_ID)).thenReturn(scrapWithCreatedAt(FIRST_SCRAPPED_AT));
+        when(scrapRepository.saveAndFlush(any(Scrap.class))).thenReturn(scrapWithCreatedAt(FIRST_SCRAPPED_AT));
 
         ScrapResponse response = scrapCommandService.scrap(USER_ID, NEWS_ID);
 
         assertThat(response.newsId()).isEqualTo(NEWS_ID);
         assertThat(response.isScrapped()).isTrue();
         assertThat(response.scrappedAt()).isEqualTo(OffsetDateTime.parse("2026-05-08T14:30:00+09:00"));
-        verify(scrapWriter).insert(USER_ID, NEWS_ID);
+        verify(scrapRepository).saveAndFlush(any(Scrap.class));
     }
 
     @Test
@@ -76,7 +74,7 @@ class ScrapCommandServiceTest {
 
         assertThat(response.isScrapped()).isTrue();
         assertThat(response.scrappedAt()).isEqualTo(OffsetDateTime.parse("2026-05-08T14:30:00+09:00"));
-        verify(scrapWriter, never()).insert(any(), any());
+        verify(scrapRepository, never()).saveAndFlush(any(Scrap.class));
     }
 
     @Test
@@ -88,7 +86,7 @@ class ScrapCommandServiceTest {
                 .isInstanceOf(NewsException.class)
                 .extracting("errorCode")
                 .isEqualTo(NewsErrorCode.NEWS_NOT_FOUND);
-        verify(scrapWriter, never()).insert(any(), any());
+        verify(scrapRepository, never()).saveAndFlush(any(Scrap.class));
     }
 
     @Test
@@ -103,7 +101,7 @@ class ScrapCommandServiceTest {
                 .isInstanceOf(NewsException.class)
                 .extracting("errorCode")
                 .isEqualTo(NewsErrorCode.NEWS_NOT_PUBLISHED);
-        verify(scrapWriter, never()).insert(any(), any());
+        verify(scrapRepository, never()).saveAndFlush(any(Scrap.class));
     }
 
     @Test
@@ -114,14 +112,15 @@ class ScrapCommandServiceTest {
         when(scrapRepository.findByUserIdAndNewsId(USER_ID, NEWS_ID))
                 .thenReturn(Optional.empty())
                 .thenReturn(Optional.of(scrapWithCreatedAt(FIRST_SCRAPPED_AT)));
-        when(scrapWriter.insert(USER_ID, NEWS_ID)).thenThrow(new DataIntegrityViolationException("duplicate"));
+        when(scrapRepository.saveAndFlush(any(Scrap.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate"));
 
         ScrapResponse response = scrapCommandService.scrap(USER_ID, NEWS_ID);
 
         assertThat(response.isScrapped()).isTrue();
         assertThat(response.scrappedAt()).isEqualTo(OffsetDateTime.parse("2026-05-08T14:30:00+09:00"));
         // 삽입을 실제로 시도한 뒤(재조회만 하는 잘못된 구현 방지) 충돌 시 재조회했는지 검증한다.
-        verify(scrapWriter).insert(USER_ID, NEWS_ID);
+        verify(scrapRepository).saveAndFlush(any(Scrap.class));
         verify(scrapRepository, times(2)).findByUserIdAndNewsId(USER_ID, NEWS_ID);
     }
 
@@ -131,11 +130,11 @@ class ScrapCommandServiceTest {
         givenPublishedNews();
         when(scrapRepository.findByUserIdAndNewsId(USER_ID, NEWS_ID)).thenReturn(Optional.empty());
         DataIntegrityViolationException exception = new DataIntegrityViolationException("duplicate");
-        when(scrapWriter.insert(USER_ID, NEWS_ID)).thenThrow(exception);
+        when(scrapRepository.saveAndFlush(any(Scrap.class))).thenThrow(exception);
 
         // 재조회로도 못 찾으면 삼켜서 null을 만들지 않고 원래 예외 인스턴스를 그대로 다시 던진다.
         assertThatThrownBy(() -> scrapCommandService.scrap(USER_ID, NEWS_ID)).isSameAs(exception);
-        verify(scrapWriter).insert(USER_ID, NEWS_ID);
+        verify(scrapRepository).saveAndFlush(any(Scrap.class));
         verify(scrapRepository, times(2)).findByUserIdAndNewsId(USER_ID, NEWS_ID);
     }
 

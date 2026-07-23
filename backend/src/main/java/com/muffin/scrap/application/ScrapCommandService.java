@@ -29,12 +29,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class ScrapCommandService {
 
     private final ScrapRepository scrapRepository;
-    private final ScrapWriter scrapWriter;
     private final NewsRepository newsRepository;
     private final Clock clock;
 
-    /** 뉴스를 스크랩한다(멱등). 공개된 뉴스만 스크랩할 수 있다. */
-    @Transactional
+    /**
+     * 뉴스를 스크랩한다(멱등). 공개된 뉴스만 스크랩할 수 있다.
+     */
     public ScrapResponse scrap(Long userId, Long newsId) {
         News news = requireNews(newsId);
         if (news.getStatus() != NewsStatus.PUBLISHED) {
@@ -57,9 +57,9 @@ public class ScrapCommandService {
     private Scrap findOrCreate(Long userId, Long newsId) {
         return scrapRepository.findByUserIdAndNewsId(userId, newsId).orElseGet(() -> {
             try {
-                // 삽입은 REQUIRES_NEW로 분리한다. 유니크 제약 위반 시 내부 트랜잭션만 롤백되고
-                // 현재 트랜잭션은 오염되지 않아, 아래에서 이미 저장된 행을 재조회할 수 있다.
-                return scrapWriter.insert(userId, newsId);
+                // saveAndFlush는 (앰비언트 트랜잭션이 없으므로) 자체 트랜잭션에서 실행된다.
+                // 유니크 제약 위반 시 그 트랜잭션만 롤백되고 예외가 전파된다.
+                return scrapRepository.saveAndFlush(Scrap.create(userId, newsId));
             } catch (DataIntegrityViolationException exception) {
                 // 동시 스크랩으로 유니크 제약에 걸리면 이미 저장된 행을 최초 시각으로 반환한다.
                 return scrapRepository.findByUserIdAndNewsId(userId, newsId).orElseThrow(() -> exception);
