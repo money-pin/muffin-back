@@ -68,7 +68,11 @@ class SettlementQueryServiceTest {
     }
 
     private SettlementQueryService serviceReturning(SettlementResultProjection projection) {
-        SettlementQueryRepository stubRepository = (userId, today) -> Optional.ofNullable(projection);
+        SettlementQueryRepository stubRepository = (userId, today) -> {
+            // 서비스가 주입된 Clock으로 "오늘(KST)"을 계산해 넘기는지 확인한다.
+            assertEquals(SETTLE_DATE, today);
+            return Optional.ofNullable(projection);
+        };
         return new SettlementQueryService(stubRepository, CLOCK);
     }
 }

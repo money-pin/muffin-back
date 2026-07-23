@@ -42,7 +42,7 @@ class RefreshControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
-        mockMvc.perform(post("/api/auth/token/refresh").cookie(new Cookie("refreshToken", "old-refresh-token-example")))
+        mockMvc.perform(post("/auth/token/refresh").cookie(new Cookie("refreshToken", "old-refresh-token-example")))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "token-refresh-success",
@@ -59,7 +59,7 @@ class RefreshControllerDocsTest {
         RefreshCommandService stub = new RefreshCommandService(null, null, null);
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
-        mockMvc.perform(post("/api/auth/token/refresh"))
+        mockMvc.perform(post("/auth/token/refresh"))
                 .andExpect(status().isUnauthorized())
                 .andDo(document(
                         "token-refresh-missing-cookie",
@@ -81,7 +81,7 @@ class RefreshControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
-        mockMvc.perform(post("/api/auth/token/refresh").cookie(new Cookie("refreshToken", "bogus-token")))
+        mockMvc.perform(post("/auth/token/refresh").cookie(new Cookie("refreshToken", "bogus-token")))
                 .andExpect(status().isUnauthorized())
                 .andDo(document(
                         "token-refresh-invalid",

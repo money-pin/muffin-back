@@ -105,7 +105,7 @@ class AuthFlowE2ETest {
         signup(email, "password1", "홍길동");
 
         String loginBody = objectMapper.writeValueAsString(new LoginBody(email, "password1"));
-        mockMvc.perform(post("/api/auth/login").contentType("application/json").content(loginBody))
+        mockMvc.perform(post("/auth/login").contentType("application/json").content(loginBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.accessToken").exists());
     }
@@ -114,7 +114,7 @@ class AuthFlowE2ETest {
         String signupBody = objectMapper.writeValueAsString(new SignupBody(email, password, name, true));
 
         MvcResult result = mockMvc.perform(
-                        post("/api/auth/signup").contentType("application/json").content(signupBody))
+                        post("/auth/signup").contentType("application/json").content(signupBody))
                 .andExpect(status().isOk())
                 .andReturn();
 
