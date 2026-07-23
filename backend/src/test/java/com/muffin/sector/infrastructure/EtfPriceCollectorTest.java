@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.muffin.global.apiPayload.exception.GeneralException;
-import com.muffin.global.event.EtfPricesLoadedEvent;
 import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.etf.Etf;
@@ -32,7 +31,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -54,9 +52,6 @@ class EtfPriceCollectorTest {
     private EtfPriceWriter etfPriceWriter;
 
     @Mock
-    private ApplicationEventPublisher eventPublisher;
-
-    @Mock
     private EtfPriceRepository etfPriceRepository;
 
     private EtfPriceCollector collector;
@@ -64,12 +59,7 @@ class EtfPriceCollectorTest {
     @BeforeEach
     void setUp() {
         collector = new EtfPriceCollector(
-                etfRepository,
-                tradingCalendarService,
-                tossMarketDataClient,
-                etfPriceWriter,
-                eventPublisher,
-                etfPriceRepository);
+                etfRepository, tradingCalendarService, tossMarketDataClient, etfPriceWriter, etfPriceRepository);
         when(tradingCalendarService.getCalendar(DATE)).thenReturn(tradingDay());
     }
 
@@ -106,7 +96,6 @@ class EtfPriceCollectorTest {
         assertEquals(0, summary.failureCount());
         verify(etfPriceWriter).writeOpen(any(), eq(DATE), eq(10_000L));
         verify(etfPriceWriter, never()).writeClose(any(), any(), any());
-        verify(eventPublisher).publishEvent(new EtfPricesLoadedEvent(DATE));
     }
 
     @Test
@@ -123,7 +112,6 @@ class EtfPriceCollectorTest {
         assertEquals(1, summary.successCount());
         verify(etfPriceWriter).writeClose(any(), eq(DATE), eq(10_500L));
         verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
-        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -143,6 +131,22 @@ class EtfPriceCollectorTest {
     }
 
     @Test
+    @DisplayName("시가 재시도는 이미 성공한 종목을 외부 API로 다시 조회하지 않는다")
+    void collectOpen_skipsAlreadySuccessfulPrice() {
+        Etf etf = Etf.create("459580", "KODEX CD금리액티브(합성)");
+        ReflectionTestUtils.setField(etf, "id", 1L);
+        EtfPrice price = EtfPrice.open(1L, DATE, 10_000L);
+        when(etfRepository.findAll()).thenReturn(List.of(etf));
+        when(etfPriceRepository.findByEtfIdAndPriceDate(1L, DATE)).thenReturn(Optional.of(price));
+
+        EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
+
+        assertEquals(1, summary.successCount());
+        verify(tossMarketDataClient, never()).getDailyCandle(any(), any());
+        verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
+    }
+
+    @Test
     @DisplayName("거래일이 아니면 전체를 skip하고 캔들 조회 자체를 시도하지 않는다")
     void collect_skipsEverything_whenNotTradingDay() {
         Etf etf = Etf.create("459580", "KODEX CD금리액티브(합성)");
@@ -158,7 +162,6 @@ class EtfPriceCollectorTest {
         verify(tossMarketDataClient, never()).getDailyCandle(any(), any());
         verify(etfPriceWriter).markOpenMarketClosed(any(), eq(DATE));
         verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
-        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -172,7 +175,6 @@ class EtfPriceCollectorTest {
         verify(etfRepository, never()).findAll();
         verify(etfPriceWriter, never()).markOpenFailed(any(), any());
         verify(tossMarketDataClient, never()).getDailyCandle(any(), any());
-        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -190,7 +192,6 @@ class EtfPriceCollectorTest {
         assertEquals(List.of("459580"), summary.skippedEtfCodes());
         verify(etfPriceWriter).markOpenNoData(any(), eq(DATE));
         verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
-        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -254,7 +255,6 @@ class EtfPriceCollectorTest {
         assertEquals(List.of("999999"), summary.failedEtfCodes());
         verify(etfPriceWriter).markOpenFailed(any(), eq(DATE));
         verify(etfPriceWriter).writeOpen(any(), eq(DATE), eq(20_000L));
-        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -275,7 +275,6 @@ class EtfPriceCollectorTest {
         assertEquals(1, summary.failureCount());
         assertEquals(List.of("999999"), summary.failedEtfCodes());
         verify(etfPriceWriter).markOpenFailed(any(), eq(DATE));
-        verify(eventPublisher, never()).publishEvent(any());
     }
 
     private static TradingCalendar tradingDay() {
