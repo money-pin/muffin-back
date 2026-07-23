@@ -33,9 +33,9 @@ class NewsPublicationServiceTest {
         verify(newsRepository).findAllByStatus(NewsStatus.PENDING);
     }
 
-    /** 재구성 결과가 없는 과거 PENDING 데이터는 발행하지 않는다. */
+    /** 재구성 결과가 없는 PENDING은 발행하지 않고, 매일 스킵이 반복되지 않도록 실패로 종결한다. */
     @Test
-    void skipsPendingNewsWithoutReconstructionResult() {
+    void failsPendingNewsWithoutReconstructionResult() {
         News completed = pendingNews("https://example.com/completed");
         News incomplete = mock(News.class);
         when(incomplete.hasReconstructionResult()).thenReturn(false);
@@ -47,6 +47,7 @@ class NewsPublicationServiceTest {
         assertThat(count).isEqualTo(1);
         assertThat(completed.getStatus()).isEqualTo(NewsStatus.PUBLISHED);
         verify(incomplete, never()).publish();
+        verify(incomplete).fail();
     }
 
     private static News pendingNews(String originalUrl) {

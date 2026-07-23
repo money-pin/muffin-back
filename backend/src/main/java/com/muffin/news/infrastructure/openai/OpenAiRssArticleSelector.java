@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -109,7 +110,7 @@ public class OpenAiRssArticleSelector implements RssArticleSelector {
         candidates.forEach(article -> candidatesByUrl.putIfAbsent(article.url(), article));
         return selectedUrls.stream()
                 .map(candidatesByUrl::get)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .limit(properties.maxPerCategory())
                 .toList();
     }
