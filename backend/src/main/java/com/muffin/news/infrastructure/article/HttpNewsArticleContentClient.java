@@ -110,7 +110,11 @@ public class HttpNewsArticleContentClient implements NewsArticleContentClient {
                 .orElseGet(() -> document.body().text().strip());
     }
 
-    private static String limitLength(String content, int maxLength) {
+    // 테스트에서 경계 로직(음수 인덱스 방어, 서로게이트 쌍 절단)을 직접 검증하기 위해 패키지-프라이빗으로 둔다.
+    static String limitLength(String content, int maxLength) {
+        if (maxLength <= 0) {
+            throw new IllegalArgumentException("maxLength는 1 이상이어야 합니다: " + maxLength);
+        }
         if (content.length() <= maxLength) {
             return content;
         }
