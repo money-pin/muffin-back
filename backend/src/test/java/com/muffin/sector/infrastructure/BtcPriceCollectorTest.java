@@ -9,11 +9,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.muffin.global.apiPayload.exception.GeneralException;
-import com.muffin.global.event.EtfPricesLoadedEvent;
 import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
+import com.muffin.sector.domain.etfprice.EtfPrice;
+import com.muffin.sector.domain.etfprice.EtfPriceRepository;
 import com.muffin.sector.exception.SectorErrorCode;
 import com.muffin.sector.infrastructure.coingecko.CoinGeckoClient;
 import com.muffin.sector.infrastructure.coingecko.exception.CoinGeckoApiException;
@@ -25,7 +26,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,14 +47,14 @@ class BtcPriceCollectorTest {
     private EtfPriceWriter etfPriceWriter;
 
     @Mock
-    private ApplicationEventPublisher eventPublisher;
+    private EtfPriceRepository etfPriceRepository;
 
     private BtcPriceCollector collector;
 
     @BeforeEach
     void setUp() {
         collector = new BtcPriceCollector(
-                etfRepository, tradingCalendarService, coinGeckoClient, etfPriceWriter, eventPublisher);
+                etfRepository, tradingCalendarService, coinGeckoClient, etfPriceWriter, etfPriceRepository);
     }
 
     @Test
@@ -67,7 +67,6 @@ class BtcPriceCollectorTest {
         collector.collect(DATE);
 
         verify(etfPriceWriter).writeBasePrice(BTC_ID, DATE, 123_456_789L);
-        verify(eventPublisher).publishEvent(new EtfPricesLoadedEvent(DATE));
     }
 
     @Test
@@ -80,7 +79,6 @@ class BtcPriceCollectorTest {
 
         verify(etfPriceWriter).markBaseMarketClosed(BTC_ID, DATE);
         verify(coinGeckoClient, never()).getBitcoinPriceKrw();
-        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -106,7 +104,6 @@ class BtcPriceCollectorTest {
 
         verify(etfRepository, never()).findByEtfCode(any());
         verify(etfPriceWriter, never()).markBaseFailed(any(), any());
-        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -120,7 +117,6 @@ class BtcPriceCollectorTest {
 
         verify(etfPriceWriter).markBaseFailed(BTC_ID, DATE);
         verify(etfPriceWriter, never()).writeBasePrice(any(), any(), any());
-        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -134,23 +130,20 @@ class BtcPriceCollectorTest {
         collector.collect(DATE);
 
         verify(etfPriceWriter).markBaseFailed(BTC_ID, DATE);
-        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
-    @DisplayName("저장은 성공했는데 이벤트 발행이 실패해도 저장 실패로 오인해 FAILED로 덮어쓰지 않는다")
-    void collect_doesNotMarkFailed_whenOnlyEventPublishingFails() {
+    @DisplayName("이미 기준가 수집에 성공한 BTC는 외부 API를 다시 호출하지 않는다")
+    void collect_skipsAlreadySuccessfulBasePrice() {
         when(tradingCalendarService.getCalendar(DATE)).thenReturn(tradingDay());
         when(etfRepository.findByEtfCode("BTC")).thenReturn(Optional.of(btc()));
-        when(coinGeckoClient.getBitcoinPriceKrw()).thenReturn(123_456_789L);
-        doThrow(new RuntimeException("listener error"))
-                .when(eventPublisher)
-                .publishEvent(new EtfPricesLoadedEvent(DATE));
+        when(etfPriceRepository.findByEtfIdAndPriceDate(BTC_ID, DATE))
+                .thenReturn(Optional.of(EtfPrice.create(BTC_ID, DATE, 123_456_789L, 123_456_789L)));
 
-        assertThrows(RuntimeException.class, () -> collector.collect(DATE));
+        collector.collect(DATE);
 
-        verify(etfPriceWriter).writeBasePrice(BTC_ID, DATE, 123_456_789L);
-        verify(etfPriceWriter, never()).markBaseFailed(any(), any());
+        verify(coinGeckoClient, never()).getBitcoinPriceKrw();
+        verify(etfPriceWriter, never()).writeBasePrice(any(), any(), any());
     }
 
     private static Etf btc() {
