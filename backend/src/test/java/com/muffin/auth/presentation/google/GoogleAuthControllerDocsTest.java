@@ -43,7 +43,7 @@ class GoogleAuthControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
-        mockMvc.perform(post("/api/auth/google")
+        mockMvc.perform(post("/auth/google")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"idToken\":\"google-id-token-example\"}"))
                 .andExpect(status().isOk())
@@ -68,7 +68,7 @@ class GoogleAuthControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
-        mockMvc.perform(post("/api/auth/google")
+        mockMvc.perform(post("/auth/google")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"idToken\":\"bogus-token\"}"))
                 .andExpect(status().isUnauthorized())

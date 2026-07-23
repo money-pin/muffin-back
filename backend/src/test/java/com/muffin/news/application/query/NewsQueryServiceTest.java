@@ -3,6 +3,7 @@ package com.muffin.news.application.query;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -18,6 +19,8 @@ import com.muffin.news.domain.sectorimpact.NewsSectorImpactRepository;
 import com.muffin.news.domain.term.TermDictionary;
 import com.muffin.news.domain.term.TermDictionaryRepository;
 import com.muffin.news.presentation.dto.NewsDetailResponse;
+import com.muffin.news.presentation.dto.NewsListResponse;
+import com.muffin.news.presentation.dto.NewsTodayResponse;
 import com.muffin.scrap.domain.ScrapRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -124,5 +127,51 @@ class NewsQueryServiceTest {
         TermDictionary dictionary = TermDictionary.create(term, term + " 설명");
         ReflectionTestUtils.setField(dictionary, "id", termId);
         return dictionary;
+    }
+
+    /** 오늘의 뉴스 썸네일: 원본이 있으면 그 URL을, 없으면 null을 담는다(기본 이미지는 프론트가 처리). */
+    @Test
+    void getTodayNews_returnsOriginalThumbnailOrNull() {
+        when(newsQueryRepository.findTodayPublishedNews(any(), any(), anyInt()))
+                .thenReturn(List.of(summaryRow(1L, null), summaryRow(2L, "https://origin/2.jpg")));
+
+        NewsTodayResponse response = newsQueryService.getTodayNews();
+
+        assertThat(response.items())
+                .extracting(NewsTodayResponse.NewsTodayItem::thumbnailUrl)
+                .containsExactly(null, "https://origin/2.jpg");
+    }
+
+    /** 목록 썸네일: 원본이 있으면 그 URL을, 없으면 null을 담는다(기본 이미지는 프론트가 처리). */
+    @Test
+    void getNewsList_returnsOriginalThumbnailOrNull() {
+        when(newsQueryRepository.findPublishedNewsPage(any(), any(), anyInt()))
+                .thenReturn(List.of(summaryRow(1L, null), summaryRow(2L, "https://origin/2.jpg")));
+
+        NewsListResponse response = newsQueryService.getNewsList(null, 10, null);
+
+        assertThat(response.items())
+                .extracting(NewsListResponse.NewsListItem::thumbnailUrl)
+                .containsExactly(null, "https://origin/2.jpg");
+    }
+
+    /** 상세 썸네일: 원본이 없으면 thumbnailUrl은 null이다(기본 이미지는 프론트가 처리). */
+    @Test
+    void getNewsDetail_returnsNullThumbnailWhenMissing() {
+        Long userId = 1L;
+        Long newsId = 10L;
+        News news = publishedNews(newsId);
+        when(newsRepository.findById(newsId)).thenReturn(Optional.of(news));
+        when(readHistoryRepository.findByUserIdAndNewsId(userId, newsId)).thenReturn(Optional.empty());
+        when(scrapRepository.existsByUserIdAndNewsId(userId, newsId)).thenReturn(false);
+        when(categoryRepository.findById(news.getCategoryId())).thenReturn(Optional.empty());
+
+        assertThat(newsQueryService.getNewsDetail(userId, newsId).thumbnailUrl())
+                .isNull();
+    }
+
+    private static NewsSummaryRow summaryRow(Long newsId, String thumbnailUrl) {
+        return new NewsSummaryRow(
+                newsId, 1L, "경제", "제목 " + newsId, "요약", "매일경제", LocalDateTime.of(2026, 7, 18, 9, 0), thumbnailUrl, 0L);
     }
 }
