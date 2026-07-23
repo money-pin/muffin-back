@@ -46,7 +46,7 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.requestMatchers(
-                                "/auth/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+                                "/auth/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/docs/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/news")
                         .permitAll()
