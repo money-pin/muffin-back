@@ -59,7 +59,7 @@ public class SecurityConfig {
                                 .authenticated()
                                 .requestMatchers(HttpMethod.DELETE, "/api/news/*/scrap")
                                 .authenticated()
-                                .requestMatchers("/api/investments/**", "/api/stats/**")
+                                .requestMatchers("/api/investments/**", "/api/stats/**", "/api/mypage/**")
                                 .authenticated()
                                 .anyRequest()
                                 .permitAll())
