@@ -456,6 +456,148 @@ include::{snippets}/stats-history-invalid-period/response-fields.adoc[]
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |===
 
+[[quiz-today]]
+== 오늘의 한입 퀴즈 조회/제출/결과 (QUIZ-01~03)
+
+KST 기준 오늘 공개된 퀴즈 세트와 사용자의 풀이 진행 상태를 조회하고, 선택지 탭 즉시 답안을 제출한다. 3문항을 모두 완료하면 마지막 제출 시점에 보상이 지급되며, 결과 조회 API는 이미 저장된 결과와 보상 정보를 조회만 한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 오늘의 퀴즈가 없거나 공개 전이면 실패 응답이 아니라 `quizSetStatus=UNAVAILABLE`인 200 응답을 반환한다.
+
+=== 오늘의 퀴즈 조회 - 정상
+
+include::{snippets}/quiz-today-success/http-request.adoc[]
+include::{snippets}/quiz-today-success/request-headers.adoc[]
+include::{snippets}/quiz-today-success/http-response.adoc[]
+include::{snippets}/quiz-today-success/response-fields.adoc[]
+
+=== 오늘의 퀴즈 조회 - 이어 풀기
+
+이미 일부 문항을 제출한 사용자는 `sessionStatus=PROGRESS`와 `currentQuestionOrder`를 기준으로 이어 풀 문항부터 진입한다. 이미 제출한 문항의 답안 수정은 허용하지 않는다.
+
+include::{snippets}/quiz-today-progress/http-request.adoc[]
+include::{snippets}/quiz-today-progress/request-headers.adoc[]
+include::{snippets}/quiz-today-progress/http-response.adoc[]
+include::{snippets}/quiz-today-progress/response-fields.adoc[]
+
+=== 오늘의 퀴즈 조회 - 이용 불가
+
+include::{snippets}/quiz-today-unavailable/http-request.adoc[]
+include::{snippets}/quiz-today-unavailable/request-headers.adoc[]
+include::{snippets}/quiz-today-unavailable/http-response.adoc[]
+include::{snippets}/quiz-today-unavailable/response-fields.adoc[]
+
+=== 답안 제출
+
+include::{snippets}/quiz-attempt-success/http-request.adoc[]
+include::{snippets}/quiz-attempt-success/request-headers.adoc[]
+include::{snippets}/quiz-attempt-success/path-parameters.adoc[]
+include::{snippets}/quiz-attempt-success/request-fields.adoc[]
+include::{snippets}/quiz-attempt-success/http-response.adoc[]
+include::{snippets}/quiz-attempt-success/response-fields.adoc[]
+
+=== 결과 조회 - 완료
+
+include::{snippets}/quiz-result-success/http-request.adoc[]
+include::{snippets}/quiz-result-success/request-headers.adoc[]
+include::{snippets}/quiz-result-success/http-response.adoc[]
+include::{snippets}/quiz-result-success/response-fields.adoc[]
+
+=== 결과 조회 - 실패(퀴즈 미완료)
+
+include::{snippets}/quiz-result-not-ready/http-request.adoc[]
+include::{snippets}/quiz-result-not-ready/request-headers.adoc[]
+include::{snippets}/quiz-result-not-ready/http-response.adoc[]
+include::{snippets}/quiz-result-not-ready/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|QUIZ_400_001|해당 퀴즈 문항의 선택지가 아닙니다.|답안 제출 시 `optionId`가 해당 문항의 선택지가 아님
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|403|AUTH_403_001|요청이 거부되었습니다.|온보딩 미완료 등 접근 권한 없음
+|404|QUIZ_404_001|오늘의 퀴즈를 아직 준비 중입니다.|결과 조회/답안 제출 시 오늘 공개된 퀴즈가 없음
+|404|QUIZ_404_002|존재하지 않는 퀴즈 문항입니다.|답안 제출 대상 문항이 오늘 퀴즈 세트에 없음
+|409|QUIZ_409_001|퀴즈를 모두 완료한 후 결과를 조회할 수 있습니다.|3문항을 모두 완료하기 전 결과 조회 시도
+|===
+
+[[news-explanation-cards]]
+== 뉴스 해설 카드 조회 (CONTENT-04)
+
+뉴스 상세 페이지의 경제 상식 탭에서 노출할 AI 해설 카드를 조회한다. DONE 상태 카드만 `cardOrder` 순서로 최대 3개 반환하며, 완료된 카드가 없으면 생성 중/생성 실패 상태로 보고 409를 반환한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
+
+=== 요청/응답 - 정상
+
+include::{snippets}/news-explanation-cards-success/http-request.adoc[]
+include::{snippets}/news-explanation-cards-success/request-headers.adoc[]
+include::{snippets}/news-explanation-cards-success/path-parameters.adoc[]
+include::{snippets}/news-explanation-cards-success/http-response.adoc[]
+include::{snippets}/news-explanation-cards-success/response-fields.adoc[]
+
+=== 응답 - 실패(해설 카드 미완료)
+
+include::{snippets}/news-explanation-cards-not-completed/http-request.adoc[]
+include::{snippets}/news-explanation-cards-not-completed/request-headers.adoc[]
+include::{snippets}/news-explanation-cards-not-completed/path-parameters.adoc[]
+include::{snippets}/news-explanation-cards-not-completed/http-response.adoc[]
+include::{snippets}/news-explanation-cards-not-completed/response-fields.adoc[]
+
+=== 응답 - 실패(존재하지 않는 뉴스)
+
+include::{snippets}/news-explanation-cards-not-found/http-request.adoc[]
+include::{snippets}/news-explanation-cards-not-found/request-headers.adoc[]
+include::{snippets}/news-explanation-cards-not-found/path-parameters.adoc[]
+include::{snippets}/news-explanation-cards-not-found/http-response.adoc[]
+include::{snippets}/news-explanation-cards-not-found/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|CONTENT_404_001|존재하지 않는 뉴스입니다.|해당 `newsId`의 뉴스가 없음
+|409|CONTENT_409_001|뉴스 해설 카드 생성이 아직 완료되지 않았습니다.|완료된 해설 카드가 없음(생성 중/생성 실패)
+|===
+
+[[term-dictionary]]
+== 용어 사전 조회 (CONTENT-05)
+
+뉴스 본문 하이라이트 용어를 탭했을 때 바텀시트에 표시할 용어 설명을 조회한다. `isSaved`는 현재 사용자가 해당 용어를 학습 저장소에 저장했는지 여부다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
+
+=== 요청/응답 - 정상
+
+include::{snippets}/term-get-success/http-request.adoc[]
+include::{snippets}/term-get-success/request-headers.adoc[]
+include::{snippets}/term-get-success/path-parameters.adoc[]
+include::{snippets}/term-get-success/http-response.adoc[]
+include::{snippets}/term-get-success/response-fields.adoc[]
+
+=== 응답 - 실패(존재하지 않는 용어)
+
+include::{snippets}/term-get-not-found/http-request.adoc[]
+include::{snippets}/term-get-not-found/request-headers.adoc[]
+include::{snippets}/term-get-not-found/path-parameters.adoc[]
+include::{snippets}/term-get-not-found/http-response.adoc[]
+include::{snippets}/term-get-not-found/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|CONTENT_404_002|존재하지 않는 용어입니다.|해당 `termId`의 용어가 없음
+|===
+
 [[news-scrap]]
 == 뉴스 스크랩 / 해제 (CONTENT-06)
 
