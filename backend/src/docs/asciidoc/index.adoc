@@ -14,7 +14,7 @@
 * `SETTLEMENT_PENDING`: 정산 배치가 아직 완료되지 않음(정산 중)
 * `NO_INVESTMENT`: 최근 정산 대상 투자가 없음(미투자/취소 포함)
 
-NOTE: 인증은 추후 구현 예정이며, 현재는 임시로 `X-User-Id` 헤더로 사용자를 식별한다. 인증 구현 후에는 토큰에서 사용자를 해석하므로 이 헤더는 제거된다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
 FE 담당자는 invest_date를 로컬에 저장하여 같은 투자 결과 팝업을 1회만 보여줄 수 있도록 한다.
 
 === 요청
@@ -390,7 +390,7 @@ include::{snippets}/google-auth-invalid-token/response-fields.adoc[]
 * TOP3 섹터: 섹터 누적 수익률(그 섹터 누적 매수금 기준) 내림차순 3개.
 * 투자 성향: 섹터 그룹별 누적 매수 비중으로 판정(STABLE/BALANCED/GROWTH/AGGRESSIVE).
 
-NOTE: 인증은 추후 구현 예정이며, 현재는 임시로 `X-User-Id` 헤더로 사용자를 식별한다. 인증 구현 후에는 토큰에서 사용자를 해석하므로 이 헤더는 제거된다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
 
 === 요청
 
@@ -407,3 +407,102 @@ include::{snippets}/stats-summary/response-fields.adoc[]
 
 include::{snippets}/stats-summary-empty/http-response.adoc[]
 include::{snippets}/stats-summary-empty/response-fields.adoc[]
+
+[[stats-history]]
+== 누적 수익 내역 조회 (STATS-08)
+
+기간 탭(일/주/월/년/전체) 단위로 그 기간에 발생한 누적 손익을 요약하고, 종목(섹터)별 내역을 원하는 기준으로 정렬해 조회한다. 정산 완료(SETTLED)된 투자만 집계한다.
+
+* 요약 손익률: 그 기간 누적 매수금 기준(`기간 손익금 / 기간 매수금 × 100`), 소수 첫째자리. 매수 이력이 없으면 0.0.
+* 종목(섹터) 손익률: 그 섹터의 기간 누적 매수금 기준, 소수 첫째자리.
+* `hasPrev`/`hasNext`: 선택한 기간 윈도우 밖(이전/이후)에 정산 완료 데이터가 있는지로 판단한다. 좌우 화살표 네비게이션 활성화에 쓴다.
+* `date`: `period` 형식에 맞춰 지정한다(DAY=`YYYY-MM-DD`, WEEK=`YYYY-Www`(ISO 주차), MONTH=`YYYY-MM`, YEAR=`YYYY`, ALL=불필요). 미지정 시 해당 `period`의 현재(오늘/이번 주/이번 달/올해, KST)로 처리한다. `period=ALL`이면 응답에서 `date`가 생략된다.
+
+NOTE: 인증은 `Authorization: Bearer {accessToken}`로 처리하며, 사용자는 토큰에서 해석한다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+=== 요청
+
+include::{snippets}/stats-history/http-request.adoc[]
+include::{snippets}/stats-history/query-parameters.adoc[]
+
+=== 응답 - 정상
+
+include::{snippets}/stats-history/http-response.adoc[]
+include::{snippets}/stats-history/response-fields.adoc[]
+
+=== 응답 - 기간 내 정산 데이터 없음(빈 상태)
+
+해당 기간에 정산 완료 데이터가 없으면 `summary`의 금액/비율이 0(0.0)이고 `sectors`가 빈 배열이다.
+
+include::{snippets}/stats-history-empty/http-response.adoc[]
+include::{snippets}/stats-history-empty/response-fields.adoc[]
+
+=== 응답 - 실패(period 값 오류)
+
+허용되지 않는 `period` 값(또는 누락) 등 요청 값 검증 실패는 도메인 에러 코드(`STATS_400_00x`)로 응답하며, `errorDetail`에 허용값/입력값 등 구체적 원인을 담는다.
+
+include::{snippets}/stats-history-invalid-period/http-response.adoc[]
+include::{snippets}/stats-history-invalid-period/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|STATS_400_001|조회 기간(period) 값이 올바르지 않습니다.|`period`가 비어 있거나 DAY/WEEK/MONTH/YEAR/ALL 이외의 값
+|400|STATS_400_002|정렬 기준(sort) 값이 올바르지 않습니다.|`sort`가 AMOUNT_DESC/AMOUNT_ASC/RATE_DESC/RATE_ASC 이외의 값
+|400|STATS_400_003|조회 기준 시점(date) 형식이 조회 기간과 맞지 않습니다.|`date` 형식이 `period` 규격과 불일치(예: MONTH에 `2026-13`)
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===
+
+[[news-scrap]]
+== 뉴스 스크랩 / 해제 (CONTENT-06)
+
+관심 있는 뉴스를 저장하거나 저장을 해제한다. 둘 다 **멱등** 연산이라 같은 요청을 여러 번 보내도 상태가 같다.
+
+* `PUT /api/news/{newsId}/scrap`: 스크랩. 이미 스크랩한 뉴스에 다시 요청해도 최초 저장 시각(`scrappedAt`)을 유지한 채 성공한다. 공개(PUBLISHED)된 뉴스만 스크랩할 수 있다.
+* `DELETE /api/news/{newsId}/scrap`: 스크랩 해제. 스크랩하지 않은 뉴스에 요청해도 성공하며, 공개 상태와 무관하게 해제할 수 있다.
+
+NOTE: `scrappedAt`은 KST 오프셋(`+09:00`)을 포함하며, 해제 응답에서는 생략된다.
+
+=== 요청 - 스크랩
+
+include::{snippets}/scrap-create/http-request.adoc[]
+include::{snippets}/scrap-create/path-parameters.adoc[]
+
+=== 응답 - 스크랩 성공
+
+include::{snippets}/scrap-create/http-response.adoc[]
+include::{snippets}/scrap-create/response-fields.adoc[]
+
+=== 요청 - 스크랩 해제
+
+include::{snippets}/scrap-delete/http-request.adoc[]
+include::{snippets}/scrap-delete/path-parameters.adoc[]
+
+=== 응답 - 해제 성공
+
+include::{snippets}/scrap-delete/http-response.adoc[]
+include::{snippets}/scrap-delete/response-fields.adoc[]
+
+=== 응답 - 실패(존재하지 않는 뉴스)
+
+include::{snippets}/scrap-not-found/http-response.adoc[]
+include::{snippets}/scrap-not-found/response-fields.adoc[]
+
+=== 응답 - 실패(아직 공개되지 않은 뉴스, 스크랩 시)
+
+include::{snippets}/scrap-not-published/http-response.adoc[]
+include::{snippets}/scrap-not-published/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|403|CONTENT_403_001|아직 공개되지 않은 뉴스입니다.|스크랩(PUT) 시 대상 뉴스가 PUBLISHED 상태가 아님(해제에는 적용 안 함)
+|404|CONTENT_404_001|존재하지 않는 뉴스입니다.|해당 `newsId`의 뉴스가 없거나 삭제됨
+|===

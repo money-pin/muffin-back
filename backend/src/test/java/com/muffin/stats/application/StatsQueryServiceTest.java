@@ -1,21 +1,37 @@
 package com.muffin.stats.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.muffin.stats.application.projection.DailyProfitProjection;
+import com.muffin.stats.application.projection.PeriodProfitProjection;
+import com.muffin.stats.application.projection.SectorHistoryProjection;
 import com.muffin.stats.application.projection.SectorStatProjection;
+import com.muffin.stats.domain.HistorySort;
+import com.muffin.stats.domain.StatsPeriod;
+import com.muffin.stats.domain.exception.StatsException;
+import com.muffin.stats.domain.exception.code.StatsErrorCode;
+import com.muffin.stats.presentation.dto.ProfitHistoryResponse;
+import com.muffin.stats.presentation.dto.ProfitHistoryResponse.SectorHistoryResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.TopSectorResponse;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** 조회 결과를 통계 응답으로 조립하는 로직(누적/그래프/TOP3/성향)을 검증한다. 저장소는 정적 stub으로 대체한다. */
+/** 조회 결과를 통계 응답으로 조립하는 로직(누적/그래프/TOP3/성향, 누적 수익 내역)을 검증한다. 저장소는 정적 stub으로 대체한다. */
 class StatsQueryServiceTest {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final LocalDate TODAY = LocalDate.of(2026, 7, 19);
+    private static final Clock FIXED_CLOCK = Clock.fixed(TODAY.atStartOfDay(KST).toInstant(), KST);
 
     private static final LocalDate DAY_5 = LocalDate.of(2026, 5, 5);
     private static final LocalDate DAY_8 = LocalDate.of(2026, 5, 8);
@@ -124,18 +140,145 @@ class StatsQueryServiceTest {
                 response.investmentType().bullets().getFirst());
     }
 
+    @Test
+    @DisplayName("누적 수익 내역: 요약 손익률은 기간 매수금 대비이고 date/기간이 응답에 echo된다")
+    void getHistory_summaryRateOverInvestment() {
+        StubRepo repo = new StubRepo();
+        repo.periodSummary = new PeriodProfitProjection(1_000_000L, 132_000L);
+        ProfitHistoryResponse response =
+                service(repo).getHistory(1L, StatsPeriod.MONTH, "2026-06", HistorySort.RATE_DESC);
+
+        assertEquals("MONTH", response.period());
+        assertEquals("2026-06", response.date());
+        assertEquals("RATE_DESC", response.sort());
+        assertEquals(132_000L, response.summary().profitAmount());
+        assertEquals(1_000_000L, response.summary().totalInvestment());
+        assertEquals(new BigDecimal("13.2"), response.summary().profitRate());
+    }
+
+    @Test
+    @DisplayName("누적 수익 내역: 종목은 정렬 기준(RATE_DESC/AMOUNT_DESC)에 따라 정렬된다")
+    void getHistory_sectorsSorted() {
+        StubRepo repo = new StubRepo();
+        repo.periodSummary = new PeriodProfitProjection(660_000L, 118_000L);
+        repo.periodSectors = List.of(
+                new SectorHistoryProjection("A", "에이", 360_000L, 80_000L), // 22.2%
+                new SectorHistoryProjection("B", "비", 200_000L, -12_000L), // -6.0%
+                new SectorHistoryProjection("C", "씨", 100_000L, 50_000L)); // 50.0%
+
+        List<SectorHistoryResponse> byRate = service(repo)
+                .getHistory(1L, StatsPeriod.MONTH, "2026-06", HistorySort.RATE_DESC)
+                .sectors();
+        assertEquals(
+                List.of("C", "A", "B"),
+                byRate.stream().map(SectorHistoryResponse::sectorCode).toList());
+        assertEquals(new BigDecimal("50.0"), byRate.getFirst().profitRate());
+
+        List<SectorHistoryResponse> byAmount = service(repo)
+                .getHistory(1L, StatsPeriod.MONTH, "2026-06", HistorySort.AMOUNT_DESC)
+                .sectors();
+        assertEquals(
+                List.of("A", "C", "B"),
+                byAmount.stream().map(SectorHistoryResponse::sectorCode).toList());
+    }
+
+    @Test
+    @DisplayName("누적 수익 내역: 기간에 데이터가 없으면 요약은 0(0.0), 종목은 빈 배열이다")
+    void getHistory_emptyWindow() {
+        StubRepo repo = new StubRepo();
+        repo.periodSummary = new PeriodProfitProjection(null, null); // SUM 결과 없음
+        repo.periodSectors = List.of();
+        ProfitHistoryResponse response =
+                service(repo).getHistory(1L, StatsPeriod.MONTH, "2026-06", HistorySort.RATE_DESC);
+
+        assertEquals(0L, response.summary().profitAmount());
+        assertEquals(0L, response.summary().totalInvestment());
+        assertEquals(new BigDecimal("0.0"), response.summary().profitRate());
+        assertTrue(response.sectors().isEmpty());
+    }
+
+    @Test
+    @DisplayName("누적 수익 내역: hasPrev/hasNext는 윈도우 밖 데이터 존재로 판단하고, ALL은 date null에 둘 다 false다")
+    void getHistory_navigationFlags() {
+        StubRepo bounded = new StubRepo();
+        bounded.periodSummary = new PeriodProfitProjection(100_000L, 10_000L);
+        bounded.settledBefore = true;
+        bounded.settledAfter = false;
+        ProfitHistoryResponse month =
+                service(bounded).getHistory(1L, StatsPeriod.MONTH, "2026-06", HistorySort.RATE_DESC);
+        assertTrue(month.hasPrev());
+        assertFalse(month.hasNext());
+
+        StubRepo all = new StubRepo();
+        all.periodSummary = new PeriodProfitProjection(100_000L, 10_000L);
+        all.settledBefore = true; // 무시되어야 함(경계 없음)
+        all.settledAfter = true;
+        ProfitHistoryResponse allResponse = service(all).getHistory(1L, StatsPeriod.ALL, null, HistorySort.RATE_DESC);
+        assertNull(allResponse.date());
+        assertFalse(allResponse.hasPrev());
+        assertFalse(allResponse.hasNext());
+    }
+
+    @Test
+    @DisplayName("누적 수익 내역: 탭과 date 형식이 맞지 않으면 INVALID_DATE_FORMAT 예외가 서비스에서 그대로 전파된다")
+    void getHistory_dateFormatMismatchThrows() {
+        StatsQueryService service = service(new StubRepo());
+
+        StatsException e = assertThrows(
+                StatsException.class,
+                () -> service.getHistory(1L, StatsPeriod.MONTH, "2026-06-21", HistorySort.RATE_DESC));
+        assertEquals(StatsErrorCode.INVALID_DATE_FORMAT, e.getErrorCode());
+    }
+
     private StatsQueryService serviceWith(
             List<DailyProfitProjection> dailyProfits, List<SectorStatProjection> sectorStats) {
-        return new StatsQueryService(new StatsQueryRepository() {
-            @Override
-            public List<DailyProfitProjection> findSettledDailyProfits(Long userId) {
-                return dailyProfits;
-            }
+        StubRepo repo = new StubRepo();
+        repo.dailyProfits = dailyProfits;
+        repo.sectorStats = sectorStats;
+        return service(repo);
+    }
 
-            @Override
-            public List<SectorStatProjection> findSettledSectorStats(Long userId) {
-                return sectorStats;
-            }
-        });
+    private StatsQueryService service(StatsQueryRepository repo) {
+        return new StatsQueryService(repo, FIXED_CLOCK);
+    }
+
+    /** 필요한 반환값만 필드로 채워 쓰는 저장소 stub. */
+    private static final class StubRepo implements StatsQueryRepository {
+        private List<DailyProfitProjection> dailyProfits = List.of();
+        private List<SectorStatProjection> sectorStats = List.of();
+        private PeriodProfitProjection periodSummary = new PeriodProfitProjection(null, null);
+        private List<SectorHistoryProjection> periodSectors = List.of();
+        private boolean settledBefore = false;
+        private boolean settledAfter = false;
+
+        @Override
+        public List<DailyProfitProjection> findSettledDailyProfits(Long userId) {
+            return dailyProfits;
+        }
+
+        @Override
+        public List<SectorStatProjection> findSettledSectorStats(Long userId) {
+            return sectorStats;
+        }
+
+        @Override
+        public PeriodProfitProjection findPeriodSummary(Long userId, LocalDate start, LocalDate end) {
+            return periodSummary;
+        }
+
+        @Override
+        public List<SectorHistoryProjection> findPeriodSectorStats(Long userId, LocalDate start, LocalDate end) {
+            return periodSectors;
+        }
+
+        @Override
+        public boolean existsSettledBefore(Long userId, LocalDate date) {
+            return settledBefore;
+        }
+
+        @Override
+        public boolean existsSettledAfter(Long userId, LocalDate date) {
+            return settledAfter;
+        }
     }
 }

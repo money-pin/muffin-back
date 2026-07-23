@@ -8,6 +8,10 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
 
 springdoc:
   swagger-ui:
@@ -40,6 +44,17 @@ muffin:
       scheduler-enabled: ${NEWS_PUBLICATION_ENABLED:true}
       cron: ${NEWS_PUBLICATION_CRON:0 0 9 * * *}
       zone: ${NEWS_PUBLICATION_ZONE:Asia/Seoul}
+
+    quiz-publication:
+      scheduler-enabled: ${QUIZ_PUBLICATION_ENABLED:true}
+      cron: ${QUIZ_PUBLICATION_CRON:0 0 9 * * *}
+      zone: ${QUIZ_PUBLICATION_ZONE:Asia/Seoul}
+
+    quiz-generation-retry:
+      # 뉴스 재구성 완료 이벤트 기반 생성이 실패하거나 누락된 경우를 위한 발행 전 재시도 안전망
+      scheduler-enabled: ${QUIZ_GENERATION_RETRY_ENABLED:true}
+      cron: ${QUIZ_GENERATION_RETRY_CRON:0 */10 6-8 * * *}
+      zone: ${QUIZ_GENERATION_RETRY_ZONE:Asia/Seoul}
 
     settlement:
       # ETF 시세 적재 완료 이벤트가 1차 트리거.
@@ -127,3 +142,6 @@ muffin:
 
       explanation:
         model: ${NEWS_EXPLANATION_MODEL:gpt-4o}
+
+      quiz:
+        model: ${QUIZ_GENERATION_MODEL:gpt-4o}

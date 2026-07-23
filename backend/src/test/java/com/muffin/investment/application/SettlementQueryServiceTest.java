@@ -8,7 +8,9 @@ import com.muffin.investment.domain.investment.enums.SettlementStatus;
 import com.muffin.investment.presentation.dto.SettlementReason;
 import com.muffin.investment.presentation.dto.SettlementResultResponse;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,8 @@ import org.junit.jupiter.api.Test;
 class SettlementQueryServiceTest {
 
     private static final LocalDate SETTLE_DATE = LocalDate.of(2026, 5, 8);
+    private static final Clock CLOCK =
+            Clock.fixed(SETTLE_DATE.atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul"));
 
     @Test
     @DisplayName("SETTLED 이면 손익 결과를 반환하고 reason 은 없다")
@@ -64,7 +68,11 @@ class SettlementQueryServiceTest {
     }
 
     private SettlementQueryService serviceReturning(SettlementResultProjection projection) {
-        SettlementQueryRepository stubRepository = (userId, today) -> Optional.ofNullable(projection);
-        return new SettlementQueryService(stubRepository);
+        SettlementQueryRepository stubRepository = (userId, today) -> {
+            // 서비스가 주입된 Clock으로 "오늘(KST)"을 계산해 넘기는지 확인한다.
+            assertEquals(SETTLE_DATE, today);
+            return Optional.ofNullable(projection);
+        };
+        return new SettlementQueryService(stubRepository, CLOCK);
     }
 }
