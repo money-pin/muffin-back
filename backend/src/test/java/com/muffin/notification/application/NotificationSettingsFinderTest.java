@@ -1,8 +1,9 @@
 package com.muffin.notification.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.muffin.notification.domain.NotificationSettings;
@@ -24,6 +25,9 @@ class NotificationSettingsFinderTest {
     @Mock
     private NotificationSettingsRepository notificationSettingsRepository;
 
+    @Mock
+    private NotificationSettingsCreator notificationSettingsCreator;
+
     @InjectMocks
     private NotificationSettingsFinder notificationSettingsFinder;
 
@@ -39,16 +43,17 @@ class NotificationSettingsFinderTest {
     }
 
     @Test
-    @DisplayName("설정이 없으면 기본값을 생성해서 저장하고 반환한다")
+    @DisplayName("설정이 없으면 기본값을 생성해서 저장하고, 호출자 트랜잭션에서 다시 조회해서 반환한다")
     void createsDefaultWhenMissing() {
-        when(notificationSettingsRepository.findById(USER_ID)).thenReturn(Optional.empty());
-        when(notificationSettingsRepository.saveAndFlush(any(NotificationSettings.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        NotificationSettings created = NotificationSettings.createDefault(USER_ID);
+        when(notificationSettingsRepository.findById(USER_ID))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(created));
 
         NotificationSettings result = notificationSettingsFinder.findOrCreate(USER_ID);
 
-        assertThat(result.getUserId()).isEqualTo(USER_ID);
-        assertThat(result.isNewsUpdatePushEnabled()).isTrue();
+        verify(notificationSettingsCreator).createNew(USER_ID);
+        assertThat(result).isSameAs(created);
     }
 
     @Test
@@ -58,8 +63,7 @@ class NotificationSettingsFinderTest {
         when(notificationSettingsRepository.findById(USER_ID))
                 .thenReturn(Optional.empty())
                 .thenReturn(Optional.of(createdByOtherRequest));
-        when(notificationSettingsRepository.saveAndFlush(any(NotificationSettings.class)))
-                .thenThrow(mock(DataIntegrityViolationException.class));
+        when(notificationSettingsCreator.createNew(eq(USER_ID))).thenThrow(mock(DataIntegrityViolationException.class));
 
         NotificationSettings result = notificationSettingsFinder.findOrCreate(USER_ID);
 
