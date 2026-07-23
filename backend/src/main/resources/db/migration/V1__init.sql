@@ -163,7 +163,7 @@ CREATE TABLE `member` (
   `character_id` bigint DEFAULT NULL,
   `deleted_at` datetime(6) DEFAULT NULL,
   `name` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `nickname` varchar(6) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nickname` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `onboarding_completed` bit(1) NOT NULL,
   `role` enum('ADMIN','USER') COLLATE utf8mb4_unicode_ci NOT NULL,
   `status` enum('ACTIVE','SUSPENDED','WITHDRAWN') COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -172,7 +172,7 @@ CREATE TABLE `member` (
   `user_uuid` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `UK43bulm3osrfhjwr1wscw5glnb` (`user_uuid`),
-  UNIQUE KEY `UKhh9kg6jti4n1eoiertn2k6qsc` (`nickname`)
+  UNIQUE KEY `uk_member_nickname` (`nickname`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
