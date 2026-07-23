@@ -51,16 +51,24 @@ public class EtfPriceCollector {
 
     /** 장 시작 이후 호출해 시가를 수집한다. */
     public CollectionSummary collectOpen(LocalDate date) {
-        return collect(date, Candle::openPrice, CollectionTarget.OPEN);
+        return collectOpen(date, tradingCalendarService.getCalendar(date).tradingDay());
+    }
+
+    public CollectionSummary collectOpen(LocalDate date, boolean tradingDay) {
+        return collect(date, Candle::openPrice, CollectionTarget.OPEN, tradingDay);
     }
 
     /** 장 마감 이후 호출해 종가를 수집한다. */
     public CollectionSummary collectClose(LocalDate date) {
-        return collect(date, Candle::closePrice, CollectionTarget.CLOSE);
+        return collect(
+                date,
+                Candle::closePrice,
+                CollectionTarget.CLOSE,
+                tradingCalendarService.getCalendar(date).tradingDay());
     }
 
-    private CollectionSummary collect(LocalDate date, Function<Candle, String> priceField, CollectionTarget target) {
-        boolean tradingDay = tradingCalendarService.getCalendar(date).tradingDay();
+    private CollectionSummary collect(
+            LocalDate date, Function<Candle, String> priceField, CollectionTarget target, boolean tradingDay) {
         List<Etf> etfs = etfRepository.findAll().stream()
                 .filter(etf -> !NON_TOSS_ETF_CODES.contains(etf.getEtfCode()))
                 .toList();

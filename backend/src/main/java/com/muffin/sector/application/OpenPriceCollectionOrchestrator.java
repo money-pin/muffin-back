@@ -33,8 +33,11 @@ public class OpenPriceCollectionOrchestrator {
     private final ApplicationEventPublisher eventPublisher;
 
     public void collectOpenPrices(LocalDate priceDate) {
-        if (!tradingCalendarService.getCalendar(priceDate).tradingDay()) {
-            log.info("[open-price] market closed, skip priceDate={}", priceDate);
+        boolean tradingDay = tradingCalendarService.getCalendar(priceDate).tradingDay();
+        if (!tradingDay) {
+            log.info("[open-price] market closed, record status priceDate={}", priceDate);
+            collectSafely("BTC", priceDate, () -> btcPriceCollector.collect(priceDate, false));
+            collectSafely("TOSS", priceDate, () -> etfPriceCollector.collectOpen(priceDate, false));
             return;
         }
 
@@ -48,8 +51,8 @@ public class OpenPriceCollectionOrchestrator {
             return;
         }
 
-        collectSafely("BTC", priceDate, () -> btcPriceCollector.collect(priceDate));
-        collectSafely("TOSS", priceDate, () -> etfPriceCollector.collectOpen(priceDate));
+        collectSafely("BTC", priceDate, () -> btcPriceCollector.collect(priceDate, true));
+        collectSafely("TOSS", priceDate, () -> etfPriceCollector.collectOpen(priceDate, true));
         publishWhenCompleted(targets, priceDate);
     }
 

@@ -2,6 +2,7 @@ package com.muffin.sector.application;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -83,9 +84,10 @@ class OpenPriceCollectionOrchestratorTest {
         orchestrator.collectOpenPrices(DATE);
 
         InOrder order = inOrder(btcPriceCollector, etfPriceCollector, eventPublisher);
-        order.verify(btcPriceCollector).collect(DATE);
-        order.verify(etfPriceCollector).collectOpen(DATE);
+        order.verify(btcPriceCollector).collect(DATE, true);
+        order.verify(etfPriceCollector).collectOpen(DATE, true);
         order.verify(eventPublisher).publishEvent(new EtfPricesLoadedEvent(DATE));
+        verify(tradingCalendarService).getCalendar(DATE);
     }
 
     @Test
@@ -109,22 +111,23 @@ class OpenPriceCollectionOrchestratorTest {
 
         orchestrator.collectOpenPrices(DATE);
 
-        verify(btcPriceCollector, never()).collect(any());
-        verify(etfPriceCollector, never()).collectOpen(any());
+        verify(btcPriceCollector, never()).collect(any(), anyBoolean());
+        verify(etfPriceCollector, never()).collectOpen(any(), anyBoolean());
         verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
-    void collectOpenPrices_skipsMarketClosedWithoutCallingCollectors() {
+    void collectOpenPrices_recordsMarketClosedWithoutPublishing() {
         when(tradingCalendarService.getCalendar(DATE))
                 .thenReturn(new TradingCalendar(DATE, false, DATE.minusDays(3), DATE.plusDays(1)));
 
         orchestrator.collectOpenPrices(DATE);
 
         verify(etfRepository, never()).findAll();
-        verify(btcPriceCollector, never()).collect(any());
-        verify(etfPriceCollector, never()).collectOpen(any());
+        verify(btcPriceCollector).collect(DATE, false);
+        verify(etfPriceCollector).collectOpen(DATE, false);
         verify(eventPublisher, never()).publishEvent(any());
+        verify(tradingCalendarService).getCalendar(DATE);
     }
 
     @Test
@@ -135,8 +138,8 @@ class OpenPriceCollectionOrchestratorTest {
         assertThrows(GeneralException.class, () -> orchestrator.collectOpenPrices(DATE));
 
         verify(etfRepository, never()).findAll();
-        verify(btcPriceCollector, never()).collect(any());
-        verify(etfPriceCollector, never()).collectOpen(any());
+        verify(btcPriceCollector, never()).collect(any(), anyBoolean());
+        verify(etfPriceCollector, never()).collectOpen(any(), anyBoolean());
         verify(eventPublisher, never()).publishEvent(any());
     }
 

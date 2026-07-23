@@ -34,7 +34,10 @@ public class BtcPriceCollector {
     private final EtfPriceRepository etfPriceRepository;
 
     public void collect(LocalDate date) {
-        boolean tradingDay = tradingCalendarService.getCalendar(date).tradingDay();
+        collect(date, tradingCalendarService.getCalendar(date).tradingDay());
+    }
+
+    public void collect(LocalDate date, boolean tradingDay) {
         Etf btc = etfRepository.findByEtfCode(BTC_ETF_CODE).orElse(null);
         if (btc == null) {
             log.warn("BTC ETF 기준 데이터가 없어 코인 시세 수집을 건너뜁니다.");

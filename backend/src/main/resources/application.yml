@@ -60,7 +60,7 @@ muffin:
       # ETF 시세 적재 완료 이벤트가 1차 트리거.
       # 아래 스케줄러는 이벤트가 아직 연동되지 않은 경우를 위한 안전망이며 멱등하다.
       scheduler-enabled: true
-      cron: "0 30 9 * * *"
+      cron: "0 35 9 * * *"
       zone: Asia/Seoul
 
     open-price:
