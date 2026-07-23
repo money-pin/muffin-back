@@ -6,7 +6,7 @@ import com.muffin.global.config.JpaAuditingConfig;
 import com.muffin.global.config.QueryDslConfig;
 import com.muffin.mypage.application.ScrapCursor;
 import com.muffin.mypage.application.ScrapListQueryRepository;
-import com.muffin.mypage.application.ScrapListRow;
+import com.muffin.mypage.application.projection.ScrapListProjection;
 import com.muffin.mypage.domain.ScrapSort;
 import com.muffin.news.domain.category.Category;
 import com.muffin.news.domain.category.CategoryRepository;
@@ -77,54 +77,59 @@ class ScrapListQueryRepositoryTest {
     @Test
     @DisplayName("SAVED_DESC는 본인 스크랩만 최근 저장순으로 조회하고 삭제 뉴스/타인 스크랩은 제외한다")
     void findScrapPage_savedDesc() {
-        List<ScrapListRow> rows = scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.SAVED_DESC, null, 10);
+        List<ScrapListProjection> projections =
+                scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.SAVED_DESC, null, 10);
 
-        assertThat(rows).extracting(ScrapListRow::newsId).containsExactly(newsCId, newsBId, newsAId);
+        assertThat(projections).extracting(ScrapListProjection::newsId).containsExactly(newsCId, newsBId, newsAId);
     }
 
     @Test
     @DisplayName("PUBLISHED_DESC는 발행일 내림차순으로 조회한다")
     void findScrapPage_publishedDesc() {
-        List<ScrapListRow> rows = scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.PUBLISHED_DESC, null, 10);
+        List<ScrapListProjection> projections =
+                scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.PUBLISHED_DESC, null, 10);
 
-        assertThat(rows).extracting(ScrapListRow::newsId).containsExactly(newsAId, newsBId, newsCId);
+        assertThat(projections).extracting(ScrapListProjection::newsId).containsExactly(newsAId, newsBId, newsCId);
     }
 
     @Test
     @DisplayName("VIEW_DESC는 조회수 내림차순으로 조회한다")
     void findScrapPage_viewDesc() {
-        List<ScrapListRow> rows = scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.VIEW_DESC, null, 10);
+        List<ScrapListProjection> projections =
+                scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.VIEW_DESC, null, 10);
 
-        assertThat(rows).extracting(ScrapListRow::newsId).containsExactly(newsBId, newsCId, newsAId);
+        assertThat(projections).extracting(ScrapListProjection::newsId).containsExactly(newsBId, newsCId, newsAId);
     }
 
     @Test
     @DisplayName("커서 이후 행만 조회한다(SAVED_DESC 2페이지)")
     void findScrapPage_appliesCursor() {
-        List<ScrapListRow> firstPage = scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.SAVED_DESC, null, 2);
-        assertThat(firstPage).extracting(ScrapListRow::newsId).containsExactly(newsCId, newsBId);
+        List<ScrapListProjection> firstPage =
+                scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.SAVED_DESC, null, 2);
+        assertThat(firstPage).extracting(ScrapListProjection::newsId).containsExactly(newsCId, newsBId);
 
-        ScrapListRow last = firstPage.get(firstPage.size() - 1);
+        ScrapListProjection last = firstPage.get(firstPage.size() - 1);
         ScrapCursor cursor = new ScrapCursor(ScrapSort.SAVED_DESC, last.scrappedAt(), null, last.scrapId());
 
-        List<ScrapListRow> secondPage =
+        List<ScrapListProjection> secondPage =
                 scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.SAVED_DESC, cursor, 2);
-        assertThat(secondPage).extracting(ScrapListRow::newsId).containsExactly(newsAId);
+        assertThat(secondPage).extracting(ScrapListProjection::newsId).containsExactly(newsAId);
     }
 
     @Test
     @DisplayName("조인한 뉴스/카테고리 필드를 projection으로 채운다")
     void findScrapPage_projectsJoinedFields() {
-        List<ScrapListRow> rows = scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.PUBLISHED_DESC, null, 1);
+        List<ScrapListProjection> projections =
+                scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.PUBLISHED_DESC, null, 1);
 
-        ScrapListRow row = rows.getFirst();
-        assertThat(row.newsId()).isEqualTo(newsAId);
-        assertThat(row.title()).isEqualTo("뉴스A");
-        assertThat(row.categoryName()).isEqualTo("반도체");
-        assertThat(row.viewCount()).isEqualTo(10L);
-        assertThat(row.publishedAt()).isEqualTo(LocalDateTime.of(2026, 5, 7, 9, 0));
-        assertThat(row.scrappedAt()).isNotNull();
-        assertThat(row.scrapId()).isNotNull();
+        ScrapListProjection projection = projections.getFirst();
+        assertThat(projection.newsId()).isEqualTo(newsAId);
+        assertThat(projection.title()).isEqualTo("뉴스A");
+        assertThat(projection.categoryName()).isEqualTo("반도체");
+        assertThat(projection.viewCount()).isEqualTo(10L);
+        assertThat(projection.publishedAt()).isEqualTo(LocalDateTime.of(2026, 5, 7, 9, 0));
+        assertThat(projection.scrappedAt()).isNotNull();
+        assertThat(projection.scrapId()).isNotNull();
     }
 
     private Long savePublished(Long categoryId, String title, LocalDateTime publishedAt, long viewCount) {

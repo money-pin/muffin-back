@@ -2,7 +2,7 @@ package com.muffin.mypage.infrastructure;
 
 import com.muffin.mypage.application.ScrapCursor;
 import com.muffin.mypage.application.ScrapListQueryRepository;
-import com.muffin.mypage.application.ScrapListRow;
+import com.muffin.mypage.application.projection.ScrapListProjection;
 import com.muffin.mypage.domain.ScrapSort;
 import com.muffin.news.domain.category.QCategory;
 import com.muffin.news.domain.news.QNews;
@@ -22,7 +22,7 @@ public class ScrapListQueryRepositoryImpl implements ScrapListQueryRepository {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public List<ScrapListRow> findScrapPage(Long userId, ScrapSort sort, ScrapCursor cursor, int limit) {
+    public List<ScrapListProjection> findScrapPage(Long userId, ScrapSort sort, ScrapCursor cursor, int limit) {
         QScrap scrap = QScrap.scrap;
         QNews news = QNews.news;
         QCategory category = QCategory.category;
@@ -32,7 +32,7 @@ public class ScrapListQueryRepositoryImpl implements ScrapListQueryRepository {
 
         return queryFactory
                 .select(Projections.constructor(
-                        ScrapListRow.class,
+                        ScrapListProjection.class,
                         news.id,
                         news.title,
                         category.name,

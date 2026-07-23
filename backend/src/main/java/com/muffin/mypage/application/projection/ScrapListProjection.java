@@ -1,4 +1,4 @@
-package com.muffin.mypage.application;
+package com.muffin.mypage.application.projection;
 
 import java.time.LocalDateTime;
 
@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
  * @param scrappedAt 스크랩 시각(scrap.createdAt, SAVED_DESC 정렬/커서 기준)
  * @param scrapId 스크랩 id(SAVED_DESC 타이브레이크)
  */
-public record ScrapListRow(
+public record ScrapListProjection(
         Long newsId,
         String title,
         String categoryName,
