@@ -92,6 +92,6 @@ tasks.named('asciidoctor') {
 tasks.named('bootJar') {
     dependsOn asciidoctor
     from(layout.buildDirectory.dir('docs/asciidoc')) {
-        into 'static/docs'
+        into 'BOOT-INF/classes/static/docs'
     }
 }
