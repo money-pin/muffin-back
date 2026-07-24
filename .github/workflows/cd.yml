@@ -74,14 +74,15 @@ jobs:
           set -euo pipefail
 
           # 대상 인스턴스는 Name 태그로 조회한다 (SSH host/키 시크릿 불필요).
-          INSTANCE_ID="$(aws ec2 describe-instances \
+          INSTANCE_IDS=($(aws ec2 describe-instances \
             --filters "Name=tag:Name,Values=${CONTAINER_NAME}-backend" \
                       "Name=instance-state-name,Values=running" \
-            --query "Reservations[].Instances[].InstanceId" --output text --region "$AWS_REGION")"
-          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
-            echo "ERROR: 실행 중인 대상 인스턴스(${CONTAINER_NAME}-backend)를 찾지 못했습니다." >&2
+            --query "Reservations[].Instances[].InstanceId" --output text --region "$AWS_REGION"))
+          if [ "${#INSTANCE_IDS[@]}" -ne 1 ] || [ "${INSTANCE_IDS[0]}" = "None" ]; then
+            echo "ERROR: 실행 중인 대상 인스턴스(${CONTAINER_NAME}-backend)가 정확히 1개여야 합니다. found=${#INSTANCE_IDS[@]}" >&2
             exit 1
           fi
+          INSTANCE_ID="${INSTANCE_IDS[0]}"
           echo "Target instance: $INSTANCE_ID"
 
           # EC2에서 실행할 배포 스크립트를 만든다. 러너에서 주입할 값(REGISTRY/TAG 등)은
@@ -141,13 +142,17 @@ jobs:
             fi
           }
 
-          docker run -d \
-            --name "$NAME" \
-            --restart unless-stopped \
-            -p 8080:8080 \
-            --env-file "$ENV_FILE" \
-            --log-opt max-size=10m --log-opt max-file=3 \
-            "$IMAGE"
+          if ! docker run -d \
+              --name "$NAME" \
+              --restart unless-stopped \
+              -p 8080:8080 \
+              --env-file "$ENV_FILE" \
+              --log-opt max-size=10m --log-opt max-file=3 \
+              "$IMAGE"; then
+            echo "ERROR: 새 컨테이너 생성에 실패해 이전 컨테이너로 롤백합니다." >&2
+            rollback
+            exit 1
+          fi
 
           # 유한 시간 내 기동 확인. 앱에 actuator가 없으므로 "컨테이너가 계속 running이고
           # 8080이 HTTP 응답을 준다"를 기준으로 판정한다(상태코드는 무관 — 응답 자체가 중요).
@@ -175,7 +180,7 @@ jobs:
           # 검증 성공 → 이전 컨테이너 정리
           docker rm -f "$PREV" 2>/dev/null || true
 
-          # 디스크가 작으므로(20GB) 오래된 이미지 정리
+          # 디스크 사용량을 제한하기 위해 7일보다 오래된 이미지 정리
           docker image prune -af --filter "until=168h"
           REMOTE
 

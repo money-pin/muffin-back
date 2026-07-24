@@ -7,6 +7,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 
   # state에 DB 비밀번호가 평문으로 저장되므로 암호화된 원격 backend를 쓴다.

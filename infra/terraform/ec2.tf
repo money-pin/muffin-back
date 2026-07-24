@@ -122,7 +122,8 @@ resource "aws_instance" "muffin" {
   vpc_security_group_ids = [aws_security_group.ec2.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2.name
 
-  user_data                   = file("${path.module}/user_data.sh")
+  # Windows 체크아웃의 CRLF가 user_data 해시를 바꿔 불필요한 인스턴스 교체를 만들지 않도록 LF로 정규화한다.
+  user_data                   = replace(file("${path.module}/user_data.sh"), "\r\n", "\n")
   user_data_replace_on_change = true
 
   root_block_device {

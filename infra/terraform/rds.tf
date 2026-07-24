@@ -7,6 +7,10 @@ resource "aws_db_subnet_group" "muffin" {
   }
 }
 
+resource "random_id" "final_snapshot" {
+  byte_length = 4
+}
+
 resource "aws_db_instance" "muffin" {
   identifier     = "${var.project_name}-db"
   engine         = "mysql"
@@ -19,6 +23,7 @@ resource "aws_db_instance" "muffin" {
   # 메이저 버전 업그레이드(예: 8.0 -> 8.4)를 허용한다. 없으면 db_engine_version을
   # 메이저 상향할 때 apply가 거부된다. 실제 업그레이드는 유지보수 창에 수행됨.
   allow_major_version_upgrade = true
+  auto_minor_version_upgrade  = true
 
   # 저장 시 암호화(KMS 기본 aws/rds 키). 투자/자산 데이터 보호용.
   # 생성 후에는 변경 불가하므로 반드시 최초 생성 시점에 켠다.
@@ -34,7 +39,7 @@ resource "aws_db_instance" "muffin" {
 
   multi_az                  = false
   skip_final_snapshot       = false
-  final_snapshot_identifier = "${var.project_name}-db-final-snapshot"
+  final_snapshot_identifier = "${var.project_name}-db-final-snapshot-${random_id.final_snapshot.hex}"
   backup_retention_period   = var.db_backup_retention_period
   deletion_protection       = true
 
