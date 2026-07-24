@@ -40,10 +40,11 @@ class EtfClosePriceSchedulerTest {
     }
 
     @Test
-    @DisplayName("16시 05분 최종 스케줄도 당일 종가 수집을 실행한다")
-    void runFinalAttempt_collectsClose() {
+    @DisplayName("16시 05분 최종 스케줄은 종가 수집 후 미확보 종가를 종결한다")
+    void runFinalAttempt_collectsCloseAndFinalizesMissingPrices() {
         scheduler.runFinalAttempt();
 
         verify(collector).collectClose(DATE);
+        verify(collector).finalizeMissingClosePrices(DATE);
     }
 }

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -60,7 +61,7 @@ class EtfPriceCollectorTest {
     void setUp() {
         collector = new EtfPriceCollector(
                 etfRepository, tradingCalendarService, tossMarketDataClient, etfPriceWriter, etfPriceRepository);
-        when(tradingCalendarService.getCalendar(DATE)).thenReturn(tradingDay());
+        lenient().when(tradingCalendarService.getCalendar(DATE)).thenReturn(tradingDay());
     }
 
     @Test
@@ -275,6 +276,36 @@ class EtfPriceCollectorTest {
         assertEquals(1, summary.failureCount());
         assertEquals(List.of("999999"), summary.failedEtfCodes());
         verify(etfPriceWriter).markOpenFailed(any(), eq(DATE));
+    }
+
+    @Test
+    @DisplayName("마지막 종가 수집 뒤 미확보 종가만 FINAL_MISSING으로 종결한다")
+    void finalizeMissingClosePrices_finalizesOnlyUnresolvedClosePrices() {
+        Etf unresolved = etf(1L, "459580");
+        Etf succeeded = etf(2L, "459570");
+        Etf marketClosed = etf(3L, "459560");
+        Etf btc = etf(4L, "BTC");
+        EtfPrice unresolvedPrice = EtfPrice.pending(1L, DATE);
+        unresolvedPrice.markCloseNoData();
+        EtfPrice succeededPrice = EtfPrice.create(2L, DATE, null, 10_500L);
+        EtfPrice marketClosedPrice = EtfPrice.pending(3L, DATE);
+        marketClosedPrice.markCloseMarketClosed();
+        when(etfRepository.findAll()).thenReturn(List.of(unresolved, succeeded, marketClosed, btc));
+        when(etfPriceRepository.findByPriceDate(DATE))
+                .thenReturn(List.of(unresolvedPrice, succeededPrice, marketClosedPrice));
+
+        collector.finalizeMissingClosePrices(DATE);
+
+        verify(etfPriceWriter).markCloseFinalMissing(1L, DATE);
+        verify(etfPriceWriter, never()).markCloseFinalMissing(2L, DATE);
+        verify(etfPriceWriter, never()).markCloseFinalMissing(3L, DATE);
+        verify(etfPriceWriter, never()).markCloseFinalMissing(4L, DATE);
+    }
+
+    private static Etf etf(Long id, String code) {
+        Etf etf = Etf.create(code, "ETF " + code);
+        ReflectionTestUtils.setField(etf, "id", id);
+        return etf;
     }
 
     private static TradingCalendar tradingDay() {

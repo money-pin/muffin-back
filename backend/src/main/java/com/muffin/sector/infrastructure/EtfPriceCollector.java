@@ -3,6 +3,7 @@ package com.muffin.sector.infrastructure;
 import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
+import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.EtfPriceRepository;
 import com.muffin.sector.domain.etfprice.PriceCollectionStatus;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
@@ -12,9 +13,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -32,7 +35,8 @@ import org.springframework.stereotype.Component;
  * <p>{@link TradingCalendarService}로 거래일 여부를 먼저 확인해, 거래일이 아니면 API 호출 없이 전체를
  * MARKET_CLOSED로 기록한다. 거래일인데 특정 ETF만 캔들이 없는 경우는 거래정지인지 데이터 반영 지연인지 이 시점에서 단정할 수 없으므로
  * NO_DATA로 기록한다. API·파싱·저장 실패는 FAILED로 기록해 가격 null과 실패 원인을 구분한다.
- * 완료 이벤트 발행과 09:30 FINAL_MISSING 전환은 통합 시가 수집 오케스트레이터가 담당한다.
+ * 완료 이벤트 발행과 09:30 시가 FINAL_MISSING 전환은 통합 시가 수집 오케스트레이터가 담당한다. 종가는 16:05 마지막 수집 후
+ * {@link #finalizeMissingClosePrices(LocalDate)}가 같은 상태로 종결한다.
  */
 @Slf4j
 @Component
@@ -67,11 +71,26 @@ public class EtfPriceCollector {
                 tradingCalendarService.getCalendar(date).tradingDay());
     }
 
+    /** 16:05 마지막 종가 수집 뒤, 미확보 종가를 FINAL_MISSING으로 종결한다. */
+    public void finalizeMissingClosePrices(LocalDate date) {
+        Map<Long, EtfPrice> pricesByEtfId = etfPriceRepository.findByPriceDate(date).stream()
+                .collect(Collectors.toMap(EtfPrice::getEtfId, Function.identity(), (left, right) -> left));
+
+        for (Etf etf : tossEtfs()) {
+            if (isCloseTerminal(pricesByEtfId.get(etf.getId()))) {
+                continue;
+            }
+            try {
+                etfPriceWriter.markCloseFinalMissing(etf.getId(), date);
+            } catch (RuntimeException exception) {
+                log.error("ETF 종가 FINAL_MISSING 저장 실패. etfCode={}, date={}", etf.getEtfCode(), date, exception);
+            }
+        }
+    }
+
     private CollectionSummary collect(
             LocalDate date, Function<Candle, String> priceField, CollectionTarget target, boolean tradingDay) {
-        List<Etf> etfs = etfRepository.findAll().stream()
-                .filter(etf -> !NON_TOSS_ETF_CODES.contains(etf.getEtfCode()))
-                .toList();
+        List<Etf> etfs = tossEtfs();
 
         if (!tradingDay) {
             log.info("거래일이 아니라 ETF 시세 수집을 건너뜁니다. date={}", date);
@@ -162,6 +181,22 @@ public class EtfPriceCollector {
                         ? price.getStartPriceStatus() == PriceCollectionStatus.SUCCESS
                         : price.getEndPriceStatus() == PriceCollectionStatus.SUCCESS)
                 .orElse(false);
+    }
+
+    private List<Etf> tossEtfs() {
+        return etfRepository.findAll().stream()
+                .filter(etf -> !NON_TOSS_ETF_CODES.contains(etf.getEtfCode()))
+                .toList();
+    }
+
+    private boolean isCloseTerminal(EtfPrice price) {
+        if (price == null) {
+            return false;
+        }
+        PriceCollectionStatus status = price.getEndPriceStatus();
+        return status == PriceCollectionStatus.SUCCESS
+                || status == PriceCollectionStatus.FINAL_MISSING
+                || status == PriceCollectionStatus.MARKET_CLOSED;
     }
 
     private void writePrice(CollectionTarget target, Long etfId, LocalDate date, Long price) {

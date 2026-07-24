@@ -120,6 +120,10 @@ public class EtfPrice {
         markCloseUnavailable(PriceCollectionStatus.FAILED);
     }
 
+    public void markCloseFinalMissing() {
+        markCloseUnavailable(PriceCollectionStatus.FINAL_MISSING);
+    }
+
     public void markCloseMarketClosed() {
         markCloseUnavailable(PriceCollectionStatus.MARKET_CLOSED);
     }
