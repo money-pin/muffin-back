@@ -74,8 +74,12 @@ jobs:
           install -m 600 /dev/null deploy_key
           echo "${{ secrets.EC2_SSH_KEY }}" > deploy_key
 
-          ssh -i deploy_key \
+          # 네트워크/원격 행(hang)으로 잡이 무한 대기하지 않도록 연결·세션·전체 실행에 상한을 둔다.
+          timeout 900 ssh -i deploy_key \
               -o StrictHostKeyChecking=accept-new \
+              -o ConnectTimeout=15 \
+              -o ServerAliveInterval=15 \
+              -o ServerAliveCountMax=8 \
               ec2-user@${{ secrets.EC2_HOST }} \
               "IMAGE='$REGISTRY/$REPOSITORY:$TAG' \
                REGISTRY='$REGISTRY' \
@@ -113,7 +117,22 @@ jobs:
             exit 1
           fi
 
-          docker rm -f "$NAME" 2>/dev/null || true
+          # 이전 컨테이너는 지우지 않고 옆으로 밀어둔다. 새 컨테이너 검증에 실패하면
+          # 이걸 되살려 롤백한다(검증 성공 후에만 삭제).
+          PREV="${NAME}-prev"
+          docker rm -f "$PREV" 2>/dev/null || true
+          if docker inspect "$NAME" >/dev/null 2>&1; then
+            docker rename "$NAME" "$PREV"
+            docker stop "$PREV" >/dev/null 2>&1 || true
+          fi
+
+          rollback() {
+            docker rm -f "$NAME" 2>/dev/null || true
+            if docker inspect "$PREV" >/dev/null 2>&1; then
+              docker rename "$PREV" "$NAME"
+              docker start "$NAME" >/dev/null 2>&1 || true
+            fi
+          }
 
           docker run -d \
             --name "$NAME" \
@@ -122,6 +141,32 @@ jobs:
             --env-file "$ENV_FILE" \
             --log-opt max-size=10m --log-opt max-file=3 \
             "$IMAGE"
+
+          # 유한 시간 내 기동 확인. 앱에 actuator가 없으므로 "컨테이너가 계속 running이고
+          # 8080이 HTTP 응답을 준다"를 기준으로 판정한다(상태코드는 무관 — 응답 자체가 중요).
+          deadline=$((SECONDS + 180))
+          healthy=0
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            if [ "$(docker inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null)" != "true" ]; then
+              echo "ERROR: 새 컨테이너가 기동 중 종료되었습니다." >&2
+              break
+            fi
+            if curl -sS -o /dev/null --max-time 5 http://127.0.0.1:8080/ 2>/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$healthy" -ne 1 ]; then
+            echo "ERROR: 제한 시간 내에 새 컨테이너가 응답하지 않아 롤백합니다." >&2
+            docker logs --tail 100 "$NAME" 2>&1 || true
+            rollback
+            exit 1
+          fi
+
+          # 검증 성공 → 이전 컨테이너 정리
+          docker rm -f "$PREV" 2>/dev/null || true
 
           # 디스크가 작으므로(20GB) 오래된 이미지 정리
           docker image prune -af --filter "until=168h"
