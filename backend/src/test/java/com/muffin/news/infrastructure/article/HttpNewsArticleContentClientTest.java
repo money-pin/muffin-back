@@ -21,4 +21,25 @@ class HttpNewsArticleContentClientTest {
                     assertThat(exception.getCause()).isNotNull();
                 });
     }
+
+    @Test
+    void limitLengthRejectsNonPositiveMax() {
+        assertThatThrownBy(() -> HttpNewsArticleContentClient.limitLength("본문", 0))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> HttpNewsArticleContentClient.limitLength("본문", -5))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void limitLengthTruncatesToMax() {
+        assertThat(HttpNewsArticleContentClient.limitLength("abcdef", 3)).isEqualTo("abc");
+        assertThat(HttpNewsArticleContentClient.limitLength("abc", 10)).isEqualTo("abc");
+    }
+
+    @Test
+    void limitLengthDoesNotSplitSurrogatePair() {
+        // "😀" 는 서로게이트 쌍(2 char). 경계가 쌍의 중간(1)에 걸리면 깨진 문자 대신 앞에서 잘라야 한다.
+        String emoji = "😀"; // 😀
+        assertThat(HttpNewsArticleContentClient.limitLength("a" + emoji, 2)).isEqualTo("a");
+    }
 }

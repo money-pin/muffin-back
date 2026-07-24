@@ -43,7 +43,7 @@ class LoginControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"user@example.com\",\"password\":\"password1\"}"))
                 .andExpect(status().isOk())
@@ -70,7 +70,7 @@ class LoginControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"user@example.com\",\"password\":\"wrongpass1\"}"))
                 .andExpect(status().isUnauthorized())
@@ -94,7 +94,7 @@ class LoginControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"user@example.com\",\"password\":\"password1\"}"))
                 .andExpect(status().isForbidden())
@@ -118,7 +118,7 @@ class LoginControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"user@example.com\",\"password\":\"password1\"}"))
                 .andExpect(status().isLocked())

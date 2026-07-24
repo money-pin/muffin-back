@@ -56,21 +56,21 @@ class RefreshControllerTest {
         User user = createUser();
         String rawToken = refreshTokenIssuer.issue(user.getUserId());
 
-        mockMvc.perform(post("/api/auth/token/refresh").cookie(new Cookie("refreshToken", rawToken)))
+        mockMvc.perform(post("/auth/token/refresh").cookie(new Cookie("refreshToken", rawToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.accessToken").exists())
                 .andExpect(cookie().exists("refreshToken"))
                 .andExpect(cookie().httpOnly("refreshToken", true))
                 .andExpect(cookie().secure("refreshToken", true))
                 .andExpect(cookie().sameSite("refreshToken", "Strict"))
-                .andExpect(cookie().path("refreshToken", "/api/auth"))
+                .andExpect(cookie().path("refreshToken", "/auth"))
                 .andExpect(cookie().maxAge("refreshToken", greaterThan(0)));
     }
 
     @Test
     @DisplayName("refresh token 쿠키가 없으면 401 (AUTH_401_003)")
     void refresh_missingCookie() throws Exception {
-        mockMvc.perform(post("/api/auth/token/refresh"))
+        mockMvc.perform(post("/auth/token/refresh"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code", is("AUTH_401_003")));
     }
@@ -78,7 +78,7 @@ class RefreshControllerTest {
     @Test
     @DisplayName("유효하지 않은 refresh token 쿠키면 401 (AUTH_401_003)")
     void refresh_invalidCookie() throws Exception {
-        mockMvc.perform(post("/api/auth/token/refresh").cookie(new Cookie("refreshToken", "bogus-token")))
+        mockMvc.perform(post("/auth/token/refresh").cookie(new Cookie("refreshToken", "bogus-token")))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code", is("AUTH_401_003")));
     }
@@ -91,7 +91,7 @@ class RefreshControllerTest {
         user.withdraw();
         userRepository.save(user);
 
-        mockMvc.perform(post("/api/auth/token/refresh").cookie(new Cookie("refreshToken", rawToken)))
+        mockMvc.perform(post("/auth/token/refresh").cookie(new Cookie("refreshToken", rawToken)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code", is("AUTH_403_002")));
     }

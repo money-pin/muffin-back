@@ -3,10 +3,12 @@ package com.muffin.news.infrastructure.query;
 import com.muffin.news.application.query.NewsCursor;
 import com.muffin.news.application.query.NewsQueryRepository;
 import com.muffin.news.application.query.NewsSummaryRow;
+import com.muffin.news.application.query.RecentReadNewsRow;
 import com.muffin.news.application.sectorimpact.SectorRow;
 import com.muffin.news.domain.category.QCategory;
 import com.muffin.news.domain.news.QNews;
 import com.muffin.news.domain.news.enums.NewsStatus;
+import com.muffin.news.domain.readhistory.QReadHistory;
 import com.muffin.sector.domain.sector.QSector;
 import com.muffin.sector.domain.sectorgroup.QSectorGroup;
 import com.querydsl.core.BooleanBuilder;
@@ -84,6 +86,23 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
                 .fetch();
     }
 
+    @Override
+    public List<RecentReadNewsRow> findRecentReadNews(Long userId, int limit) {
+        QReadHistory readHistory = QReadHistory.readHistory;
+        QNews news = QNews.news;
+
+        return queryFactory
+                .select(Projections.constructor(
+                        RecentReadNewsRow.class, news.id, news.title, news.thumbnailUrl, readHistory.readAt))
+                .from(readHistory)
+                .join(news)
+                .on(news.id.eq(readHistory.newsId))
+                .where(readHistory.userId.eq(userId))
+                .orderBy(readHistory.readAt.desc(), readHistory.id.desc())
+                .limit(limit)
+                .fetch();
+    }
+
     private BooleanBuilder publishedNewsPredicate(QNews news) {
         return new BooleanBuilder().and(news.status.eq(NewsStatus.PUBLISHED)).and(news.deletedAt.isNull());
     }
@@ -100,7 +119,6 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
                 news.publisher,
                 news.publishedAt,
                 news.thumbnailUrl,
-                news.viewCount,
-                category.fallbackThumbnailUrl);
+                news.viewCount);
     }
 }

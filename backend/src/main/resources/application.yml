@@ -8,6 +8,10 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
 
 springdoc:
   swagger-ui:
@@ -41,17 +45,28 @@ muffin:
       cron: ${NEWS_PUBLICATION_CRON:0 0 9 * * *}
       zone: ${NEWS_PUBLICATION_ZONE:Asia/Seoul}
 
+    quiz-publication:
+      scheduler-enabled: ${QUIZ_PUBLICATION_ENABLED:true}
+      cron: ${QUIZ_PUBLICATION_CRON:0 0 9 * * *}
+      zone: ${QUIZ_PUBLICATION_ZONE:Asia/Seoul}
+
+    quiz-generation-retry:
+      # 뉴스 재구성 완료 이벤트 기반 생성이 실패하거나 누락된 경우를 위한 발행 전 재시도 안전망
+      scheduler-enabled: ${QUIZ_GENERATION_RETRY_ENABLED:true}
+      cron: ${QUIZ_GENERATION_RETRY_CRON:0 */10 6-8 * * *}
+      zone: ${QUIZ_GENERATION_RETRY_ZONE:Asia/Seoul}
+
     settlement:
       # ETF 시세 적재 완료 이벤트가 1차 트리거.
       # 아래 스케줄러는 이벤트가 아직 연동되지 않은 경우를 위한 안전망이며 멱등하다.
       scheduler-enabled: true
-      cron: "0 30 9 * * *"
+      cron: "0 35 9 * * *"
       zone: Asia/Seoul
 
-    btc-price:
-      # 코인 섹터 기준가 정책: 매일 09:00 KST에 CoinGecko 시세를 조회해 그날의 기준가로 저장한다.
+    open-price:
       scheduler-enabled: true
-      cron: "0 0 9 * * *"
+      collection-cron: "0 0-25/5 9 * * *"
+      finalization-cron: "0 30 9 * * *"
       zone: Asia/Seoul
 
     # TODO : 확인필요 - 이슈 #40 확정 정책에 맞춰 종가 수집과 자정 투자 마감 스케줄을 추가함.
@@ -127,3 +142,6 @@ muffin:
 
       explanation:
         model: ${NEWS_EXPLANATION_MODEL:gpt-4o}
+
+      quiz:
+        model: ${QUIZ_GENERATION_MODEL:gpt-4o}

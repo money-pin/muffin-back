@@ -110,11 +110,20 @@ public class HttpNewsArticleContentClient implements NewsArticleContentClient {
                 .orElseGet(() -> document.body().text().strip());
     }
 
-    private static String limitLength(String content, int maxLength) {
+    // 테스트에서 경계 로직(음수 인덱스 방어, 서로게이트 쌍 절단)을 직접 검증하기 위해 패키지-프라이빗으로 둔다.
+    static String limitLength(String content, int maxLength) {
+        if (maxLength <= 0) {
+            throw new IllegalArgumentException("maxLength는 1 이상이어야 합니다: " + maxLength);
+        }
         if (content.length() <= maxLength) {
             return content;
         }
-        return content.substring(0, maxLength);
+        int end = maxLength;
+        // 이모지 같은 보충 문자(서로게이트 쌍)의 중간을 자르면 깨진 문자가 AI 요청에 섞이므로 경계를 한 칸 당긴다.
+        if (Character.isHighSurrogate(content.charAt(end - 1))) {
+            end--;
+        }
+        return content.substring(0, end);
     }
 
     /** 네트워크 오류 또는 재시도 가능한 HTTP 상태인지 확인한다. */

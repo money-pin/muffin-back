@@ -87,6 +87,37 @@ public class QuizSet extends BaseEntity {
         return quizzes.stream().filter(quiz -> quiz.getId().equals(quizId)).findFirst();
     }
 
+    /** AI가 하루치 3문항 생성을 마치면 발행 대기 상태로 전환한다. */
+    public void ready() {
+        if (status != QuizSetStatus.GENERATING) {
+            throw new IllegalStateException("생성 중인 퀴즈 세트만 발행 대기 상태로 변경할 수 있습니다.");
+        }
+        if (quizzes.size() != 3) {
+            throw new IllegalStateException("일일 퀴즈는 3문항이 모두 생성되어야 발행 대기 상태가 될 수 있습니다.");
+        }
+        this.status = QuizSetStatus.READY;
+    }
+
+    /** 발행 시각에 도달하면 사용자에게 공개되는 상태로 전환한다. */
+    public void publish(LocalDateTime publishedAt) {
+        if (status != QuizSetStatus.READY) {
+            throw new IllegalStateException("발행 대기 상태의 퀴즈 세트만 공개할 수 있습니다.");
+        }
+        if (publishedAt == null) {
+            throw new IllegalArgumentException("publishedAt은 필수입니다.");
+        }
+        this.status = QuizSetStatus.PUBLISHED;
+        this.publishedAt = publishedAt;
+    }
+
+    /** 생성 실패 또는 발행 불가 상황이면 오늘의 퀴즈를 이용 불가 상태로 전환한다. */
+    public void unavailable() {
+        if (status == QuizSetStatus.PUBLISHED) {
+            throw new IllegalStateException("이미 공개된 퀴즈 세트는 이용 불가 상태로 변경할 수 없습니다.");
+        }
+        this.status = QuizSetStatus.UNAVAILABLE;
+    }
+
     private static void validateQuiz(
             Long newsId,
             String question,

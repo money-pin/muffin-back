@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,8 +25,7 @@ public class StatsController implements StatsApi {
     @Override
     @GetMapping("/summary")
     public ApiResponse<StatsSummaryResponse> getSummary(
-            // TODO: 인증(Security/JWT) 구현 후 @AuthenticationPrincipal 등으로 교체하고 요청에서 hidden 처리. 현재는 임시 헤더.
-            @RequestHeader("X-User-Id") Long userId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, statsQueryService.getSummary(userId));
     }
 

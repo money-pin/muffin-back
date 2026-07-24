@@ -44,7 +44,7 @@ class SignupControllerDocsTest {
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
         mockMvc.perform(
-                        post("/api/auth/signup")
+                        post("/auth/signup")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         "{\"email\":\"user@example.com\",\"password\":\"password1\",\"name\":\"홍길동\",\"termsAgreed\":true}"))
@@ -75,7 +75,7 @@ class SignupControllerDocsTest {
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
         mockMvc.perform(
-                        post("/api/auth/signup")
+                        post("/auth/signup")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         "{\"email\":\"user@example.com\",\"password\":\"password1\",\"name\":\"홍길동\",\"termsAgreed\":false}"))
@@ -101,7 +101,7 @@ class SignupControllerDocsTest {
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
         mockMvc.perform(
-                        post("/api/auth/signup")
+                        post("/auth/signup")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         "{\"email\":\"user@example.com\",\"password\":\"password1\",\"name\":\"홍길동\",\"termsAgreed\":true}"))
@@ -127,7 +127,7 @@ class SignupControllerDocsTest {
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
         mockMvc.perform(
-                        post("/api/auth/signup")
+                        post("/auth/signup")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         "{\"email\":\"user@example.com\",\"password\":\"password1\",\"name\":\"홍길동\",\"termsAgreed\":true}"))
