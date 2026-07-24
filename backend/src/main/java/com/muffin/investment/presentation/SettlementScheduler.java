@@ -1,6 +1,6 @@
 package com.muffin.investment.presentation;
 
-import com.muffin.investment.application.SettlementCommandService;
+import com.muffin.investment.application.settlement.SettlementCommandService;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
