@@ -76,10 +76,18 @@ variable "db_username" {
   default     = "muffin_admin"
 }
 
-variable "db_password" {
-  description = "RDS 마스터 비밀번호 (tfvars에 커밋하지 말고 TF_VAR_db_password 환경변수로 넘기세요)"
+variable "app_db_username" {
+  description = "애플리케이션 전용 MySQL 사용자명(RDS master 계정과 분리)"
   type        = string
-  sensitive   = true
+  default     = "muffin_app"
+
+  validation {
+    condition = (
+      can(regex("^[A-Za-z][A-Za-z0-9_]{2,31}$", var.app_db_username))
+      && var.app_db_username != var.db_username
+    )
+    error_message = "app_db_username은 영문자로 시작하는 3~32자 영문/숫자/_ 조합이며 db_username과 달라야 합니다."
+  }
 }
 
 variable "db_instance_class" {
@@ -95,12 +103,11 @@ variable "db_allocated_storage" {
 }
 
 variable "db_backup_retention_period" {
-  # AWS 무료 플랜은 백업 보관 기간에 상한이 있어 7일을 쓸 수 없다(FreeTierRestrictionError).
-  # 그래서 기본값은 현재 계정에서 동작하는 1로 두되, 유료 전환 시 7 이상으로 올릴 것을 권장한다.
-  # (더 긴 보존이 필요하면 AWS Backup 또는 별도 스냅샷 정책을 병행)
-  description = "RDS 자동 백업 보관 기간(일). 유료 플랜에서는 7 이상 권장."
+  # PITR 복구 범위를 확보하기 위한 운영 기본값. RDS는 1~35일을 지원하며,
+  # 무료 제공량을 초과한 백업 스토리지에는 별도 비용이 발생할 수 있다.
+  description = "RDS 자동 백업 보관 기간(일). 운영 환경은 7일 이상 권장."
   type        = number
-  default     = 1
+  default     = 7
 
   validation {
     condition     = var.db_backup_retention_period >= 1 && var.db_backup_retention_period <= 35

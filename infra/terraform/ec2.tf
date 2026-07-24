@@ -101,6 +101,45 @@ resource "aws_iam_role_policy" "ec2_ssm_read" {
   })
 }
 
+# 앱 DB 계정 bootstrap에만 사용하는 최소 권한. RDS master secret은 애플리케이션
+# 컨테이너에 전달하지 않고, SSM Association이 DB 사용자 생성 시에만 조회한다.
+resource "aws_iam_role_policy" "ec2_db_bootstrap" {
+  name = "${var.project_name}-ec2-db-bootstrap"
+  role = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "secretsmanager:GetSecretValue"
+        Resource = "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:rds!db-*"
+      },
+      {
+        # RDS 관리형 secret ARN은 master password 관리가 활성화된 뒤 생성되므로,
+        # bootstrap 실행 시 DB 인스턴스에서 조회한다.
+        Effect   = "Allow"
+        Action   = "rds:DescribeDBInstances"
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "secretsmanager:GetRandomPassword"
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = "ssm:PutParameter"
+        Resource = [
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_USERNAME",
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_PASSWORD",
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_APP_BOOTSTRAPPED",
+        ]
+      },
+    ]
+  })
+}
+
 # SSM Run Command/Session Manager로 이 인스턴스를 관리하기 위한 표준 권한(ssmmessages/ec2messages 등).
 # CD가 SSH 대신 SSM으로 배포 스크립트를 실행하려면 인스턴스가 SSM에 등록돼 있어야 한다.
 resource "aws_iam_role_policy_attachment" "ec2_ssm_core" {
