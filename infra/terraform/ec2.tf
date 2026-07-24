@@ -20,7 +20,7 @@ resource "aws_key_pair" "muffin" {
   public_key = join(" ", slice(split(" ", trimspace(file(pathexpand(var.ssh_public_key_path)))), 0, 2))
 }
 
-# EC2가 S3 버킷에 접근할 수 있도록 하는 역할 (액세스키를 코드/서버에 박아두지 않기 위함)
+# EC2가 ECR/SSM에 접근할 수 있도록 하는 역할 (액세스키를 코드/서버에 박아두지 않기 위함)
 resource "aws_iam_role" "ec2" {
   name = "${var.project_name}-ec2-role"
 
@@ -32,28 +32,6 @@ resource "aws_iam_role" "ec2" {
       Principal = {
         Service = "ec2.amazonaws.com"
       }
-    }]
-  })
-}
-
-resource "aws_iam_role_policy" "ec2_s3_access" {
-  name = "${var.project_name}-ec2-s3-access"
-  role = aws_iam_role.ec2.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:DeleteObject",
-        "s3:ListBucket",
-      ]
-      Resource = [
-        aws_s3_bucket.app_storage.arn,
-        "${aws_s3_bucket.app_storage.arn}/*",
-      ]
     }]
   })
 }

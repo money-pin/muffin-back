@@ -102,10 +102,3 @@ variable "github_repository" {
   default     = "money-pin/muffin-back"
 }
 
-# ---------- S3 ----------
-
-variable "s3_bucket_prefix" {
-  description = "S3 버킷 이름 접두사 (전역 유니크해야 해서 뒤에 랜덤 suffix가 붙습니다)"
-  type        = string
-  default     = "muffin-app-storage"
-}

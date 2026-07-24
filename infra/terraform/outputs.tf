@@ -17,10 +17,6 @@ output "rds_port" {
   value = aws_db_instance.muffin.port
 }
 
-output "s3_bucket_name" {
-  value = aws_s3_bucket.app_storage.bucket
-}
-
 output "ecr_repository_name" {
   description = "ECR 리포지토리 이름. GitHub Secrets의 ECR_REPOSITORY에 이 값을 넣는다(URL 아님)."
   value       = aws_ecr_repository.app.name

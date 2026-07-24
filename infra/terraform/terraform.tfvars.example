@@ -19,5 +19,3 @@ ec2_instance_type = "t3.micro"
 db_name     = "muffin"
 db_username = "muffin_admin"
 # db_password는 tfvars에 넣지 말 것
-
-s3_bucket_prefix = "muffin-app-storage"
