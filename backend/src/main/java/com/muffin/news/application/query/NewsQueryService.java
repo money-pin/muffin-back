@@ -8,12 +8,15 @@ import com.muffin.news.domain.category.Category;
 import com.muffin.news.domain.category.CategoryRepository;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
+import com.muffin.news.domain.news.NewsTerm;
 import com.muffin.news.domain.news.enums.NewsStatus;
 import com.muffin.news.domain.readhistory.ReadHistory;
 import com.muffin.news.domain.readhistory.ReadHistoryRepository;
 import com.muffin.news.domain.sectorimpact.NewsSectorImpact;
 import com.muffin.news.domain.sectorimpact.NewsSectorImpactRepository;
 import com.muffin.news.domain.sectorimpact.enums.ImpactType;
+import com.muffin.news.domain.term.TermDictionary;
+import com.muffin.news.domain.term.TermDictionaryRepository;
 import com.muffin.news.presentation.dto.NewsDetailResponse;
 import com.muffin.news.presentation.dto.NewsDetailResponse.BodySegment;
 import com.muffin.news.presentation.dto.NewsListResponse;
@@ -48,6 +51,7 @@ public class NewsQueryService {
     private final NewsQueryRepository newsQueryRepository;
     private final NewsSectorImpactRepository newsSectorImpactRepository;
     private final CategoryRepository categoryRepository;
+    private final TermDictionaryRepository termDictionaryRepository;
     private final ReadHistoryRepository readHistoryRepository;
     private final ScrapRepository scrapRepository;
     private final NewsCursorCodec newsCursorCodec;
@@ -75,7 +79,7 @@ public class NewsQueryService {
                         row.summary(),
                         row.publisher(),
                         row.publishedAt(),
-                        row.thumbnailUrl(),
+                        originalThumbnail(row.thumbnailUrl()),
                         row.viewCount()))
                 .toList();
 
@@ -99,8 +103,7 @@ public class NewsQueryService {
                 newsQueryRepository.findTodayPublishedNews(startOfDay, startOfNextDay, TODAY_NEWS_LIMIT);
 
         List<NewsTodayItem> items = new ArrayList<>(rows.size());
-        for (int index = 0; index < rows.size(); index++) {
-            NewsSummaryRow row = rows.get(index);
+        for (NewsSummaryRow row : rows) {
             items.add(new NewsTodayItem(
                     row.newsId(),
                     row.categoryId(),
@@ -109,7 +112,7 @@ public class NewsQueryService {
                     row.summary(),
                     row.publisher(),
                     row.publishedAt(),
-                    resolveThumbnail(row, index == 0),
+                    originalThumbnail(row.thumbnailUrl()),
                     row.viewCount()));
         }
 
@@ -131,12 +134,10 @@ public class NewsQueryService {
         upsertReadHistory(userId, newsId);
 
         boolean scrapped = scrapRepository.existsByUserIdAndNewsId(userId, newsId);
-        String categoryName = categoryRepository
-                .findById(news.getCategoryId())
-                .map(Category::getName)
-                .orElse(null);
+        Optional<Category> category = categoryRepository.findById(news.getCategoryId());
+        String categoryName = category.map(Category::getName).orElse(null);
 
-        List<BodySegment> bodySegments = List.of(BodySegment.text(news.getContent()));
+        List<BodySegment> bodySegments = toBodySegments(news);
 
         return new NewsDetailResponse(
                 news.getId(),
@@ -146,7 +147,7 @@ public class NewsQueryService {
                 news.getViewCount(),
                 news.getPublisher(),
                 news.getPublishedAt(),
-                news.getThumbnailUrl(),
+                originalThumbnail(news.getThumbnailUrl()),
                 news.getOriginalUrl(),
                 bodySegments,
                 scrapped);
@@ -180,6 +181,93 @@ public class NewsQueryService {
         return impactBySectorId;
     }
 
+    /** 뉴스 본문을 일반 텍스트와 용어 하이라이트 세그먼트로 분리한다. */
+    private List<BodySegment> toBodySegments(News news) {
+        String content = news.getContent();
+        if (content == null || content.isBlank()) {
+            return List.of();
+        }
+
+        List<Long> termIds = news.getTerms().stream().map(NewsTerm::getTermId).toList();
+        if (termIds.isEmpty()) {
+            return List.of(BodySegment.text(content));
+        }
+
+        // NewsTerm에는 termId만 있으므로 실제 표시 텍스트는 사전에서 다시 조회해 본문 위치와 매칭한다.
+        Map<Long, TermDictionary> termsById = new HashMap<>();
+        for (TermDictionary term : termDictionaryRepository.findAllById(termIds)) {
+            termsById.put(term.getId(), term);
+        }
+
+        List<TermMatch> matches = findTermMatches(content, termsById);
+        if (matches.isEmpty()) {
+            return List.of(BodySegment.text(content));
+        }
+
+        return splitContentByMatches(content, matches);
+    }
+
+    /** 본문에 실제로 등장하는 매핑 용어의 모든 위치를 찾는다. 같은 시작점에서는 긴 용어가 먼저 오도록 정렬한다. */
+    private List<TermMatch> findTermMatches(String content, Map<Long, TermDictionary> termsById) {
+        List<TermMatch> matches = new ArrayList<>();
+        for (TermDictionary term : termsById.values()) {
+            String keyword = term.getTerm();
+            if (keyword == null || keyword.isBlank()) {
+                continue;
+            }
+
+            int fromIndex = 0;
+            while (fromIndex < content.length()) {
+                int start = content.indexOf(keyword, fromIndex);
+                if (start < 0) {
+                    break;
+                }
+                matches.add(new TermMatch(start, start + keyword.length(), term.getId()));
+                fromIndex = start + keyword.length();
+            }
+        }
+
+        return matches.stream()
+                .sorted((left, right) -> {
+                    int startCompare = Integer.compare(left.start(), right.start());
+                    if (startCompare != 0) {
+                        return startCompare;
+                    }
+                    return Integer.compare(right.length(), left.length());
+                })
+                .toList();
+    }
+
+    /** 겹치는 매칭은 앞에서 확정된 긴 용어를 우선하고, 나머지 영역은 TEXT 세그먼트로 유지한다. */
+    private List<BodySegment> splitContentByMatches(String content, List<TermMatch> matches) {
+        List<BodySegment> segments = new ArrayList<>();
+        int cursor = 0;
+
+        for (TermMatch match : matches) {
+            if (match.start() < cursor) {
+                continue;
+            }
+            if (cursor < match.start()) {
+                segments.add(BodySegment.text(content.substring(cursor, match.start())));
+            }
+            segments.add(BodySegment.highlight(content.substring(match.start(), match.end()), match.termId()));
+            cursor = match.end();
+        }
+
+        if (cursor < content.length()) {
+            segments.add(BodySegment.text(content.substring(cursor)));
+        }
+
+        return segments;
+    }
+
+    private record TermMatch(int start, int end, Long termId) {
+
+        private int length() {
+            return end - start;
+        }
+    }
+
     /**
      * 열람 기록을 upsert한다. 동시 조회 시 findByUserIdAndNewsId가 둘 다 빈 값을 반환해 저장이 경합할 수 있으므로,
      * {@code (user_id, news_id)} 유니크 제약 위반은 상대가 먼저 생성한 것으로 보고 그 행을 다시 조회해 갱신한다
@@ -203,15 +291,10 @@ public class NewsQueryService {
     }
 
     /**
-     * 오늘의 뉴스 썸네일 정책. ①원본 썸네일 → ②(첫 번째 뉴스) 공통 기본 이미지 → ③카테고리별 대체 이미지 순으로 반환한다.
-     *
-     * <p>TODO(S3): {@code isFirst}일 때 반환할 공통 기본 이미지는 추후 S3 presigned URL로 발급한다. 발급 경로가 생기기
-     * 전까지는 첫 번째 뉴스도 카테고리 대체 이미지로 폴백한다.
+     * 원본 썸네일이 있으면 그대로, 없으면 null을 반환한다. 원본이 없을 때의 기본 이미지는 백엔드가 관여하지 않고
+     * 프론트가 화면/카테고리에 맞춰 자체 에셋으로 렌더링한다.
      */
-    private String resolveThumbnail(NewsSummaryRow row, boolean isFirst) {
-        if (row.thumbnailUrl() != null && !row.thumbnailUrl().isBlank()) {
-            return row.thumbnailUrl();
-        }
-        return row.categoryFallbackThumbnailUrl();
+    private static String originalThumbnail(String thumbnailUrl) {
+        return (thumbnailUrl != null && !thumbnailUrl.isBlank()) ? thumbnailUrl : null;
     }
 }

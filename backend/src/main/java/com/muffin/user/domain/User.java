@@ -13,7 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "member")
+@Table(name = "member", uniqueConstraints = @UniqueConstraint(name = "uk_member_nickname", columnNames = "nickname"))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class User extends BaseEntity {
@@ -34,7 +34,7 @@ public class User extends BaseEntity {
     @Column(name = "name", length = 10)
     private String name;
 
-    @Column(name = "nickname", unique = true, length = 6)
+    @Column(name = "nickname", length = 10)
     private String nickname;
 
     @Column(name = "onboarding_completed", nullable = false)
@@ -61,9 +61,11 @@ public class User extends BaseEntity {
     private UserOnboarding userOnboarding;
 
     private static final int NAME_MAX_LENGTH = 10;
-    private static final int NICKNAME_MAX_LENGTH = 6;
-    // 한글/영문/숫자/공백만 허용, 1~6자. 정규화(NFC) 후의 문자열에 대해서만 검증한다.
-    private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[가-힣a-zA-Z0-9 ]{1," + NICKNAME_MAX_LENGTH + "}$");
+    private static final int NICKNAME_MIN_LENGTH = 2;
+    private static final int NICKNAME_MAX_LENGTH = 10;
+    // 한글/영문/숫자/공백만 허용, 2~10자. 정규화(NFC) 후의 문자열에 대해서만 검증한다.
+    private static final Pattern NICKNAME_PATTERN =
+            Pattern.compile("^[가-힣a-zA-Z0-9 ]{" + NICKNAME_MIN_LENGTH + "," + NICKNAME_MAX_LENGTH + "}$");
 
     private User(Long characterId, String userUuid, String name, String nickname) {
         this.characterId = characterId;
@@ -100,7 +102,8 @@ public class User extends BaseEntity {
 
     private static void validateNicknameFormat(String nickname) {
         if (nickname != null && !NICKNAME_PATTERN.matcher(nickname).matches()) {
-            throw new IllegalArgumentException("닉네임은 한글/영문/숫자/공백만 사용해 " + NICKNAME_MAX_LENGTH + "자 이내로 입력해야 합니다.");
+            throw new IllegalArgumentException(
+                    "닉네임은 한글/영문/숫자/공백만 사용해 " + NICKNAME_MIN_LENGTH + "~" + NICKNAME_MAX_LENGTH + "자로 입력해야 합니다.");
         }
     }
 
@@ -174,8 +177,16 @@ public class User extends BaseEntity {
     }
 
     public void changeNickname(String newNickname) {
-        String normalizedNickname = normalizeNickname(newNickname);
-        validateNickname(normalizedNickname);
-        this.nickname = normalizedNickname;
+        this.nickname = normalizeAndValidateNickname(newNickname);
+    }
+
+    /**
+     * 닉네임 조회/변경 API가 User 인스턴스 없이도 같은 정규화·형식 검증 규칙을 재사용할 수 있도록 공개한 정적 메서드.
+     * null이면 NullPointerException, 형식 위반이면 IllegalArgumentException을 던진다.
+     */
+    public static String normalizeAndValidateNickname(String nickname) {
+        String normalized = normalizeNickname(nickname);
+        validateNickname(normalized);
+        return normalized;
     }
 }

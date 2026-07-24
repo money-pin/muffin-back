@@ -91,7 +91,7 @@ class EtfPriceTest {
     }
 
     @Test
-    @DisplayName("10시까지 시가가 없으면 FINAL_MISSING으로 확정할 수 있다")
+    @DisplayName("09시 30분까지 시가가 없으면 FINAL_MISSING으로 확정할 수 있다")
     void markOpenFinalMissing_recordsTerminalStatus() {
         EtfPrice etfPrice = EtfPrice.pending(ETF_ID, PRICE_DATE);
 

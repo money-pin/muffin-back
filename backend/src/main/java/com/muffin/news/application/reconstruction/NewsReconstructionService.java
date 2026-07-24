@@ -8,6 +8,8 @@ import com.muffin.news.domain.sectorimpact.NewsSectorImpactRepository;
 import com.muffin.sector.domain.sector.Sector;
 import com.muffin.sector.domain.sector.SectorRepository;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -98,11 +100,15 @@ public class NewsReconstructionService {
     }
 
     private List<NewsSectorImpact> toSectorImpacts(News news, List<SectorImpactResult> results) {
+        // 섹터는 12개뿐이므로 코드별 개별 조회 대신 한 번에 읽어 맵으로 만든다.
+        Map<String, Sector> sectorsByCode =
+                sectorRepository.findAll().stream().collect(Collectors.toMap(Sector::getSectorCode, sector -> sector));
         return results.stream()
                 .map(result -> {
-                    Sector sector = sectorRepository
-                            .findBySectorCode(result.sectorCode())
-                            .orElseThrow(() -> new IllegalStateException("Sector not found: " + result.sectorCode()));
+                    Sector sector = sectorsByCode.get(result.sectorCode());
+                    if (sector == null) {
+                        throw new IllegalStateException("Sector not found: " + result.sectorCode());
+                    }
                     return NewsSectorImpact.create(news.getId(), sector.getId(), result.impact());
                 })
                 .toList();

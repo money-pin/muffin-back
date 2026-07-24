@@ -11,7 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * 정산 스케줄러 안전망(2차 트리거). ETF 시세 적재 완료 이벤트가 아직 연동되지 않은 경우를 대비해 매일 지정 시각(기본 09:30)에 정산을 시도한다.
+ * 정산 스케줄러 안전망(2차 트리거). ETF 시세 적재 완료 이벤트가 아직 연동되지 않은 경우를 대비해 매일 지정 시각(기본 09:35)에 정산을 시도한다.
  *
  * <p>오케스트레이터가 멱등하므로(적재 가드 + SETTLED 스킵) 이벤트와 이중 실행돼도 안전하다. {@code muffin.batch.settlement.scheduler-enabled=false}로
  * 비활성화할 수 있다.

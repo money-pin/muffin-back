@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @Tag(name = "Investment", description = "모의투자 API")
 public interface SettlementApi {
@@ -20,5 +21,6 @@ public interface SettlementApi {
                 description = "조회 성공. 결과(SETTLED) 또는 사유(reason)를 반환한다."),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증에 실패했습니다.")
     })
-    ApiResponse<SettlementResultResponse> getSettlementResult(@Parameter(hidden = true) Long userId);
+    ApiResponse<SettlementResultResponse> getSettlementResult(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId);
 }

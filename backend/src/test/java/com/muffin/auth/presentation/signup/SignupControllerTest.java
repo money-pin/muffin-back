@@ -53,7 +53,7 @@ class SignupControllerTest {
         String body =
                 objectMapper.writeValueAsString(new SignupRequestBody("new@example.com", "password1", "홍길동", true));
 
-        mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/signup").contentType("application/json").content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess", is(true)))
                 .andExpect(jsonPath("$.result.accessToken").exists())
@@ -61,7 +61,7 @@ class SignupControllerTest {
                 .andExpect(cookie().httpOnly("refreshToken", true))
                 .andExpect(cookie().secure("refreshToken", true))
                 .andExpect(cookie().sameSite("refreshToken", "Strict"))
-                .andExpect(cookie().path("refreshToken", "/api/auth"))
+                .andExpect(cookie().path("refreshToken", "/auth"))
                 .andExpect(cookie().maxAge("refreshToken", greaterThan(0)));
     }
 
@@ -71,7 +71,7 @@ class SignupControllerTest {
         String body =
                 objectMapper.writeValueAsString(new SignupRequestBody("terms@example.com", "password1", "홍길동", false));
 
-        mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/signup").contentType("application/json").content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code", is("AUTH_400_002")));
     }
@@ -81,7 +81,7 @@ class SignupControllerTest {
     void signup_invalidEmail() throws Exception {
         String body = objectMapper.writeValueAsString(new SignupRequestBody("not-an-email", "password1", "홍길동", true));
 
-        mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/signup").contentType("application/json").content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code", is("COMMON_400_002")));
     }
@@ -91,7 +91,7 @@ class SignupControllerTest {
     void signup_invalidPasswordFormat() throws Exception {
         String body = objectMapper.writeValueAsString(new SignupRequestBody("pw@example.com", "short1", "홍길동", true));
 
-        mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/signup").contentType("application/json").content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code", is("COMMON_400_001")));
     }
@@ -101,10 +101,10 @@ class SignupControllerTest {
     void signup_duplicateEmail() throws Exception {
         String body =
                 objectMapper.writeValueAsString(new SignupRequestBody("dup@example.com", "password1", "홍길동", true));
-        mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/signup").contentType("application/json").content(body))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/signup").contentType("application/json").content(body))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code", is("AUTH_409_001")));
     }
@@ -114,7 +114,7 @@ class SignupControllerTest {
     void signup_blankName() throws Exception {
         String body = objectMapper.writeValueAsString(new SignupRequestBody("name@example.com", "password1", "", true));
 
-        mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/signup").contentType("application/json").content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code", is("COMMON_400_002")));
     }
@@ -124,7 +124,7 @@ class SignupControllerTest {
     void signup_blankEmail() throws Exception {
         String body = objectMapper.writeValueAsString(new SignupRequestBody("", "password1", "홍길동", true));
 
-        mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/signup").contentType("application/json").content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code", is("COMMON_400_002")));
     }
@@ -134,7 +134,7 @@ class SignupControllerTest {
     void signup_blankPassword() throws Exception {
         String body = objectMapper.writeValueAsString(new SignupRequestBody("blank-pw@example.com", "", "홍길동", true));
 
-        mockMvc.perform(post("/api/auth/signup").contentType("application/json").content(body))
+        mockMvc.perform(post("/auth/signup").contentType("application/json").content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code", is("COMMON_400_002")));
     }

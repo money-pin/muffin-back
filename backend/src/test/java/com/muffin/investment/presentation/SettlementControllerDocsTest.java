@@ -1,7 +1,5 @@
 package com.muffin.investment.presentation;
 
-import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
-import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
@@ -15,17 +13,34 @@ import com.muffin.investment.presentation.dto.SettlementReason;
 import com.muffin.investment.presentation.dto.SettlementResultResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.restdocs.RestDocumentationContextProvider;
 import org.springframework.restdocs.RestDocumentationExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 /** INVEST-06 정산 결과 조회 API의 REST Docs 스니펫을 생성한다(정산 완료 결과 / 결과 없음 두 케이스). */
 @ExtendWith(RestDocumentationExtension.class)
 class SettlementControllerDocsTest {
+
+    @BeforeEach
+    void setUpAuthentication() {
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(1L, null, List.of()));
+    }
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     @DisplayName("정산 완료(SETTLED) 결과 응답 문서화")
@@ -35,12 +50,10 @@ class SettlementControllerDocsTest {
         // settled(investDate, totalProfitLoss, totalProfitLossRate, totalAmount, totalAsset)
         MockMvc mockMvc = mockMvcReturning(response, restDocumentation);
 
-        mockMvc.perform(get("/api/investments/settlement/result").header("X-User-Id", "1"))
+        mockMvc.perform(get("/api/investments/settlement/result"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "settlement-result-settled",
-                        requestHeaders(
-                                headerWithName("X-User-Id").description("사용자 식별자(임시). 인증 구현 후 토큰에서 해석되어 요청에서 제거될 예정")),
                         responseFields(
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드"),
@@ -58,7 +71,7 @@ class SettlementControllerDocsTest {
         SettlementResultResponse response = SettlementResultResponse.reason(SettlementReason.SETTLEMENT_PENDING);
         MockMvc mockMvc = mockMvcReturning(response, restDocumentation);
 
-        mockMvc.perform(get("/api/investments/settlement/result").header("X-User-Id", "1"))
+        mockMvc.perform(get("/api/investments/settlement/result"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "settlement-result-reason",
@@ -73,13 +86,14 @@ class SettlementControllerDocsTest {
 
     private MockMvc mockMvcReturning(
             SettlementResultResponse response, RestDocumentationContextProvider restDocumentation) {
-        SettlementQueryService stubService = new SettlementQueryService(null) {
+        SettlementQueryService stubService = new SettlementQueryService(null, null) {
             @Override
             public SettlementResultResponse getRecentSettlementResult(Long userId) {
                 return response;
             }
         };
         return MockMvcBuilders.standaloneSetup(new SettlementController(stubService))
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)
                         .operationPreprocessors()
                         .withRequestDefaults(prettyPrint())
