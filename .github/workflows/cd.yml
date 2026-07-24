@@ -2,19 +2,19 @@ name: CD
 
 on:
   push:
-    branches: [main]
+    branches: [dev]
   workflow_dispatch: # 수동 재배포용
 
 # 배포가 겹치지 않도록 직렬화 (진행 중인 배포는 끝까지 두고 대기)
 concurrency:
-  group: cd-prod
+  group: cd-dev
   cancel-in-progress: false
 
 env:
   AWS_REGION: ap-northeast-2
   CONTAINER_NAME: muffin
   # 앱 시크릿을 보관하는 SSM Parameter Store 경로
-  SSM_PATH: /muffin/prod
+  SSM_PATH: /muffin/dev
 
 permissions:
   id-token: write # OIDC 토큰 발급 (AWS 역할 assume에 필요)

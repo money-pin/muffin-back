@@ -84,10 +84,10 @@ resource "aws_iam_role" "github_actions" {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
         }
-        # 이 레포의 main 브랜치에서 실행된 워크플로우만 역할을 assume 할 수 있다.
+        # 이 레포의 dev 브랜치에서 실행된 워크플로우만 역할을 assume 할 수 있다.
         # 와일드카드(:*)를 쓰면 PR·다른 브랜치·타 워크플로우까지 assume이 가능해진다.
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repository}:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repository}:ref:refs/heads/dev"
         }
       }
     }]

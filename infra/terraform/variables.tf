@@ -13,7 +13,7 @@ variable "project_name" {
 variable "environment" {
   description = "환경 구분 태그 (prod / dev 등)"
   type        = string
-  default     = "prod"
+  default     = "dev"
 }
 
 # ---------- 네트워크 ----------
@@ -38,12 +38,10 @@ variable "public_subnet_cidrs" {
 # ---------- EC2 ----------
 
 variable "ec2_instance_type" {
-  # 프리티어(첫 12개월 t3.micro 750h/월) 유지를 위해 기본값은 t3.micro.
-  # 1GB RAM이라 JVM OOM 위험이 있어 user_data.sh에서 swap 2GB를 잡고, 컨테이너 힙을
-  # -Xmx512m 수준으로 제한해 운용한다. 트래픽이 커지면 t3.small(비프리티어, ~$19/월)로 상향.
-  description = "EC2 인스턴스 타입 (기본 t3.micro=프리티어, 여유가 필요하면 t3.small)"
+  # Spring Boot + Docker 운영 여유를 확보하기 위해 2GB 메모리의 t3.small을 기본으로 사용한다.
+  description = "EC2 인스턴스 타입 (기본 t3.small)"
   type        = string
-  default     = "t3.micro"
+  default     = "t3.small"
 }
 
 variable "ec2_ami_id" {

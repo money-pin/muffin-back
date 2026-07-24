@@ -40,7 +40,7 @@ USER muffin
 ENV TZ=Asia/Seoul
 ENV SPRING_PROFILES_ACTIVE=prod
 
-# t3.micro(1GB)에서 OOM Killer에 죽지 않도록 힙을 제한한다.
+# t3.small(2GB)에서 OS와 Docker가 사용할 메모리를 남기도록 힙을 제한한다.
 # 작은 힙에서는 SerialGC가 G1보다 오버헤드가 적다. 호스트의 swap 2GB가 안전망.
 ENV JAVA_OPTS="-Xms128m -Xmx512m -XX:+UseSerialGC -XX:MaxMetaspaceSize=192m -Duser.timezone=Asia/Seoul"
 

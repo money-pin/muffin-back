@@ -4,12 +4,12 @@
 
 aws_region   = "ap-northeast-2"
 project_name = "muffin"
-environment  = "prod"
+environment  = "dev"
 
 ssh_public_key_path = "~/.ssh/muffin-ec2.pub"
 
-# 기본 t3.micro(프리티어). 1GB라 swap+힙제한으로 운용하며, 무거워지면 t3.small(~$19/월)로 상향
-ec2_instance_type = "t3.micro"
+# Spring Boot + Docker 운영 여유를 위해 2GB 메모리의 t3.small 사용
+ec2_instance_type = "t3.small"
 
 # 비워두면 최신 Amazon Linux 2023 자동 선택.
 # 최초 apply 후 `terraform output` 또는 콘솔에서 확인한 실제 AMI ID를 박아두면
