@@ -64,14 +64,6 @@ variable "ssh_private_key_path" {
   default     = "~/.ssh/muffin-ec2"
 }
 
-variable "ssh_allowed_cidrs" {
-  # GitHub Actions(CD)가 SSH로 배포하는데 러너 IP가 매번 랜덤이라 기본값은 전체 허용이다.
-  # 고정 IP 러너/VPN/배스천을 쓰거나 SSM Session Manager로 전환하면 반드시 좁힐 것.
-  description = "SSH(22) 접근을 허용할 CIDR 목록. 가능하면 승인된 네트워크로 좁히세요."
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
 # ---------- RDS ----------
 
 variable "db_name" {

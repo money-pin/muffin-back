@@ -3,18 +3,8 @@ resource "aws_security_group" "ec2" {
   description = "EC2 instance security group"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    # 허용 대역은 var.ssh_allowed_cidrs로 조정한다. 기본값이 전체 허용인 이유는
-    # GitHub Actions(CD) 러너 IP가 매번 랜덤이기 때문이며, 이 경우 user_data.sh에서
-    # 비밀번호 로그인을 꺼(키 기반 인증만 허용) 방어한다.
-    # 고정 IP 러너/VPN/배스천 도입 또는 SSM Session Manager 전환 시 반드시 좁힐 것.
-    description = "SSH (key-only auth enforced in user_data.sh)"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = var.ssh_allowed_cidrs
-  }
-
+  # SSH(22) ingress는 두지 않는다. 배포는 SSM Run Command로 하며(cd.yml), 인바운드 SSH가
+  # 필요 없다. break-glass가 필요하면 승인된 대역으로 임시 규칙을 열고 끝나면 제거할 것.
   ingress {
     description = "HTTP"
     from_port   = 80

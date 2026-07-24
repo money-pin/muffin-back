@@ -65,28 +65,35 @@ jobs:
           docker push "$REGISTRY/$REPOSITORY:$TAG"
           docker push "$REGISTRY/$REPOSITORY:latest"
 
-      - name: Deploy to EC2 over SSH
+      - name: Deploy to EC2 via SSM Run Command
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
           REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
           TAG: ${{ github.sha }}
         run: |
-          install -m 600 /dev/null deploy_key
-          echo "${{ secrets.EC2_SSH_KEY }}" > deploy_key
+          set -euo pipefail
 
-          # 네트워크/원격 행(hang)으로 잡이 무한 대기하지 않도록 연결·세션·전체 실행에 상한을 둔다.
-          timeout 900 ssh -i deploy_key \
-              -o StrictHostKeyChecking=accept-new \
-              -o ConnectTimeout=15 \
-              -o ServerAliveInterval=15 \
-              -o ServerAliveCountMax=8 \
-              ec2-user@${{ secrets.EC2_HOST }} \
-              "IMAGE='$REGISTRY/$REPOSITORY:$TAG' \
-               REGISTRY='$REGISTRY' \
-               REGION='${{ env.AWS_REGION }}' \
-               NAME='${{ env.CONTAINER_NAME }}' \
-               SSM_PATH='${{ env.SSM_PATH }}' \
-               bash -s" <<'REMOTE'
+          # 대상 인스턴스는 Name 태그로 조회한다 (SSH host/키 시크릿 불필요).
+          INSTANCE_ID="$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=${CONTAINER_NAME}-backend" \
+                      "Name=instance-state-name,Values=running" \
+            --query "Reservations[].Instances[].InstanceId" --output text --region "$AWS_REGION")"
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "ERROR: 실행 중인 대상 인스턴스(${CONTAINER_NAME}-backend)를 찾지 못했습니다." >&2
+            exit 1
+          fi
+          echo "Target instance: $INSTANCE_ID"
+
+          # EC2에서 실행할 배포 스크립트를 만든다. 러너에서 주입할 값(REGISTRY/TAG 등)은
+          # 헤더(치환됨)에, 인스턴스에서 평가돼야 하는 변수($NAME 등)는 본문('REMOTE', 미치환)에 둔다.
+          cat > deploy.sh <<HEADER
+          IMAGE='$REGISTRY/$REPOSITORY:$TAG'
+          REGISTRY='$REGISTRY'
+          REGION='$AWS_REGION'
+          NAME='$CONTAINER_NAME'
+          SSM_PATH='$SSM_PATH'
+          HEADER
+          cat >> deploy.sh <<'REMOTE'
           set -euo pipefail
 
           # EC2의 IAM Role로 ECR 인증 (서버에 저장된 비밀번호 없음)
@@ -160,7 +167,7 @@ jobs:
 
           if [ "$healthy" -ne 1 ]; then
             echo "ERROR: 제한 시간 내에 새 컨테이너가 응답하지 않아 롤백합니다." >&2
-            docker logs --tail 100 "$NAME" 2>&1 || true
+            docker logs --tail 50 "$NAME" 2>&1 || true
             rollback
             exit 1
           fi
@@ -172,6 +179,39 @@ jobs:
           docker image prune -af --filter "until=168h"
           REMOTE
 
-      - name: Remove deploy key
-        if: always()
-        run: rm -f deploy_key
+          # 스크립트를 base64로 감싸 SSM 파라미터의 따옴표/개행 이스케이프 문제를 피하고,
+          # 인스턴스에서 bash로 실행되도록 한다(RunShellScript 기본 셸 차이 무관, pipefail 보장).
+          B64="$(base64 -w0 deploy.sh)"
+          printf 'echo %s | base64 -d | bash' "$B64" | jq -Rs '{commands: [.]}' > ssm-params.json
+
+          CMD_ID="$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "muffin deploy ${TAG:0:12}" \
+            --parameters file://ssm-params.json \
+            --region "$AWS_REGION" \
+            --query "Command.CommandId" --output text)"
+          echo "SSM CommandId: $CMD_ID"
+
+          # 완료까지 폴링(최대 15분). 헬스체크로 ~3분 걸릴 수 있어 waiter 기본값보다 길게 잡는다.
+          sleep 5
+          end=$(( $(date +%s) + 900 ))
+          status="Pending"
+          while [ "$(date +%s)" -lt "$end" ]; do
+            status="$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+              --region "$AWS_REGION" --query "Status" --output text 2>/dev/null || echo Pending)"
+            case "$status" in
+              Success|Failed|Cancelled|TimedOut) break ;;
+            esac
+            sleep 10
+          done
+
+          echo "===== deploy stdout ====="
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --region "$AWS_REGION" --query "StandardOutputContent" --output text 2>/dev/null || true
+          echo "===== deploy stderr ====="
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --region "$AWS_REGION" --query "StandardErrorContent" --output text 2>/dev/null || true
+
+          echo "Final SSM status: $status"
+          [ "$status" = "Success" ] || exit 1

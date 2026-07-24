@@ -101,6 +101,13 @@ resource "aws_iam_role_policy" "ec2_ssm_read" {
   })
 }
 
+# SSM Run Command/Session Manager로 이 인스턴스를 관리하기 위한 표준 권한(ssmmessages/ec2messages 등).
+# CD가 SSH 대신 SSM으로 배포 스크립트를 실행하려면 인스턴스가 SSM에 등록돼 있어야 한다.
+resource "aws_iam_role_policy_attachment" "ec2_ssm_core" {
+  role       = aws_iam_role.ec2.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_instance_profile" "ec2" {
   name = "${var.project_name}-ec2-instance-profile"
   role = aws_iam_role.ec2.name

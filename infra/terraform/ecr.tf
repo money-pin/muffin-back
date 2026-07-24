@@ -123,3 +123,36 @@ resource "aws_iam_role_policy" "github_actions_ecr_push" {
     ]
   })
 }
+
+# CD가 SSH 대신 SSM Run Command로 EC2에서 배포 스크립트를 실행하기 위한 권한.
+resource "aws_iam_role_policy" "github_actions_ssm_deploy" {
+  name = "${var.project_name}-github-actions-ssm-deploy"
+  role = aws_iam_role.github_actions.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        # 대상 인스턴스는 Name 태그로 조회한다(describe는 리소스 단위 제한 불가).
+        Effect   = "Allow"
+        Action   = "ec2:DescribeInstances"
+        Resource = "*"
+      },
+      {
+        # SendCommand는 배포 대상 인스턴스와 AWS-RunShellScript 문서로만 제한한다.
+        Effect = "Allow"
+        Action = "ssm:SendCommand"
+        Resource = [
+          aws_instance.muffin.arn,
+          "arn:aws:ssm:${data.aws_region.current.name}::document/AWS-RunShellScript",
+        ]
+      },
+      {
+        # 명령 상태/출력 조회는 리소스 단위 제한이 어려워 * 를 쓴다.
+        Effect   = "Allow"
+        Action   = ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
+        Resource = "*"
+      },
+    ]
+  })
+}
