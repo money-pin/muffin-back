@@ -253,21 +253,6 @@ CREATE TABLE `notification_setting` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `profit_summary` (
-  `profit_summary_id` bigint NOT NULL AUTO_INCREMENT,
-  `created_at` datetime(6) NOT NULL,
-  `updated_at` datetime(6) DEFAULT NULL,
-  `cumulative_profit_loss` bigint NOT NULL,
-  `daily_profit_loss` bigint NOT NULL,
-  `daily_profit_loss_rate` decimal(9,4) NOT NULL,
-  `summary_date` date NOT NULL,
-  `user_id` bigint NOT NULL,
-  PRIMARY KEY (`profit_summary_id`),
-  UNIQUE KEY `uk_profit_summary_user_summary_date` (`user_id`,`summary_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `quiz` (
   `quiz_id` bigint NOT NULL AUTO_INCREMENT,
   `created_at` datetime(6) NOT NULL,
