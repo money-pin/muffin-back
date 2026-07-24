@@ -154,8 +154,8 @@ jobs:
             exit 1
           fi
 
-          # 유한 시간 내 기동 확인. 앱에 actuator가 없으므로 "컨테이너가 계속 running이고
-          # 8080이 HTTP 응답을 준다"를 기준으로 판정한다(상태코드는 무관 — 응답 자체가 중요).
+          # 컨테이너 실행 상태와 DB 연결을 포함한 readiness 응답을 확인한다.
+          # curl -f로 4xx/5xx를 실패 처리하고, 고정 응답 본문까지 일치해야 승격한다.
           deadline=$((SECONDS + 180))
           healthy=0
           while [ "$SECONDS" -lt "$deadline" ]; do
@@ -163,7 +163,9 @@ jobs:
               echo "ERROR: 새 컨테이너가 기동 중 종료되었습니다." >&2
               break
             fi
-            if curl -sS -o /dev/null --max-time 5 http://127.0.0.1:8080/ 2>/dev/null; then
+            if readiness="$(curl -fsS --max-time 5 \
+              http://127.0.0.1:8080/api/health/readiness 2>/dev/null)" \
+              && [ "$readiness" = "READY" ]; then
               healthy=1
               break
             fi
