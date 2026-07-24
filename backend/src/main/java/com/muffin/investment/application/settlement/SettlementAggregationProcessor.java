@@ -100,7 +100,8 @@ public class SettlementAggregationProcessor {
                         .divide(BigDecimal.valueOf(before), 4, RoundingMode.HALF_UP);
         asset.applySettlement(profit, changeRate, settledAt);
 
-        // 사후조건: 자산 증가분은 정확히 총손익과 같아야 한다(테이블 간 정합성 검증).
+        // 사후조건: 자산 증가분은 정확히 총손익과 같아야 한다(테이블 간 정합성 검증). 위반 시 잘못된 자산이 조용히 커밋되지 않도록
+        // 예외를 던져 이 유저 트랜잭션을 롤백하고 FAILED 경로로 넘긴다.
         long actualDelta = asset.getTotalAsset() - before;
         if (actualDelta != profit) {
             log.error(
@@ -108,6 +109,8 @@ public class SettlementAggregationProcessor {
                     investment.getUserId(),
                     profit,
                     actualDelta);
+            throw new IllegalStateException("자산 반영 정합성 위반: userId=" + investment.getUserId() + ", expectedDelta="
+                    + profit + ", actualDelta=" + actualDelta);
         }
     }
 
