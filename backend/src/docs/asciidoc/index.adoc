@@ -652,6 +652,82 @@ include::{snippets}/quiz-result-not-ready/response-fields.adoc[]
 |409|QUIZ_409_001|퀴즈를 모두 완료한 후 결과를 조회할 수 있습니다.|3문항을 모두 완료하기 전 결과 조회 시도
 |===
 
+[[news-query]]
+== 뉴스 조회
+
+공개 뉴스 목록과 오늘의 뉴스, 상세 본문, 자산 섹터별 영향도를 조회한다.
+
+* 전체 뉴스 목록은 인증 없이 호출할 수 있으며 `publishedAt DESC, newsId DESC` 순서의 커서 페이지네이션을 사용한다.
+* 오늘의 뉴스는 KST 기준 당일 수집된 공개 뉴스 중 최신 3건을 반환한다.
+* 상세 조회는 조회수와 최근 열람 기록을 갱신하므로 `POST`를 사용한다.
+* 섹터 영향도는 고정 순서의 12개 섹터를 반환하며 분석값이 없는 섹터는 `NEUTRAL`이다.
+
+NOTE: 오늘의 뉴스, 상세 뉴스, 섹터별 영향도는 인증(`Authorization: Bearer {accessToken}`)이 필요하다.
+
+=== 전체 뉴스 목록 조회
+
+include::{snippets}/news-list-success/http-request.adoc[]
+include::{snippets}/news-list-success/query-parameters.adoc[]
+include::{snippets}/news-list-success/http-response.adoc[]
+include::{snippets}/news-list-success/response-fields.adoc[]
+
+==== 응답 - 실패(잘못된 페이지 크기 또는 커서)
+
+include::{snippets}/news-list-invalid/http-request.adoc[]
+include::{snippets}/news-list-invalid/query-parameters.adoc[]
+include::{snippets}/news-list-invalid/http-response.adoc[]
+include::{snippets}/news-list-invalid/response-fields.adoc[]
+
+=== 오늘의 뉴스 조회
+
+include::{snippets}/news-today-success/http-request.adoc[]
+include::{snippets}/news-today-success/request-headers.adoc[]
+include::{snippets}/news-today-success/http-response.adoc[]
+include::{snippets}/news-today-success/response-fields.adoc[]
+
+=== 뉴스 상세 조회
+
+include::{snippets}/news-detail-success/http-request.adoc[]
+include::{snippets}/news-detail-success/request-headers.adoc[]
+include::{snippets}/news-detail-success/path-parameters.adoc[]
+include::{snippets}/news-detail-success/http-response.adoc[]
+include::{snippets}/news-detail-success/response-fields.adoc[]
+
+==== 응답 - 실패(아직 공개되지 않은 뉴스)
+
+include::{snippets}/news-detail-not-published/http-response.adoc[]
+include::{snippets}/news-detail-not-published/response-fields.adoc[]
+
+==== 응답 - 실패(존재하지 않는 뉴스)
+
+include::{snippets}/news-detail-not-found/http-response.adoc[]
+include::{snippets}/news-detail-not-found/response-fields.adoc[]
+
+=== 뉴스 섹터별 영향도 조회
+
+include::{snippets}/news-sector-impacts-success/http-request.adoc[]
+include::{snippets}/news-sector-impacts-success/request-headers.adoc[]
+include::{snippets}/news-sector-impacts-success/path-parameters.adoc[]
+include::{snippets}/news-sector-impacts-success/http-response.adoc[]
+include::{snippets}/news-sector-impacts-success/response-fields.adoc[]
+
+==== 응답 - 실패(존재하지 않는 뉴스)
+
+include::{snippets}/news-sector-impacts-not-found/http-response.adoc[]
+include::{snippets}/news-sector-impacts-not-found/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_001|잘못된 요청입니다.|목록의 `size`가 1~50 범위를 벗어나거나 커서 형식이 올바르지 않음
+|401|AUTH_401_001|인증이 필요합니다.|오늘/상세/섹터 영향도 요청에 유효한 access token이 없음
+|403|CONTENT_403_001|아직 공개되지 않은 뉴스입니다.|상세 조회 대상이 공개 상태가 아님
+|404|CONTENT_404_001|존재하지 않는 뉴스입니다.|상세 또는 섹터 영향도 조회 대상 뉴스가 없음
+|===
+
 [[news-explanation-cards]]
 == 뉴스 해설 카드 조회 (CONTENT-04)
 
