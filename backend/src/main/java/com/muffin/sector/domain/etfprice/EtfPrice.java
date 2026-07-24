@@ -121,6 +121,9 @@ public class EtfPrice {
     }
 
     public void markCloseFinalMissing() {
+        if (endPriceStatus == PriceCollectionStatus.MARKET_CLOSED) {
+            return;
+        }
         markCloseUnavailable(PriceCollectionStatus.FINAL_MISSING);
     }
 

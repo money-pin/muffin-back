@@ -1,5 +1,6 @@
 package com.muffin.sector.presentation;
 
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 
 import com.muffin.sector.infrastructure.EtfPriceCollector;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -44,7 +46,8 @@ class EtfClosePriceSchedulerTest {
     void runFinalAttempt_collectsCloseAndFinalizesMissingPrices() {
         scheduler.runFinalAttempt();
 
-        verify(collector).collectClose(DATE);
-        verify(collector).finalizeMissingClosePrices(DATE);
+        InOrder inOrder = inOrder(collector);
+        inOrder.verify(collector).collectClose(DATE);
+        inOrder.verify(collector).finalizeMissingClosePrices(DATE);
     }
 }
