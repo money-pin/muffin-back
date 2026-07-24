@@ -1,0 +1,23 @@
+# 이 파일을 terraform.tfvars로 복사해서 값 채우고, .gitignore에 terraform.tfvars 추가하세요.
+# RDS master 비밀번호는 RDS가 Secrets Manager에서 자동 생성·관리합니다.
+
+aws_region   = "ap-northeast-2"
+project_name = "muffin"
+environment  = "dev"
+
+ssh_public_key_path = "~/.ssh/muffin-ec2.pub"
+
+# Spring Boot + Docker 운영 여유를 위해 2GB 메모리의 t3.small 사용
+ec2_instance_type = "t3.small"
+
+# 비워두면 최신 Amazon Linux 2023 자동 선택.
+# 최초 apply 후 `terraform output` 또는 콘솔에서 확인한 실제 AMI ID를 박아두면
+# 이후 apply에서 예기치 않은 인스턴스 재생성을 막을 수 있다. 예: "ami-0abc123..."
+# ec2_ami_id = ""
+
+db_name        = "muffin"
+db_username    = "muffin_admin"
+app_db_username = "muffin_app"
+
+# 운영 복구 목표에 맞춰 7~35일 사이에서 조정
+db_backup_retention_period = 7

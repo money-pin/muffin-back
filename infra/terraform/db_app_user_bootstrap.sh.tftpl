@@ -1,0 +1,86 @@
+#!/bin/bash
+set -euo pipefail
+
+MARKER_NAME="${ssm_path}/DB_APP_BOOTSTRAPPED"
+
+# 재적용 때마다 앱 비밀번호를 바꾸지 않도록 최초 성공 이후에는 종료한다.
+if [ "$(aws ssm get-parameter \
+  --name "$MARKER_NAME" \
+  --region "${aws_region}" \
+  --query "Parameter.Value" \
+  --output text 2>/dev/null || true)" = "true" ]; then
+  exit 0
+fi
+
+dnf install -y mariadb105
+
+# 비밀번호는 Terraform state에 남기지 않는다. RDS가 관리하는 master secret은
+# bootstrap 프로세스 메모리에서만 사용하고 앱용 비밀번호는 별도로 생성한다.
+# RDS 변경 직후의 secret 생성 및 IAM 전파 지연을 고려해 최대 5분간 재시도한다.
+MASTER_JSON=""
+for _ in $(seq 1 30); do
+  MASTER_SECRET_ARN="$(aws rds describe-db-instances \
+    --db-instance-identifier "${db_identifier}" \
+    --region "${aws_region}" \
+    --query "DBInstances[0].MasterUserSecret.SecretArn" \
+    --output text 2>/dev/null || true)"
+  if [ -n "$MASTER_SECRET_ARN" ] && [ "$MASTER_SECRET_ARN" != "None" ]; then
+    MASTER_JSON="$(aws secretsmanager get-secret-value \
+      --secret-id "$MASTER_SECRET_ARN" \
+      --region "${aws_region}" \
+      --query "SecretString" \
+      --output text 2>/dev/null || true)"
+  fi
+  [ -n "$MASTER_JSON" ] && [ "$MASTER_JSON" != "None" ] && break
+  sleep 10
+done
+if [ -z "$MASTER_JSON" ] || [ "$MASTER_JSON" = "None" ]; then
+  echo "ERROR: RDS 관리형 master secret을 5분 내 조회하지 못했습니다." >&2
+  exit 1
+fi
+
+MASTER_USERNAME="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["username"])' <<<"$MASTER_JSON")"
+MASTER_PASSWORD="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["password"])' <<<"$MASTER_JSON")"
+unset MASTER_JSON
+
+APP_PASSWORD="$(aws secretsmanager get-random-password \
+  --password-length 40 \
+  --exclude-punctuation \
+  --region "${aws_region}" \
+  --query "RandomPassword" \
+  --output text)"
+
+# Flyway가 같은 datasource로 실행되므로 현재 migration에 필요한 schema DDL 권한을
+# 포함한다. 전역 권한과 GRANT OPTION은 부여하지 않는다.
+MYSQL_PWD="$MASTER_PASSWORD" mysql \
+  --host="${db_endpoint}" \
+  --user="$MASTER_USERNAME" \
+  --ssl \
+  --database="${db_name}" <<SQL
+CREATE USER IF NOT EXISTS '${app_db_username}'@'%' IDENTIFIED BY '$APP_PASSWORD';
+ALTER USER '${app_db_username}'@'%' IDENTIFIED BY '$APP_PASSWORD';
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, INDEX, REFERENCES
+  ON \`${db_name}\`.* TO '${app_db_username}'@'%';
+SQL
+unset MASTER_PASSWORD
+
+# DB 사용자 생성이 성공한 뒤에만 배포용 SSM 값을 교체한다.
+aws ssm put-parameter \
+  --name "${ssm_path}/DB_USERNAME" \
+  --type String \
+  --value "${app_db_username}" \
+  --overwrite \
+  --region "${aws_region}" >/dev/null
+aws ssm put-parameter \
+  --name "${ssm_path}/DB_PASSWORD" \
+  --type SecureString \
+  --value "$APP_PASSWORD" \
+  --overwrite \
+  --region "${aws_region}" >/dev/null
+unset APP_PASSWORD
+aws ssm put-parameter \
+  --name "$MARKER_NAME" \
+  --type String \
+  --value true \
+  --overwrite \
+  --region "${aws_region}" >/dev/null

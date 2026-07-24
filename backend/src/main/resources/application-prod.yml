@@ -1,3 +1,7 @@
+server:
+  # Nginx 리버스 프록시 뒤에 위치하므로 X-Forwarded-* 헤더를 신뢰해 원본 스킴(https)/호스트를 인식한다.
+  forward-headers-strategy: framework
+
 spring:
   datasource:
     url: ${DB_URL}
