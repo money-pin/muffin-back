@@ -32,10 +32,18 @@ systemctl enable --now docker
 usermod -aG docker ec2-user
 
 # docker compose plugin
+# latest는 재부팅/재생성 시점마다 다른 버전이 깔려 재현성이 없으므로 버전을 고정하고,
+# 다운로드 실패(-f)와 체크섬 불일치 시 즉시 중단한다(set -e). 검증 통과 후에만 설치한다.
+COMPOSE_VERSION=v5.3.1
+COMPOSE_URL="https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-x86_64"
 mkdir -p /usr/local/lib/docker/cli-plugins
-curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
-  -o /usr/local/lib/docker/cli-plugins/docker-compose
-chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+compose_tmp="$(mktemp)"
+curl -fSL --retry 3 --retry-delay 2 "$COMPOSE_URL" -o "$compose_tmp"
+curl -fSL --retry 3 --retry-delay 2 "${COMPOSE_URL}.sha256" -o "${compose_tmp}.sha256"
+# 공식 체크섬 파일은 릴리스 자산명 기준이라, 해시만 뽑아 임시 파일명에 맞춰 검증한다.
+echo "$(awk '{print $1}' "${compose_tmp}.sha256")  ${compose_tmp}" | sha256sum -c -
+install -m 755 "$compose_tmp" /usr/local/lib/docker/cli-plugins/docker-compose
+rm -f "$compose_tmp" "${compose_tmp}.sha256"
 
 # ---- Nginx 리버스 프록시 + Certbot ----
 # api.muffin.ai.kr:443 -> 로컬 8080(앱 컨테이너). 인증서는 여기서 발급하지 않는다.

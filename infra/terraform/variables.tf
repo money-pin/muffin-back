@@ -28,6 +28,11 @@ variable "public_subnet_cidrs" {
   description = "퍼블릭 서브넷 CIDR 목록 (RDS 서브넷 그룹은 최소 2개 AZ 필요)"
   type        = list(string)
   default     = ["10.0.1.0/24", "10.0.2.0/24"]
+
+  validation {
+    condition     = length(var.public_subnet_cidrs) >= 2
+    error_message = "RDS 서브넷 그룹은 서로 다른 AZ의 서브넷이 최소 2개 필요하므로 CIDR을 2개 이상 지정해야 합니다."
+  }
 }
 
 # ---------- EC2 ----------
@@ -51,6 +56,20 @@ variable "ssh_public_key_path" {
   description = "로컬에 있는 SSH 공개키 경로. `ssh-keygen -t ed25519 -f ~/.ssh/muffin-ec2`로 미리 생성해두세요."
   type        = string
   default     = "~/.ssh/muffin-ec2.pub"
+}
+
+variable "ssh_private_key_path" {
+  description = "ssh_command 출력에 사용할 SSH 개인키 경로 (기본값은 ssh_public_key_path와 짝을 이룸)"
+  type        = string
+  default     = "~/.ssh/muffin-ec2"
+}
+
+variable "ssh_allowed_cidrs" {
+  # GitHub Actions(CD)가 SSH로 배포하는데 러너 IP가 매번 랜덤이라 기본값은 전체 허용이다.
+  # 고정 IP 러너/VPN/배스천을 쓰거나 SSM Session Manager로 전환하면 반드시 좁힐 것.
+  description = "SSH(22) 접근을 허용할 CIDR 목록. 가능하면 승인된 네트워크로 좁히세요."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
 }
 
 # ---------- RDS ----------

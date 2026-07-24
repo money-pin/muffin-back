@@ -33,6 +33,15 @@ resource "aws_subnet" "public" {
   tags = {
     Name = "${var.project_name}-public-${count.index + 1}"
   }
+
+  # AZ 이름 목록을 count.index로 인덱싱하므로, CIDR 개수가 가용 AZ 수를 넘으면
+  # 인덱스 범위를 벗어난다. plan 단계에서 명확한 메시지로 잡는다.
+  lifecycle {
+    precondition {
+      condition     = length(var.public_subnet_cidrs) <= length(data.aws_availability_zones.available.names)
+      error_message = "public_subnet_cidrs 개수가 리전의 가용 AZ 수를 초과합니다."
+    }
+  }
 }
 
 resource "aws_route_table" "public" {

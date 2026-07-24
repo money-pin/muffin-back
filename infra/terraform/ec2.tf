@@ -121,6 +121,14 @@ resource "aws_instance" "muffin" {
   root_block_device {
     volume_size = 20
     volume_type = "gp3"
+    encrypted   = true
+  }
+
+  # IMDSv2(토큰) 강제. 토큰 없이 접근 가능한 IMDSv1을 막아, SSRF 등으로 인스턴스
+  # IAM 자격증명이 유출되는 경로를 차단한다.
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
   }
 
   # most_recent AMI가 나중에 갱신돼도 인스턴스를 교체하지 않도록 ami 변경을 무시한다.

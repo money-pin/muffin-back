@@ -4,8 +4,8 @@ output "ec2_public_ip" {
 }
 
 output "ssh_command" {
-  description = "SSH 접속 명령어"
-  value       = "ssh -i ~/.ssh/muffin-ec2 ec2-user@${aws_eip.muffin.public_ip}"
+  description = "SSH 접속 명령어 (개인키 경로는 var.ssh_private_key_path)"
+  value       = "ssh -i ${var.ssh_private_key_path} ec2-user@${aws_eip.muffin.public_ip}"
 }
 
 output "rds_endpoint" {
@@ -28,6 +28,6 @@ output "ecr_repository_url" {
 }
 
 output "github_actions_role_arn" {
-  description = "GitHub Actions가 assume 할 IAM 역할 ARN (레포 변수 AWS_ROLE_ARN에 사용)"
+  description = "GitHub Actions가 assume 할 IAM 역할 ARN (GitHub Secret AWS_ROLE_ARN에 사용)"
   value       = aws_iam_role.github_actions.arn
 }

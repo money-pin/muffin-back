@@ -4,13 +4,15 @@ resource "aws_security_group" "ec2" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    # GitHub Actions(CD)가 SSH로 배포하는데 러너 IP가 매번 랜덤이라 특정 IP로 제한할 수 없다.
-    # 대신 user_data.sh에서 비밀번호 로그인을 강제로 꺼서(키 기반 인증만 허용) 방어한다.
+    # 허용 대역은 var.ssh_allowed_cidrs로 조정한다. 기본값이 전체 허용인 이유는
+    # GitHub Actions(CD) 러너 IP가 매번 랜덤이기 때문이며, 이 경우 user_data.sh에서
+    # 비밀번호 로그인을 꺼(키 기반 인증만 허용) 방어한다.
+    # 고정 IP 러너/VPN/배스천 도입 또는 SSM Session Manager 전환 시 반드시 좁힐 것.
     description = "SSH (key-only auth enforced in user_data.sh)"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.ssh_allowed_cidrs
   }
 
   ingress {
