@@ -19,5 +19,6 @@ db_name        = "muffin"
 db_username    = "muffin_admin"
 app_db_username = "muffin_app"
 
-# 운영 복구 목표에 맞춰 7~35일 사이에서 조정
-db_backup_retention_period = 7
+# AWS Free Plan의 dev 계정은 자동 백업 보존 기간이 최대 1일로 제한될 수 있다.
+# 유료 운영 계정에서는 이 override를 제거해 variables.tf의 기본값 7일을 사용한다.
+db_backup_retention_period = 1

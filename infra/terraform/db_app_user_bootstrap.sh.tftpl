@@ -65,9 +65,21 @@ SQL
 unset MASTER_PASSWORD
 
 # DB 사용자 생성이 성공한 뒤에만 배포용 SSM 값을 교체한다.
+# 기존 환경에서 DB_USERNAME이 SecureString으로 만들어졌을 수 있으므로 타입을
+# 유지한다. Parameter Store는 생성 후 String/SecureString 타입 변경을 허용하지 않는다.
+DB_USERNAME_TYPE="$(aws ssm get-parameter \
+  --name "${ssm_path}/DB_USERNAME" \
+  --region "${aws_region}" \
+  --query "Parameter.Type" \
+  --output text 2>/dev/null || true)"
+case "$DB_USERNAME_TYPE" in
+  String|SecureString) ;;
+  *) DB_USERNAME_TYPE=String ;;
+esac
+
 aws ssm put-parameter \
   --name "${ssm_path}/DB_USERNAME" \
-  --type String \
+  --type "$DB_USERNAME_TYPE" \
   --value "${app_db_username}" \
   --overwrite \
   --region "${aws_region}" >/dev/null
