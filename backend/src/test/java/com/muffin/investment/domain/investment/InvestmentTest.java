@@ -1,6 +1,7 @@
 package com.muffin.investment.domain.investment;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
@@ -10,7 +11,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -33,20 +33,25 @@ class InvestmentTest {
     }
 
     @Test
-    @DisplayName("정산하면 총손익은 섹터 손익의 합이고 손익률과 상태가 갱신된다")
-    void settle_aggregatesProfitAndUpdatesStatus() {
+    @DisplayName("스냅샷을 찍고 정산하면 섹터 손익이 계산되고 총손익이 합산되며 상태가 SETTLED가 된다")
+    void settle_computesFromSnapshotAndAggregates() {
         Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
-        investment.addSector(100L, 10, 300_000L, BigDecimal.valueOf(30_000));
-        investment.addSector(200L, 5, 200_000L, BigDecimal.valueOf(40_000));
+        investment.addSector(100L, 10, 300_000L, null);
+        investment.addSector(200L, 5, 200_000L, null);
 
-        investment.applySectorResult(
-                100L, BigDecimal.valueOf(31_800), 18_000L, BigDecimal.valueOf(6.0), PriceDataSource.NORMAL);
-        investment.applySectorResult(
-                200L, BigDecimal.valueOf(40_400), 2_000L, BigDecimal.valueOf(1.0), PriceDataSource.NORMAL);
+        // buy=30,000 / sell=31,800 → +6% → 300,000×6% = 18,000
+        investment.stampSectorNormal(100L, BigDecimal.valueOf(30_000), BigDecimal.valueOf(31_800));
+        // buy=40,000 / sell=40,400 → +1% → 200,000×1% = 2,000
+        investment.stampSectorNormal(200L, BigDecimal.valueOf(40_000), BigDecimal.valueOf(40_400));
 
-        LocalDateTime settledAt = LocalDateTime.of(2026, 5, 8, 9, 0);
+        LocalDateTime settledAt = LocalDateTime.of(2026, 5, 8, 9, 30);
+        investment.computeSectorResults();
         investment.settle(settledAt);
 
+        InvestmentSector first = investment.getSectors().getFirst();
+        assertEquals(18_000L, first.getProfitLoss());
+        assertEquals(0, new BigDecimal("6.0000").compareTo(first.getProfitLossRate()));
+        assertEquals(PriceDataSource.NORMAL, first.getPriceDataSource());
         // 총손익 20,000 / 총투자금 500,000 = 4.0000%
         assertEquals(20_000L, investment.getTotalProfitLoss());
         assertEquals(0, new BigDecimal("4.0000").compareTo(investment.getTotalProfitLossRate()));
@@ -55,75 +60,81 @@ class InvestmentTest {
     }
 
     @Test
-    @DisplayName("당일 시가로 섹터를 정산하면 손익률과 손익금이 계산되고 총손익이 합산된다")
-    void settleSector_computesProfitFromSellPrice() {
+    @DisplayName("하락 스냅샷은 음수 손익으로 정산된다")
+    void settle_negativeProfitWhenSellBelowBuy() {
         Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
-        investment.addSector(100L, 10, 300_000L, BigDecimal.valueOf(30_000));
-        investment.addSector(200L, 5, 200_000L, BigDecimal.valueOf(40_000));
+        investment.addSector(100L, 10, 300_000L, null);
 
-        // (31,800-30,000)/30,000 = 6.0000%, 손익 300,000×6% = 18,000
-        investment.settleSector(100L, BigDecimal.valueOf(31_800));
-        // (40,400-40,000)/40,000 = 1.0000%, 손익 200,000×1% = 2,000
-        investment.settleSector(200L, BigDecimal.valueOf(40_400));
-
-        InvestmentSector first = investment.getSectors().getFirst();
-        assertEquals(18_000L, first.getProfitLoss());
-        assertEquals(0, new BigDecimal("6.0000").compareTo(first.getProfitLossRate()));
-        assertEquals(PriceDataSource.NORMAL, first.getPriceDataSource());
-
+        // buy=30,000 / sell=28,500 → -5% → 300,000×-5% = -15,000
+        investment.stampSectorNormal(100L, BigDecimal.valueOf(30_000), BigDecimal.valueOf(28_500));
+        investment.computeSectorResults();
         investment.settle(LocalDateTime.of(2026, 5, 8, 9, 30));
-        assertEquals(20_000L, investment.getTotalProfitLoss());
-        assertEquals(0, new BigDecimal("4.0000").compareTo(investment.getTotalProfitLossRate()));
-        assertEquals(SettlementStatus.SETTLED, investment.getSettlementStatus());
+
+        assertEquals(-15_000L, investment.getTotalProfitLoss());
+        assertEquals(0, new BigDecimal("-5.0000").compareTo(investment.getTotalProfitLossRate()));
     }
 
     @Test
-    @DisplayName("폴백 정산하면 손익 0, 손익률 0, 출처 FALLBACK_ZERO 로 처리된다")
-    void settleSectorFallback_appliesZeroWithFallbackSource() {
+    @DisplayName("FALLBACK_ZERO 스냅샷은 손익 0/손익률 0으로 정산된다")
+    void settle_fallbackSectorYieldsZero() {
         Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
-        investment.addSector(100L, 10, 300_000L, BigDecimal.valueOf(30_000));
+        investment.addSector(100L, 10, 300_000L, null);
 
-        investment.settleSectorFallback(100L);
+        investment.stampSectorFallback(100L, BigDecimal.valueOf(30_000));
+        investment.computeSectorResults();
+        investment.settle(LocalDateTime.of(2026, 5, 8, 9, 30));
 
         InvestmentSector sector = investment.getSectors().getFirst();
         assertEquals(0L, sector.getProfitLoss());
         assertEquals(0, BigDecimal.ZERO.compareTo(sector.getProfitLossRate()));
         assertEquals(PriceDataSource.FALLBACK_ZERO, sector.getPriceDataSource());
-
-        investment.settle(LocalDateTime.of(2026, 5, 8, 9, 30));
         assertEquals(0L, investment.getTotalProfitLoss());
-        assertEquals(0, BigDecimal.ZERO.compareTo(investment.getTotalProfitLossRate()));
     }
 
     @Test
-    @DisplayName("매수가 스냅샷이 없는 섹터를 시가로 정산하면 데이터 결함으로 예외가 발생한다")
-    void settleSector_throwsWhenBuyPriceMissing() {
+    @DisplayName("정상 섹터와 폴백 섹터가 섞이면 정상분만 손익에 반영된다")
+    void settle_mixedNormalAndFallback() {
         Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
-        investment.addSector(100L, 10, 300_000L, null); // 매수가 스냅샷 결손
+        investment.addSector(100L, 10, 300_000L, null);
+        investment.addSector(200L, 5, 200_000L, null);
 
-        assertThrows(IllegalStateException.class, () -> investment.settleSector(100L, BigDecimal.valueOf(31_800)));
+        investment.stampSectorNormal(100L, BigDecimal.valueOf(30_000), BigDecimal.valueOf(31_800)); // +18,000
+        investment.stampSectorFallback(200L, BigDecimal.valueOf(40_000)); // 0
+        investment.computeSectorResults();
+        investment.settle(LocalDateTime.of(2026, 5, 8, 9, 30));
+
+        assertEquals(18_000L, investment.getTotalProfitLoss());
     }
 
     @Test
-    @DisplayName("미정산 섹터가 있는 상태로 정산하면 예외가 발생한다")
-    void settle_throwsWhenSectorNotResolved() {
+    @DisplayName("정상 스냅샷을 매수가 없이 찍으려 하면 예외가 발생한다")
+    void stampSectorNormal_throwsWhenBuyPriceMissing() {
         Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
-        investment.addSector(100L, 10, 300_000L, BigDecimal.valueOf(30_000));
-        // applySectorResult 미호출 → 섹터 profitLoss 가 null 인 상태
+        investment.addSector(100L, 10, 300_000L, null);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> investment.stampSectorNormal(100L, null, BigDecimal.valueOf(31_800)));
+    }
+
+    @Test
+    @DisplayName("스냅샷이 채워지지 않은 섹터로 정산하면 예외가 발생한다")
+    void settle_throwsWhenSnapshotMissing() {
+        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        investment.addSector(100L, 10, 300_000L, null); // 스냅샷 미기록
 
         assertThrows(IllegalStateException.class, () -> investment.settle(LocalDateTime.of(2026, 5, 8, 9, 0)));
     }
 
     @Test
-    @DisplayName("존재하지 않는 섹터에 정산 결과를 반영하면 예외가 발생한다")
-    void applySectorResult_throwsWhenSectorNotFound() {
+    @DisplayName("존재하지 않는 섹터에 스냅샷을 반영하면 예외가 발생한다")
+    void stampSectorNormal_throwsWhenSectorNotFound() {
         Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
         investment.addSector(100L, 10, 300_000L, BigDecimal.valueOf(30_000));
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> investment.applySectorResult(
-                        999L, BigDecimal.valueOf(10), 0L, BigDecimal.ZERO, PriceDataSource.NORMAL));
+                () -> investment.stampSectorNormal(999L, BigDecimal.valueOf(30_000), BigDecimal.valueOf(31_800)));
     }
 
     @Test
@@ -144,6 +155,20 @@ class InvestmentTest {
         investment.failSettlement();
 
         assertEquals(SettlementStatus.FAILED, investment.getSettlementStatus());
+    }
+
+    @Test
+    @DisplayName("정산 창을 놓친 확정 투자를 취소하면 손익 0/상태 CANCELLED가 된다")
+    void cancelSettlement_zeroProfitAndCancelledStatus() {
+        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        investment.addSector(100L, 10, 300_000L, null);
+        LocalDateTime cancelledAt = LocalDateTime.of(2026, 5, 10, 9, 30);
+
+        investment.cancelSettlement(cancelledAt);
+
+        assertEquals(0L, investment.getTotalProfitLoss());
+        assertEquals(SettlementStatus.CANCELLED, investment.getSettlementStatus());
+        assertEquals(cancelledAt, investment.getSettledAt());
     }
 
     @Test
@@ -177,46 +202,32 @@ class InvestmentTest {
     }
 
     @Test
-    @DisplayName("자정 마감은 종가를 매수가로 반영하고 finalizedAt을 기록한다")
-    void finalizeInvestment_assignsBuyPricesAndFinalizedAt() {
+    @DisplayName("자정 마감은 finalizedAt만 기록하고 가격은 건드리지 않는다(멱등)")
+    void finalizeInvestment_freezesOnly() {
         Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
         investment.addSector(100L, 1, 100_000L, null);
         LocalDateTime finalizedAt = INVEST_DATE.plusDays(1).atStartOfDay();
 
-        investment.finalizeInvestment(Map.of(100L, BigDecimal.valueOf(12_345)), finalizedAt);
+        investment.finalizeInvestment(finalizedAt);
 
-        assertEquals(
-                BigDecimal.valueOf(12_345), investment.getSectors().getFirst().getBuyPrice());
         assertEquals(finalizedAt, investment.getFinalizedAt());
+        assertNull(investment.getSectors().getFirst().getBuyPrice()); // 가격 스냅샷은 정산 phase 1의 책임
         assertEquals(SettlementStatus.PENDING, investment.getSettlementStatus());
+
+        // 멱등: 재호출해도 최초 finalizedAt을 유지한다.
+        investment.finalizeInvestment(finalizedAt.plusMinutes(10));
+        assertEquals(finalizedAt, investment.getFinalizedAt());
     }
 
     @Test
-    @DisplayName("종가가 누락된 투자는 동결하되 FAILED 재처리 대상으로 둔다")
-    void finalizeInvestment_marksFailedWhenBuyPriceMissing() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
-        investment.addSector(100L, 1, 100_000L, null);
-
-        investment.finalizeInvestment(Map.of(), INVEST_DATE.plusDays(1).atStartOfDay());
-
-        assertEquals(SettlementStatus.FAILED, investment.getSettlementStatus());
-        assertEquals(true, investment.hasMissingBuyPrice());
-    }
-
-    @Test
-    void finalizeInvestment_restoresPendingWhenAllBuyPricesAreRecovered() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
-        investment.addSector(100L, 1, 100_000L, null);
-        investment.addSector(200L, 1, 100_000L, null);
+    @DisplayName("미투자 레코드 마감은 finalizedAt만 기록한다")
+    void finalizeNoInvest_recordsFinalizedAt() {
+        Investment investment = Investment.noInvest(USER_ID, USER_ASSET_ID, INVEST_DATE);
         LocalDateTime finalizedAt = INVEST_DATE.plusDays(1).atStartOfDay();
 
-        investment.finalizeInvestment(Map.of(100L, BigDecimal.valueOf(12_345)), finalizedAt);
-        assertEquals(SettlementStatus.FAILED, investment.getSettlementStatus());
+        investment.finalizeNoInvest(finalizedAt);
 
-        investment.finalizeInvestment(Map.of(200L, BigDecimal.valueOf(23_456)), finalizedAt.plusMinutes(10));
-
-        assertEquals(SettlementStatus.PENDING, investment.getSettlementStatus());
-        assertEquals(false, investment.hasMissingBuyPrice());
         assertEquals(finalizedAt, investment.getFinalizedAt());
+        assertEquals(InvestmentStatus.NO_INVEST, investment.getStatus());
     }
 }

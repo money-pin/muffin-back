@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.muffin.global.config.JpaAuditingConfig;
 import com.muffin.global.config.QueryDslConfig;
-import com.muffin.investment.application.SettlementQueryRepository;
 import com.muffin.investment.application.projection.SettlementResultProjection;
+import com.muffin.investment.application.settlement.SettlementQueryRepository;
 import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.InvestmentRepository;
 import com.muffin.investment.domain.investment.enums.SettlementStatus;
@@ -73,8 +73,10 @@ class SettlementQueryRepositoryTest {
 
     private void persistSettledInvestment(long userId, Long userAssetId, LocalDate investDate) {
         Investment investment = Investment.confirm(userId, userAssetId, investDate);
-        investment.addSector(100L, 10, 1_000_000L, BigDecimal.valueOf(20_000));
-        investment.settleSector(100L, BigDecimal.valueOf(20_900)); // +4.5% → +45,000
+        investment.addSector(100L, 10, 1_000_000L, null);
+        // 매수가 20,000 / 매도가 20,900 → +4.5% → +45,000
+        investment.stampSectorNormal(100L, BigDecimal.valueOf(20_000), BigDecimal.valueOf(20_900));
+        investment.computeSectorResults();
         investment.settle(LocalDateTime.now());
         investmentRepository.save(investment);
     }

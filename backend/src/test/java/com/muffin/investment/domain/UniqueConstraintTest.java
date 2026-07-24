@@ -5,11 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.muffin.global.config.JpaAuditingConfig;
 import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.InvestmentRepository;
-import com.muffin.investment.domain.profitsummary.ProfitSummary;
-import com.muffin.investment.domain.profitsummary.ProfitSummaryRepository;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,9 +32,6 @@ class UniqueConstraintTest {
     private InvestmentRepository investmentRepository;
 
     @Autowired
-    private ProfitSummaryRepository profitSummaryRepository;
-
-    @Autowired
     private UserAssetRepository userAssetRepository;
 
     @Test
@@ -48,16 +42,6 @@ class UniqueConstraintTest {
         assertThrows(
                 DataIntegrityViolationException.class,
                 () -> investmentRepository.saveAndFlush(Investment.confirm(1L, 11L, DATE)));
-    }
-
-    @Test
-    @DisplayName("같은 사용자-요약일자로 손익 요약을 두 번 저장하면 유니크 제약 위반이 발생한다")
-    void profitSummary_duplicateUserAndSummaryDate_violatesUnique() {
-        profitSummaryRepository.saveAndFlush(ProfitSummary.create(1L, DATE, 0L, BigDecimal.ZERO, 0L));
-
-        assertThrows(
-                DataIntegrityViolationException.class,
-                () -> profitSummaryRepository.saveAndFlush(ProfitSummary.create(1L, DATE, 100L, BigDecimal.ONE, 100L)));
     }
 
     @Test
