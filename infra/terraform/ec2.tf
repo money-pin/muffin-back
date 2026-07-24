@@ -84,7 +84,11 @@ resource "aws_iam_role_policy" "ec2_ssm_read" {
           "ssm:GetParameters",
           "ssm:GetParametersByPath",
         ]
-        Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/*"
+        Resource = [
+          # GetParametersByPath는 조회 기준인 부모 경로 ARN에도 권한이 필요하다.
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}",
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/*",
+        ]
       },
       {
         # SecureString 복호화. SSM을 경유한 호출로만 제한한다.
