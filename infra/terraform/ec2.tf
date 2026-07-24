@@ -126,7 +126,8 @@ resource "aws_instance" "muffin" {
   user_data_replace_on_change = true
 
   root_block_device {
-    volume_size = 20
+    # 최신 Amazon Linux 2023 AMI의 루트 스냅샷이 30GB라 그보다 작으면 InvalidBlockDeviceMapping 발생.
+    volume_size = 30
     volume_type = "gp3"
     encrypted   = true
   }
