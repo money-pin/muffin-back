@@ -119,7 +119,9 @@ variable "db_backup_retention_period" {
 }
 
 variable "db_engine_version" {
-  # 8.4는 표준 지원이 2029-07-31까지라 8.0 대비 수명이 길다.
+  # 고정한 마이너 8.4.10의 RDS 표준 지원은 2027-07-07까지다(8.4 시리즈 전체가 아니라 이 마이너 기준).
+  # 이후 마이너는 auto_minor_version_upgrade(rds.tf, 미설정 = 기본 true)에 따라 유지보수 창에
+  # 자동 상향된다. 특정 마이너로 고정하려면 이 기본값을 갱신하고 그 자동 상향을 끌 것.
   # 8.0.46 -> 8.4.10 업그레이드 검증 완료:
   #   - 로컬 MySQL 8.4.10에서 Flyway 마이그레이션 + 앱 부팅 통과
   #   - 스키마 전 테이블 InnoDB + utf8mb4 (8.4 제거 문법 없음)
