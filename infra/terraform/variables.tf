@@ -104,13 +104,33 @@ variable "db_allocated_storage" {
   default     = 20
 }
 
+variable "db_backup_retention_period" {
+  # AWS 무료 플랜은 백업 보관 기간에 상한이 있어 7일을 쓸 수 없다(FreeTierRestrictionError).
+  # 그래서 기본값은 현재 계정에서 동작하는 1로 두되, 유료 전환 시 7 이상으로 올릴 것을 권장한다.
+  # (더 긴 보존이 필요하면 AWS Backup 또는 별도 스냅샷 정책을 병행)
+  description = "RDS 자동 백업 보관 기간(일). 유료 플랜에서는 7 이상 권장."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.db_backup_retention_period >= 0 && var.db_backup_retention_period <= 35
+    error_message = "backup_retention_period는 0~35 사이여야 합니다."
+  }
+}
+
 variable "db_engine_version" {
-  # RDS는 구버전을 주기적으로 지원 종료하므로, 사용 불가 에러가 나면 아래로 확인 후 갱신한다:
+  # 8.4는 표준 지원이 2029-07-31까지라 8.0 대비 수명이 길다.
+  # 8.0.46 -> 8.4.10 업그레이드 검증 완료:
+  #   - 로컬 MySQL 8.4.10에서 Flyway 마이그레이션 + 앱 부팅 통과
+  #   - 스키마 전 테이블 InnoDB + utf8mb4 (8.4 제거 문법 없음)
+  #   - muffin_admin 인증 플러그인을 mysql_native_password -> caching_sha2_password 전환 완료
+  #     (8.4는 mysql_native_password가 기본 비활성)
+  # RDS가 구버전 지원 종료 시 사용 가능한 버전은 아래로 확인:
   #   aws rds describe-db-engine-versions --engine mysql \
-  #     --query "DBEngineVersions[?starts_with(EngineVersion,'8.0')].EngineVersion" --output text
+  #     --query "DBEngineVersions[?starts_with(EngineVersion,'8.4')].EngineVersion" --output text
   description = "MySQL 엔진 버전 (지원 종료 시 위 명령으로 확인 후 갱신)"
   type        = string
-  default     = "8.0.46"
+  default     = "8.4.10"
 }
 
 # ---------- ECR / CI ----------
