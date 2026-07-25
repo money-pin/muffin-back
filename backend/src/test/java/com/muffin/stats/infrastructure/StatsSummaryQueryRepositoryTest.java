@@ -2,6 +2,7 @@ package com.muffin.stats.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.muffin.global.config.JpaAuditingConfig;
@@ -16,6 +17,8 @@ import com.muffin.sector.domain.sectorgroup.SectorGroupRepository;
 import com.muffin.stats.application.StatsQueryRepository;
 import com.muffin.stats.application.projection.DailyProfitProjection;
 import com.muffin.stats.application.projection.PeriodProfitProjection;
+import com.muffin.stats.application.projection.RecentInvestmentProjection;
+import com.muffin.stats.application.projection.RecentSectorProjection;
 import com.muffin.stats.application.projection.SectorHistoryProjection;
 import com.muffin.stats.application.projection.SectorStatProjection;
 import java.math.BigDecimal;
@@ -158,10 +161,65 @@ class StatsSummaryQueryRepositoryTest {
         assertFalse(statsSummaryQueryRepository.existsSettledAfter(USER_ID, LocalDate.of(2026, 5, 20)));
     }
 
-    private record SectorSpec(long amount, long profitLoss) {}
+    @Test
+    @DisplayName("최근 정산 상세: 가장 최근 정산 완료 투자만 헤더로 반환하고 미정산 투자는 무시한다")
+    void findLatestSettledInvestment_returnsMostRecentSettled() {
+        Long gold = seedSector("GOLD", "금", "BASE_ASSET");
+        LocalDate base = LocalDate.of(2026, 5, 1);
+        persistSettledInvestment(base.plusDays(2), Map.of(gold, sector(100_000L, 5_000L)));
+        persistSettledInvestment(base.plusDays(4), Map.of(gold, sector(200_000L, 8_000L)));
+        persistPendingInvestment(base.plusDays(6), gold); // 미정산 → 무시(더 최근이어도)
+
+        RecentInvestmentProjection latest = statsSummaryQueryRepository.findLatestSettledInvestment(USER_ID);
+
+        assertEquals(base.plusDays(4), latest.investDate());
+        assertEquals(200_000L, latest.totalInvestment());
+        assertEquals(8_000L, latest.totalProfitLoss());
+    }
+
+    @Test
+    @DisplayName("최근 정산 상세: 정산 완료 이력이 없으면 null을 반환한다")
+    void findLatestSettledInvestment_nullWhenNoSettlement() {
+        Long gold = seedSector("GOLD", "금", "BASE_ASSET");
+        persistPendingInvestment(LocalDate.of(2026, 5, 3), gold);
+
+        assertNull(statsSummaryQueryRepository.findLatestSettledInvestment(USER_ID));
+    }
+
+    @Test
+    @DisplayName("최근 정산 상세: 섹터별 매수금/손익/폴백 여부를 매수금 내림차순으로 조회한다")
+    void findSettledSectors_projectsWithFallbackOrderedByAmountDesc() {
+        Long semiconductor = seedSector("SEMICONDUCTOR", "반도체", "FUTURE_TECH");
+        Long gold = seedSector("GOLD", "금", "BASE_ASSET");
+        Investment investment = persistSettledInvestment(
+                LocalDate.of(2026, 5, 7),
+                Map.of(semiconductor, sector(300_000L, 18_000L), gold, fallbackSector(200_000L)));
+
+        List<RecentSectorProjection> sectors = statsSummaryQueryRepository.findSettledSectors(investment.getId());
+
+        assertEquals(2, sectors.size());
+        RecentSectorProjection first = sectors.get(0); // 매수금 큰 순
+        assertEquals("SEMICONDUCTOR", first.sectorCode());
+        assertEquals("반도체", first.sectorName());
+        assertEquals(300_000L, first.totalInvestment());
+        assertEquals(18_000L, first.totalProfitLoss());
+        assertEquals(PriceDataSource.NORMAL, first.priceDataSource());
+
+        RecentSectorProjection second = sectors.get(1);
+        assertEquals("GOLD", second.sectorCode());
+        assertEquals(200_000L, second.totalInvestment());
+        assertEquals(0L, second.totalProfitLoss());
+        assertEquals(PriceDataSource.FALLBACK_ZERO, second.priceDataSource());
+    }
+
+    private record SectorSpec(long amount, long profitLoss, PriceDataSource source) {}
 
     private SectorSpec sector(long amount, long profitLoss) {
-        return new SectorSpec(amount, profitLoss);
+        return new SectorSpec(amount, profitLoss, PriceDataSource.NORMAL);
+    }
+
+    private SectorSpec fallbackSector(long amount) {
+        return new SectorSpec(amount, 0L, PriceDataSource.FALLBACK_ZERO);
     }
 
     private Long seedSector(String sectorCode, String name, String groupCode) {
@@ -170,13 +228,13 @@ class StatsSummaryQueryRepositoryTest {
         return saved.getId();
     }
 
-    private void persistSettledInvestment(LocalDate investDate, Map<Long, SectorSpec> sectors) {
+    private Investment persistSettledInvestment(LocalDate investDate, Map<Long, SectorSpec> sectors) {
         Investment investment = Investment.confirm(USER_ID, DUMMY_ASSET_ID, investDate);
         sectors.forEach((sectorId, spec) -> investment.addSector(sectorId, 1, spec.amount(), BigDecimal.valueOf(100)));
         sectors.forEach((sectorId, spec) -> investment.applySectorResult(
-                sectorId, BigDecimal.valueOf(110), spec.profitLoss(), BigDecimal.ZERO, PriceDataSource.NORMAL));
+                sectorId, BigDecimal.valueOf(110), spec.profitLoss(), BigDecimal.ZERO, spec.source()));
         investment.settle(LocalDateTime.now());
-        investmentRepository.save(investment);
+        return investmentRepository.save(investment);
     }
 
     private void persistPendingInvestment(LocalDate investDate, Long sectorId) {

@@ -5,6 +5,7 @@ import com.muffin.global.apiPayload.code.GeneralSuccessCode;
 import com.muffin.stats.application.StatsQueryService;
 import com.muffin.stats.presentation.dto.ProfitHistoryRequest;
 import com.muffin.stats.presentation.dto.ProfitHistoryResponse;
+import com.muffin.stats.presentation.dto.RecentDetailResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse;
 import com.muffin.stats.presentation.swagger.StatsApi;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,5 +38,12 @@ public class StatsController implements StatsApi {
         return ApiResponse.onSuccess(
                 GeneralSuccessCode.OK,
                 statsQueryService.getHistory(userId, request.toPeriod(), request.date(), request.toSort()));
+    }
+
+    @Override
+    @GetMapping("/recent-detail")
+    public ApiResponse<RecentDetailResponse> getRecentDetail(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, statsQueryService.getRecentDetail(userId));
     }
 }

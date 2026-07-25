@@ -8,6 +8,8 @@ import com.muffin.sector.domain.sectorgroup.QSectorGroup;
 import com.muffin.stats.application.StatsQueryRepository;
 import com.muffin.stats.application.projection.DailyProfitProjection;
 import com.muffin.stats.application.projection.PeriodProfitProjection;
+import com.muffin.stats.application.projection.RecentInvestmentProjection;
+import com.muffin.stats.application.projection.RecentSectorProjection;
 import com.muffin.stats.application.projection.SectorHistoryProjection;
 import com.muffin.stats.application.projection.SectorStatProjection;
 import com.querydsl.core.BooleanBuilder;
@@ -114,6 +116,44 @@ public class StatsQueryRepositoryImpl implements StatsQueryRepository {
                         .where(settled(investment, userId).and(investment.investDate.gt(date)))
                         .fetchFirst()
                 != null;
+    }
+
+    @Override
+    public RecentInvestmentProjection findLatestSettledInvestment(Long userId) {
+        QInvestment investment = QInvestment.investment;
+        return queryFactory
+                .select(Projections.constructor(
+                        RecentInvestmentProjection.class,
+                        investment.id,
+                        investment.investDate,
+                        investment.totalAmount,
+                        investment.totalProfitLoss))
+                .from(investment)
+                .where(settled(investment, userId))
+                .orderBy(investment.investDate.desc(), investment.id.desc())
+                .fetchFirst();
+    }
+
+    @Override
+    public List<RecentSectorProjection> findSettledSectors(Long investmentId) {
+        QInvestment investment = QInvestment.investment;
+        QInvestmentSector investmentSector = QInvestmentSector.investmentSector;
+        QSector sector = QSector.sector;
+        return queryFactory
+                .select(Projections.constructor(
+                        RecentSectorProjection.class,
+                        sector.sectorCode,
+                        sector.name,
+                        investmentSector.amount,
+                        investmentSector.profitLoss,
+                        investmentSector.priceDataSource))
+                .from(investment)
+                .join(investment.sectors, investmentSector)
+                .join(sector)
+                .on(sector.id.eq(investmentSector.sectorId))
+                .where(investment.id.eq(investmentId))
+                .orderBy(investmentSector.amount.desc(), investmentSector.id.asc())
+                .fetch();
     }
 
     /** (userId, SETTLED) 기본 조건. */
