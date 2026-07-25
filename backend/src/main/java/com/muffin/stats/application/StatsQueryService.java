@@ -1,7 +1,10 @@
 package com.muffin.stats.application;
 
+import com.muffin.investment.domain.investment.enums.PriceDataSource;
 import com.muffin.stats.application.projection.DailyProfitProjection;
 import com.muffin.stats.application.projection.PeriodProfitProjection;
+import com.muffin.stats.application.projection.RecentInvestmentProjection;
+import com.muffin.stats.application.projection.RecentSectorProjection;
 import com.muffin.stats.application.projection.SectorHistoryProjection;
 import com.muffin.stats.application.projection.SectorStatProjection;
 import com.muffin.stats.domain.HistorySort;
@@ -11,6 +14,8 @@ import com.muffin.stats.domain.StatsPeriod;
 import com.muffin.stats.presentation.dto.ProfitHistoryResponse;
 import com.muffin.stats.presentation.dto.ProfitHistoryResponse.SectorHistoryResponse;
 import com.muffin.stats.presentation.dto.ProfitHistoryResponse.SummaryResponse;
+import com.muffin.stats.presentation.dto.RecentDetailResponse;
+import com.muffin.stats.presentation.dto.RecentDetailResponse.SectorDetailResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.GraphPointResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.InvestmentTypeResponse;
@@ -100,6 +105,40 @@ public class StatsQueryService {
 
         return new ProfitHistoryResponse(
                 period.name(), window.label(), hasPrev, hasNext, summary, sort.name(), sectors);
+    }
+
+    /**
+     * 최근 투자 성과 상세. 가장 최근 정산 완료(SETTLED) 투자 1건을 섹터별로 상세하게 내려준다. 정산 이력이 없으면 date null, 금액 0, 섹터 빈 배열이다.
+     */
+    @Transactional(readOnly = true)
+    public RecentDetailResponse getRecentDetail(Long userId) {
+        RecentInvestmentProjection latest = statsSummaryQueryRepository.findLatestSettledInvestment(userId);
+        if (latest == null) {
+            return new RecentDetailResponse(null, 0L, 0L, List.of());
+        }
+
+        List<SectorDetailResponse> sectors =
+                statsSummaryQueryRepository.findSettledSectors(latest.investmentId()).stream()
+                        .map(this::toSectorDetail)
+                        .toList();
+
+        return new RecentDetailResponse(
+                latest.investDate(),
+                valueOrZero(latest.totalInvestment()),
+                valueOrZero(latest.totalProfitLoss()),
+                sectors);
+    }
+
+    private SectorDetailResponse toSectorDetail(RecentSectorProjection s) {
+        long profit = valueOrZero(s.totalProfitLoss());
+        long investment = valueOrZero(s.totalInvestment());
+        return new SectorDetailResponse(
+                s.sectorCode(),
+                s.sectorName(),
+                profit,
+                rateOverBaseSafe(profit, investment),
+                investment,
+                s.priceDataSource() == PriceDataSource.FALLBACK_ZERO);
     }
 
     private SectorHistoryResponse toSectorHistory(SectorHistoryProjection s) {

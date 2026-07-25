@@ -18,6 +18,8 @@ import com.muffin.stats.domain.StatsPeriod;
 import com.muffin.stats.presentation.dto.ProfitHistoryResponse;
 import com.muffin.stats.presentation.dto.ProfitHistoryResponse.SectorHistoryResponse;
 import com.muffin.stats.presentation.dto.ProfitHistoryResponse.SummaryResponse;
+import com.muffin.stats.presentation.dto.RecentDetailResponse;
+import com.muffin.stats.presentation.dto.RecentDetailResponse.SectorDetailResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.GraphPointResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.InvestmentTypeResponse;
@@ -38,7 +40,7 @@ import org.springframework.security.web.method.annotation.AuthenticationPrincipa
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-/** STATS-02 수익 통계 / STATS-08 누적 수익 내역 조회 API의 REST Docs 스니펫을 생성한다. */
+/** STATS-02 수익 통계 / STATS-08 누적 수익 내역 / STATS-03 최근 투자 성과 상세 조회 API의 REST Docs 스니펫을 생성한다. */
 @ExtendWith(RestDocumentationExtension.class)
 class StatsControllerDocsTest {
 
@@ -224,6 +226,60 @@ class StatsControllerDocsTest {
                                 fieldWithPath("errorDetail").description("허용값/입력값 등 상세 원인"))));
     }
 
+    @Test
+    @DisplayName("최근 투자 성과 상세 정상 응답 문서화")
+    void documentRecentDetail(RestDocumentationContextProvider restDocumentation) throws Exception {
+        RecentDetailResponse response = new RecentDetailResponse(
+                LocalDate.of(2026, 5, 7),
+                500_000L,
+                18_000L,
+                List.of(
+                        new SectorDetailResponse(
+                                "SEMICONDUCTOR", "반도체", 18_000L, new BigDecimal("6.0"), 300_000L, false),
+                        new SectorDetailResponse("GOLD", "금", 0L, new BigDecimal("0.0"), 200_000L, true)));
+        MockMvc mockMvc = mockMvcWith(recentDetailStub(response), restDocumentation);
+
+        mockMvc.perform(get("/api/stats/recent-detail"))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "stats-recent-detail",
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.date").description("최근 정산 완료 투자 일자(KST). 이력 없으면 null"),
+                                fieldWithPath("result.totalInvestment").description("총 매수금"),
+                                fieldWithPath("result.profitAmount").description("총 손익금(손실 시 음수)"),
+                                fieldWithPath("result.sectors[].sectorCode").description("섹터 코드"),
+                                fieldWithPath("result.sectors[].sectorName").description("섹터 표시명"),
+                                fieldWithPath("result.sectors[].profitAmount").description("섹터 손익금"),
+                                fieldWithPath("result.sectors[].profitRate")
+                                        .description("섹터 손익률(%). 그 섹터 매수금 기준, 소수 첫째자리"),
+                                fieldWithPath("result.sectors[].totalInvestment")
+                                        .description("섹터 매수금"),
+                                fieldWithPath("result.sectors[].isFallback").description("거래정지 등으로 0%가 적용된 섹터인지 여부"))));
+    }
+
+    @Test
+    @DisplayName("최근 투자 이력이 없는 빈 상태 응답 문서화")
+    void documentEmptyRecentDetail(RestDocumentationContextProvider restDocumentation) throws Exception {
+        RecentDetailResponse response = new RecentDetailResponse(null, 0L, 0L, List.of());
+        MockMvc mockMvc = mockMvcWith(recentDetailStub(response), restDocumentation);
+
+        mockMvc.perform(get("/api/stats/recent-detail"))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "stats-recent-detail-empty",
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.date").description("정산 이력이 없어 null"),
+                                fieldWithPath("result.totalInvestment").description("총 매수금(이력 없음: 0)"),
+                                fieldWithPath("result.profitAmount").description("총 손익금(이력 없음: 0)"),
+                                fieldWithPath("result.sectors").description("빈 배열(정산 이력 없음)"))));
+    }
+
     private StatsQueryService summaryStub(StatsSummaryResponse response) {
         return new StatsQueryService(null, null) {
             @Override
@@ -237,6 +293,15 @@ class StatsControllerDocsTest {
         return new StatsQueryService(null, null) {
             @Override
             public ProfitHistoryResponse getHistory(Long userId, StatsPeriod period, String date, HistorySort sort) {
+                return response;
+            }
+        };
+    }
+
+    private StatsQueryService recentDetailStub(RecentDetailResponse response) {
+        return new StatsQueryService(null, null) {
+            @Override
+            public RecentDetailResponse getRecentDetail(Long userId) {
                 return response;
             }
         };

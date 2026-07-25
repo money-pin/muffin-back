@@ -3,6 +3,7 @@ package com.muffin.stats.presentation.swagger;
 import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.stats.presentation.dto.ProfitHistoryRequest;
 import com.muffin.stats.presentation.dto.ProfitHistoryResponse;
+import com.muffin.stats.presentation.dto.RecentDetailResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -47,4 +48,19 @@ public interface StatsApi {
     ApiResponse<ProfitHistoryResponse> getHistory(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
             @ParameterObject ProfitHistoryRequest request);
+
+    @Operation(
+            summary = "최근 투자 성과 상세 (STATS-03)",
+            description = "가장 최근 정산 완료(SETTLED)된 투자 1건을 섹터별로 상세하게 조회한다. 각 섹터의 매수금/손익금/손익률과, 거래정지 등으로 0%가 적용된 폴백 여부"
+                    + "(isFallback)를 함께 내려준다. 손익률은 그 섹터 매수금 대비 값(소수 첫째자리)이다. "
+                    + "정산 이력이 없으면 date는 null, 금액은 0, sectors는 빈 배열이다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "조회 성공. 정산 이력이 없으면 date는 null, totalInvestment/profitAmount는 0, sectors는 빈 배열이다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "인증에 실패했습니다. (AUTH_401_001)")
+    })
+    ApiResponse<RecentDetailResponse> getRecentDetail(@Parameter(hidden = true) @AuthenticationPrincipal Long userId);
 }

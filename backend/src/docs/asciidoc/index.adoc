@@ -585,6 +585,44 @@ include::{snippets}/stats-history-invalid-period/response-fields.adoc[]
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |===
 
+[[stats-recent-detail]]
+== 최근 투자 성과 상세 (STATS-03)
+
+가장 최근 정산 완료(SETTLED)된 투자 1건을 섹터별로 상세하게 조회한다. 최근 투자 결과 화면에서 섹터별 손익을 확인하는 데 쓴다.
+
+* `date`: 조회된 최근 정산 완료 투자의 일자(KST). 정산 이력이 없으면 `null`이다.
+* `totalInvestment`/`profitAmount`: 그 투자의 총 매수금과 총 손익금(손실 시 음수).
+* 섹터 손익률(`sectors[].profitRate`): 그 섹터 매수금 기준(`섹터 손익금 / 섹터 매수금 × 100`), 소수 첫째자리. 매수금이 0이면 0.0.
+* `sectors[].isFallback`: 거래정지 등으로 시가를 확보하지 못해 0%가 적용된(폴백) 섹터면 `true`. 이 경우 손익금/손익률은 0이다.
+* 섹터는 매수금(`totalInvestment`) 내림차순으로 정렬된다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+=== 요청
+
+include::{snippets}/stats-recent-detail/http-request.adoc[]
+
+=== 응답 - 정상
+
+include::{snippets}/stats-recent-detail/http-response.adoc[]
+include::{snippets}/stats-recent-detail/response-fields.adoc[]
+
+=== 응답 - 최근 투자 이력 없음(빈 상태)
+
+정산 완료 이력이 없으면 `date`는 `null`, `totalInvestment`/`profitAmount`는 0, `sectors`는 빈 배열이다.
+
+include::{snippets}/stats-recent-detail-empty/http-response.adoc[]
+include::{snippets}/stats-recent-detail-empty/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===
+
 [[quiz-today]]
 == 오늘의 한입 퀴즈 조회/제출/결과 (QUIZ-01~03)
 

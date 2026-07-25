@@ -6,8 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.muffin.investment.domain.investment.enums.PriceDataSource;
 import com.muffin.stats.application.projection.DailyProfitProjection;
 import com.muffin.stats.application.projection.PeriodProfitProjection;
+import com.muffin.stats.application.projection.RecentInvestmentProjection;
+import com.muffin.stats.application.projection.RecentSectorProjection;
 import com.muffin.stats.application.projection.SectorHistoryProjection;
 import com.muffin.stats.application.projection.SectorStatProjection;
 import com.muffin.stats.domain.HistorySort;
@@ -16,6 +19,8 @@ import com.muffin.stats.domain.exception.StatsException;
 import com.muffin.stats.domain.exception.code.StatsErrorCode;
 import com.muffin.stats.presentation.dto.ProfitHistoryResponse;
 import com.muffin.stats.presentation.dto.ProfitHistoryResponse.SectorHistoryResponse;
+import com.muffin.stats.presentation.dto.RecentDetailResponse;
+import com.muffin.stats.presentation.dto.RecentDetailResponse.SectorDetailResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.TopSectorResponse;
 import java.math.BigDecimal;
@@ -230,6 +235,47 @@ class StatsQueryServiceTest {
         assertEquals(StatsErrorCode.INVALID_DATE_FORMAT, e.getErrorCode());
     }
 
+    @Test
+    @DisplayName("최근 투자 상세: 정산 이력이 없으면 date null, 금액 0, 섹터는 빈 배열이다")
+    void getRecentDetail_emptyWhenNoSettlement() {
+        RecentDetailResponse response = service(new StubRepo()).getRecentDetail(1L);
+
+        assertNull(response.date());
+        assertEquals(0L, response.totalInvestment());
+        assertEquals(0L, response.profitAmount());
+        assertTrue(response.sectors().isEmpty());
+    }
+
+    @Test
+    @DisplayName("최근 투자 상세: 섹터별 손익률을 매수금 대비로 계산하고 폴백 섹터는 isFallback=true로 내려준다")
+    void getRecentDetail_mapsSectorsWithFallbackAndRate() {
+        StubRepo repo = new StubRepo();
+        repo.latestSettled = new RecentInvestmentProjection(7L, DAY_8, 500_000L, 18_000L);
+        repo.recentSectors = List.of(
+                new RecentSectorProjection("SEMICONDUCTOR", "반도체", 300_000L, 18_000L, PriceDataSource.NORMAL),
+                new RecentSectorProjection("GOLD", "금", 200_000L, 0L, PriceDataSource.FALLBACK_ZERO));
+
+        RecentDetailResponse response = service(repo).getRecentDetail(1L);
+
+        assertEquals(DAY_8, response.date());
+        assertEquals(500_000L, response.totalInvestment());
+        assertEquals(18_000L, response.profitAmount());
+        assertEquals(2, response.sectors().size());
+
+        SectorDetailResponse semiconductor = response.sectors().get(0);
+        assertEquals("SEMICONDUCTOR", semiconductor.sectorCode());
+        assertEquals(18_000L, semiconductor.profitAmount());
+        assertEquals(300_000L, semiconductor.totalInvestment());
+        assertEquals(new BigDecimal("6.0"), semiconductor.profitRate()); // 18,000 / 300,000
+        assertFalse(semiconductor.isFallback());
+
+        SectorDetailResponse gold = response.sectors().get(1);
+        assertEquals("GOLD", gold.sectorCode());
+        assertEquals(0L, gold.profitAmount());
+        assertEquals(new BigDecimal("0.0"), gold.profitRate());
+        assertTrue(gold.isFallback());
+    }
+
     private StatsQueryService serviceWith(
             List<DailyProfitProjection> dailyProfits, List<SectorStatProjection> sectorStats) {
         StubRepo repo = new StubRepo();
@@ -250,6 +296,8 @@ class StatsQueryServiceTest {
         private List<SectorHistoryProjection> periodSectors = List.of();
         private boolean settledBefore = false;
         private boolean settledAfter = false;
+        private RecentInvestmentProjection latestSettled = null;
+        private List<RecentSectorProjection> recentSectors = List.of();
 
         @Override
         public List<DailyProfitProjection> findSettledDailyProfits(Long userId) {
@@ -279,6 +327,16 @@ class StatsQueryServiceTest {
         @Override
         public boolean existsSettledAfter(Long userId, LocalDate date) {
             return settledAfter;
+        }
+
+        @Override
+        public RecentInvestmentProjection findLatestSettledInvestment(Long userId) {
+            return latestSettled;
+        }
+
+        @Override
+        public List<RecentSectorProjection> findSettledSectors(Long investmentId) {
+            return recentSectors;
         }
     }
 }

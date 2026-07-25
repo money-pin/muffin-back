@@ -2,6 +2,8 @@ package com.muffin.stats.application;
 
 import com.muffin.stats.application.projection.DailyProfitProjection;
 import com.muffin.stats.application.projection.PeriodProfitProjection;
+import com.muffin.stats.application.projection.RecentInvestmentProjection;
+import com.muffin.stats.application.projection.RecentSectorProjection;
 import com.muffin.stats.application.projection.SectorHistoryProjection;
 import com.muffin.stats.application.projection.SectorStatProjection;
 import java.time.LocalDate;
@@ -31,4 +33,10 @@ public interface StatsQueryRepository {
 
     /** {@code date} 이후(미포함)에 정산 완료 투자가 있는지. hasNext 판정용. */
     boolean existsSettledAfter(Long userId, LocalDate date);
+
+    /** 가장 최근 정산 완료(SETTLED) 투자 1건의 헤더를 조회한다. 정산 이력이 없으면 null(최근 투자 성과 상세 소스). */
+    RecentInvestmentProjection findLatestSettledInvestment(Long userId);
+
+    /** 특정 투자의 섹터별 상세(코드/표시명/매수금/손익/가격 출처)를 매수금 내림차순으로 조회한다. */
+    List<RecentSectorProjection> findSettledSectors(Long investmentId);
 }
