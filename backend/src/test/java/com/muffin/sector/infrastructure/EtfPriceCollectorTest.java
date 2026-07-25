@@ -302,6 +302,18 @@ class EtfPriceCollectorTest {
         verify(etfPriceWriter, never()).markCloseFinalMissing(4L, DATE);
     }
 
+    @Test
+    @DisplayName("휴장일이면 종가를 FINAL_MISSING으로 종결하지 않는다")
+    void finalizeMissingClosePrices_skipsWhenNotTradingDay() {
+        when(tradingCalendarService.getCalendar(DATE)).thenReturn(nonTradingDay());
+
+        collector.finalizeMissingClosePrices(DATE);
+
+        verify(etfPriceRepository, never()).findByPriceDate(any());
+        verify(etfRepository, never()).findAll();
+        verify(etfPriceWriter, never()).markCloseFinalMissing(any(), any());
+    }
+
     private static Etf etf(Long id, String code) {
         Etf etf = Etf.create(code, "ETF " + code);
         ReflectionTestUtils.setField(etf, "id", id);

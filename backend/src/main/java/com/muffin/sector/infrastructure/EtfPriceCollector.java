@@ -73,6 +73,11 @@ public class EtfPriceCollector {
 
     /** 16:05 마지막 종가 수집 뒤, 미확보 종가를 FINAL_MISSING으로 종결한다. */
     public void finalizeMissingClosePrices(LocalDate date) {
+        if (!tradingCalendarService.getCalendar(date).tradingDay()) {
+            log.info("[close-price] market closed, skip finalization date={}", date);
+            return;
+        }
+
         Map<Long, EtfPrice> pricesByEtfId = etfPriceRepository.findByPriceDate(date).stream()
                 .collect(Collectors.toMap(EtfPrice::getEtfId, Function.identity(), (left, right) -> left));
 
