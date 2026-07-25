@@ -135,6 +135,15 @@ public class EtfPriceWriter {
     }
 
     @Transactional
+    public void markCloseFinalMissing(Long etfId, LocalDate priceDate) {
+        upsert(
+                etfId,
+                priceDate,
+                EtfPrice::markCloseFinalMissing,
+                () -> marked(etfId, priceDate, EtfPrice::markCloseFinalMissing));
+    }
+
+    @Transactional
     public void markCloseMarketClosed(Long etfId, LocalDate priceDate) {
         upsert(
                 etfId,

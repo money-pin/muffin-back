@@ -1,5 +1,6 @@
 package com.muffin.sector.presentation;
 
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 
 import com.muffin.sector.infrastructure.EtfPriceCollector;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -40,10 +42,12 @@ class EtfClosePriceSchedulerTest {
     }
 
     @Test
-    @DisplayName("16시 05분 최종 스케줄도 당일 종가 수집을 실행한다")
-    void runFinalAttempt_collectsClose() {
+    @DisplayName("16시 05분 최종 스케줄은 종가 수집 후 미확보 종가를 종결한다")
+    void runFinalAttempt_collectsCloseAndFinalizesMissingPrices() {
         scheduler.runFinalAttempt();
 
-        verify(collector).collectClose(DATE);
+        InOrder inOrder = inOrder(collector);
+        inOrder.verify(collector).collectClose(DATE);
+        inOrder.verify(collector).finalizeMissingClosePrices(DATE);
     }
 }

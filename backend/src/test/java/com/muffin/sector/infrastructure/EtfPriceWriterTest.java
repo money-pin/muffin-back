@@ -107,6 +107,30 @@ class EtfPriceWriterTest {
     }
 
     @Test
+    @DisplayName("종가 최종 미확보는 가격 없이 FINAL_MISSING 상태 행으로 기록한다")
+    void markCloseFinalMissing_createsStatusRecord() {
+        etfPriceWriter.markCloseFinalMissing(ETF_ID, PRICE_DATE);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertNull(saved.getEndPrice());
+        assertEquals(PriceCollectionStatus.FINAL_MISSING, saved.getEndPriceStatus());
+    }
+
+    @Test
+    @DisplayName("정상 종가는 FINAL_MISSING 처리로 덮어쓰지 않는다")
+    void markCloseFinalMissing_preservesSuccessfulClose() {
+        etfPriceWriter.writeClose(ETF_ID, PRICE_DATE, 10_500L);
+
+        etfPriceWriter.markCloseFinalMissing(ETF_ID, PRICE_DATE);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertEquals(10_500L, saved.getEndPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getEndPriceStatus());
+    }
+
+    @Test
     @DisplayName("재시도에서 정상 시가를 받으면 실패 상태를 SUCCESS로 갱신한다")
     void writeOpen_changesFailedStatusToSuccess() {
         etfPriceWriter.markOpenFailed(ETF_ID, PRICE_DATE);

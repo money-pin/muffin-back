@@ -102,6 +102,29 @@ class EtfPriceTest {
     }
 
     @Test
+    @DisplayName("16시 05분까지 종가가 없으면 FINAL_MISSING으로 확정할 수 있다")
+    void markCloseFinalMissing_recordsTerminalStatus() {
+        EtfPrice etfPrice = EtfPrice.pending(ETF_ID, PRICE_DATE);
+
+        etfPrice.markCloseFinalMissing();
+
+        assertNull(etfPrice.getEndPrice());
+        assertEquals(PriceCollectionStatus.FINAL_MISSING, etfPrice.getEndPriceStatus());
+    }
+
+    @Test
+    @DisplayName("휴장 종가는 FINAL_MISSING 처리로 덮어쓰지 않는다")
+    void markCloseFinalMissing_preservesMarketClosedStatus() {
+        EtfPrice etfPrice = EtfPrice.pending(ETF_ID, PRICE_DATE);
+        etfPrice.markCloseMarketClosed();
+
+        etfPrice.markCloseFinalMissing();
+
+        assertNull(etfPrice.getEndPrice());
+        assertEquals(PriceCollectionStatus.MARKET_CLOSED, etfPrice.getEndPriceStatus());
+    }
+
+    @Test
     @DisplayName("0 이하 가격은 정상 가격으로 생성할 수 없다")
     void create_rejectsNonPositivePrice() {
         assertThrows(IllegalArgumentException.class, () -> EtfPrice.open(ETF_ID, PRICE_DATE, 0L));

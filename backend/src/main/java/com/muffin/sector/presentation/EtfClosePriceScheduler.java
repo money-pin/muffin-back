@@ -30,7 +30,10 @@ public class EtfClosePriceScheduler {
             cron = "${muffin.batch.close-price.final-cron:0 5 16 * * *}",
             zone = "${muffin.batch.close-price.zone:Asia/Seoul}")
     public void runFinalAttempt() {
-        collect();
+        LocalDate date = LocalDate.now(clock);
+        log.info("[close-price] final collection triggered date={}", date);
+        etfPriceCollector.collectClose(date);
+        etfPriceCollector.finalizeMissingClosePrices(date);
     }
 
     private void collect() {
