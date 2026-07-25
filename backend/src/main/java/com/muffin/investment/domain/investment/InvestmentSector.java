@@ -71,49 +71,56 @@ public class InvestmentSector extends BaseEntity {
         this.priceDataSource = priceDataSource;
     }
 
-    // TODO : 확인필요 - 이슈 #40 자정 마감에서 종가 스냅샷을 반영하기 위해 기존 내부 엔티티 동작을 확장함.
-    /** 자정 마감 시 종가를 매수가로 스냅샷한다. 같은 가격 재반영은 허용하되 다른 가격 덮어쓰기는 거부한다. */
-    void assignBuyPrice(BigDecimal buyPrice) {
-        if (buyPrice == null || buyPrice.signum() <= 0) {
-            throw new IllegalArgumentException("매수가는 0보다 커야 합니다.");
-        }
-        if (this.buyPrice == null) {
-            this.buyPrice = buyPrice;
-            return;
-        }
-        if (this.buyPrice.compareTo(buyPrice) != 0) {
-            throw new IllegalStateException("이미 확정된 매수가와 다른 가격은 반영할 수 없습니다: sectorId=" + sectorId);
-        }
-    }
-
     /**
-     * 당일 시가(sellPrice)로 손익을 직접 계산해 반영한다(정상 정산). 루트(Investment.settleSector)를 통해서만 호출된다.
-     *
-     * <p>매수가(전일 종가 스냅샷)가 없거나 0 이하이면 거래정지(폴백)와 다른 상류 데이터 결함이므로, 조용히 0% 처리하지 않고 예외를 던져 정산을 실패시킨다. (거래정지 0% 폴백은
-     * 매도가 부재로 판단해 {@link Investment#settleSectorFallback}로 별도 처리한다.)
-     *
-     * <p>손익률 = (당일 시가 - 매수가) / 매수가 × 100, 손익금 = round(투자금 × (당일 시가 - 매수가) / 매수가)
+     * 정산 phase 1(정상): 매수가(전일 종가)·매도가(당일 시가)가 모두 확보된 섹터를 NORMAL로 스냅샷한다. 손익 계산은 phase 2({@link
+     * #computeResult})의 책임이다. 정산 집계는 EtfPrice가 아니라 이 스냅샷만 신뢰한다.
      */
-    void settle(BigDecimal sellPrice) {
+    void stampNormal(BigDecimal buyPrice, BigDecimal sellPrice) {
         if (buyPrice == null || buyPrice.signum() <= 0) {
-            throw new IllegalStateException("매수가 스냅샷이 없어 정산할 수 없습니다: sectorId=" + sectorId + ", buyPrice=" + buyPrice);
+            throw new IllegalArgumentException(
+                    "정상 정산 매수가는 0보다 커야 합니다: sectorId=" + sectorId + ", buyPrice=" + buyPrice);
         }
-        BigDecimal diff = sellPrice.subtract(buyPrice);
-        BigDecimal rate = diff.multiply(BigDecimal.valueOf(100)).divide(buyPrice, 4, RoundingMode.HALF_UP);
-        long profit = diff.multiply(BigDecimal.valueOf(amount))
-                .divide(buyPrice, 0, RoundingMode.HALF_UP)
-                .longValueExact();
+        if (sellPrice == null || sellPrice.signum() <= 0) {
+            throw new IllegalArgumentException(
+                    "정상 정산 매도가는 0보다 커야 합니다: sectorId=" + sectorId + ", sellPrice=" + sellPrice);
+        }
+        this.buyPrice = buyPrice;
         this.sellPrice = sellPrice;
-        this.profitLoss = profit;
-        this.profitLossRate = rate;
         this.priceDataSource = PriceDataSource.NORMAL;
     }
 
-    /** ETF 시세를 사용할 수 없을 때 0%(손익 0)로 정산한다. 매도가는 매수가와 동일하게 두어 변동 없음을 표현한다. */
-    void settleFallback() {
-        this.sellPrice = this.buyPrice;
-        this.profitLoss = 0L;
-        this.profitLossRate = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+    /**
+     * 정산 phase 1(폴백): 시가/종가 중 하나라도 확보하지 못한 섹터를 0%(원금 그대로, FALLBACK_ZERO)로 스냅샷한다. 손익은 어차피 0이라 매수가가 없어도(전일 종가
+     * 결손) 처리할 수 있다. 매수가가 있으면 표시용으로 남기고 매도가는 그와 동일하게 둔다.
+     */
+    void stampFallback(BigDecimal buyPrice) {
+        this.buyPrice = buyPrice;
+        this.sellPrice = buyPrice;
         this.priceDataSource = PriceDataSource.FALLBACK_ZERO;
+    }
+
+    /**
+     * 정산 phase 2: 스냅샷(매수가·매도가·출처)만으로 섹터 손익을 계산한다. EtfPrice를 보지 않는다.
+     *
+     * <p>{@code FALLBACK_ZERO}는 가격을 신뢰할 수 없어 0%로 확정된 경우라 매수가 유무와 무관하게 손익 0으로 둔다. {@code NORMAL}은 손익률 = (매도가 -
+     * 매수가) / 매수가 × 100, 손익금 = round(투자금 × (매도가 - 매수가) / 매수가).
+     */
+    void computeResult() {
+        if (priceDataSource == null) {
+            throw new IllegalStateException("정산 스냅샷 출처가 없어 손익을 계산할 수 없습니다: sectorId=" + sectorId);
+        }
+        if (priceDataSource == PriceDataSource.FALLBACK_ZERO) {
+            this.profitLoss = 0L;
+            this.profitLossRate = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+            return;
+        }
+        if (buyPrice == null || buyPrice.signum() <= 0 || sellPrice == null) {
+            throw new IllegalStateException("정상 정산 스냅샷(매수가/매도가)이 채워지지 않았습니다: sectorId=" + sectorId);
+        }
+        BigDecimal diff = sellPrice.subtract(buyPrice);
+        this.profitLossRate = diff.multiply(BigDecimal.valueOf(100)).divide(buyPrice, 4, RoundingMode.HALF_UP);
+        this.profitLoss = diff.multiply(BigDecimal.valueOf(amount))
+                .divide(buyPrice, 0, RoundingMode.HALF_UP)
+                .longValueExact();
     }
 }

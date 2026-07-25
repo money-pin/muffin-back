@@ -2,7 +2,7 @@ package com.muffin.investment.presentation;
 
 import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.global.apiPayload.code.GeneralSuccessCode;
-import com.muffin.investment.application.SettlementQueryService;
+import com.muffin.investment.application.settlement.SettlementQueryService;
 import com.muffin.investment.presentation.dto.SettlementResultResponse;
 import com.muffin.investment.presentation.swagger.SettlementApi;
 import io.swagger.v3.oas.annotations.Parameter;

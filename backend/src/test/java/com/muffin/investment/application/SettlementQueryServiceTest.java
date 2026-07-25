@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.muffin.investment.application.projection.SettlementResultProjection;
+import com.muffin.investment.application.settlement.SettlementQueryRepository;
+import com.muffin.investment.application.settlement.SettlementQueryService;
 import com.muffin.investment.domain.investment.enums.SettlementStatus;
 import com.muffin.investment.presentation.dto.SettlementReason;
 import com.muffin.investment.presentation.dto.SettlementResultResponse;

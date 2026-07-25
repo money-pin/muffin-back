@@ -1,7 +1,7 @@
 package com.muffin.investment.presentation;
 
 import com.muffin.global.event.EtfPricesLoadedEvent;
-import com.muffin.investment.application.SettlementCommandService;
+import com.muffin.investment.application.settlement.SettlementCommandService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

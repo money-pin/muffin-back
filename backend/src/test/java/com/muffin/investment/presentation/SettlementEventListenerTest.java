@@ -5,7 +5,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 import com.muffin.global.event.EtfPricesLoadedEvent;
-import com.muffin.investment.application.SettlementCommandService;
+import com.muffin.investment.application.settlement.SettlementCommandService;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

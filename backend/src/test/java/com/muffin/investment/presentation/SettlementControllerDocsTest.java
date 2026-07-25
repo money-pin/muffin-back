@@ -8,7 +8,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.response
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.muffin.investment.application.SettlementQueryService;
+import com.muffin.investment.application.settlement.SettlementQueryService;
 import com.muffin.investment.presentation.dto.SettlementReason;
 import com.muffin.investment.presentation.dto.SettlementResultResponse;
 import java.math.BigDecimal;

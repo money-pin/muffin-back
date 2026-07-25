@@ -1,7 +1,7 @@
 package com.muffin.investment.infrastructure;
 
-import com.muffin.investment.application.SettlementQueryRepository;
 import com.muffin.investment.application.projection.SettlementResultProjection;
+import com.muffin.investment.application.settlement.SettlementQueryRepository;
 import com.muffin.investment.domain.investment.QInvestment;
 import com.muffin.investment.domain.userasset.QUserAsset;
 import com.querydsl.core.types.Projections;

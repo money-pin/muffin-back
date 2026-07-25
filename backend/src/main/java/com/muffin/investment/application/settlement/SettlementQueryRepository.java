@@ -1,4 +1,4 @@
-package com.muffin.investment.application;
+package com.muffin.investment.application.settlement;
 
 import com.muffin.investment.application.projection.SettlementResultProjection;
 import java.time.LocalDate;

@@ -9,11 +9,6 @@ import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
 import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
-import com.muffin.sector.domain.etfprice.EtfPrice;
-import com.muffin.sector.domain.etfprice.EtfPriceRepository;
-import com.muffin.sector.domain.sector.Sector;
-import com.muffin.sector.domain.sector.SectorRepository;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,6 +23,7 @@ import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
+/** 자정 마감 오케스트레이터는 거래일 여부만 확인하고 사용자별 동결을 위임한다(가격 스냅샷은 정산 phase 1의 책임). */
 @ExtendWith(MockitoExtension.class)
 class InvestmentFinalizationServiceTest {
 
@@ -41,24 +37,17 @@ class InvestmentFinalizationServiceTest {
     private UserAssetRepository userAssetRepository;
 
     @Mock
-    private SectorRepository sectorRepository;
-
-    @Mock
-    private EtfPriceRepository etfPriceRepository;
-
-    @Mock
     private InvestmentFinalizationProcessor processor;
 
     private InvestmentFinalizationService service;
 
     @BeforeEach
     void setUp() {
-        service = new InvestmentFinalizationService(
-                tradingCalendarService, userAssetRepository, sectorRepository, etfPriceRepository, processor);
+        service = new InvestmentFinalizationService(tradingCalendarService, userAssetRepository, processor);
     }
 
     @Test
-    @DisplayName("전날이 휴장일이면 사용자와 가격을 조회하지 않고 마감을 건너뛴다")
+    @DisplayName("전날이 휴장일이면 사용자를 조회하지 않고 마감을 건너뛴다")
     void finalizeInvestments_skipsMarketClosed() {
         when(tradingCalendarService.getCalendar(INVEST_DATE))
                 .thenReturn(new TradingCalendar(INVEST_DATE, false, INVEST_DATE.minusDays(3), INVEST_DATE.plusDays(1)));
@@ -71,7 +60,7 @@ class InvestmentFinalizationServiceTest {
     }
 
     @Test
-    @DisplayName("거래일이면 마감 전에 생성된 사용자에게 종가 스냅샷을 전달한다")
+    @DisplayName("거래일이면 마감 전에 생성된 사용자를 동결 처리한다")
     void finalizeInvestments_processesEligibleAssets() {
         when(tradingCalendarService.getCalendar(INVEST_DATE))
                 .thenReturn(new TradingCalendar(INVEST_DATE, true, INVEST_DATE.minusDays(3), INVEST_DATE.plusDays(1)));
@@ -80,21 +69,16 @@ class InvestmentFinalizationServiceTest {
         var pageRequest = PageRequest.of(0, 500, Sort.by("id").ascending());
         when(userAssetRepository.findByCreatedAtBefore(INVEST_DATE.plusDays(1).atStartOfDay(), pageRequest))
                 .thenReturn(new SliceImpl<>(List.of(asset), pageRequest, false));
-        Sector sector = Sector.create(1L, 100L, "반도체", "", "SEMICONDUCTOR", 1);
-        ReflectionTestUtils.setField(sector, "id", 200L);
-        when(sectorRepository.findAll()).thenReturn(List.of(sector));
-        when(etfPriceRepository.findByPriceDate(INVEST_DATE))
-                .thenReturn(List.of(EtfPrice.create(100L, INVEST_DATE, null, 12_345L)));
 
         InvestmentFinalizationResult result = service.finalizeInvestments(INVEST_DATE, FINALIZED_AT);
 
         assertEquals(1, result.targetCount());
         assertEquals(1, result.successCount());
-        verify(processor)
-                .finalizeUser(10L, INVEST_DATE, FINALIZED_AT, java.util.Map.of(200L, BigDecimal.valueOf(12_345)));
+        verify(processor).finalizeUser(10L, INVEST_DATE, FINALIZED_AT);
     }
 
     @Test
+    @DisplayName("여러 슬라이스에 걸친 사용자를 모두 마감 처리한다")
     void finalizeInvestments_processesAllSlices() {
         when(tradingCalendarService.getCalendar(INVEST_DATE))
                 .thenReturn(new TradingCalendar(INVEST_DATE, true, INVEST_DATE.minusDays(3), INVEST_DATE.plusDays(1)));
@@ -108,15 +92,13 @@ class InvestmentFinalizationServiceTest {
                 .thenReturn(new SliceImpl<>(List.of(first), firstPage, true));
         when(userAssetRepository.findByCreatedAtBefore(INVEST_DATE.plusDays(1).atStartOfDay(), secondPage))
                 .thenReturn(new SliceImpl<>(List.of(second), secondPage, false));
-        when(sectorRepository.findAll()).thenReturn(List.of());
-        when(etfPriceRepository.findByPriceDate(INVEST_DATE)).thenReturn(List.of());
 
         InvestmentFinalizationResult result = service.finalizeInvestments(INVEST_DATE, FINALIZED_AT);
 
         assertEquals(2, result.targetCount());
         assertEquals(2, result.successCount());
         assertEquals(0, result.failureCount());
-        verify(processor).finalizeUser(10L, INVEST_DATE, FINALIZED_AT, java.util.Map.of());
-        verify(processor).finalizeUser(20L, INVEST_DATE, FINALIZED_AT, java.util.Map.of());
+        verify(processor).finalizeUser(10L, INVEST_DATE, FINALIZED_AT);
+        verify(processor).finalizeUser(20L, INVEST_DATE, FINALIZED_AT);
     }
 }

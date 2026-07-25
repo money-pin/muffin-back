@@ -1,7 +1,7 @@
 package com.muffin.investment.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,10 +12,8 @@ import com.muffin.investment.domain.investment.enums.InvestmentStatus;
 import com.muffin.investment.domain.investment.enums.SettlementStatus;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+/** 자정 마감은 투자 구성을 '동결'하는 것만 담당한다(가격 스냅샷은 정산 phase 1의 책임). */
 @ExtendWith(MockitoExtension.class)
 class InvestmentFinalizationProcessorTest {
 
@@ -51,33 +50,18 @@ class InvestmentFinalizationProcessorTest {
     }
 
     @Test
-    @DisplayName("확정 투자에 종가를 매수가로 반영하고 구성을 동결한다")
-    void finalizeUser_assignsClosePrice() {
+    @DisplayName("확정 투자를 동결하고 가격은 건드리지 않는다")
+    void finalizeUser_freezesConfirmed() {
         Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
         investment.addSector(100L, 2, 200_000L, null);
         when(investmentRepository.findWithSectorsForUpdate(USER_ID, INVEST_DATE))
                 .thenReturn(Optional.of(investment));
 
-        processor.finalizeUser(USER_ASSET_ID, INVEST_DATE, FINALIZED_AT, Map.of(100L, BigDecimal.valueOf(12_345)));
+        processor.finalizeUser(USER_ASSET_ID, INVEST_DATE, FINALIZED_AT);
 
-        assertEquals(
-                BigDecimal.valueOf(12_345), investment.getSectors().getFirst().getBuyPrice());
         assertEquals(FINALIZED_AT, investment.getFinalizedAt());
+        assertNull(investment.getSectors().getFirst().getBuyPrice());
         assertEquals(SettlementStatus.PENDING, investment.getSettlementStatus());
-    }
-
-    @Test
-    @DisplayName("종가가 없으면 투자는 동결하고 FAILED 재처리 대상으로 유지한다")
-    void finalizeUser_marksFailedWhenCloseMissing() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
-        investment.addSector(100L, 2, 200_000L, null);
-        when(investmentRepository.findWithSectorsForUpdate(USER_ID, INVEST_DATE))
-                .thenReturn(Optional.of(investment));
-
-        processor.finalizeUser(USER_ASSET_ID, INVEST_DATE, FINALIZED_AT, Map.of());
-
-        assertEquals(FINALIZED_AT, investment.getFinalizedAt());
-        assertEquals(SettlementStatus.FAILED, investment.getSettlementStatus());
     }
 
     @Test
@@ -88,7 +72,7 @@ class InvestmentFinalizationProcessorTest {
         when(investmentRepository.save(org.mockito.ArgumentMatchers.any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        processor.finalizeUser(USER_ASSET_ID, INVEST_DATE, FINALIZED_AT, Map.of());
+        processor.finalizeUser(USER_ASSET_ID, INVEST_DATE, FINALIZED_AT);
 
         var captor = org.mockito.ArgumentCaptor.forClass(Investment.class);
         verify(investmentRepository).save(captor.capture());
@@ -97,20 +81,17 @@ class InvestmentFinalizationProcessorTest {
     }
 
     @Test
-    @DisplayName("이미 매수가까지 마감된 투자는 재실행해도 변경하지 않는다")
-    void finalizeUser_skipsCompletedFinalization() {
+    @DisplayName("이미 동결된 투자는 재실행해도 finalizedAt을 바꾸지 않는다")
+    void finalizeUser_skipsAlreadyFrozen() {
         Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
         investment.addSector(100L, 2, 200_000L, null);
-        investment.finalizeInvestment(Map.of(100L, BigDecimal.valueOf(12_345)), FINALIZED_AT);
+        investment.finalizeInvestment(FINALIZED_AT);
         when(investmentRepository.findWithSectorsForUpdate(USER_ID, INVEST_DATE))
                 .thenReturn(Optional.of(investment));
 
-        processor.finalizeUser(
-                USER_ASSET_ID, INVEST_DATE, FINALIZED_AT.plusMinutes(10), Map.of(100L, BigDecimal.valueOf(99_999)));
+        processor.finalizeUser(USER_ASSET_ID, INVEST_DATE, FINALIZED_AT.plusMinutes(10));
 
-        assertEquals(
-                BigDecimal.valueOf(12_345), investment.getSectors().getFirst().getBuyPrice());
-        assertFalse(investment.hasMissingBuyPrice());
+        assertEquals(FINALIZED_AT, investment.getFinalizedAt());
         verify(investmentRepository, never()).save(investment);
     }
 }

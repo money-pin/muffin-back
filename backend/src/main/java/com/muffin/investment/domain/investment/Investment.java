@@ -23,7 +23,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -134,14 +133,14 @@ public class Investment extends BaseEntity {
         findSector(sectorId).applyResult(sellPrice, profitLoss, profitLossRate, priceDataSource);
     }
 
-    /** 당일 시가(sellPrice)로 섹터 손익을 계산해 반영한다(정상 정산). 계산 규칙은 도메인(InvestmentSector)에 있다. */
-    public void settleSector(Long sectorId, BigDecimal sellPrice) {
-        findSector(sectorId).settle(sellPrice);
+    /** 정산 phase 1(정상): 매수가·매도가가 모두 확보된 섹터를 NORMAL로 스냅샷한다. 손익 계산은 phase 2({@link #computeSectorResults})에서 한다. */
+    public void stampSectorNormal(Long sectorId, BigDecimal buyPrice, BigDecimal sellPrice) {
+        findSector(sectorId).stampNormal(buyPrice, sellPrice);
     }
 
-    /** ETF 시세를 사용할 수 없는 섹터를 0%(FALLBACK_ZERO)로 정산한다. */
-    public void settleSectorFallback(Long sectorId) {
-        findSector(sectorId).settleFallback();
+    /** 정산 phase 1(폴백): 시가/종가 미확보 섹터를 0%(원금 그대로, FALLBACK_ZERO)로 스냅샷한다. 매수가는 있으면 표시용으로 남긴다(없으면 null 허용). */
+    public void stampSectorFallback(Long sectorId, BigDecimal buyPrice) {
+        findSector(sectorId).stampFallback(buyPrice);
     }
 
     private InvestmentSector findSector(Long sectorId) {
@@ -151,12 +150,17 @@ public class Investment extends BaseEntity {
                 .orElseThrow(() -> new IllegalArgumentException("해당 섹터 투자 내역이 없습니다: sectorId=" + sectorId));
     }
 
-    /** 정산 반영: 모든 섹터 결과가 채워진 뒤 호출해 총 손익/손익률을 재계산하고 상태를 SETTLED로 만든다. 미정산 섹터가 있으면 완료할 수 없다. */
+    /** 정산 phase 2: 각 섹터를 스냅샷(매수가·매도가·출처)으로 손익 계산한다. {@link #settle} 직전에 호출한다. */
+    public void computeSectorResults() {
+        sectors.forEach(InvestmentSector::computeResult);
+    }
+
+    /** 정산 phase 2: 각 섹터 손익이 계산된 뒤 호출해 총 손익/손익률을 집계하고 상태를 SETTLED로 만든다. 미계산 섹터가 있으면 완료할 수 없다. */
     public void settle(LocalDateTime settledAt) {
         long profit = 0L;
         for (InvestmentSector sector : sectors) {
             if (sector.getProfitLoss() == null) {
-                throw new IllegalStateException("정산되지 않은 섹터가 있어 정산을 완료할 수 없습니다: sectorId=" + sector.getSectorId());
+                throw new IllegalStateException("손익이 계산되지 않은 섹터가 있어 정산을 완료할 수 없습니다: sectorId=" + sector.getSectorId());
             }
             profit += sector.getProfitLoss();
         }
@@ -175,21 +179,13 @@ public class Investment extends BaseEntity {
         this.settlementStatus = SettlementStatus.FAILED;
     }
 
-    /** 자정 마감 시 최종 투자 구성을 동결한다. 이미 동결된 경우에도 누락된 매수가는 재반영할 수 있다. */
-    public void finalizeInvestment(Map<Long, BigDecimal> buyPrices, LocalDateTime finalizedAt) {
-        for (InvestmentSector sector : sectors) {
-            BigDecimal buyPrice = buyPrices.get(sector.getSectorId());
-            if (buyPrice != null) {
-                sector.assignBuyPrice(buyPrice);
-            }
-        }
+    /**
+     * 자정 마감 시 최종 투자 구성을 동결한다(멱등). 가격 스냅샷(매수가/매도가)은 정산 배치 phase 1의 책임이므로 여기서는 다루지 않는다. 동결 이후 PATCH를 막는 컷오프 역할만
+     * 한다.
+     */
+    public void finalizeInvestment(LocalDateTime finalizedAt) {
         if (this.finalizedAt == null) {
             this.finalizedAt = finalizedAt;
-        }
-        if (sectors.stream().anyMatch(sector -> sector.getBuyPrice() == null)) {
-            failSettlement();
-        } else if (settlementStatus == SettlementStatus.FAILED) {
-            settlementStatus = SettlementStatus.PENDING;
         }
     }
 
@@ -201,10 +197,6 @@ public class Investment extends BaseEntity {
         if (this.finalizedAt == null) {
             this.finalizedAt = finalizedAt;
         }
-    }
-
-    public boolean hasMissingBuyPrice() {
-        return sectors.stream().anyMatch(sector -> sector.getBuyPrice() == null);
     }
 
     /** 정산 창(다음 거래일)을 놓친 확정 투자를 취소한다. 자산에 영향을 주지 않으며 손익 0으로 종료한다. */
