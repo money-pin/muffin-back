@@ -841,6 +841,54 @@ include::{snippets}/term-get-not-found/response-fields.adoc[]
 |404|CONTENT_404_002|존재하지 않는 용어입니다.|해당 `termId`의 용어가 없음
 |===
 
+[[term-save]]
+== 용어 저장 / 저장 해제 (CONTENT-05)
+
+뉴스 본문 하이라이트 또는 용어 바텀시트에서 선택한 용어를 사용자의 학습 저장소에 저장하거나 저장 해제한다.
+두 API 모두 **멱등** 연산이라 같은 요청을 여러 번 보내도 최종 저장 상태가 같다.
+
+* `POST /api/terms/{termId}/save`: 용어 저장. 이미 저장한 용어에 다시 요청해도 기존 저장 상태를 유지한 채 성공한다.
+* `DELETE /api/terms/{termId}/save`: 용어 저장 해제. 저장하지 않은 용어에 요청해도 성공하며 `isSaved=false`를 반환한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
+
+=== 저장 - 성공
+
+include::{snippets}/term-save-success/http-request.adoc[]
+include::{snippets}/term-save-success/request-headers.adoc[]
+include::{snippets}/term-save-success/path-parameters.adoc[]
+include::{snippets}/term-save-success/http-response.adoc[]
+include::{snippets}/term-save-success/response-fields.adoc[]
+
+=== 저장 - 실패(존재하지 않는 용어)
+
+include::{snippets}/term-save-not-found/http-response.adoc[]
+include::{snippets}/term-save-not-found/response-fields.adoc[]
+
+=== 저장 해제 - 성공
+
+include::{snippets}/term-unsave-success/http-request.adoc[]
+include::{snippets}/term-unsave-success/request-headers.adoc[]
+include::{snippets}/term-unsave-success/path-parameters.adoc[]
+include::{snippets}/term-unsave-success/http-response.adoc[]
+include::{snippets}/term-unsave-success/response-fields.adoc[]
+
+=== 저장 해제 - 실패(존재하지 않는 용어)
+
+include::{snippets}/term-unsave-not-found/http-response.adoc[]
+include::{snippets}/term-unsave-not-found/response-fields.adoc[]
+
+=== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|403|AUTH_403_001|요청이 거부되었습니다.|온보딩을 완료하지 않은 사용자
+|404|CONTENT_404_002|존재하지 않는 용어입니다.|해당 `termId`의 용어가 없음
+|===
+
 [[news-scrap]]
 == 뉴스 스크랩 / 해제 (CONTENT-06)
 

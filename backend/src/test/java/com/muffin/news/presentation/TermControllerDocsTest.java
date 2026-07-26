@@ -9,14 +9,19 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWit
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.news.application.exception.NewsErrorCode;
 import com.muffin.news.application.exception.NewsException;
+import com.muffin.news.application.term.TermCommandService;
 import com.muffin.news.application.term.TermQueryService;
 import com.muffin.news.presentation.dto.response.TermResponse;
+import com.muffin.news.presentation.dto.response.TermSaveResponse;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -88,6 +93,96 @@ class TermControllerDocsTest {
                                 fieldWithPath("errorDetail").description("에러 상세 메시지 목록"))));
     }
 
+    @Test
+    @DisplayName("용어 저장 성공 문서화")
+    void documentSaveSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
+        TermSaveResponse response = new TermSaveResponse(12L, "기준금리", true, LocalDateTime.of(2026, 7, 26, 13, 30));
+        MockMvc mockMvc = mockMvcOf(
+                stubReturning(new TermResponse(12L, "기준금리", "설명", false)),
+                commandReturning(response),
+                restDocumentation);
+
+        mockMvc.perform(post("/api/terms/{termId}/save", 12L).header("Authorization", AUTHORIZATION))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "term-save-success",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        pathParameters(parameterWithName("termId").description("저장할 용어 ID")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.termId").description("경제 용어 식별자"),
+                                fieldWithPath("result.term").description("경제 용어명"),
+                                fieldWithPath("result.isSaved").description("저장 여부(true)"),
+                                fieldWithPath("result.savedAt").description("저장 시각"))));
+    }
+
+    @Test
+    @DisplayName("용어 저장 실패(용어 없음) 문서화")
+    void documentSaveNotFound(RestDocumentationContextProvider restDocumentation) throws Exception {
+        MockMvc mockMvc = mockMvcOf(
+                stubReturning(new TermResponse(12L, "기준금리", "설명", false)),
+                commandThrowingNotFound(),
+                restDocumentation);
+
+        mockMvc.perform(post("/api/terms/{termId}/save", 999L).header("Authorization", AUTHORIZATION))
+                .andExpect(status().isNotFound())
+                .andDo(document(
+                        "term-save-not-found",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        pathParameters(parameterWithName("termId").description("저장할 용어 ID")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부(false)"),
+                                fieldWithPath("code").description("에러 코드(CONTENT_404_002)"),
+                                fieldWithPath("message").description("에러 메시지"),
+                                fieldWithPath("errorDetail").description("에러 상세 메시지 목록"))));
+    }
+
+    @Test
+    @DisplayName("용어 저장 해제 성공 문서화")
+    void documentUnsaveSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
+        TermSaveResponse response = new TermSaveResponse(12L, "기준금리", false, null);
+        MockMvc mockMvc = mockMvcOf(
+                stubReturning(new TermResponse(12L, "기준금리", "설명", true)),
+                commandReturning(response),
+                restDocumentation);
+
+        mockMvc.perform(delete("/api/terms/{termId}/save", 12L).header("Authorization", AUTHORIZATION))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "term-unsave-success",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        pathParameters(parameterWithName("termId").description("저장 해제할 용어 ID")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.termId").description("경제 용어 식별자"),
+                                fieldWithPath("result.term").description("경제 용어명"),
+                                fieldWithPath("result.isSaved").description("저장 여부(false)"),
+                                fieldWithPath("result.savedAt").description("저장 해제 상태이므로 null"))));
+    }
+
+    @Test
+    @DisplayName("용어 저장 해제 실패(용어 없음) 문서화")
+    void documentUnsaveNotFound(RestDocumentationContextProvider restDocumentation) throws Exception {
+        MockMvc mockMvc = mockMvcOf(
+                stubReturning(new TermResponse(12L, "기준금리", "설명", true)), commandThrowingNotFound(), restDocumentation);
+
+        mockMvc.perform(delete("/api/terms/{termId}/save", 999L).header("Authorization", AUTHORIZATION))
+                .andExpect(status().isNotFound())
+                .andDo(document(
+                        "term-unsave-not-found",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        pathParameters(parameterWithName("termId").description("저장 해제할 용어 ID")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부(false)"),
+                                fieldWithPath("code").description("에러 코드(CONTENT_404_002)"),
+                                fieldWithPath("message").description("에러 메시지"),
+                                fieldWithPath("errorDetail").description("에러 상세 메시지 목록"))));
+    }
+
     private TermQueryService stubReturning(TermResponse response) {
         return new TermQueryService(null, null, null) {
             @Override
@@ -107,7 +202,14 @@ class TermControllerDocsTest {
     }
 
     private MockMvc mockMvcOf(TermQueryService stubService, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(new TermController(stubService))
+        return mockMvcOf(stubService, commandStub(), restDocumentation);
+    }
+
+    private MockMvc mockMvcOf(
+            TermQueryService stubService,
+            TermCommandService commandStub,
+            RestDocumentationContextProvider restDocumentation) {
+        return MockMvcBuilders.standaloneSetup(new TermController(stubService, commandStub))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)
@@ -115,5 +217,37 @@ class TermControllerDocsTest {
                         .withRequestDefaults(prettyPrint())
                         .withResponseDefaults(prettyPrint()))
                 .build();
+    }
+
+    private TermCommandService commandStub() {
+        return new TermCommandService(null, null, null);
+    }
+
+    private TermCommandService commandReturning(TermSaveResponse response) {
+        return new TermCommandService(null, null, null) {
+            @Override
+            public TermSaveResponse saveTerm(Long userId, Long termId) {
+                return response;
+            }
+
+            @Override
+            public TermSaveResponse unsaveTerm(Long userId, Long termId) {
+                return response;
+            }
+        };
+    }
+
+    private TermCommandService commandThrowingNotFound() {
+        return new TermCommandService(null, null, null) {
+            @Override
+            public TermSaveResponse saveTerm(Long userId, Long termId) {
+                throw new NewsException(NewsErrorCode.NEWS_TERM_NOT_FOUND);
+            }
+
+            @Override
+            public TermSaveResponse unsaveTerm(Long userId, Long termId) {
+                throw new NewsException(NewsErrorCode.NEWS_TERM_NOT_FOUND);
+            }
+        };
     }
 }
