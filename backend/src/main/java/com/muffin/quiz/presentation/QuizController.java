@@ -6,6 +6,8 @@ import com.muffin.quiz.application.QuizCommandService;
 import com.muffin.quiz.application.QuizQueryService;
 import com.muffin.quiz.presentation.dto.request.QuizAttemptRequest;
 import com.muffin.quiz.presentation.dto.response.QuizAttemptResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryDetailResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryListResponse;
 import com.muffin.quiz.presentation.dto.response.QuizResultResponse;
 import com.muffin.quiz.presentation.dto.response.TodayQuizResponse;
 import com.muffin.quiz.presentation.swagger.QuizApi;
@@ -37,6 +39,19 @@ public class QuizController implements QuizApi {
     @GetMapping("/today/result")
     public ApiResponse<QuizResultResponse> getTodayQuizResult(@AuthenticationPrincipal Long userId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizQueryService.getTodayQuizResult(userId));
+    }
+
+    @Override
+    @GetMapping("/history")
+    public ApiResponse<QuizHistoryListResponse> getQuizHistories(@AuthenticationPrincipal Long userId) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizQueryService.getQuizHistories(userId));
+    }
+
+    @Override
+    @GetMapping("/history/{date}")
+    public ApiResponse<QuizHistoryDetailResponse> getQuizHistoryDetail(
+            @AuthenticationPrincipal Long userId, @PathVariable String date) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizQueryService.getQuizHistoryDetail(userId, date));
     }
 
     @Override
