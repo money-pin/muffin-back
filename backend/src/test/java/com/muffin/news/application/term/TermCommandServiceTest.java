@@ -22,6 +22,7 @@ import com.muffin.user.domain.UserRepository;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class TermCommandServiceTest {
@@ -73,6 +74,25 @@ class TermCommandServiceTest {
         assertThat(response.isSaved()).isTrue();
         assertThat(response.savedAt()).isEqualTo(existing.getSavedAt());
         verify(userSavedTermRepository, never()).save(any(UserSavedTerm.class));
+    }
+
+    @Test
+    void saveTerm_returnsExistingSavedStatusWhenConcurrentInsertWins() {
+        TermDictionary term = term(TERM_ID, "기준금리");
+        UserSavedTerm existing = savedTerm(USER_ID, TERM_ID, LocalDateTime.of(2026, 7, 25, 10, 0));
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(onboardingCompletedUser()));
+        when(termDictionaryRepository.findById(TERM_ID)).thenReturn(Optional.of(term));
+        when(userSavedTermRepository.findByUserIdAndTermId(USER_ID, TERM_ID))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(existing));
+        when(userSavedTermRepository.save(any(UserSavedTerm.class)))
+                .thenThrow(new DataIntegrityViolationException("uk_user_saved_term_user_term"));
+
+        TermSaveResponse response = termCommandService.saveTerm(USER_ID, TERM_ID);
+
+        assertThat(response.isSaved()).isTrue();
+        assertThat(response.savedAt()).isEqualTo(existing.getSavedAt());
     }
 
     @Test

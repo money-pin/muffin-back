@@ -12,6 +12,7 @@ import com.muffin.news.presentation.dto.response.TermSaveResponse;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +32,7 @@ public class TermCommandService {
 
         UserSavedTerm savedTerm = userSavedTermRepository
                 .findByUserIdAndTermId(userId, termId)
-                .orElseGet(() -> userSavedTermRepository.save(UserSavedTerm.create(userId, termId)));
+                .orElseGet(() -> saveNewTerm(userId, termId));
 
         return new TermSaveResponse(term.getId(), term.getTerm(), true, savedTerm.getSavedAt());
     }
@@ -45,6 +46,15 @@ public class TermCommandService {
         userSavedTermRepository.findByUserIdAndTermId(userId, termId).ifPresent(userSavedTermRepository::delete);
 
         return new TermSaveResponse(term.getId(), term.getTerm(), false, null);
+    }
+
+    private UserSavedTerm saveNewTerm(Long userId, Long termId) {
+        try {
+            return userSavedTermRepository.save(UserSavedTerm.create(userId, termId));
+        } catch (DataIntegrityViolationException exception) {
+            // 동시 저장 요청이 같은 용어를 먼저 저장한 경우, 유니크 제약 예외를 기존 저장 상태 반환으로 수렴시킨다.
+            return userSavedTermRepository.findByUserIdAndTermId(userId, termId).orElseThrow(() -> exception);
+        }
     }
 
     private void validateUser(Long userId) {
