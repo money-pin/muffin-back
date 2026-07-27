@@ -51,8 +51,8 @@ class WeeklyRankingAggregationRepositoryTest {
     @Test
     @DisplayName("정산 완료된 활성 사용자 투자만 사용자별로 합산한다")
     void findSettledCandidates_aggregatesActiveSettledInvestmentsOnly() {
-        User activeUser = saveUser("active", "1111-2222-3333-4444");
-        User suspendedUser = saveUser("suspended", "5555-2222-3333-4444");
+        User activeUser = saveUser("active", "11111111-2222-4333-8444-555555555555");
+        User suspendedUser = saveUser("suspended", "22222222-3333-4444-8555-666666666666");
         suspendedUser.suspend();
         persistSettledInvestment(activeUser, WEEK_START_DATE, 100_000L, 5_000L);
         persistSettledInvestment(activeUser, WEEK_START_DATE.plusDays(1), 200_000L, 8_000L);
@@ -72,7 +72,7 @@ class WeeklyRankingAggregationRepositoryTest {
     @Test
     @DisplayName("확정 투자 중 PENDING 또는 FAILED가 있으면 랭킹 집계를 보류하고, 스냅샷 존재 여부를 조회한다")
     void hasUnsettledConfirmedInvestment_andExistsByWeekStartDate() {
-        User user = saveUser("ranker", "9999-2222-3333-4444");
+        User user = saveUser("ranker", "33333333-4444-4555-8666-777777777777");
         Investment pending = Investment.confirm(user.getUserId(), 1L, WEEK_START_DATE);
         pending.addSector(1L, 1, 100_000L, BigDecimal.valueOf(100));
         investmentRepository.saveAndFlush(pending);
