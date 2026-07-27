@@ -10,7 +10,7 @@ spring:
         format_sql: true
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    locations: classpath:db
     baseline-on-migrate: false
 
 springdoc:
