@@ -104,8 +104,7 @@ class MyPageHomeControllerDocsTest {
                                         .description("요일(SUN~SAT)"),
                                 fieldWithPath("result.streak.weeklyActivity[].participated")
                                         .description("해당 요일 참여 여부"),
-                                fieldWithPath("result.recentNews[].newsSummaryId")
-                                        .description("뉴스 ID"),
+                                fieldWithPath("result.recentNews[].newsId").description("뉴스 ID"),
                                 fieldWithPath("result.recentNews[].title").description("뉴스 제목"),
                                 fieldWithPath("result.recentNews[].thumbnailUrl")
                                         .description("썸네일 URL"),
