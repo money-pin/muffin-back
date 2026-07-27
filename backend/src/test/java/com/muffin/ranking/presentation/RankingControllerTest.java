@@ -1,8 +1,10 @@
 package com.muffin.ranking.presentation;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -58,6 +60,21 @@ class RankingControllerTest {
                 .andExpect(jsonPath("$.result.rankingStatus").value("EMPTY"))
                 .andExpect(jsonPath("$.result.myRank.participated").value(false))
                 .andExpect(jsonPath("$.result.top10").isArray());
+
+        verify(weeklyRankingQueryService).getWeeklyRanking(1L);
+    }
+
+    @Test
+    @DisplayName("집계 중에는 내 순위를 null로 명시해 반환한다")
+    void getWeeklyRanking_includesNullMyRankWhenCalculating() throws Exception {
+        WeeklyRankingResponse.WeekInfo weekInfo = new WeeklyRankingResponse.WeekInfo(
+                LocalDate.of(2026, 7, 20), LocalDate.of(2026, 7, 26), 30, "7월 3주차 기준");
+        when(weeklyRankingQueryService.getWeeklyRanking(1L)).thenReturn(WeeklyRankingResponse.calculating(weekInfo));
+
+        mockMvc.perform(get("/api/rankings/weekly"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.rankingStatus").value("CALCULATING"))
+                .andExpect(content().string(containsString("\"myRank\":null")));
 
         verify(weeklyRankingQueryService).getWeeklyRanking(1L);
     }

@@ -14,7 +14,7 @@ public record WeeklyRankingResponse(
         LocalDate weekEndDate,
         int weekOfYear,
         String weekLabel,
-        MyRankResponse myRank,
+        @JsonInclude(JsonInclude.Include.ALWAYS) MyRankResponse myRank,
         List<Top10Response> top10) {
 
     public static WeeklyRankingResponse ready(WeekInfo weekInfo, MyRankResponse myRank, List<Top10Response> top10) {

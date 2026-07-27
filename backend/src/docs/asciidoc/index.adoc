@@ -955,6 +955,12 @@ include::{snippets}/ranking-weekly/http-request.adoc[]
 include::{snippets}/ranking-weekly/http-response.adoc[]
 include::{snippets}/ranking-weekly/response-fields.adoc[]
 
+=== 상태별 응답 규칙
+
+* `READY`: `myRank`는 참여 여부와 순위를 담은 객체다. 지난주 투자에 참여하지 않았다면 `participated=false`를 반환한다.
+* `CALCULATING`: 랭킹 집계가 진행 중이므로 참여 여부를 판단하지 않는다. `myRank`는 명시적으로 `null`이며 `top10`은 빈 배열이다.
+* `EMPTY`: 집계 가능한 참여 투자가 없으므로 `myRank.participated=false`를 반환하고 `top10`은 빈 배열이다.
+
 [[mypage-recent-news]]
 == 최근 읽은 뉴스 목록 조회 (MYPAGE-04-2)
 
