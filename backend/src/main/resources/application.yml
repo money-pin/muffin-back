@@ -15,8 +15,7 @@ spring:
 
 springdoc:
   swagger-ui:
-    tags-sorter: alpha
-    operations-sorter: method
+
 
 toss:
   api:

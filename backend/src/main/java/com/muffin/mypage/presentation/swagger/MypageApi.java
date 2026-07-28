@@ -13,7 +13,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 @Tag(name = "Mypage", description = "마이페이지 API")
 public interface MypageApi {
 
-    @Operation(summary = "마이페이지 홈 조회 (MYPAGE-01)", description = "닉네임, 캐릭터, 연속 참여(스트릭)/이번 주 활동, 최근 읽은 뉴스(최대 3건)를 한 번에 조회한다.")
+    @Operation(
+            summary = "마이페이지 홈 조회 (MYPAGE-01)",
+            description = "닉네임, 캐릭터, 연속 참여(스트릭)/이번 주 활동, 최근 읽은 뉴스(최대 3건)를 한 번에 조회한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(

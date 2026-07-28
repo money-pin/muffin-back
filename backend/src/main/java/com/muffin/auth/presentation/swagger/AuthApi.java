@@ -50,25 +50,6 @@ public interface AuthApi {
     ApiResponse<LoginResponse> loginLocal(LocalLoginRequest request, HttpServletResponse response);
 
     @Operation(
-            summary = "구글 로그인/가입",
-            description = "구글 ID Token을 검증해 기존 계정이면 로그인, 없으면 자동 가입한다(서비스 약관은 자동 동의로 간주). "
-                    + "access token은 응답 바디로, refresh token은 HttpOnly Cookie로 발급한다. "
-                    + "기능명세서(v3.1)에 없는 확장 기능이라 별도 명세 ID가 없다.")
-    @ApiResponses({
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인/가입 성공"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "401",
-                description = "유효하지 않은 구글 로그인 토큰입니다. (AUTH_401_004)"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "403",
-                description = "탈퇴한 계정입니다.(AUTH_403_002) 또는 정지된 계정입니다.(AUTH_403_003)"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "409",
-                description = "최근 탈퇴한 이메일입니다.(AUTH_409_003, 신규 가입 시에만)")
-    })
-    ApiResponse<GoogleAuthResponse> authenticateGoogle(GoogleAuthRequest request, HttpServletResponse response);
-
-    @Operation(
             summary = "Access/Refresh Token 재발급 (AUTH-02-2)",
             description = "요청 Cookie의 refresh token(refreshToken)으로 access token을 새로 발급한다. "
                     + "재발급 시 refresh token도 함께 회전(rotate)되어 새 값이 Cookie로 다시 내려간다. "
@@ -110,4 +91,23 @@ public interface AuthApi {
                 description = "이미 탈퇴했거나 정지된 계정이라 탈퇴할 수 없습니다. (COMMON_409_001)")
     })
     ApiResponse<Void> withdraw(@AuthenticationPrincipal Long userId, HttpServletResponse response);
+
+    @Operation(
+            summary = "구글 로그인/가입",
+            description = "구글 ID Token을 검증해 기존 계정이면 로그인, 없으면 자동 가입한다(서비스 약관은 자동 동의로 간주). "
+                    + "access token은 응답 바디로, refresh token은 HttpOnly Cookie로 발급한다. "
+                    + "기능명세서(v3.1)에 없는 확장 기능이라 별도 명세 ID가 없다(그룹 내 정렬 기준상 ID가 있는 API들 뒤에 둔다).")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인/가입 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "유효하지 않은 구글 로그인 토큰입니다. (AUTH_401_004)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "403",
+                description = "탈퇴한 계정입니다.(AUTH_403_002) 또는 정지된 계정입니다.(AUTH_403_003)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "최근 탈퇴한 이메일입니다.(AUTH_409_003, 신규 가입 시에만)")
+    })
+    ApiResponse<GoogleAuthResponse> authenticateGoogle(GoogleAuthRequest request, HttpServletResponse response);
 }

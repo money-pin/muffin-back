@@ -24,6 +24,12 @@ public class MypageController implements MypageApi {
     private final MyPageHomeQueryService myPageHomeQueryService;
 
     @Override
+    @GetMapping("/api/mypage/home")
+    public ApiResponse<MyPageHomeResponse> getHome(@AuthenticationPrincipal Long userId) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, myPageHomeQueryService.getHome(userId));
+    }
+
+    @Override
     @GetMapping("/api/mypage/scraps")
     public ApiResponse<ScrapListResponse> getScraps(
             @AuthenticationPrincipal Long userId,
@@ -42,11 +48,5 @@ public class MypageController implements MypageApi {
             @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.onSuccess(
                 GeneralSuccessCode.OK, mypageRecentNewsQueryService.getRecentNews(userId, cursor, size));
-    }
-
-    @Override
-    @GetMapping("/api/mypage/home")
-    public ApiResponse<MyPageHomeResponse> getHome(@AuthenticationPrincipal Long userId) {
-        return ApiResponse.onSuccess(GeneralSuccessCode.OK, myPageHomeQueryService.getHome(userId));
     }
 }

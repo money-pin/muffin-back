@@ -36,6 +36,15 @@ public class QuizController implements QuizApi {
     }
 
     @Override
+    @PostMapping("/{quizId}/attempt")
+    public ApiResponse<QuizAttemptResponse> submitAnswer(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long quizId,
+            @Valid @RequestBody QuizAttemptRequest request) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizCommandService.submitAnswer(userId, quizId, request));
+    }
+
+    @Override
     @GetMapping("/today/result")
     public ApiResponse<QuizResultResponse> getTodayQuizResult(@AuthenticationPrincipal Long userId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizQueryService.getTodayQuizResult(userId));
@@ -52,14 +61,5 @@ public class QuizController implements QuizApi {
     public ApiResponse<QuizHistoryDetailResponse> getQuizHistoryDetail(
             @AuthenticationPrincipal Long userId, @PathVariable String date) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizQueryService.getQuizHistoryDetail(userId, date));
-    }
-
-    @Override
-    @PostMapping("/{quizId}/attempt")
-    public ApiResponse<QuizAttemptResponse> submitAnswer(
-            @AuthenticationPrincipal Long userId,
-            @PathVariable Long quizId,
-            @Valid @RequestBody QuizAttemptRequest request) {
-        return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizCommandService.submitAnswer(userId, quizId, request));
     }
 }

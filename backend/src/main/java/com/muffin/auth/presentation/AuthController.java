@@ -77,19 +77,6 @@ public class AuthController implements AuthApi {
     }
 
     @Override
-    @PostMapping("/auth/google")
-    public ApiResponse<GoogleAuthResponse> authenticateGoogle(
-            @Valid @RequestBody GoogleAuthRequest request, HttpServletResponse response) {
-        TokenPair result = googleAuthCommandService.authenticate(request.idToken());
-
-        response.addHeader(
-                HttpHeaders.SET_COOKIE,
-                refreshTokenCookieHelper.build(result.refreshToken()).toString());
-
-        return ApiResponse.onSuccess(GeneralSuccessCode.OK, new GoogleAuthResponse(result.accessToken()));
-    }
-
-    @Override
     @PostMapping("/auth/token/refresh")
     public ApiResponse<RefreshResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
         String rawRefreshToken = refreshTokenCookieHelper
@@ -121,5 +108,18 @@ public class AuthController implements AuthApi {
         response.addHeader(
                 HttpHeaders.SET_COOKIE, refreshTokenCookieHelper.expire().toString());
         return ApiResponse.onSuccess(GeneralSuccessCode.OK);
+    }
+
+    @Override
+    @PostMapping("/auth/google")
+    public ApiResponse<GoogleAuthResponse> authenticateGoogle(
+            @Valid @RequestBody GoogleAuthRequest request, HttpServletResponse response) {
+        TokenPair result = googleAuthCommandService.authenticate(request.idToken());
+
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                refreshTokenCookieHelper.build(result.refreshToken()).toString());
+
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, new GoogleAuthResponse(result.accessToken()));
     }
 }

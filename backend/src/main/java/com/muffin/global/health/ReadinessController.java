@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 배포 환경 readiness probe. 인증/공통 응답 포맷과 무관한 인프라용 엔드포인트라 plain text로 응답한다. */
-@Tag(name = "Health", description = "배포 환경 상태 확인용 엔드포인트(비즈니스 API 아님)")
+@Tag(name = "Health", description = "배포 환경 상태 확인용 엔드포인트")
 @RestController
 @RequestMapping("/api/health")
 public class ReadinessController {
