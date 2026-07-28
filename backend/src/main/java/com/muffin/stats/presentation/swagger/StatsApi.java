@@ -23,7 +23,9 @@ public interface StatsApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "200",
                 description = "조회 성공. 정산 이력이 없으면 investDate/investmentType은 생략되고 graph/topSectors는 빈 배열이다."),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증에 실패했습니다.")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "인증에 실패했습니다. (AUTH_401_001)")
     })
     ApiResponse<StatsSummaryResponse> getSummary(@Parameter(hidden = true) @AuthenticationPrincipal Long userId);
 
