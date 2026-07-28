@@ -155,6 +155,19 @@ class MypageRecentNewsQueryServiceTest {
         assertThat(response.nextCursor()).isNull();
     }
 
+    @Test
+    @DisplayName("썸네일이 빈 문자열이면 null로 정규화한다")
+    void getRecentNews_normalizesBlankThumbnailToNull() {
+        when(userRepository.existsById(USER_ID)).thenReturn(true);
+        when(recentNewsQueryRepository.findRecentNewsPage(USER_ID, null, 3))
+                .thenReturn(
+                        List.of(new RecentNewsProjection(10L, "제목10", "반도체", "", 100L, PUBLISHED_AT, VIEWED_AT, 100L)));
+
+        RecentNewsResponse response = service.getRecentNews(USER_ID, null, 2);
+
+        assertThat(response.items().getFirst().thumbnailUrl()).isNull();
+    }
+
     private RecentNewsProjection projection(Long newsId, Long readHistoryId) {
         return new RecentNewsProjection(
                 newsId, "제목" + newsId, "반도체", "https://thumb/" + newsId, 100L, PUBLISHED_AT, VIEWED_AT, readHistoryId);

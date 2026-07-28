@@ -1,6 +1,5 @@
 package com.muffin.stats.presentation.dto;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.muffin.stats.domain.InvestmentType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -9,10 +8,9 @@ import java.util.List;
 /**
  * 수익 통계 조회 응답. 누적 손익 + 최근 7일 누적 수익률 그래프 + 수익 TOP3 섹터 + 투자 성향 카드를 한 번에 내려준다.
  *
- * <p>정산 완료 이력이 없는 신규 사용자는 investDate/investmentType이 null이고 graph/topSectors가 빈 배열이다. 하위 응답 요소는 이 응답에서만 쓰이므로 함께
- * 중첩해 둔다.
+ * <p>정산 완료 이력이 없는 신규 사용자는 investDate/investmentType이 null이고, graph는 오늘 포함 7일치가 전부 0%로, topSectors는 빈 배열로
+ * 내려간다. 하위 응답 요소는 이 응답에서만 쓰이므로 함께 중첩해 둔다.
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public record StatsSummaryResponse(
         LocalDate investDate,
         long cumulativeProfitAmount,

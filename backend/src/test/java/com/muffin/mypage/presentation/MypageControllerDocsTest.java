@@ -84,7 +84,7 @@ class MypageControllerDocsTest {
                                 fieldWithPath("result.items[].publishedAt")
                                         .description("발행 시각(KST, PUBLISHED_DESC 정렬 기준)"),
                                 fieldWithPath("result.items[].scrappedAt").description("스크랩 시각(KST, SAVED_DESC 정렬 기준)"),
-                                fieldWithPath("result.nextCursor").description("다음 페이지 커서(다음 페이지 없으면 생략)"),
+                                fieldWithPath("result.nextCursor").description("다음 페이지 커서. 다음 페이지가 없으면 null"),
                                 fieldWithPath("result.hasNext").description("다음 페이지 존재 여부"))));
     }
 
@@ -103,8 +103,8 @@ class MypageControllerDocsTest {
                                 fieldWithPath("code").description("응답 코드"),
                                 fieldWithPath("message").description("응답 메시지"),
                                 fieldWithPath("result.items").description("빈 배열(스크랩 없음)"),
+                                fieldWithPath("result.nextCursor").description("다음 페이지가 없어 null"),
                                 fieldWithPath("result.hasNext").description("다음 페이지 존재 여부(false)"))));
-        // nextCursor는 null이라 응답에서 생략된다(@JsonInclude NON_NULL).
     }
 
     @Test

@@ -1,13 +1,11 @@
 package com.muffin.stats.presentation.dto;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * 누적 수익 내역 조회 응답. 선택한 기간 윈도우 안에서 발생한 손익 요약 + 섹터별 내역을 내려준다.
+ * 누적 수익 내역 조회 응답. 선택한 기간 윈도우 안에서 발생한 손익 요약 + 섹터별 내역을 내려준다. date는 period=ALL이면 null이다.
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public record ProfitHistoryResponse(
         String period,
         String date,

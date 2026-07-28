@@ -8,6 +8,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.response
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
@@ -63,7 +64,12 @@ class StatsControllerDocsTest {
                 128_000L,
                 new BigDecimal("12.8"),
                 List.of(
+                        new GraphPointResponse(LocalDate.of(2026, 5, 2), new BigDecimal("0.0")),
+                        new GraphPointResponse(LocalDate.of(2026, 5, 3), new BigDecimal("0.0")),
+                        new GraphPointResponse(LocalDate.of(2026, 5, 4), new BigDecimal("2.1")),
                         new GraphPointResponse(LocalDate.of(2026, 5, 5), new BigDecimal("4.5")),
+                        new GraphPointResponse(LocalDate.of(2026, 5, 6), new BigDecimal("4.5")),
+                        new GraphPointResponse(LocalDate.of(2026, 5, 7), new BigDecimal("9.3")),
                         new GraphPointResponse(LocalDate.of(2026, 5, 8), new BigDecimal("12.8"))),
                 List.of(
                         new TopSectorResponse(1, "SEMICONDUCTOR", "반도체", 52_000L, new BigDecimal("8.1")),
@@ -106,8 +112,11 @@ class StatsControllerDocsTest {
     @Test
     @DisplayName("정산 이력 없는 신규 사용자 빈 상태 응답 문서화")
     void documentEmptySummary(RestDocumentationContextProvider restDocumentation) throws Exception {
+        List<GraphPointResponse> flatGraph = java.util.stream.IntStream.rangeClosed(0, 6)
+                .mapToObj(i -> new GraphPointResponse(LocalDate.of(2026, 5, 2).plusDays(i), new BigDecimal("0.0")))
+                .toList();
         StatsSummaryResponse response =
-                new StatsSummaryResponse(null, 0L, new BigDecimal("0.0"), List.of(), List.of(), null);
+                new StatsSummaryResponse(null, 0L, new BigDecimal("0.0"), flatGraph, List.of(), null);
         MockMvc mockMvc = mockMvcWith(summaryStub(response), restDocumentation);
 
         mockMvc.perform(get("/api/stats/summary"))
@@ -118,11 +127,14 @@ class StatsControllerDocsTest {
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드"),
                                 fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.investDate").description("정산 이력이 없어 null"),
                                 fieldWithPath("result.cumulativeProfitAmount").description("누적 손익금(이력 없음: 0)"),
                                 fieldWithPath("result.cumulativeProfitRate").description("누적 손익률(이력 없음: 0.0)"),
-                                fieldWithPath("result.graph").description("빈 배열(정산 이력 없음)"),
-                                fieldWithPath("result.topSectors").description("빈 배열(투자 이력 없음)"))));
-        // investDate/investmentType은 null이라 응답에서 생략된다(@JsonInclude NON_NULL).
+                                fieldWithPath("result.graph[].date").description("오늘 포함 7일(이력 없어도 항상 7일치)"),
+                                fieldWithPath("result.graph[].cumulativeProfitRate")
+                                        .description("전부 0.0(이력 없음)"),
+                                fieldWithPath("result.topSectors").description("빈 배열(투자 이력 없음)"),
+                                fieldWithPath("result.investmentType").description("투자 이력이 없어 null"))));
     }
 
     @Test
@@ -217,11 +229,41 @@ class StatsControllerDocsTest {
 
         mockMvc.perform(get("/api/stats/history").param("period", "MONTHLY"))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("STATS_400_001"))
                 .andDo(document(
                         "stats-history-invalid-period",
                         responseFields(
                                 fieldWithPath("isSuccess").description("성공 여부(false)"),
                                 fieldWithPath("code").description("에러 코드(STATS_400_001)"),
+                                fieldWithPath("message").description("에러 메시지"),
+                                fieldWithPath("errorDetail").description("허용값/입력값 등 상세 원인"))));
+    }
+
+    @Test
+    @DisplayName("period 파라미터 자체가 없으면 400(STATS_400_001) 문서화")
+    void documentMissingPeriod(RestDocumentationContextProvider restDocumentation) throws Exception {
+        // 서비스에 도달하기 전 요청 검증에서 실패하므로 stub 응답은 쓰이지 않는다.
+        MockMvc mockMvc = mockMvcWith(historyStub(null), restDocumentation);
+
+        mockMvc.perform(get("/api/stats/history"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("STATS_400_001"));
+    }
+
+    @Test
+    @DisplayName("sort 값이 허용되지 않으면 400(STATS_400_002) 문서화")
+    void documentInvalidSort(RestDocumentationContextProvider restDocumentation) throws Exception {
+        // 서비스에 도달하기 전 요청 검증에서 실패하므로 stub 응답은 쓰이지 않는다.
+        MockMvc mockMvc = mockMvcWith(historyStub(null), restDocumentation);
+
+        mockMvc.perform(get("/api/stats/history").param("period", "MONTH").param("sort", "BOGUS"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("STATS_400_002"))
+                .andDo(document(
+                        "stats-history-invalid-sort",
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부(false)"),
+                                fieldWithPath("code").description("에러 코드(STATS_400_002)"),
                                 fieldWithPath("message").description("에러 메시지"),
                                 fieldWithPath("errorDetail").description("허용값/입력값 등 상세 원인"))));
     }
