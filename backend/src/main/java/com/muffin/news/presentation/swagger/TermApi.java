@@ -45,7 +45,8 @@ public interface TermApi {
     @Operation(
             summary = "저장한 용어 목록 조회 (MYPAGE-04-3)",
             description = "마이페이지에서 사용자가 저장한 용어 목록을 페이지 단위로 조회한다. sort=recent(기본, 최근 저장순) 또는 "
-                    + "sort=alphabetical(가나다순)로 정렬할 수 있다.")
+                    + "sort=alphabetical(가나다순)로 정렬할 수 있다.",
+            tags = {"Mypage"})
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(

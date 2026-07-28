@@ -577,6 +577,33 @@ include::{snippets}/recent-news-list-user-not-found/response-fields.adoc[]
 |404|MYPAGE_404_001|사용자 정보를 찾을 수 없습니다.|access token의 userId에 해당하는 사용자 없음
 |===
 
+[[mypage-saved-terms]]
+=== 저장한 용어 목록 조회 (MYPAGE-04-3)
+
+마이페이지에서 사용자가 저장한 용어 목록을 페이지 단위로 조회한다. `sort=recent`(기본, 최근 저장순) 또는 `sort=alphabetical`(가나다순)로 정렬할 수 있다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+NOTE: count 쿼리 없이 `size+1`건을 조회해 `hasNext`만 판정한다(전체 개수/전체 페이지 수는 응답에 없음). `size`는 최대 50이다.
+
+==== 요청/응답
+
+include::{snippets}/mypage-saved-terms-get/http-request.adoc[]
+include::{snippets}/mypage-saved-terms-get/query-parameters.adoc[]
+
+include::{snippets}/mypage-saved-terms-get/http-response.adoc[]
+include::{snippets}/mypage-saved-terms-get/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_001|잘못된 요청입니다.|size가 50을 초과하거나 sort 값이 올바르지 않음
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===
+
 [[group-notification]]
 == Notification
 
@@ -1085,33 +1112,6 @@ include::{snippets}/term-unsave-not-found/response-fields.adoc[]
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |403|AUTH_403_001|요청이 거부되었습니다.|온보딩을 완료하지 않은 사용자
 |404|CONTENT_404_002|존재하지 않는 용어입니다.|해당 `termId`의 용어가 없음
-|===
-
-[[mypage-saved-terms]]
-=== 저장한 용어 목록 조회 (MYPAGE-04-3)
-
-마이페이지에서 사용자가 저장한 용어 목록을 페이지 단위로 조회한다. `sort=recent`(기본, 최근 저장순) 또는 `sort=alphabetical`(가나다순)로 정렬할 수 있다.
-
-NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
-
-NOTE: count 쿼리 없이 `size+1`건을 조회해 `hasNext`만 판정한다(전체 개수/전체 페이지 수는 응답에 없음). `size`는 최대 50이다.
-
-==== 요청/응답
-
-include::{snippets}/mypage-saved-terms-get/http-request.adoc[]
-include::{snippets}/mypage-saved-terms-get/query-parameters.adoc[]
-
-include::{snippets}/mypage-saved-terms-get/http-response.adoc[]
-include::{snippets}/mypage-saved-terms-get/response-fields.adoc[]
-
-==== 에러 코드
-
-[cols="1,2,3,3"]
-|===
-|HTTP|code|message|설명
-
-|400|COMMON_400_001|잘못된 요청입니다.|size가 50을 초과하거나 sort 값이 올바르지 않음
-|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |===
 
 [[group-scrap]]

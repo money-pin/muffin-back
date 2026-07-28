@@ -68,11 +68,15 @@ public interface NewsApi {
                     + "완료된 카드가 없으면(생성 중이거나 생성 실패) 409로 응답한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "해설 카드 조회 성공"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다."),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 뉴스입니다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "인증이 필요합니다. (AUTH_401_001)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "404",
+                description = "존재하지 않는 뉴스입니다. (CONTENT_404_001)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "409",
-                description = "뉴스 해설 카드 생성이 아직 완료되지 않았습니다.")
+                description = "뉴스 해설 카드 생성이 아직 완료되지 않았습니다. (CONTENT_409_001)")
     })
     ApiResponse<NewsExplanationCardsResponse> getExplanationCards(
             @AuthenticationPrincipal Long userId, @Parameter(description = "조회할 뉴스 ID") Long newsId);
