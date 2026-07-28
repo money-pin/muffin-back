@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.muffin.auth.application.JwtProperties;
 import com.muffin.auth.application.logout.LogoutCommandService;
+import com.muffin.auth.presentation.AuthController;
 import com.muffin.auth.presentation.RefreshTokenCookieHelper;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import java.util.List;
@@ -53,7 +54,8 @@ class LogoutControllerDocsTest {
             @Override
             public void logout(Long userId) {}
         };
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new LogoutController(stub, refreshTokenCookieHelper))
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(
+                        new AuthController(null, null, null, null, stub, null, refreshTokenCookieHelper))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)

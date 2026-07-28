@@ -12,7 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 public interface RankingApi {
 
     @Operation(
-            summary = "나의 지난주 순위와 수익률 TOP 10 조회",
+            summary = "나의 지난주 순위와 수익률 TOP 10 조회 (RANKING-01)",
             description =
                     "KST 기준 지난주 월요일~일요일 랭킹을 조회합니다. TOP 10 수익 상세를 함께 반환하며, 스냅샷 생성 전에는 CALCULATING 또는 EMPTY 상태를 반환합니다.")
     @ApiResponses({

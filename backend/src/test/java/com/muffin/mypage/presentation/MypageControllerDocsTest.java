@@ -159,7 +159,7 @@ class MypageControllerDocsTest {
 
     private MockMvc mockMvcWith(
             MypageScrapQueryService stubService, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(new MypageController(stubService, null))
+        return MockMvcBuilders.standaloneSetup(new MypageController(stubService, null, null))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)

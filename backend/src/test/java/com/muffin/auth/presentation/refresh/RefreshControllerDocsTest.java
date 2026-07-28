@@ -12,6 +12,7 @@ import com.muffin.auth.application.JwtProperties;
 import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.application.refresh.RefreshCommandService;
+import com.muffin.auth.presentation.AuthController;
 import com.muffin.auth.presentation.RefreshTokenCookieHelper;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
@@ -93,7 +94,8 @@ class RefreshControllerDocsTest {
     }
 
     private MockMvc mockMvcOf(RefreshCommandService stub, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(new RefreshController(stub, refreshTokenCookieHelper))
+        return MockMvcBuilders.standaloneSetup(
+                        new AuthController(null, null, null, stub, null, null, refreshTokenCookieHelper))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .apply(documentationConfiguration(restDocumentation)
                         .operationPreprocessors()

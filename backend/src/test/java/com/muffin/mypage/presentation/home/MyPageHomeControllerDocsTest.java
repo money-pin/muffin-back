@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.mypage.application.home.MyPageHomeQueryService;
+import com.muffin.mypage.presentation.MypageController;
 import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse;
 import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.CharacterSummary;
 import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.RecentNewsItem;
@@ -112,7 +113,7 @@ class MyPageHomeControllerDocsTest {
     }
 
     private MockMvc mockMvcOf(MyPageHomeQueryService stub, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(new MyPageHomeController(stub))
+        return MockMvcBuilders.standaloneSetup(new MypageController(null, null, stub))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)

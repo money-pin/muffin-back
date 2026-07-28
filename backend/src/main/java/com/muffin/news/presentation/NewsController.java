@@ -2,11 +2,13 @@ package com.muffin.news.presentation;
 
 import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.global.apiPayload.code.GeneralSuccessCode;
+import com.muffin.news.application.explanation.NewsExplanationQueryService;
 import com.muffin.news.application.query.NewsQueryService;
 import com.muffin.news.presentation.dto.NewsDetailResponse;
 import com.muffin.news.presentation.dto.NewsListResponse;
 import com.muffin.news.presentation.dto.NewsSectorImpactResponse;
 import com.muffin.news.presentation.dto.NewsTodayResponse;
+import com.muffin.news.presentation.dto.response.NewsExplanationCardsResponse;
 import com.muffin.news.presentation.swagger.NewsApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class NewsController implements NewsApi {
 
     private final NewsQueryService newsQueryService;
+    private final NewsExplanationQueryService newsExplanationQueryService;
 
     @Override
     @GetMapping
@@ -51,5 +54,12 @@ public class NewsController implements NewsApi {
     public ApiResponse<NewsSectorImpactResponse> getSectorImpacts(
             @AuthenticationPrincipal Long userId, @PathVariable Long newsId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getSectorImpacts(newsId));
+    }
+
+    @Override
+    @GetMapping("/{newsId}/explanation-cards")
+    public ApiResponse<NewsExplanationCardsResponse> getExplanationCards(
+            @AuthenticationPrincipal Long userId, @PathVariable Long newsId) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsExplanationQueryService.getExplanationCards(newsId));
     }
 }

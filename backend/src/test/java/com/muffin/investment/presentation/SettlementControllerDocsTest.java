@@ -92,7 +92,7 @@ class SettlementControllerDocsTest {
                 return response;
             }
         };
-        return MockMvcBuilders.standaloneSetup(new SettlementController(stubService))
+        return MockMvcBuilders.standaloneSetup(new InvestmentController(null, null, stubService))
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)
                         .operationPreprocessors()

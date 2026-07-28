@@ -6,112 +6,44 @@
 :toclevels: 2
 :sectlinks:
 
-[[investment-settlement-result]]
-== 정산 결과 팝업 조회 (INVEST-06)
+[[group-auth]]
+== Auth
 
-가장 최근 정산 대상 투자의 결과를 조회한다. 정산 완료(SETTLED)면 손익 결과를 반환하고, 그 외에는 사유(`reason`)만 반환한다.
-
-* `SETTLEMENT_PENDING`: 정산 배치가 아직 완료되지 않음(정산 중)
-* `NO_INVESTMENT`: 최근 정산 대상 투자가 없음(미투자/취소 포함)
-
-NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
-FE 담당자는 invest_date를 로컬에 저장하여 같은 투자 결과 팝업을 1회만 보여줄 수 있도록 한다.
-
-=== 요청
-
-정산 완료 결과가 있는 경우의 요청 예시.
-
-include::{snippets}/settlement-result-settled/http-request.adoc[]
-
-=== 응답 - 정산 완료(결과 있음)
-
-include::{snippets}/settlement-result-settled/http-response.adoc[]
-include::{snippets}/settlement-result-settled/response-fields.adoc[]
-
-=== 응답 - 결과 없음 / 정산 중
-
-include::{snippets}/settlement-result-reason/http-response.adoc[]
-include::{snippets}/settlement-result-reason/response-fields.adoc[]
-
-[[auth-email-verification]]
-== 이메일 인증번호 발송/확인 (Auth-01)
-
-인증된 사용자(`Authorization: Bearer {accessToken}`)가 본인 계정의 이메일로 인증번호를 발송하고 확인한다. <<auth-signup,회원가입>> 이후 아무 때나 호출할 수 있으며, 이메일은 요청 바디가 아니라 access token으로 식별된 계정의 `Auth.email`을 사용한다.
-
-NOTE: 확인(`/verification/confirm`) 성공 시 같은 트랜잭션에서 `Auth.emailVerified`가 `true`로 갱신된다. 정리 배치는 만료된 미인증 기록만 삭제하고 인증 성공 기록은 건드리지 않는다.
-
-=== 발송 - 성공
-
-include::{snippets}/email-verification-send-success/http-request.adoc[]
-include::{snippets}/email-verification-send-success/http-response.adoc[]
-include::{snippets}/email-verification-send-success/response-fields.adoc[]
-
-=== 발송 - 실패(이미 인증이 완료된 이메일)
-
-include::{snippets}/email-verification-send-already-verified/http-response.adoc[]
-include::{snippets}/email-verification-send-already-verified/response-fields.adoc[]
-
-=== 확인 - 성공
-
-include::{snippets}/email-verification-confirm-success/http-request.adoc[]
-include::{snippets}/email-verification-confirm-success/http-response.adoc[]
-include::{snippets}/email-verification-confirm-success/response-fields.adoc[]
-
-=== 확인 - 실패(코드 불일치)
-
-include::{snippets}/email-verification-confirm-mismatch/http-response.adoc[]
-include::{snippets}/email-verification-confirm-mismatch/response-fields.adoc[]
-
-=== 에러 코드
-
-[cols="1,2,3,3"]
-|===
-|HTTP|code|message|설명
-
-|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
-|404|COMMON_404_001|요청한 리소스를 찾을 수 없습니다.|access token의 userId에 해당하는 Auth 없음(정상 흐름에서는 발생하지 않음)
-|409|AUTH_409_002|이미 인증이 완료된 이메일입니다.|이미 emailVerified=true인 계정
-|429|AUTH_429_001|잠시 후 다시 시도해주세요.|재발송 쿨다운(기본 30초) 중
-|429|AUTH_429_002|오늘 인증번호 전송 횟수를 초과했습니다.|일일 발송 한도(기본 10회) 초과
-|400|AUTH_400_001|인증번호가 일치하지 않습니다.|코드 불일치, 또는 발송 이력 자체가 없음
-|410|AUTH_410_001|인증번호가 만료되었습니다.|만료(기본 5분)
-|423|AUTH_423_001|인증 시도 횟수를 초과하여 잠겼습니다. 인증번호를 다시 요청해 주세요.|연속 시도 한도(기본 5회) 초과
-|500|AUTH_500_001|인증 메일 발송에 실패했습니다.|SMTP 발송 실패(운영 환경)
-|===
+인증(회원가입/로그인/로그아웃/탈퇴) API.
 
 [[auth-signup]]
-== 로컬 회원가입 (Auth-01)
+=== 로컬 회원가입 (AUTH-01-1)
 
 이메일/비밀번호/이름과 약관 동의로 로컬 계정을 생성한다. 가입 즉시 로그인 상태가 되어 access token을 응답 바디로, refresh token을 HttpOnly Cookie(`refreshToken`, Path=`/api/auth`, Secure, SameSite=Strict)로 발급한다.
 
-NOTE: 이메일 인증 여부와 무관하게 가입 자체는 즉시 완료된다(emailVerified=false로 시작). 이메일 인증은 가입 후 access token을 실어 별도로 호출한다(<<auth-email-verification>>).
+NOTE: 이메일 인증 여부와 무관하게 가입 자체는 즉시 완료된다(emailVerified=false로 시작). 이메일 인증은 가입 후 access token을 실어 별도로 호출한다(<<auth-email-verification-send>>).
 
-=== 요청 - 성공
+==== 요청 - 성공
 
 include::{snippets}/signup-local-success/http-request.adoc[]
 include::{snippets}/signup-local-success/request-fields.adoc[]
 
-=== 응답 - 성공
+==== 응답 - 성공
 
 include::{snippets}/signup-local-success/http-response.adoc[]
 include::{snippets}/signup-local-success/response-fields.adoc[]
 
-=== 응답 - 실패(약관 미동의)
+==== 응답 - 실패(약관 미동의)
 
 include::{snippets}/signup-local-terms-not-agreed/http-response.adoc[]
 include::{snippets}/signup-local-terms-not-agreed/response-fields.adoc[]
 
-=== 응답 - 실패(이미 사용 중인 이메일)
+==== 응답 - 실패(이미 사용 중인 이메일)
 
 include::{snippets}/signup-local-duplicate-email/http-response.adoc[]
 include::{snippets}/signup-local-duplicate-email/response-fields.adoc[]
 
-=== 응답 - 실패(최근 탈퇴한 이메일)
+==== 응답 - 실패(최근 탈퇴한 이메일)
 
 include::{snippets}/signup-local-recently-deleted-email/http-response.adoc[]
 include::{snippets}/signup-local-recently-deleted-email/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -124,8 +56,70 @@ include::{snippets}/signup-local-recently-deleted-email/response-fields.adoc[]
 |409|AUTH_409_003|최근 탈퇴한 이메일입니다. 30일 후 다시 가입할 수 있습니다.|탈퇴 후 30일 이내 재가입 시도(<<auth-withdraw>>)
 |===
 
+[[auth-email-verification-send]]
+=== 이메일 인증번호 발송 (AUTH-01-2)
+
+인증된 사용자(`Authorization: Bearer {accessToken}`)가 본인 계정의 이메일로 인증번호를 발송한다. <<auth-signup,회원가입>> 이후 아무 때나 호출할 수 있으며, 이메일은 요청 바디가 아니라 access token으로 식별된 계정의 `Auth.email`을 사용한다.
+
+==== 요청/응답 - 성공
+
+include::{snippets}/email-verification-send-success/http-request.adoc[]
+include::{snippets}/email-verification-send-success/http-response.adoc[]
+include::{snippets}/email-verification-send-success/response-fields.adoc[]
+
+==== 응답 - 실패(이미 인증이 완료된 이메일)
+
+include::{snippets}/email-verification-send-already-verified/http-response.adoc[]
+include::{snippets}/email-verification-send-already-verified/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|COMMON_404_001|요청한 리소스를 찾을 수 없습니다.|access token의 userId에 해당하는 Auth 없음(정상 흐름에서는 발생하지 않음)
+|409|AUTH_409_002|이미 인증이 완료된 이메일입니다.|이미 emailVerified=true인 계정
+|429|AUTH_429_001|잠시 후 다시 시도해주세요.|재발송 쿨다운(기본 30초) 중
+|429|AUTH_429_002|오늘 인증번호 전송 횟수를 초과했습니다.|일일 발송 한도(기본 10회) 초과
+|500|AUTH_500_001|인증 메일 발송에 실패했습니다.|SMTP 발송 실패(운영 환경)
+|===
+
+[[auth-email-verification-confirm]]
+=== 이메일 인증번호 확인 (AUTH-01-3)
+
+<<auth-email-verification-send,발송>>된 인증번호와 대조해 본인 계정의 이메일을 인증 완료 처리한다.
+
+NOTE: 확인 성공 시 같은 트랜잭션에서 `Auth.emailVerified`가 `true`로 갱신된다. 정리 배치는 만료된 미인증 기록만 삭제하고 인증 성공 기록은 건드리지 않는다.
+
+==== 요청/응답 - 성공
+
+include::{snippets}/email-verification-confirm-success/http-request.adoc[]
+include::{snippets}/email-verification-confirm-success/http-response.adoc[]
+include::{snippets}/email-verification-confirm-success/response-fields.adoc[]
+
+==== 응답 - 실패(코드 불일치)
+
+include::{snippets}/email-verification-confirm-mismatch/http-response.adoc[]
+include::{snippets}/email-verification-confirm-mismatch/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|COMMON_404_001|요청한 리소스를 찾을 수 없습니다.|access token의 userId에 해당하는 Auth 없음(정상 흐름에서는 발생하지 않음)
+|409|AUTH_409_002|이미 인증이 완료된 이메일입니다.|이미 emailVerified=true인 계정
+|400|AUTH_400_001|인증번호가 일치하지 않습니다.|코드 불일치, 또는 발송 이력 자체가 없음
+|410|AUTH_410_001|인증번호가 만료되었습니다.|만료(기본 5분)
+|423|AUTH_423_001|인증 시도 횟수를 초과하여 잠겼습니다. 인증번호를 다시 요청해 주세요.|연속 시도 한도(기본 5회) 초과
+|===
+
 [[auth-login]]
-== 로컬 로그인 (Auth-02)
+=== 로컬 로그인 (AUTH-02-1)
 
 이메일/비밀번호로 로그인하고 access token을 응답 바디로, refresh token을 HttpOnly Cookie(`refreshToken`, Path=`/api/auth`, Secure, SameSite=Strict)로 발급한다.
 
@@ -133,32 +127,32 @@ NOTE: 가입되지 않은 이메일과 비밀번호 불일치는 계정 존재 �
 
 NOTE: 비밀번호를 5회 연속 틀리면 계정이 30분간 잠긴다(`AUTH_423_002`). 잠긴 뒤에는 올바른 비밀번호를 넣어도 비교 자체를 하지 않고 즉시 거부하며, 30분이 지나면 별도 배치 없이 자동으로 해제되고 실패 횟수도 초기화된다. 잠기기 전에 로그인에 성공하면 그 시점에 실패 횟수가 즉시 초기화된다.
 
-=== 요청 - 성공
+==== 요청 - 성공
 
 include::{snippets}/login-local-success/http-request.adoc[]
 include::{snippets}/login-local-success/request-fields.adoc[]
 
-=== 응답 - 성공
+==== 응답 - 성공
 
 include::{snippets}/login-local-success/http-response.adoc[]
 include::{snippets}/login-local-success/response-fields.adoc[]
 
-=== 응답 - 실패(이메일/비밀번호 불일치)
+==== 응답 - 실패(이메일/비밀번호 불일치)
 
 include::{snippets}/login-local-invalid-credentials/http-response.adoc[]
 include::{snippets}/login-local-invalid-credentials/response-fields.adoc[]
 
-=== 응답 - 실패(탈퇴한 계정)
+==== 응답 - 실패(탈퇴한 계정)
 
 include::{snippets}/login-local-withdrawn-account/http-response.adoc[]
 include::{snippets}/login-local-withdrawn-account/response-fields.adoc[]
 
-=== 응답 - 실패(로그인 시도 잠금)
+==== 응답 - 실패(로그인 시도 잠금)
 
 include::{snippets}/login-local-locked/http-response.adoc[]
 include::{snippets}/login-local-locked/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -172,23 +166,23 @@ include::{snippets}/login-local-locked/response-fields.adoc[]
 |===
 
 [[auth-token-refresh]]
-== Access Token 재발급 (Auth-02)
+=== Access Token 재발급 (AUTH-02-2)
 
 요청 Cookie의 refresh token(`refreshToken`)으로 access token을 새로 발급한다. 요청 바디는 없고 `Authorization` 헤더도 필요 없다(만료된 access token을 대체하기 위한 API이므로).
 
 NOTE: 재발급할 때마다 refresh token도 함께 회전(rotate)된다. 새 refresh token이 다시 `Set-Cookie`로 내려가고, 재발급에 쓰인 기존 refresh token은 그 즉시 무효화되어 재사용할 수 없다(탈취 재사용 방지).
 
-=== 응답 - 성공
+==== 응답 - 성공
 
 include::{snippets}/token-refresh-success/http-response.adoc[]
 include::{snippets}/token-refresh-success/response-fields.adoc[]
 
-=== 응답 - 실패(refresh token 쿠키 없음/유효하지 않음)
+==== 응답 - 실패(refresh token 쿠키 없음/유효하지 않음)
 
 include::{snippets}/token-refresh-invalid/http-response.adoc[]
 include::{snippets}/token-refresh-invalid/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -199,69 +193,117 @@ include::{snippets}/token-refresh-invalid/response-fields.adoc[]
 |403|AUTH_403_003|정지된 계정입니다.|status=SUSPENDED
 |===
 
+[[auth-logout]]
+=== 로그아웃 (AUTH-09-1)
 
-[[user-nickname-check]]
-== 닉네임 중복 조회
+Authorization 헤더의 access token으로 식별된 계정의 refresh token을 무효화하고, refresh token Cookie를 만료(`Max-Age=0`)시킨다.
 
-온보딩 중 사용자가 입력한 닉네임이 이미 사용 중인지 조회한다. 조회만 하며 상태를 변경하지 않는다.
+NOTE: 이미 로그아웃된 상태(=refresh token이 없는 상태)에서 다시 호출해도 에러 없이 200을 반환한다(멱등).
 
-NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+==== 응답 - 성공
 
-=== 요청
+include::{snippets}/logout-success/http-response.adoc[]
+include::{snippets}/logout-success/response-fields.adoc[]
 
-include::{snippets}/nickname-check-available/http-request.adoc[]
-include::{snippets}/nickname-check-available/query-parameters.adoc[]
-
-=== 응답 - 사용 가능
-
-include::{snippets}/nickname-check-available/http-response.adoc[]
-include::{snippets}/nickname-check-available/response-fields.adoc[]
-
-=== 응답 - 이미 사용 중
-
-include::{snippets}/nickname-check-taken/http-response.adoc[]
-include::{snippets}/nickname-check-taken/response-fields.adoc[]
-
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
 |HTTP|code|message|설명
 
-|400|COMMON_400_001|닉네임은 한글/영문/숫자/공백만 사용해 2~10자로 입력해야 합니다.|형식/길이 위반
-|400|USER_400_001|닉네임에 부적절한 표현이 포함되어 있습니다.|비속어 포함
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
-
 |===
 
+[[auth-withdraw]]
+=== 회원 탈퇴 (AUTH-09-2)
+
+Authorization 헤더의 access token으로 식별된 계정을 탈퇴 처리한다. 이름은 즉시 삭제되고 이메일은 복구 불가능한 값으로 대체되며(원본 이메일의 해시만 별도 보관), refresh token이 무효화되고 refresh token Cookie가 만료(`Max-Age=0`)된다.
+
+NOTE: 탈퇴한 이메일은 30일간 재가입이 제한된다(<<auth-signup>>). 투자/퀴즈 기록은 탈퇴 6개월 후 별도 배치가 삭제하며, 집계 통계는 비식별 상태로 영구 보관된다.
+
+==== 응답 - 성공
+
+include::{snippets}/withdraw-success/http-response.adoc[]
+include::{snippets}/withdraw-success/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|409|COMMON_409_001|요청이 현재 상태와 충돌합니다.|이미 탈퇴했거나 정지된 계정
+|===
+
+[[auth-google]]
+=== 구글 로그인/가입
+
+구글 Sign-In SDK가 발급한 ID Token을 검증해 기존 계정이면 로그인, 없으면 자동 가입한다(회원가입/로그인을 별도 엔드포인트로 나누지 않음). 구글 로그인 자체가 동의 절차를 거치므로 서비스 약관도 자동 동의로 간주하고, 구글이 이미 이메일을 검증했으므로 가입 시 `Auth.emailVerified`가 곧바로 `true`로 시작한다.
+
+NOTE: ID Token은 서명(JWKS), 발급자(`iss`), 대상(`aud`)을 모두 검증한 뒤 `sub`(구글 계정 고유 ID)로 기존 가입 여부를 판단한다. 기능명세서(v3.1)에는 없는 확장 기능이라 별도 명세 ID가 없다.
+
+==== 요청 - 성공
+
+include::{snippets}/google-auth-success/http-request.adoc[]
+include::{snippets}/google-auth-success/request-fields.adoc[]
+
+==== 응답 - 성공
+
+include::{snippets}/google-auth-success/http-response.adoc[]
+include::{snippets}/google-auth-success/response-fields.adoc[]
+
+==== 응답 - 실패(유효하지 않은 ID Token)
+
+include::{snippets}/google-auth-invalid-token/http-response.adoc[]
+include::{snippets}/google-auth-invalid-token/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_002|요청 값 검증에 실패했습니다.|idToken 누락 등(errorDetail 참고)
+|401|AUTH_401_004|유효하지 않은 구글 로그인 토큰입니다.|서명/발급자/대상 검증 실패
+|403|AUTH_403_002|탈퇴한 계정입니다.|status=WITHDRAWN
+|403|AUTH_403_003|정지된 계정입니다.|status=SUSPENDED
+|409|AUTH_409_003|최근 탈퇴한 이메일입니다. 30일 후 다시 가입할 수 있습니다.|신규 가입인데 탈퇴 후 30일 이내(<<auth-withdraw>>)
+|===
+
+[[group-user]]
+== User
+
+닉네임/온보딩 등 사용자 API. 온보딩(AUTH-07/08)은 기능명세서상 인증 도메인 번호를 쓰지만, 코드 패키지(`user` 도메인) 기준으로 이 그룹에 둔다.
+
 [[onboarding-character-result]]
-== 캐릭터 결과 저장 (AUTH-07)
+=== 캐릭터 결과 저장 (AUTH-07)
 
 온보딩 설문 응답 3개와 결과로 결정된 muffin 타입(`plain`/`sprinkle`/`butter`)을 받아 사용자의 캐릭터를 확정하고 온보딩을 완료 처리한다. 캐릭터 정보와 추천 섹터 목록을 함께 반환한다.
 
 NOTE: 인증이 필요하다. 이미 온보딩을 완료한 사용자가 다시 호출하면 재제출로 간주해 `409`를 반환한다(멱등하지 않음). 초기 투자금 지급은 이 API의 책임이 아니며 <<onboarding-complete,온보딩 완료 API>>에서 처리한다.
 
-=== 요청 - 성공
+==== 요청 - 성공
 
 include::{snippets}/onboarding-character-result-success/http-request.adoc[]
 include::{snippets}/onboarding-character-result-success/request-fields.adoc[]
 
-=== 응답 - 성공
+==== 응답 - 성공
 
 include::{snippets}/onboarding-character-result-success/http-response.adoc[]
 include::{snippets}/onboarding-character-result-success/response-fields.adoc[]
 
-=== 응답 - 실패(이미 온보딩 완료)
+==== 응답 - 실패(이미 온보딩 완료)
 
 include::{snippets}/onboarding-character-result-already-completed/http-response.adoc[]
 include::{snippets}/onboarding-character-result-already-completed/response-fields.adoc[]
 
-=== 응답 - 실패(존재하지 않는 캐릭터)
+==== 응답 - 실패(존재하지 않는 캐릭터)
 
 include::{snippets}/onboarding-character-result-character-not-found/http-response.adoc[]
 include::{snippets}/onboarding-character-result-character-not-found/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -275,27 +317,27 @@ include::{snippets}/onboarding-character-result-character-not-found/response-fie
 |===
 
 [[onboarding-complete]]
-== 온보딩 완료 및 초기 투자금 지급 (AUTH-08)
+=== 온보딩 완료 및 초기 투자금 지급 (AUTH-08)
 
 <<onboarding-character-result,캐릭터 결과 저장>>이 완료된 사용자에게 초기 투자금 100만원을 지급한다.
 
 NOTE: 인증이 필요하다. 이미 지급된 사용자가 다시 호출해도 신규 지급 없이 기존 자산을 그대로 `200`으로 반환한다(멱등). 캐릭터 결과 저장 전에 호출하면 `409`를 반환한다.
 
-=== 요청
+==== 요청
 
 include::{snippets}/onboarding-complete-success/http-request.adoc[]
 
-=== 응답 - 성공(신규 지급 또는 기존 자산 반환)
+==== 응답 - 성공(신규 지급 또는 기존 자산 반환)
 
 include::{snippets}/onboarding-complete-success/http-response.adoc[]
 include::{snippets}/onboarding-complete-success/response-fields.adoc[]
 
-=== 응답 - 실패(캐릭터 결과 저장 미완료)
+==== 응답 - 실패(캐릭터 결과 저장 미완료)
 
 include::{snippets}/onboarding-complete-not-completed/http-response.adoc[]
 include::{snippets}/onboarding-complete-not-completed/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -305,107 +347,63 @@ include::{snippets}/onboarding-complete-not-completed/response-fields.adoc[]
 |409|USER_409_001|온보딩을 먼저 완료해야 합니다.|<<onboarding-character-result,캐릭터 결과 저장>>을 아직 하지 않음
 |===
 
-[[auth-logout]]
-== 로그아웃 (Auth-09)
+[[user-nickname-check]]
+=== 닉네임 중복 조회 (MYPAGE-02-1)
 
-Authorization 헤더의 access token으로 식별된 계정의 refresh token을 무효화하고, refresh token Cookie를 만료(`Max-Age=0`)시킨다.
+온보딩 중 사용자가 입력한 닉네임이 이미 사용 중인지 조회한다. 조회만 하며 상태를 변경하지 않는다.
 
-NOTE: 이미 로그아웃된 상태(=refresh token이 없는 상태)에서 다시 호출해도 에러 없이 200을 반환한다(멱등).
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
 
-=== 응답 - 성공
+==== 요청
 
-include::{snippets}/logout-success/http-response.adoc[]
-include::{snippets}/logout-success/response-fields.adoc[]
+include::{snippets}/nickname-check-available/http-request.adoc[]
+include::{snippets}/nickname-check-available/query-parameters.adoc[]
 
-=== 에러 코드
+==== 응답 - 사용 가능
+
+include::{snippets}/nickname-check-available/http-response.adoc[]
+include::{snippets}/nickname-check-available/response-fields.adoc[]
+
+==== 응답 - 이미 사용 중
+
+include::{snippets}/nickname-check-taken/http-response.adoc[]
+include::{snippets}/nickname-check-taken/response-fields.adoc[]
+
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
 |HTTP|code|message|설명
 
+|400|COMMON_400_001|닉네임은 한글/영문/숫자/공백만 사용해 2~10자로 입력해야 합니다.|형식/길이 위반
+|400|USER_400_001|닉네임에 부적절한 표현이 포함되어 있습니다.|비속어 포함
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
-|===
 
-[[auth-withdraw]]
-== 회원 탈퇴 (Auth-09)
-
-Authorization 헤더의 access token으로 식별된 계정을 탈퇴 처리한다. 이름은 즉시 삭제되고 이메일은 복구 불가능한 값으로 대체되며(원본 이메일의 해시만 별도 보관), refresh token이 무효화되고 refresh token Cookie가 만료(`Max-Age=0`)된다.
-
-NOTE: 탈퇴한 이메일은 30일간 재가입이 제한된다(<<auth-signup>>). 투자/퀴즈 기록은 탈퇴 6개월 후 별도 배치가 삭제하며, 집계 통계는 비식별 상태로 영구 보관된다.
-
-=== 응답 - 성공
-
-include::{snippets}/withdraw-success/http-response.adoc[]
-include::{snippets}/withdraw-success/response-fields.adoc[]
-
-=== 에러 코드
-
-[cols="1,2,3,3"]
-|===
-|HTTP|code|message|설명
-
-|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
-|409|COMMON_409_001|요청이 현재 상태와 충돌합니다.|이미 탈퇴했거나 정지된 계정
-|===
-
-[[auth-google]]
-== 구글 로그인/가입 (Auth-02)
-
-구글 Sign-In SDK가 발급한 ID Token을 검증해 기존 계정이면 로그인, 없으면 자동 가입한다(회원가입/로그인을 별도 엔드포인트로 나누지 않음). 구글 로그인 자체가 동의 절차를 거치므로 서비스 약관도 자동 동의로 간주하고, 구글이 이미 이메일을 검증했으므로 가입 시 `Auth.emailVerified`가 곧바로 `true`로 시작한다.
-
-NOTE: ID Token은 서명(JWKS), 발급자(`iss`), 대상(`aud`)을 모두 검증한 뒤 `sub`(구글 계정 고유 ID)로 기존 가입 여부를 판단한다.
-
-=== 요청 - 성공
-
-include::{snippets}/google-auth-success/http-request.adoc[]
-include::{snippets}/google-auth-success/request-fields.adoc[]
-
-=== 응답 - 성공
-
-include::{snippets}/google-auth-success/http-response.adoc[]
-include::{snippets}/google-auth-success/response-fields.adoc[]
-
-=== 응답 - 실패(유효하지 않은 ID Token)
-
-include::{snippets}/google-auth-invalid-token/http-response.adoc[]
-include::{snippets}/google-auth-invalid-token/response-fields.adoc[]
-
-=== 에러 코드
-
-[cols="1,2,3,3"]
-|===
-|HTTP|code|message|설명
-
-|400|COMMON_400_002|요청 값 검증에 실패했습니다.|idToken 누락 등(errorDetail 참고)
-|401|AUTH_401_004|유효하지 않은 구글 로그인 토큰입니다.|서명/발급자/대상 검증 실패
-|403|AUTH_403_002|탈퇴한 계정입니다.|status=WITHDRAWN
-|403|AUTH_403_003|정지된 계정입니다.|status=SUSPENDED
-|409|AUTH_409_003|최근 탈퇴한 이메일입니다. 30일 후 다시 가입할 수 있습니다.|신규 가입인데 탈퇴 후 30일 이내(<<auth-withdraw>>)
 |===
 
 [[user-nickname-change]]
-== 닉네임 변경(MYPAGE-02)
+=== 닉네임 변경 (MYPAGE-02-2)
 
 마이페이지에서 사용자의 닉네임을 변경한다. 닉네임은 2~10자(한글/영문/숫자/공백)여야 하며, 비속어를 포함하거나 이미 사용 중이면 변경할 수 없다.
 
 NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
 
-=== 요청
+==== 요청
 
 include::{snippets}/nickname-change-success/http-request.adoc[]
 include::{snippets}/nickname-change-success/request-fields.adoc[]
 
-=== 응답 - 변경 성공
+==== 응답 - 변경 성공
 
 include::{snippets}/nickname-change-success/http-response.adoc[]
 include::{snippets}/nickname-change-success/response-fields.adoc[]
 
-=== 응답 - 이미 사용 중인 닉네임(409)
+==== 응답 - 이미 사용 중인 닉네임(409)
 
 include::{snippets}/nickname-change-duplicated/http-response.adoc[]
 include::{snippets}/nickname-change-duplicated/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -417,74 +415,50 @@ include::{snippets}/nickname-change-duplicated/response-fields.adoc[]
 |409|USER_409_002|이미 사용 중인 닉네임입니다.|중복 닉네임
 |===
 
-[[mypage-settings]]
-== 마이페이지 설정 조회/변경(MYPAGE-06)
+[[group-investment]]
+== Investment
 
-마이페이지 설정 화면 데이터를 조회하고, 알림 설정 4개 토글(뉴스 업데이트/일일 퀴즈/투자 결과/랭킹 변동)을 변경한다. 현재 설정 화면에는 알림 설정만 있으며, `GET /api/mypage/settings`와 `GET /api/mypage/settings/notifications`는 같은 형식으로 응답한다.
+모의투자 API.
 
-NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+[[investment-settlement-result]]
+=== 정산 결과 팝업 조회 (INVEST-06)
 
-NOTE: 사용자의 알림 설정이 아직 없으면(가입 이후 한 번도 조회/변경한 적 없으면) 조회·변경 시점에 기본값(모두 true)으로 자동 생성된다.
+가장 최근 정산 대상 투자의 결과를 조회한다. 정산 완료(SETTLED)면 손익 결과를 반환하고, 그 외에는 사유(`reason`)만 반환한다.
 
-=== 응답 - 설정 조회(GET /api/mypage/settings)
+* `SETTLEMENT_PENDING`: 정산 배치가 아직 완료되지 않음(정산 중)
+* `NO_INVESTMENT`: 최근 정산 대상 투자가 없음(미투자/취소 포함)
 
-include::{snippets}/mypage-settings-get/http-response.adoc[]
-include::{snippets}/mypage-settings-get/response-fields.adoc[]
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+FE 담당자는 invest_date를 로컬에 저장하여 같은 투자 결과 팝업을 1회만 보여줄 수 있도록 한다.
 
-=== 응답 - 알림 설정 조회(GET /api/mypage/settings/notifications)
+==== 요청
 
-include::{snippets}/mypage-settings-notifications-get/http-response.adoc[]
-include::{snippets}/mypage-settings-notifications-get/response-fields.adoc[]
+정산 완료 결과가 있는 경우의 요청 예시.
 
-=== 요청/응답 - 알림 설정 변경(PATCH /api/mypage/settings/notifications)
+include::{snippets}/settlement-result-settled/http-request.adoc[]
 
-4개 필드를 모두 포함해 전체를 교체한다(부분 갱신 아님).
+==== 응답 - 정산 완료(결과 있음)
 
-include::{snippets}/mypage-settings-notifications-update/http-request.adoc[]
-include::{snippets}/mypage-settings-notifications-update/request-fields.adoc[]
+include::{snippets}/settlement-result-settled/http-response.adoc[]
+include::{snippets}/settlement-result-settled/response-fields.adoc[]
 
-include::{snippets}/mypage-settings-notifications-update/http-response.adoc[]
-include::{snippets}/mypage-settings-notifications-update/response-fields.adoc[]
+==== 응답 - 결과 없음 / 정산 중
 
-=== 에러 코드
+include::{snippets}/settlement-result-reason/http-response.adoc[]
+include::{snippets}/settlement-result-reason/response-fields.adoc[]
 
-[cols="1,2,3,3"]
-|===
-|HTTP|code|message|설명
+[[group-sector]]
+== Sector
 
-|400|COMMON_400_002|요청 값 검증에 실패했습니다.|알림 설정 변경 시 4개 필드 중 하나라도 누락
-|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
-|===
+모의투자 섹터 API.
 
-[[mypage-saved-terms]]
-== 저장한 용어 목록 조회(MYPAGE-04)
+[[group-mypage]]
+== Mypage
 
-마이페이지에서 사용자가 저장한 용어 목록을 페이지 단위로 조회한다. `sort=recent`(기본, 최근 저장순) 또는 `sort=alphabetical`(가나다순)로 정렬할 수 있다.
-
-NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
-
-NOTE: count 쿼리 없이 `size+1`건을 조회해 `hasNext`만 판정한다(전체 개수/전체 페이지 수는 응답에 없음). `size`는 최대 50이다.
-
-=== 요청/응답
-
-include::{snippets}/mypage-saved-terms-get/http-request.adoc[]
-include::{snippets}/mypage-saved-terms-get/query-parameters.adoc[]
-
-include::{snippets}/mypage-saved-terms-get/http-response.adoc[]
-include::{snippets}/mypage-saved-terms-get/response-fields.adoc[]
-
-=== 에러 코드
-
-[cols="1,2,3,3"]
-|===
-|HTTP|code|message|설명
-
-|400|COMMON_400_001|잘못된 요청입니다.|size가 50을 초과하거나 sort 값이 올바르지 않음
-|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
-|===
+마이페이지 조회 API.
 
 [[mypage-home]]
-== 마이페이지 홈 조회(MYPAGE-01)
+=== 마이페이지 홈 조회 (MYPAGE-01)
 
 닉네임, 캐릭터, 연속 참여(스트릭)/이번 주 활동, 최근 읽은 뉴스(최신순 최대 3건)를 한 번에 조회한다.
 
@@ -492,12 +466,12 @@ NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실�
 
 NOTE: currentStreak은 오늘 아직 퀴즈를 풀지 않았어도 끊기지 않는다(어제까지 연속 기록을 그대로 보여줌). 오늘도 어제도 완료하지 않았을 때만 0이 된다. maxStreak은 지금까지의 최장 연속 기록이다. weeklyActivity는 이번 주 일요일부터 토요일까지 7일이다.
 
-=== 응답
+==== 응답
 
 include::{snippets}/mypage-home-get/http-response.adoc[]
 include::{snippets}/mypage-home-get/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -509,112 +483,147 @@ include::{snippets}/mypage-home-get/response-fields.adoc[]
 |409|USER_409_001|온보딩을 먼저 완료해야 합니다.|User.characterId가 아직 없음(온보딩 미완료)
 |===
 
-[[stats-summary]]
-== 수익 통계 조회 (STATS-02)
+[[mypage-scraps]]
+=== 스크랩한 뉴스 목록 조회 (MYPAGE-04-1)
 
-가입 이후 누적 손익, 최근 7일 누적 수익률 그래프, 수익 TOP3 섹터, 투자 성향을 한 번에 조회한다. 정산 완료(SETTLED)된 투자만 집계한다.
+마이페이지에서 스크랩한 뉴스를 지정한 정렬로 커서 페이지네이션 조회한다. 미삭제 뉴스만 대상으로 하며, 본인 스크랩만 조회한다.
 
-* 누적 수익률: 초기자본 100만원 기준(`누적 손익금 / 1,000,000 × 100`), 소수 첫째자리.
-* 그래프: 가장 최근 정산일을 포함한 직전 7일. 각 날짜는 그 날까지의 누적 수익률이며, 투자하지 않은 날은 직전 누적을 그대로 유지한다(손실 시 음수).
-* TOP3 섹터: 섹터 누적 수익률(그 섹터 누적 매수금 기준) 내림차순 3개.
-* 투자 성향: 섹터 그룹별 누적 매수 비중으로 판정(STABLE/BALANCED/GROWTH/AGGRESSIVE).
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
 
-NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+* `sort`: `SAVED_DESC`(최근 저장순, 기본) / `PUBLISHED_DESC`(업로드순) / `VIEW_DESC`(조회수순).
+* `cursor`/`size`(1~50, 기본 10): 커서 페이지네이션. `nextCursor`는 다음 페이지가 있을 때만 내려간다(없으면 응답에서 생략).
+* 시각은 KST 오프셋(`+09:00`)을 포함한다.
 
-=== 요청
+==== 요청
 
-include::{snippets}/stats-summary/http-request.adoc[]
+include::{snippets}/scrap-list/http-request.adoc[]
+include::{snippets}/scrap-list/query-parameters.adoc[]
 
-=== 응답 - 정상
+==== 응답 - 정상
 
-include::{snippets}/stats-summary/http-response.adoc[]
-include::{snippets}/stats-summary/response-fields.adoc[]
+include::{snippets}/scrap-list/http-response.adoc[]
+include::{snippets}/scrap-list/response-fields.adoc[]
 
-=== 응답 - 정산 이력 없음(빈 상태)
+==== 응답 - 스크랩 없음(빈 상태)
 
-정산 완료 이력이 없는 신규 사용자는 `investDate`/`investmentType`이 생략되고 `graph`/`topSectors`가 빈 배열이다.
+include::{snippets}/scrap-list-empty/http-response.adoc[]
+include::{snippets}/scrap-list-empty/response-fields.adoc[]
 
-include::{snippets}/stats-summary-empty/http-response.adoc[]
-include::{snippets}/stats-summary-empty/response-fields.adoc[]
+==== 응답 - 실패(요청 값 오류)
 
-[[stats-history]]
-== 누적 수익 내역 조회 (STATS-08)
+include::{snippets}/scrap-list-invalid/http-response.adoc[]
+include::{snippets}/scrap-list-invalid/response-fields.adoc[]
 
-기간 탭(일/주/월/년/전체) 단위로 그 기간에 발생한 누적 손익을 요약하고, 종목(섹터)별 내역을 원하는 기준으로 정렬해 조회한다. 정산 완료(SETTLED)된 투자만 집계한다.
+==== 응답 - 실패(사용자 없음)
 
-* 요약 손익률: 그 기간 누적 매수금 기준(`기간 손익금 / 기간 매수금 × 100`), 소수 첫째자리. 매수 이력이 없으면 0.0.
-* 종목(섹터) 손익률: 그 섹터의 기간 누적 매수금 기준, 소수 첫째자리.
-* `hasPrev`/`hasNext`: 선택한 기간 윈도우 밖(이전/이후)에 정산 완료 데이터가 있는지로 판단한다. 좌우 화살표 네비게이션 활성화에 쓴다.
-* `date`: `period` 형식에 맞춰 지정한다(DAY=`YYYY-MM-DD`, WEEK=`YYYY-Www`(ISO 주차), MONTH=`YYYY-MM`, YEAR=`YYYY`, ALL=불필요). 미지정 시 해당 `period`의 현재(오늘/이번 주/이번 달/올해, KST)로 처리한다. `period=ALL`이면 응답에서 `date`가 생략된다.
+include::{snippets}/scrap-list-user-not-found/http-response.adoc[]
+include::{snippets}/scrap-list-user-not-found/response-fields.adoc[]
 
-NOTE: 인증은 `Authorization: Bearer {accessToken}`로 처리하며, 사용자는 토큰에서 해석한다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
-
-=== 요청
-
-include::{snippets}/stats-history/http-request.adoc[]
-include::{snippets}/stats-history/query-parameters.adoc[]
-
-=== 응답 - 정상
-
-include::{snippets}/stats-history/http-response.adoc[]
-include::{snippets}/stats-history/response-fields.adoc[]
-
-=== 응답 - 기간 내 정산 데이터 없음(빈 상태)
-
-해당 기간에 정산 완료 데이터가 없으면 `summary`의 금액/비율이 0(0.0)이고 `sectors`가 빈 배열이다.
-
-include::{snippets}/stats-history-empty/http-response.adoc[]
-include::{snippets}/stats-history-empty/response-fields.adoc[]
-
-=== 응답 - 실패(period 값 오류)
-
-허용되지 않는 `period` 값(또는 누락) 등 요청 값 검증 실패는 도메인 에러 코드(`STATS_400_00x`)로 응답하며, `errorDetail`에 허용값/입력값 등 구체적 원인을 담는다.
-
-include::{snippets}/stats-history-invalid-period/http-response.adoc[]
-include::{snippets}/stats-history-invalid-period/response-fields.adoc[]
-
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
 |HTTP|code|message|설명
 
-|400|STATS_400_001|조회 기간(period) 값이 올바르지 않습니다.|`period`가 비어 있거나 DAY/WEEK/MONTH/YEAR/ALL 이외의 값
-|400|STATS_400_002|정렬 기준(sort) 값이 올바르지 않습니다.|`sort`가 AMOUNT_DESC/AMOUNT_ASC/RATE_DESC/RATE_ASC 이외의 값
-|400|STATS_400_003|조회 기준 시점(date) 형식이 조회 기간과 맞지 않습니다.|`date` 형식이 `period` 규격과 불일치(예: MONTH에 `2026-13`)
+|400|MYPAGE_400_004|페이지 요청 값이 올바르지 않습니다.|`size`가 1~50 밖, `sort` 허용값 아님, 또는 `cursor` 형식 오류/정렬 불일치
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|MYPAGE_404_001|사용자 정보를 찾을 수 없습니다.|access token의 userId에 해당하는 사용자 없음
+|===
+
+[[mypage-recent-news]]
+=== 최근 읽은 뉴스 목록 조회 (MYPAGE-04-2)
+
+마이페이지에서 최근 읽은 뉴스를 열람 시각(`read_at`) 최신순으로 커서 페이지네이션 조회한다. 미삭제 뉴스만 대상으로 하며, 본인 열람 기록만 조회한다. 열람 기록은 뉴스별 1건이라 같은 뉴스를 여러 번 읽어도 목록에는 한 번만, 가장 최근 열람 시각으로 나타난다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
+
+* 정렬은 열람 시각 내림차순 하나뿐이라 `sort` 파라미터가 없다.
+* `cursor`/`size`(1~50, 기본 10): 커서 페이지네이션. `nextCursor`는 다음 페이지가 있을 때만 내려간다(없으면 응답에서 생략).
+* 시각은 KST 오프셋(`+09:00`)을 포함한다.
+
+==== 요청
+
+include::{snippets}/recent-news-list/http-request.adoc[]
+include::{snippets}/recent-news-list/query-parameters.adoc[]
+
+==== 응답 - 정상
+
+include::{snippets}/recent-news-list/http-response.adoc[]
+include::{snippets}/recent-news-list/response-fields.adoc[]
+
+==== 응답 - 읽은 뉴스 없음(빈 상태)
+
+include::{snippets}/recent-news-list-empty/http-response.adoc[]
+include::{snippets}/recent-news-list-empty/response-fields.adoc[]
+
+==== 응답 - 실패(요청 값 오류)
+
+include::{snippets}/recent-news-list-invalid/http-response.adoc[]
+include::{snippets}/recent-news-list-invalid/response-fields.adoc[]
+
+==== 응답 - 실패(사용자 없음)
+
+include::{snippets}/recent-news-list-user-not-found/http-response.adoc[]
+include::{snippets}/recent-news-list-user-not-found/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|MYPAGE_400_004|페이지 요청 값이 올바르지 않습니다.|`size`가 1~50 밖, 또는 `cursor` 형식 오류
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|MYPAGE_404_001|사용자 정보를 찾을 수 없습니다.|access token의 userId에 해당하는 사용자 없음
+|===
+
+[[mypage-saved-terms]]
+=== 저장한 용어 목록 조회 (MYPAGE-04-3)
+
+마이페이지에서 사용자가 저장한 용어 목록을 페이지 단위로 조회한다. `sort=recent`(기본, 최근 저장순) 또는 `sort=alphabetical`(가나다순)로 정렬할 수 있다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+NOTE: count 쿼리 없이 `size+1`건을 조회해 `hasNext`만 판정한다(전체 개수/전체 페이지 수는 응답에 없음). `size`는 최대 50이다.
+
+==== 요청/응답
+
+include::{snippets}/mypage-saved-terms-get/http-request.adoc[]
+include::{snippets}/mypage-saved-terms-get/query-parameters.adoc[]
+
+include::{snippets}/mypage-saved-terms-get/http-response.adoc[]
+include::{snippets}/mypage-saved-terms-get/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_001|잘못된 요청입니다.|size가 50을 초과하거나 sort 값이 올바르지 않음
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |===
 
-[[stats-recent-detail]]
-== 최근 투자 성과 상세 (STATS-03)
+[[group-notification]]
+== Notification
 
-가장 최근 정산 완료(SETTLED)된 투자 1건을 섹터별로 상세하게 조회한다. 최근 투자 결과 화면에서 섹터별 손익을 확인하는 데 쓴다.
+마이페이지 설정/알림 API.
 
-* `date`: 조회된 최근 정산 완료 투자의 일자(KST). 정산 이력이 없으면 `null`이다.
-* `totalInvestment`/`profitAmount`: 그 투자의 총 매수금과 총 손익금(손실 시 음수).
-* 섹터 손익률(`sectors[].profitRate`): 그 섹터 매수금 기준(`섹터 손익금 / 섹터 매수금 × 100`), 소수 첫째자리. 매수금이 0이면 0.0.
-* `sectors[].isFallback`: 거래정지 등으로 시가를 확보하지 못해 0%가 적용된(폴백) 섹터면 `true`. 이 경우 손익금/손익률은 0이다.
-* 섹터는 매수금(`totalInvestment`) 내림차순으로 정렬된다.
+[[mypage-settings-get]]
+=== 마이페이지 설정 조회 (MYPAGE-06-1)
 
-NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+마이페이지 설정 화면 데이터를 조회한다. 현재 설정 화면에는 알림 설정만 있어 <<mypage-notifications-get,알림 설정 조회>>와 같은 형식으로 응답한다.
 
-=== 요청
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
 
-include::{snippets}/stats-recent-detail/http-request.adoc[]
+NOTE: 사용자의 알림 설정이 아직 없으면(가입 이후 한 번도 조회/변경한 적 없으면) 조회 시점에 기본값(모두 true)으로 자동 생성된다.
 
-=== 응답 - 정상
+==== 응답
 
-include::{snippets}/stats-recent-detail/http-response.adoc[]
-include::{snippets}/stats-recent-detail/response-fields.adoc[]
+include::{snippets}/mypage-settings-get/http-response.adoc[]
+include::{snippets}/mypage-settings-get/response-fields.adoc[]
 
-=== 응답 - 최근 투자 이력 없음(빈 상태)
-
-정산 완료 이력이 없으면 `date`는 `null`, `totalInvestment`/`profitAmount`는 0, `sectors`는 빈 배열이다.
-
-include::{snippets}/stats-recent-detail-empty/http-response.adoc[]
-include::{snippets}/stats-recent-detail-empty/response-fields.adoc[]
-
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -622,22 +631,75 @@ include::{snippets}/stats-recent-detail-empty/response-fields.adoc[]
 
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |===
+
+[[mypage-notifications-get]]
+=== 알림 설정 조회 (MYPAGE-06-2)
+
+알림 설정 4개 토글(뉴스 업데이트/일일 퀴즈/투자 결과/랭킹 변동)의 현재 상태를 조회한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+NOTE: 사용자의 알림 설정이 아직 없으면(가입 이후 한 번도 조회/변경한 적 없으면) 조회 시점에 기본값(모두 true)으로 자동 생성된다.
+
+==== 응답
+
+include::{snippets}/mypage-settings-notifications-get/http-response.adoc[]
+include::{snippets}/mypage-settings-notifications-get/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===
+
+[[mypage-notifications-update]]
+=== 알림 설정 변경 (MYPAGE-06-3)
+
+알림 설정 4개 토글을 한 번에 갱신한다. 4개 필드를 모두 포함해 전체를 교체한다(부분 갱신 아님).
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+==== 요청/응답
+
+include::{snippets}/mypage-settings-notifications-update/http-request.adoc[]
+include::{snippets}/mypage-settings-notifications-update/request-fields.adoc[]
+
+include::{snippets}/mypage-settings-notifications-update/http-response.adoc[]
+include::{snippets}/mypage-settings-notifications-update/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_002|요청 값 검증에 실패했습니다.|4개 필드 중 하나라도 누락
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===
+
+[[group-quiz]]
+== Quiz
+
+오늘의 한입 퀴즈 API.
 
 [[quiz-today]]
-== 오늘의 한입 퀴즈 조회/제출/결과 (QUIZ-01~03)
+=== 오늘의 한입 퀴즈 조회 (QUIZ-01)
 
-KST 기준 오늘 공개된 퀴즈 세트와 사용자의 풀이 진행 상태를 조회하고, 선택지 탭 즉시 답안을 제출한다. 3문항을 모두 완료하면 마지막 제출 시점에 보상이 지급되며, 결과 조회 API는 이미 저장된 결과와 보상 정보를 조회만 한다.
+KST 기준 오늘 공개된 퀴즈 세트와 사용자의 풀이 진행 상태를 조회한다.
 
 NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 오늘의 퀴즈가 없거나 공개 전이면 실패 응답이 아니라 `quizSetStatus=UNAVAILABLE`인 200 응답을 반환한다.
 
-=== 오늘의 퀴즈 조회 - 정상
+==== 정상
 
 include::{snippets}/quiz-today-success/http-request.adoc[]
 include::{snippets}/quiz-today-success/request-headers.adoc[]
 include::{snippets}/quiz-today-success/http-response.adoc[]
 include::{snippets}/quiz-today-success/response-fields.adoc[]
 
-=== 오늘의 퀴즈 조회 - 이어 풀기
+==== 이어 풀기
 
 이미 일부 문항을 제출한 사용자는 `sessionStatus=PROGRESS`와 `currentQuestionOrder`를 기준으로 이어 풀 문항부터 진입한다. 이미 제출한 문항의 답안 수정은 허용하지 않는다.
 
@@ -646,14 +708,31 @@ include::{snippets}/quiz-today-progress/request-headers.adoc[]
 include::{snippets}/quiz-today-progress/http-response.adoc[]
 include::{snippets}/quiz-today-progress/response-fields.adoc[]
 
-=== 오늘의 퀴즈 조회 - 이용 불가
+==== 이용 불가
 
 include::{snippets}/quiz-today-unavailable/http-request.adoc[]
 include::{snippets}/quiz-today-unavailable/request-headers.adoc[]
 include::{snippets}/quiz-today-unavailable/http-response.adoc[]
 include::{snippets}/quiz-today-unavailable/response-fields.adoc[]
 
-=== 답안 제출
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|403|AUTH_403_001|요청이 거부되었습니다.|온보딩 미완료 등 접근 권한 없음
+|===
+
+[[quiz-attempt]]
+=== 퀴즈 답안 제출 (QUIZ-02)
+
+선택지 탭 즉시 답안을 제출한다. 3문항을 모두 완료하면 마지막 제출 시점에 보상이 지급된다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 이미 제출한 문항은 기존 제출 결과를 그대로 반환한다.
+
+==== 요청/응답 - 성공
 
 include::{snippets}/quiz-attempt-success/http-request.adoc[]
 include::{snippets}/quiz-attempt-success/request-headers.adoc[]
@@ -662,21 +741,7 @@ include::{snippets}/quiz-attempt-success/request-fields.adoc[]
 include::{snippets}/quiz-attempt-success/http-response.adoc[]
 include::{snippets}/quiz-attempt-success/response-fields.adoc[]
 
-=== 결과 조회 - 완료
-
-include::{snippets}/quiz-result-success/http-request.adoc[]
-include::{snippets}/quiz-result-success/request-headers.adoc[]
-include::{snippets}/quiz-result-success/http-response.adoc[]
-include::{snippets}/quiz-result-success/response-fields.adoc[]
-
-=== 결과 조회 - 실패(퀴즈 미완료)
-
-include::{snippets}/quiz-result-not-ready/http-request.adoc[]
-include::{snippets}/quiz-result-not-ready/request-headers.adoc[]
-include::{snippets}/quiz-result-not-ready/http-response.adoc[]
-include::{snippets}/quiz-result-not-ready/response-fields.adoc[]
-
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -685,33 +750,82 @@ include::{snippets}/quiz-result-not-ready/response-fields.adoc[]
 |400|QUIZ_400_001|해당 퀴즈 문항의 선택지가 아닙니다.|답안 제출 시 `optionId`가 해당 문항의 선택지가 아님
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |403|AUTH_403_001|요청이 거부되었습니다.|온보딩 미완료 등 접근 권한 없음
-|404|QUIZ_404_001|오늘의 퀴즈를 아직 준비 중입니다.|결과 조회/답안 제출 시 오늘 공개된 퀴즈가 없음
+|404|QUIZ_404_001|오늘의 퀴즈를 아직 준비 중입니다.|오늘 공개된 퀴즈가 없음
 |404|QUIZ_404_002|존재하지 않는 퀴즈 문항입니다.|답안 제출 대상 문항이 오늘 퀴즈 세트에 없음
+|===
+
+[[quiz-result]]
+=== 오늘의 한입 퀴즈 결과 조회 (QUIZ-03)
+
+오늘 완료한 퀴즈의 정답 수와 이미 지급된 가상 머니 보상 결과를 조회한다. 3문항을 모두 완료한 경우에만 조회할 수 있으며, 보상 지급은 <<quiz-attempt,답안 제출 API>>에서 이미 처리된다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
+
+==== 결과 조회 - 완료
+
+include::{snippets}/quiz-result-success/http-request.adoc[]
+include::{snippets}/quiz-result-success/request-headers.adoc[]
+include::{snippets}/quiz-result-success/http-response.adoc[]
+include::{snippets}/quiz-result-success/response-fields.adoc[]
+
+==== 결과 조회 - 실패(퀴즈 미완료)
+
+include::{snippets}/quiz-result-not-ready/http-request.adoc[]
+include::{snippets}/quiz-result-not-ready/request-headers.adoc[]
+include::{snippets}/quiz-result-not-ready/http-response.adoc[]
+include::{snippets}/quiz-result-not-ready/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|403|AUTH_403_001|요청이 거부되었습니다.|온보딩 미완료 등 접근 권한 없음
+|404|QUIZ_404_001|오늘의 퀴즈를 아직 준비 중입니다.|오늘 공개된 퀴즈가 없음
 |409|QUIZ_409_001|퀴즈를 모두 완료한 후 결과를 조회할 수 있습니다.|3문항을 모두 완료하기 전 결과 조회 시도
 |===
 
-[[quiz-history]]
-== 지난 퀴즈 복습 (QUIZ-04)
+[[quiz-history-list]]
+=== 지난 퀴즈 복습 목록 조회 (QUIZ-04-1)
 
-사용자가 완료한 지난 퀴즈 기록을 복습한다. 목록은 날짜별 정답 수 요약을 반환하고, 상세는 특정 날짜의 모든 문항과 사용자의 선택 답안, 정답, 해설을 반환한다. 오답 필터와 페이지네이션은 제공하지 않는다.
+사용자가 완료한 지난 퀴즈 기록을 날짜별 정답 수 요약으로 조회한다. 페이지네이션은 제공하지 않는다.
 
 NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 조회 결과가 없으면 실패가 아니라 빈 배열을 반환한다.
 
-=== 복습 목록 조회 - 정상
+==== 정상
 
 include::{snippets}/quiz-history-list-success/http-request.adoc[]
 include::{snippets}/quiz-history-list-success/request-headers.adoc[]
 include::{snippets}/quiz-history-list-success/http-response.adoc[]
 include::{snippets}/quiz-history-list-success/response-fields.adoc[]
 
-=== 복습 목록 조회 - 빈 결과
+==== 빈 결과
 
 include::{snippets}/quiz-history-list-empty/http-request.adoc[]
 include::{snippets}/quiz-history-list-empty/request-headers.adoc[]
 include::{snippets}/quiz-history-list-empty/http-response.adoc[]
 include::{snippets}/quiz-history-list-empty/response-fields.adoc[]
 
-=== 복습 상세 조회 - 정상
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|403|AUTH_403_001|요청이 거부되었습니다.|온보딩 미완료 등 접근 권한 없음
+|===
+
+[[quiz-history-detail]]
+=== 지난 퀴즈 복습 상세 조회 (QUIZ-04-2)
+
+특정 날짜에 완료한 퀴즈 3문항과 사용자의 선택 답안, 정답, 해설을 조회한다. 오답 필터는 제공하지 않는다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 조회 결과가 없으면 실패가 아니라 빈 배열을 반환한다.
+
+==== 정상
 
 include::{snippets}/quiz-history-detail-success/http-request.adoc[]
 include::{snippets}/quiz-history-detail-success/request-headers.adoc[]
@@ -719,7 +833,7 @@ include::{snippets}/quiz-history-detail-success/path-parameters.adoc[]
 include::{snippets}/quiz-history-detail-success/http-response.adoc[]
 include::{snippets}/quiz-history-detail-success/response-fields.adoc[]
 
-=== 복습 상세 조회 - 빈 결과
+==== 빈 결과
 
 include::{snippets}/quiz-history-detail-empty/http-request.adoc[]
 include::{snippets}/quiz-history-detail-empty/request-headers.adoc[]
@@ -727,7 +841,7 @@ include::{snippets}/quiz-history-detail-empty/path-parameters.adoc[]
 include::{snippets}/quiz-history-detail-empty/http-response.adoc[]
 include::{snippets}/quiz-history-detail-empty/response-fields.adoc[]
 
-=== 복습 상세 조회 - 실패(미래 날짜)
+==== 실패(미래 날짜)
 
 include::{snippets}/quiz-history-detail-future-date/http-request.adoc[]
 include::{snippets}/quiz-history-detail-future-date/request-headers.adoc[]
@@ -735,7 +849,7 @@ include::{snippets}/quiz-history-detail-future-date/path-parameters.adoc[]
 include::{snippets}/quiz-history-detail-future-date/http-response.adoc[]
 include::{snippets}/quiz-history-detail-future-date/response-fields.adoc[]
 
-=== 복습 상세 조회 - 실패(날짜 형식 오류)
+==== 실패(날짜 형식 오류)
 
 include::{snippets}/quiz-history-detail-invalid-date-format/http-request.adoc[]
 include::{snippets}/quiz-history-detail-invalid-date-format/request-headers.adoc[]
@@ -743,7 +857,7 @@ include::{snippets}/quiz-history-detail-invalid-date-format/path-parameters.adoc
 include::{snippets}/quiz-history-detail-invalid-date-format/http-response.adoc[]
 include::{snippets}/quiz-history-detail-invalid-date-format/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -755,40 +869,70 @@ include::{snippets}/quiz-history-detail-invalid-date-format/response-fields.adoc
 |403|AUTH_403_001|요청이 거부되었습니다.|온보딩 미완료 등 접근 권한 없음
 |===
 
-[[news-query]]
-== 뉴스 조회
+[[group-news]]
+== News
 
-공개 뉴스 목록과 오늘의 뉴스, 상세 본문, 자산 섹터별 영향도를 조회한다.
+뉴스/용어 API.
 
-* 전체 뉴스 목록은 인증 없이 호출할 수 있으며 `publishedAt DESC, newsId DESC` 순서의 커서 페이지네이션을 사용한다.
-* 오늘의 뉴스는 KST 기준 당일 수집된 공개 뉴스 중 최신 3건을 반환한다.
-* 상세 조회는 조회수와 최근 열람 기록을 갱신하므로 `POST`를 사용한다.
-* 섹터 영향도는 고정 순서의 12개 섹터를 반환하며 분석값이 없는 섹터는 `NEUTRAL`이다.
-
-NOTE: 오늘의 뉴스, 상세 뉴스, 섹터별 영향도는 인증(`Authorization: Bearer {accessToken}`)이 필요하다.
-
+[[news-list]]
 === 전체 뉴스 목록 조회 (CONTENT-01-1)
+
+공개 뉴스 목록을 조회한다. 인증 없이 호출할 수 있으며 `publishedAt DESC, newsId DESC` 순서의 커서 페이지네이션을 사용한다.
+
+==== 정상
 
 include::{snippets}/news-list-success/http-request.adoc[]
 include::{snippets}/news-list-success/query-parameters.adoc[]
 include::{snippets}/news-list-success/http-response.adoc[]
 include::{snippets}/news-list-success/response-fields.adoc[]
 
-==== 응답 - 실패(잘못된 페이지 크기 또는 커서)
+==== 실패(잘못된 페이지 크기 또는 커서)
 
 include::{snippets}/news-list-invalid/http-request.adoc[]
 include::{snippets}/news-list-invalid/query-parameters.adoc[]
 include::{snippets}/news-list-invalid/http-response.adoc[]
 include::{snippets}/news-list-invalid/response-fields.adoc[]
 
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_001|잘못된 요청입니다.|`size`가 1~50 범위를 벗어나거나 커서 형식이 올바르지 않음
+|===
+
+[[news-today]]
 === 오늘의 뉴스 조회 (CONTENT-01-2)
+
+KST 기준 당일 수집된 공개 뉴스 중 최신 3건을 반환한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다.
+
+==== 요청/응답
 
 include::{snippets}/news-today-success/http-request.adoc[]
 include::{snippets}/news-today-success/request-headers.adoc[]
 include::{snippets}/news-today-success/http-response.adoc[]
 include::{snippets}/news-today-success/response-fields.adoc[]
 
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===
+
+[[news-detail]]
 === 뉴스 상세 조회 (CONTENT-02)
+
+뉴스 상세 본문을 조회한다. 조회수와 최근 열람 기록을 갱신하므로 `POST`를 사용한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다.
+
+==== 정상
 
 include::{snippets}/news-detail-success/http-request.adoc[]
 include::{snippets}/news-detail-success/request-headers.adoc[]
@@ -796,17 +940,35 @@ include::{snippets}/news-detail-success/path-parameters.adoc[]
 include::{snippets}/news-detail-success/http-response.adoc[]
 include::{snippets}/news-detail-success/response-fields.adoc[]
 
-==== 응답 - 실패(아직 공개되지 않은 뉴스)
+==== 실패(아직 공개되지 않은 뉴스)
 
 include::{snippets}/news-detail-not-published/http-response.adoc[]
 include::{snippets}/news-detail-not-published/response-fields.adoc[]
 
-==== 응답 - 실패(존재하지 않는 뉴스)
+==== 실패(존재하지 않는 뉴스)
 
 include::{snippets}/news-detail-not-found/http-response.adoc[]
 include::{snippets}/news-detail-not-found/response-fields.adoc[]
 
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|403|CONTENT_403_001|아직 공개되지 않은 뉴스입니다.|상세 조회 대상이 공개 상태가 아님
+|404|CONTENT_404_001|존재하지 않는 뉴스입니다.|상세 조회 대상 뉴스가 없음
+|===
+
+[[news-sector-impacts]]
 === 뉴스 섹터별 영향도 조회 (CONTENT-03)
+
+뉴스가 자산 섹터에 미치는 영향도를 조회한다. 고정 순서의 12개 섹터를 반환하며 분석값이 없는 섹터는 `NEUTRAL`이다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다.
+
+==== 정상
 
 include::{snippets}/news-sector-impacts-success/http-request.adoc[]
 include::{snippets}/news-sector-impacts-success/request-headers.adoc[]
@@ -814,31 +976,29 @@ include::{snippets}/news-sector-impacts-success/path-parameters.adoc[]
 include::{snippets}/news-sector-impacts-success/http-response.adoc[]
 include::{snippets}/news-sector-impacts-success/response-fields.adoc[]
 
-==== 응답 - 실패(존재하지 않는 뉴스)
+==== 실패(존재하지 않는 뉴스)
 
 include::{snippets}/news-sector-impacts-not-found/http-response.adoc[]
 include::{snippets}/news-sector-impacts-not-found/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
 |HTTP|code|message|설명
 
-|400|COMMON_400_001|잘못된 요청입니다.|목록의 `size`가 1~50 범위를 벗어나거나 커서 형식이 올바르지 않음
-|401|AUTH_401_001|인증이 필요합니다.|오늘/상세/섹터 영향도 요청에 유효한 access token이 없음
-|403|CONTENT_403_001|아직 공개되지 않은 뉴스입니다.|상세 조회 대상이 공개 상태가 아님
-|404|CONTENT_404_001|존재하지 않는 뉴스입니다.|상세 또는 섹터 영향도 조회 대상 뉴스가 없음
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|CONTENT_404_001|존재하지 않는 뉴스입니다.|섹터 영향도 조회 대상 뉴스가 없음
 |===
 
 [[news-explanation-cards]]
-== 뉴스 해설 카드 조회 (CONTENT-04)
+=== 뉴스 해설 카드 조회 (CONTENT-04)
 
 뉴스 상세 페이지의 경제 상식 탭에서 노출할 AI 해설 카드를 조회한다. DONE 상태 카드만 `cardOrder` 순서로 최대 3개 반환하며, 완료된 카드가 없으면 생성 중/생성 실패 상태로 보고 409를 반환한다.
 
 NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
 
-=== 요청/응답 - 정상
+==== 요청/응답 - 정상
 
 include::{snippets}/news-explanation-cards-success/http-request.adoc[]
 include::{snippets}/news-explanation-cards-success/request-headers.adoc[]
@@ -846,7 +1006,7 @@ include::{snippets}/news-explanation-cards-success/path-parameters.adoc[]
 include::{snippets}/news-explanation-cards-success/http-response.adoc[]
 include::{snippets}/news-explanation-cards-success/response-fields.adoc[]
 
-=== 응답 - 실패(해설 카드 미완료)
+==== 응답 - 실패(해설 카드 미완료)
 
 include::{snippets}/news-explanation-cards-not-completed/http-request.adoc[]
 include::{snippets}/news-explanation-cards-not-completed/request-headers.adoc[]
@@ -854,7 +1014,7 @@ include::{snippets}/news-explanation-cards-not-completed/path-parameters.adoc[]
 include::{snippets}/news-explanation-cards-not-completed/http-response.adoc[]
 include::{snippets}/news-explanation-cards-not-completed/response-fields.adoc[]
 
-=== 응답 - 실패(존재하지 않는 뉴스)
+==== 응답 - 실패(존재하지 않는 뉴스)
 
 include::{snippets}/news-explanation-cards-not-found/http-request.adoc[]
 include::{snippets}/news-explanation-cards-not-found/request-headers.adoc[]
@@ -862,7 +1022,7 @@ include::{snippets}/news-explanation-cards-not-found/path-parameters.adoc[]
 include::{snippets}/news-explanation-cards-not-found/http-response.adoc[]
 include::{snippets}/news-explanation-cards-not-found/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -874,13 +1034,13 @@ include::{snippets}/news-explanation-cards-not-found/response-fields.adoc[]
 |===
 
 [[term-dictionary]]
-== 용어 사전 조회 (CONTENT-05)
+=== 용어 사전 조회 (CONTENT-05)
 
 뉴스 본문 하이라이트 용어를 탭했을 때 바텀시트에 표시할 용어 설명을 조회한다. `isSaved`는 현재 사용자가 해당 용어를 학습 저장소에 저장했는지 여부다.
 
 NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
 
-=== 요청/응답 - 정상
+==== 요청/응답 - 정상
 
 include::{snippets}/term-get-success/http-request.adoc[]
 include::{snippets}/term-get-success/request-headers.adoc[]
@@ -888,7 +1048,7 @@ include::{snippets}/term-get-success/path-parameters.adoc[]
 include::{snippets}/term-get-success/http-response.adoc[]
 include::{snippets}/term-get-success/response-fields.adoc[]
 
-=== 응답 - 실패(존재하지 않는 용어)
+==== 응답 - 실패(존재하지 않는 용어)
 
 include::{snippets}/term-get-not-found/http-request.adoc[]
 include::{snippets}/term-get-not-found/request-headers.adoc[]
@@ -896,7 +1056,7 @@ include::{snippets}/term-get-not-found/path-parameters.adoc[]
 include::{snippets}/term-get-not-found/http-response.adoc[]
 include::{snippets}/term-get-not-found/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -907,7 +1067,7 @@ include::{snippets}/term-get-not-found/response-fields.adoc[]
 |===
 
 [[term-save]]
-== 용어 저장 / 저장 해제 (CONTENT-05)
+=== 용어 저장 / 저장 해제 (CONTENT-07-1 저장 / CONTENT-07-2 해제)
 
 뉴스 본문 하이라이트 또는 용어 바텀시트에서 선택한 용어를 사용자의 학습 저장소에 저장하거나 저장 해제한다.
 두 API 모두 **멱등** 연산이라 같은 요청을 여러 번 보내도 최종 저장 상태가 같다.
@@ -917,7 +1077,7 @@ include::{snippets}/term-get-not-found/response-fields.adoc[]
 
 NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
 
-=== 저장 - 성공
+==== 저장 - 성공 (CONTENT-07-1)
 
 include::{snippets}/term-save-success/http-request.adoc[]
 include::{snippets}/term-save-success/request-headers.adoc[]
@@ -925,12 +1085,12 @@ include::{snippets}/term-save-success/path-parameters.adoc[]
 include::{snippets}/term-save-success/http-response.adoc[]
 include::{snippets}/term-save-success/response-fields.adoc[]
 
-=== 저장 - 실패(존재하지 않는 용어)
+==== 저장 - 실패(존재하지 않는 용어)
 
 include::{snippets}/term-save-not-found/http-response.adoc[]
 include::{snippets}/term-save-not-found/response-fields.adoc[]
 
-=== 저장 해제 - 성공
+==== 저장 해제 - 성공 (CONTENT-07-2)
 
 include::{snippets}/term-unsave-success/http-request.adoc[]
 include::{snippets}/term-unsave-success/request-headers.adoc[]
@@ -938,12 +1098,12 @@ include::{snippets}/term-unsave-success/path-parameters.adoc[]
 include::{snippets}/term-unsave-success/http-response.adoc[]
 include::{snippets}/term-unsave-success/response-fields.adoc[]
 
-=== 저장 해제 - 실패(존재하지 않는 용어)
+==== 저장 해제 - 실패(존재하지 않는 용어)
 
 include::{snippets}/term-unsave-not-found/http-response.adoc[]
 include::{snippets}/term-unsave-not-found/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -954,8 +1114,13 @@ include::{snippets}/term-unsave-not-found/response-fields.adoc[]
 |404|CONTENT_404_002|존재하지 않는 용어입니다.|해당 `termId`의 용어가 없음
 |===
 
+[[group-scrap]]
+== Scrap
+
+뉴스 스크랩 API.
+
 [[news-scrap]]
-== 뉴스 스크랩 / 해제 (CONTENT-06)
+=== 뉴스 스크랩 / 해제 (CONTENT-06-1 스크랩 / CONTENT-06-2 해제)
 
 관심 있는 뉴스를 저장하거나 저장을 해제한다. 둘 다 **멱등** 연산이라 같은 요청을 여러 번 보내도 상태가 같다.
 
@@ -964,37 +1129,37 @@ include::{snippets}/term-unsave-not-found/response-fields.adoc[]
 
 NOTE: `scrappedAt`은 KST 오프셋(`+09:00`)을 포함하며, 해제 응답에서는 생략된다.
 
-=== 요청 - 스크랩
+==== 요청 - 스크랩 (CONTENT-06-1)
 
 include::{snippets}/scrap-create/http-request.adoc[]
 include::{snippets}/scrap-create/path-parameters.adoc[]
 
-=== 응답 - 스크랩 성공
+==== 응답 - 스크랩 성공
 
 include::{snippets}/scrap-create/http-response.adoc[]
 include::{snippets}/scrap-create/response-fields.adoc[]
 
-=== 요청 - 스크랩 해제
+==== 요청 - 스크랩 해제 (CONTENT-06-2)
 
 include::{snippets}/scrap-delete/http-request.adoc[]
 include::{snippets}/scrap-delete/path-parameters.adoc[]
 
-=== 응답 - 해제 성공
+==== 응답 - 해제 성공
 
 include::{snippets}/scrap-delete/http-response.adoc[]
 include::{snippets}/scrap-delete/response-fields.adoc[]
 
-=== 응답 - 실패(존재하지 않는 뉴스)
+==== 응답 - 실패(존재하지 않는 뉴스)
 
 include::{snippets}/scrap-not-found/http-response.adoc[]
 include::{snippets}/scrap-not-found/response-fields.adoc[]
 
-=== 응답 - 실패(아직 공개되지 않은 뉴스, 스크랩 시)
+==== 응답 - 실패(아직 공개되지 않은 뉴스, 스크랩 시)
 
 include::{snippets}/scrap-not-published/http-response.adoc[]
 include::{snippets}/scrap-not-published/response-fields.adoc[]
 
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
@@ -1005,118 +1170,157 @@ include::{snippets}/scrap-not-published/response-fields.adoc[]
 |404|CONTENT_404_001|존재하지 않는 뉴스입니다.|해당 `newsId`의 뉴스가 없거나 삭제됨
 |===
 
-[[mypage-scraps]]
-== 스크랩한 뉴스 목록 조회 (MYPAGE-04-1)
+[[group-stats]]
+== Stats
 
-마이페이지에서 스크랩한 뉴스를 지정한 정렬로 커서 페이지네이션 조회한다. 미삭제 뉴스만 대상으로 하며, 본인 스크랩만 조회한다.
+수익 통계 API.
 
-NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
+[[stats-summary]]
+=== 수익 통계 조회 (STATS-02)
 
-* `sort`: `SAVED_DESC`(최근 저장순, 기본) / `PUBLISHED_DESC`(업로드순) / `VIEW_DESC`(조회수순).
-* `cursor`/`size`(1~50, 기본 10): 커서 페이지네이션. `nextCursor`는 다음 페이지가 있을 때만 내려간다(없으면 응답에서 생략).
-* 응답 필드는 camelCase로 통일했다(`newsId`/`categoryName`/`thumbnailUrl`/`viewCount`/`publishedAt`/`scrappedAt`/`nextCursor`/`hasNext`). `category`는 코드가 없어 표시명(`categoryName`)으로 내린다. 시각은 KST 오프셋(`+09:00`)을 포함한다.
+가입 이후 누적 손익, 최근 7일 누적 수익률 그래프, 수익 TOP3 섹터, 투자 성향을 한 번에 조회한다. 정산 완료(SETTLED)된 투자만 집계한다.
 
-=== 요청
+* 누적 수익률: 초기자본 100만원 기준(`누적 손익금 / 1,000,000 × 100`), 소수 첫째자리.
+* 그래프: 가장 최근 정산일을 포함한 직전 7일. 각 날짜는 그 날까지의 누적 수익률이며, 투자하지 않은 날은 직전 누적을 그대로 유지한다(손실 시 음수).
+* TOP3 섹터: 섹터 누적 수익률(그 섹터 누적 매수금 기준) 내림차순 3개.
+* 투자 성향: 섹터 그룹별 누적 매수 비중으로 판정(STABLE/BALANCED/GROWTH/AGGRESSIVE).
 
-include::{snippets}/scrap-list/http-request.adoc[]
-include::{snippets}/scrap-list/query-parameters.adoc[]
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
 
-=== 응답 - 정상
+==== 요청
 
-include::{snippets}/scrap-list/http-response.adoc[]
-include::{snippets}/scrap-list/response-fields.adoc[]
+include::{snippets}/stats-summary/http-request.adoc[]
 
-=== 응답 - 스크랩 없음(빈 상태)
+==== 응답 - 정상
 
-include::{snippets}/scrap-list-empty/http-response.adoc[]
-include::{snippets}/scrap-list-empty/response-fields.adoc[]
+include::{snippets}/stats-summary/http-response.adoc[]
+include::{snippets}/stats-summary/response-fields.adoc[]
 
-=== 응답 - 실패(요청 값 오류)
+==== 응답 - 정산 이력 없음(빈 상태)
 
-include::{snippets}/scrap-list-invalid/http-response.adoc[]
-include::{snippets}/scrap-list-invalid/response-fields.adoc[]
+정산 완료 이력이 없는 신규 사용자는 `investDate`/`investmentType`이 생략되고 `graph`/`topSectors`가 빈 배열이다.
 
-=== 응답 - 실패(사용자 없음)
+include::{snippets}/stats-summary-empty/http-response.adoc[]
+include::{snippets}/stats-summary-empty/response-fields.adoc[]
 
-include::{snippets}/scrap-list-user-not-found/http-response.adoc[]
-include::{snippets}/scrap-list-user-not-found/response-fields.adoc[]
+[[stats-recent-detail]]
+=== 최근 투자 성과 상세 (STATS-03)
 
-=== 에러 코드
+가장 최근 정산 완료(SETTLED)된 투자 1건을 섹터별로 상세하게 조회한다. 최근 투자 결과 화면에서 섹터별 손익을 확인하는 데 쓴다.
+
+* `date`: 조회된 최근 정산 완료 투자의 일자(KST). 정산 이력이 없으면 `null`이다.
+* `totalInvestment`/`profitAmount`: 그 투자의 총 매수금과 총 손익금(손실 시 음수).
+* 섹터 손익률(`sectors[].profitRate`): 그 섹터 매수금 기준(`섹터 손익금 / 섹터 매수금 × 100`), 소수 첫째자리. 매수금이 0이면 0.0.
+* `sectors[].isFallback`: 거래정지 등으로 시가를 확보하지 못해 0%가 적용된(폴백) 섹터면 `true`. 이 경우 손익금/손익률은 0이다.
+* 섹터는 매수금(`totalInvestment`) 내림차순으로 정렬된다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+==== 요청
+
+include::{snippets}/stats-recent-detail/http-request.adoc[]
+
+==== 응답 - 정상
+
+include::{snippets}/stats-recent-detail/http-response.adoc[]
+include::{snippets}/stats-recent-detail/response-fields.adoc[]
+
+==== 응답 - 최근 투자 이력 없음(빈 상태)
+
+정산 완료 이력이 없으면 `date`는 `null`, `totalInvestment`/`profitAmount`는 0, `sectors`는 빈 배열이다.
+
+include::{snippets}/stats-recent-detail-empty/http-response.adoc[]
+include::{snippets}/stats-recent-detail-empty/response-fields.adoc[]
+
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
 |HTTP|code|message|설명
 
-|400|MYPAGE_400_004|페이지 요청 값이 올바르지 않습니다.|`size`가 1~50 밖, `sort` 허용값 아님, 또는 `cursor` 형식 오류/정렬 불일치
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
-|404|MYPAGE_404_001|사용자 정보를 찾을 수 없습니다.|access token의 userId에 해당하는 사용자 없음
 |===
 
+[[stats-history]]
+=== 누적 수익 내역 조회 (STATS-08)
+
+기간 탭(일/주/월/년/전체) 단위로 그 기간에 발생한 누적 손익을 요약하고, 종목(섹터)별 내역을 원하는 기준으로 정렬해 조회한다. 정산 완료(SETTLED)된 투자만 집계한다.
+
+* 요약 손익률: 그 기간 누적 매수금 기준(`기간 손익금 / 기간 매수금 × 100`), 소수 첫째자리. 매수 이력이 없으면 0.0.
+* 종목(섹터) 손익률: 그 섹터의 기간 누적 매수금 기준, 소수 첫째자리.
+* `hasPrev`/`hasNext`: 선택한 기간 윈도우 밖(이전/이후)에 정산 완료 데이터가 있는지로 판단한다. 좌우 화살표 네비게이션 활성화에 쓴다.
+* `date`: `period` 형식에 맞춰 지정한다(DAY=`YYYY-MM-DD`, WEEK=`YYYY-Www`(ISO 주차), MONTH=`YYYY-MM`, YEAR=`YYYY`, ALL=불필요). 미지정 시 해당 `period`의 현재(오늘/이번 주/이번 달/올해, KST)로 처리한다. `period=ALL`이면 응답에서 `date`가 생략된다.
+
+NOTE: 인증은 `Authorization: Bearer {accessToken}`로 처리하며, 사용자는 토큰에서 해석한다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+==== 요청
+
+include::{snippets}/stats-history/http-request.adoc[]
+include::{snippets}/stats-history/query-parameters.adoc[]
+
+==== 응답 - 정상
+
+include::{snippets}/stats-history/http-response.adoc[]
+include::{snippets}/stats-history/response-fields.adoc[]
+
+==== 응답 - 기간 내 정산 데이터 없음(빈 상태)
+
+해당 기간에 정산 완료 데이터가 없으면 `summary`의 금액/비율이 0(0.0)이고 `sectors`가 빈 배열이다.
+
+include::{snippets}/stats-history-empty/http-response.adoc[]
+include::{snippets}/stats-history-empty/response-fields.adoc[]
+
+==== 응답 - 실패(period 값 오류)
+
+허용되지 않는 `period` 값(또는 누락) 등 요청 값 검증 실패는 도메인 에러 코드(`STATS_400_00x`)로 응답하며, `errorDetail`에 허용값/입력값 등 구체적 원인을 담는다.
+
+include::{snippets}/stats-history-invalid-period/http-response.adoc[]
+include::{snippets}/stats-history-invalid-period/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|STATS_400_001|조회 기간(period) 값이 올바르지 않습니다.|`period`가 비어 있거나 DAY/WEEK/MONTH/YEAR/ALL 이외의 값
+|400|STATS_400_002|정렬 기준(sort) 값이 올바르지 않습니다.|`sort`가 AMOUNT_DESC/AMOUNT_ASC/RATE_DESC/RATE_ASC 이외의 값
+|400|STATS_400_003|조회 기준 시점(date) 형식이 조회 기간과 맞지 않습니다.|`date` 형식이 `period` 규격과 불일치(예: MONTH에 `2026-13`)
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===
+
+[[group-ranking]]
+== Ranking
+
+지난주 모의투자 랭킹 API.
+
 [[ranking-weekly]]
-== 지난주 수익률 랭킹 조회 (RANKING-01)
+=== 지난주 수익률 랭킹 조회 (RANKING-01)
 
 지난주(월요일~일요일, KST) 수익률 랭킹의 내 순위와 TOP 10을 조회한다. 집계 스냅샷이 아직 생성되지 않았고 정산 대상이 남아 있으면 `CALCULATING`, 집계할 참여자가 없으면 `EMPTY`를 반환한다.
 
 NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. TOP 10에는 사용자 식별자·이메일 등 개인정보를 포함하지 않고 닉네임 스냅샷만 반환한다.
 
-=== 요청
+==== 요청
 
 include::{snippets}/ranking-weekly/http-request.adoc[]
 
-=== 응답
+==== 응답
 
 include::{snippets}/ranking-weekly/http-response.adoc[]
 include::{snippets}/ranking-weekly/response-fields.adoc[]
 
-=== 상태별 응답 규칙
+==== 상태별 응답 규칙
 
 * `READY`: `myRank`는 참여 여부와 순위를 담은 객체다. 지난주 투자에 참여하지 않았다면 `participated=false`를 반환한다.
 * `CALCULATING`: 랭킹 집계가 진행 중이므로 참여 여부를 판단하지 않는다. `myRank`는 명시적으로 `null`이며 `top10`은 빈 배열이다.
 * `EMPTY`: 집계 가능한 참여 투자가 없으므로 `myRank.participated=false`를 반환하고 `top10`은 빈 배열이다.
 
-[[mypage-recent-news]]
-== 최근 읽은 뉴스 목록 조회 (MYPAGE-04-2)
-
-마이페이지에서 최근 읽은 뉴스를 열람 시각(`read_at`) 최신순으로 커서 페이지네이션 조회한다. 미삭제 뉴스만 대상으로 하며, 본인 열람 기록만 조회한다. 열람 기록은 뉴스별 1건이라 같은 뉴스를 여러 번 읽어도 목록에는 한 번만, 가장 최근 열람 시각으로 나타난다.
-
-NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
-
-* 정렬은 열람 시각 내림차순 하나뿐이라 `sort` 파라미터가 없다.
-* `cursor`/`size`(1~50, 기본 10): 커서 페이지네이션. `nextCursor`는 다음 페이지가 있을 때만 내려간다(없으면 응답에서 생략).
-* 응답 필드는 스크랩 목록과 동일하게 camelCase로 통일했다(`newsId`/`categoryName`/`thumbnailUrl`/`viewCount`/`publishedAt`/`viewedAt`/`nextCursor`/`hasNext`). `category`는 코드가 없어 표시명(`categoryName`)으로 내린다. 시각은 KST 오프셋(`+09:00`)을 포함한다.
-
-=== 요청
-
-include::{snippets}/recent-news-list/http-request.adoc[]
-include::{snippets}/recent-news-list/query-parameters.adoc[]
-
-=== 응답 - 정상
-
-include::{snippets}/recent-news-list/http-response.adoc[]
-include::{snippets}/recent-news-list/response-fields.adoc[]
-
-=== 응답 - 읽은 뉴스 없음(빈 상태)
-
-include::{snippets}/recent-news-list-empty/http-response.adoc[]
-include::{snippets}/recent-news-list-empty/response-fields.adoc[]
-
-=== 응답 - 실패(요청 값 오류)
-
-include::{snippets}/recent-news-list-invalid/http-response.adoc[]
-include::{snippets}/recent-news-list-invalid/response-fields.adoc[]
-
-=== 응답 - 실패(사용자 없음)
-
-include::{snippets}/recent-news-list-user-not-found/http-response.adoc[]
-include::{snippets}/recent-news-list-user-not-found/response-fields.adoc[]
-
-=== 에러 코드
+==== 에러 코드
 
 [cols="1,2,3,3"]
 |===
 |HTTP|code|message|설명
 
-|400|MYPAGE_400_004|페이지 요청 값이 올바르지 않습니다.|`size`가 1~50 밖, 또는 `cursor` 형식 오류
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
-|404|MYPAGE_404_001|사용자 정보를 찾을 수 없습니다.|access token의 userId에 해당하는 사용자 없음
 |===

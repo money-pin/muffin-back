@@ -23,7 +23,9 @@ public interface StatsApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "200",
                 description = "조회 성공. 정산 이력이 없으면 investDate/investmentType은 생략되고 graph/topSectors는 빈 배열이다."),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증에 실패했습니다.")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "인증이 필요합니다. (AUTH_401_001)")
     })
     ApiResponse<StatsSummaryResponse> getSummary(@Parameter(hidden = true) @AuthenticationPrincipal Long userId);
 
@@ -43,7 +45,7 @@ public interface StatsApi {
                         "period 값 오류/누락(STATS_400_001), sort 값 오류(STATS_400_002), date 형식이 period와 맞지 않음(STATS_400_003)."),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "401",
-                description = "인증에 실패했습니다. (AUTH_401_001)")
+                description = "인증이 필요합니다. (AUTH_401_001)")
     })
     ApiResponse<ProfitHistoryResponse> getHistory(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
@@ -60,7 +62,7 @@ public interface StatsApi {
                 description = "조회 성공. 정산 이력이 없으면 date는 null, totalInvestment/profitAmount는 0, sectors는 빈 배열이다."),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "401",
-                description = "인증에 실패했습니다. (AUTH_401_001)")
+                description = "인증이 필요합니다. (AUTH_401_001)")
     })
     ApiResponse<RecentDetailResponse> getRecentDetail(@Parameter(hidden = true) @AuthenticationPrincipal Long userId);
 }

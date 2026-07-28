@@ -13,6 +13,7 @@ import com.muffin.auth.application.JwtProperties;
 import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.application.login.LoginCommandService;
+import com.muffin.auth.presentation.AuthController;
 import com.muffin.auth.presentation.RefreshTokenCookieHelper;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
@@ -132,7 +133,8 @@ class LoginControllerDocsTest {
     }
 
     private MockMvc mockMvcOf(LoginCommandService stub, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(new LoginController(stub, refreshTokenCookieHelper))
+        return MockMvcBuilders.standaloneSetup(
+                        new AuthController(null, stub, null, null, null, null, refreshTokenCookieHelper))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .apply(documentationConfiguration(restDocumentation)
                         .operationPreprocessors()

@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.mypage.application.home.MyPageHomeQueryService;
+import com.muffin.mypage.presentation.MypageController;
 import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse;
 import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.CharacterSummary;
 import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.StreakSummary;
@@ -41,7 +42,7 @@ class MyPageHomeControllerMockTest {
     void setUp() {
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(USER_ID, null, List.of()));
-        mockMvc = standaloneSetup(new MyPageHomeController(myPageHomeQueryService))
+        mockMvc = standaloneSetup(new MypageController(null, null, myPageHomeQueryService))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();

@@ -8,11 +8,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
-@Tag(name = "Email Verification", description = "이메일 인증번호 발송/확인 API")
+@Tag(name = "Auth", description = "인증(회원가입/로그인/로그아웃/탈퇴) API")
 public interface EmailVerificationApi {
 
     @Operation(
-            summary = "이메일 인증번호 발송",
+            summary = "이메일 인증번호 발송 (AUTH-01-2)",
             description =
                     "Authorization 헤더의 access token으로 식별된 계정의 이메일로 인증번호를 발송한다. 이미 인증 완료된 계정이거나 재발송 쿨다운/일일 발송 한도를 초과하면 거부한다.")
     @ApiResponses({
@@ -35,7 +35,9 @@ public interface EmailVerificationApi {
     })
     ApiResponse<EmailVerificationSendResponse> sendCode(@AuthenticationPrincipal Long userId);
 
-    @Operation(summary = "이메일 인증번호 확인", description = "가장 최근 발송된 인증번호와 대조한다. 불일치 시 시도 횟수가 누적되며, 한도 초과 시 잠긴다.")
+    @Operation(
+            summary = "이메일 인증번호 확인 (AUTH-01-3)",
+            description = "가장 최근 발송된 인증번호와 대조한다. 불일치 시 시도 횟수가 누적되며, 한도 초과 시 잠긴다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "인증 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(

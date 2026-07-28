@@ -13,11 +13,11 @@ import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@Tag(name = "Nickname", description = "닉네임 조회/변경 API")
+@Tag(name = "User", description = "닉네임/온보딩 등 사용자 API")
 public interface NicknameApi {
 
     @Operation(
-            summary = "닉네임 중복 조회",
+            summary = "닉네임 중복 조회 (MYPAGE-02-1)",
             description = "온보딩/마이페이지에서 입력한 닉네임이 이미 사용 중인지 확인한다. 형식(2~10자, 한글/영문/숫자/공백) 위반이나 비속어 포함 시 400을 반환한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
@@ -31,7 +31,7 @@ public interface NicknameApi {
     ApiResponse<NicknameCheckResponse> checkNickname(
             @AuthenticationPrincipal Long userId, @Parameter(description = "중복 확인할 닉네임") @NotBlank String nickname);
 
-    @Operation(summary = "닉네임 변경", description = "마이페이지에서 사용자의 닉네임을 변경한다.")
+    @Operation(summary = "닉네임 변경 (MYPAGE-02-2)", description = "마이페이지에서 사용자의 닉네임을 변경한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "변경 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
