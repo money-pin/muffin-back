@@ -13,6 +13,7 @@ import com.muffin.auth.application.JwtProperties;
 import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.application.google.GoogleAuthCommandService;
+import com.muffin.auth.presentation.AuthController;
 import com.muffin.auth.presentation.RefreshTokenCookieHelper;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
@@ -82,7 +83,8 @@ class GoogleAuthControllerDocsTest {
     }
 
     private MockMvc mockMvcOf(GoogleAuthCommandService stub, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(new GoogleAuthController(stub, refreshTokenCookieHelper))
+        return MockMvcBuilders.standaloneSetup(
+                        new AuthController(null, null, stub, null, null, null, refreshTokenCookieHelper))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .apply(documentationConfiguration(restDocumentation)
                         .operationPreprocessors()
