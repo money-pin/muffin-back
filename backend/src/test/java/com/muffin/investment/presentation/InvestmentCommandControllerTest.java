@@ -44,7 +44,7 @@ class InvestmentCommandControllerTest {
     void setUp() {
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(USER_ID, null, List.of()));
-        mockMvc = standaloneSetup(new InvestmentCommandController(investmentCommandService))
+        mockMvc = standaloneSetup(new InvestmentController(investmentCommandService, null, null))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();
