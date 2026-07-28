@@ -198,7 +198,6 @@ class NewsQueryApiIntegrationTest {
     void getNewsDetail() throws Exception {
         mockMvc.perform(post("/api/news/{id}", news3Id).header("Authorization", bearerToken()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.newsSummaryId").value(news3Id))
                 .andExpect(jsonPath("$.result.newsId").value(news3Id))
                 .andExpect(jsonPath("$.result.viewCount").value(1))
                 .andExpect(jsonPath("$.result.categoryName").value("경제"))
@@ -229,7 +228,7 @@ class NewsQueryApiIntegrationTest {
     void getSectorImpacts_defaultNeutral() throws Exception {
         mockMvc.perform(get("/api/news/{id}/sector-impacts", news1Id).header("Authorization", bearerToken()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.newsSummaryId").value(news1Id))
+                .andExpect(jsonPath("$.result.newsId").value(news1Id))
                 .andExpect(jsonPath("$.result.sectorImpacts.length()").value(12))
                 .andExpect(jsonPath("$.result.sectorImpacts[0].sectorCode").value("DEPOSIT"))
                 .andExpect(jsonPath("$.result.sectorImpacts[3].sectorCode").value("USD"))

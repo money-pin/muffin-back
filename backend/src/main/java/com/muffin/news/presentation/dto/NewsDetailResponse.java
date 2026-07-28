@@ -11,7 +11,6 @@ import java.util.List;
  * 관여하지 않고 프론트가 화면/카테고리에 맞춰 자체 에셋으로 렌더링한다.
  */
 public record NewsDetailResponse(
-        Long newsSummaryId,
         Long newsId,
         String title,
         String categoryName,

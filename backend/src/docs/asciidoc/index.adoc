@@ -767,7 +767,7 @@ include::{snippets}/quiz-history-detail-invalid-date-format/response-fields.adoc
 
 NOTE: 오늘의 뉴스, 상세 뉴스, 섹터별 영향도는 인증(`Authorization: Bearer {accessToken}`)이 필요하다.
 
-=== 전체 뉴스 목록 조회
+=== 전체 뉴스 목록 조회 (CONTENT-01-1)
 
 include::{snippets}/news-list-success/http-request.adoc[]
 include::{snippets}/news-list-success/query-parameters.adoc[]
@@ -781,14 +781,14 @@ include::{snippets}/news-list-invalid/query-parameters.adoc[]
 include::{snippets}/news-list-invalid/http-response.adoc[]
 include::{snippets}/news-list-invalid/response-fields.adoc[]
 
-=== 오늘의 뉴스 조회
+=== 오늘의 뉴스 조회 (CONTENT-01-2)
 
 include::{snippets}/news-today-success/http-request.adoc[]
 include::{snippets}/news-today-success/request-headers.adoc[]
 include::{snippets}/news-today-success/http-response.adoc[]
 include::{snippets}/news-today-success/response-fields.adoc[]
 
-=== 뉴스 상세 조회
+=== 뉴스 상세 조회 (CONTENT-02)
 
 include::{snippets}/news-detail-success/http-request.adoc[]
 include::{snippets}/news-detail-success/request-headers.adoc[]
@@ -806,7 +806,7 @@ include::{snippets}/news-detail-not-published/response-fields.adoc[]
 include::{snippets}/news-detail-not-found/http-response.adoc[]
 include::{snippets}/news-detail-not-found/response-fields.adoc[]
 
-=== 뉴스 섹터별 영향도 조회
+=== 뉴스 섹터별 영향도 조회 (CONTENT-03)
 
 include::{snippets}/news-sector-impacts-success/http-request.adoc[]
 include::{snippets}/news-sector-impacts-success/request-headers.adoc[]

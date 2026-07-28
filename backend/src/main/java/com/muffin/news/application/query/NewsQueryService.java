@@ -141,7 +141,6 @@ public class NewsQueryService {
 
         return new NewsDetailResponse(
                 news.getId(),
-                news.getId(),
                 news.getTitle(),
                 categoryName,
                 news.getViewCount(),
