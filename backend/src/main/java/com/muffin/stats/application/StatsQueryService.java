@@ -57,7 +57,9 @@ public class StatsQueryService {
     public StatsSummaryResponse getSummary(Long userId) {
         List<DailyProfitProjection> dailyProfits = statsSummaryQueryRepository.findSettledDailyProfits(userId);
         if (dailyProfits.isEmpty()) {
-            return new StatsSummaryResponse(null, 0L, rateOverCapital(0L), List.of(), List.of(), null);
+            LocalDate today = LocalDate.now(clock);
+            return new StatsSummaryResponse(
+                    null, 0L, rateOverCapital(0L), buildGraph(new TreeMap<>(), today), List.of(), null);
         }
 
         TreeMap<LocalDate, Long> cumulativeByDate = accumulate(dailyProfits);

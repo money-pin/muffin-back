@@ -62,7 +62,8 @@ class SettlementControllerDocsTest {
                                 fieldWithPath("result.totalProfitLoss").description("최종 손익금(손실 시 음수, 부호로 수익/손실 판단)"),
                                 fieldWithPath("result.totalProfitLossRate").description("투자 원금 대비 손익률(%)"),
                                 fieldWithPath("result.totalAmount").description("투자 원금"),
-                                fieldWithPath("result.totalAsset").description("정산 반영 후 최종 총자산"))));
+                                fieldWithPath("result.totalAsset").description("정산 반영 후 최종 총자산"),
+                                fieldWithPath("result.reason").description("결과가 있으므로 null"))));
     }
 
     @Test
@@ -79,6 +80,11 @@ class SettlementControllerDocsTest {
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드"),
                                 fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.investDate").description("결과가 없어 null"),
+                                fieldWithPath("result.totalProfitLoss").description("결과가 없어 null"),
+                                fieldWithPath("result.totalProfitLossRate").description("결과가 없어 null"),
+                                fieldWithPath("result.totalAmount").description("결과가 없어 null"),
+                                fieldWithPath("result.totalAsset").description("결과가 없어 null"),
                                 fieldWithPath("result.reason")
                                         .description(
                                                 "결과가 없는 사유: NO_INVESTMENT(투자/정산 결과 없음) / SETTLEMENT_PENDING(정산 중)"))));

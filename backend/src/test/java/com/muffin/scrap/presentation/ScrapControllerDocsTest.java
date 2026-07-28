@@ -85,7 +85,8 @@ class ScrapControllerDocsTest {
                                 fieldWithPath("code").description("응답 코드"),
                                 fieldWithPath("message").description("응답 메시지"),
                                 fieldWithPath("result.newsId").description("대상 뉴스 ID"),
-                                fieldWithPath("result.isScrapped").description("스크랩 상태(항상 false)"))));
+                                fieldWithPath("result.isScrapped").description("스크랩 상태(항상 false)"),
+                                fieldWithPath("result.scrappedAt").description("해제 응답이라 null"))));
     }
 
     @Test

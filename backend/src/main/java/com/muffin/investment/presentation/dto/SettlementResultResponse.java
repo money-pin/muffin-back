@@ -1,21 +1,19 @@
 package com.muffin.investment.presentation.dto;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * 정산 결과 팝업 응답(INVEST-06). SETTLED면 결과 필드가, 그 외에는 {@code reason}만 채워지며, null 필드는 응답에서 생략된다. 손익 방향(수익/손실)은 손익금 부호로
- * 클라이언트가 판단한다.
+ * 정산 결과 팝업 응답(INVEST-06). SETTLED면 결과 필드가 채워지고 reason은 null이며, 그 외에는 reason만 채워지고 결과 필드는 null이다. 손익 방향(수익/손실)은
+ * 손익금 부호로 클라이언트가 판단한다.
  *
- * @param investDate 정산 기준 일자(투자 일자)
- * @param totalProfitLoss 최종 손익금(손실 시 음수)
- * @param totalProfitLossRate 투자 원금 대비 손익률(%)
- * @param totalAmount 투자 원금
- * @param totalAsset 정산 반영 후 최종 총자산
- * @param reason 결과가 없을 때의 사유(NO_INVESTMENT/SETTLEMENT_PENDING)
+ * @param investDate 정산 기준 일자(투자 일자). 결과가 없으면 null
+ * @param totalProfitLoss 최종 손익금(손실 시 음수). 결과가 없으면 null
+ * @param totalProfitLossRate 투자 원금 대비 손익률(%). 결과가 없으면 null
+ * @param totalAmount 투자 원금. 결과가 없으면 null
+ * @param totalAsset 정산 반영 후 최종 총자산. 결과가 없으면 null
+ * @param reason 결과가 없을 때의 사유(NO_INVESTMENT/SETTLEMENT_PENDING). SETTLED면 null
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public record SettlementResultResponse(
         LocalDate investDate,
         Long totalProfitLoss,

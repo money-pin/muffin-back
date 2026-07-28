@@ -58,10 +58,15 @@ public class MypageRecentNewsQueryService {
                 projection.newsId(),
                 projection.title(),
                 projection.categoryName(),
-                projection.thumbnailUrl(),
+                originalThumbnail(projection.thumbnailUrl()),
                 projection.viewCount(),
                 toKst(projection.publishedAt()),
                 toKst(projection.viewedAt()));
+    }
+
+    /** 원본 썸네일이 있으면 그대로, 없으면(빈 문자열 포함) null을 반환한다. */
+    private static String originalThumbnail(String thumbnailUrl) {
+        return (thumbnailUrl != null && !thumbnailUrl.isBlank()) ? thumbnailUrl : null;
     }
 
     private String encodeCursor(RecentNewsProjection last) {

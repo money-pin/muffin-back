@@ -142,6 +142,19 @@ class MypageScrapQueryServiceTest {
         assertThat(response.nextCursor()).isNull();
     }
 
+    @Test
+    @DisplayName("썸네일이 빈 문자열이면 null로 정규화한다")
+    void getScraps_normalizesBlankThumbnailToNull() {
+        when(userRepository.existsById(USER_ID)).thenReturn(true);
+        when(scrapListQueryRepository.findScrapPage(USER_ID, ScrapSort.SAVED_DESC, null, 3))
+                .thenReturn(List.of(
+                        new ScrapListProjection(10L, "제목10", "반도체", "", 100L, PUBLISHED_AT, SCRAPPED_AT, 100L)));
+
+        ScrapListResponse response = service.getScraps(USER_ID, null, null, 2);
+
+        assertThat(response.items().getFirst().thumbnailUrl()).isNull();
+    }
+
     private ScrapListProjection projection(Long newsId, Long scrapId) {
         return new ScrapListProjection(
                 newsId, "제목" + newsId, "반도체", "https://thumb/" + newsId, 100L, PUBLISHED_AT, SCRAPPED_AT, scrapId);

@@ -42,14 +42,18 @@ class StatsQueryServiceTest {
     private static final LocalDate DAY_8 = LocalDate.of(2026, 5, 8);
 
     @Test
-    @DisplayName("정산 이력이 없으면 investDate/성향은 null, 누적 0, 그래프/TOP3는 빈 배열이다")
+    @DisplayName("정산 이력이 없으면 investDate/성향은 null, 누적 0, 그래프는 오늘 포함 7일치 0%, TOP3는 빈 배열이다")
     void getSummary_emptyState() {
         StatsSummaryResponse response = serviceWith(List.of(), List.of()).getSummary(1L);
 
         assertNull(response.investDate());
         assertEquals(0L, response.cumulativeProfitAmount());
         assertEquals(new BigDecimal("0.0"), response.cumulativeProfitRate());
-        assertTrue(response.graph().isEmpty());
+        assertEquals(7, response.graph().size());
+        assertEquals(TODAY.minusDays(6), response.graph().get(0).date());
+        assertEquals(TODAY, response.graph().get(6).date());
+        assertTrue(response.graph().stream()
+                .allMatch(point -> point.cumulativeProfitRate().equals(new BigDecimal("0.0"))));
         assertTrue(response.topSectors().isEmpty());
         assertNull(response.investmentType());
     }
