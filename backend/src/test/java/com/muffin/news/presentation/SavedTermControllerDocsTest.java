@@ -96,7 +96,7 @@ class SavedTermControllerDocsTest {
     }
 
     private MockMvc mockMvcOf(TermQueryService stub, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(new SavedTermController(stub))
+        return MockMvcBuilders.standaloneSetup(new TermController(stub, null))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)

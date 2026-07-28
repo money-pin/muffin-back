@@ -155,7 +155,7 @@ class MypageRecentNewsControllerDocsTest {
 
     private MockMvc mockMvcWith(
             MypageRecentNewsQueryService stubService, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(new MypageController(null, stubService))
+        return MockMvcBuilders.standaloneSetup(new MypageController(null, stubService, null))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)

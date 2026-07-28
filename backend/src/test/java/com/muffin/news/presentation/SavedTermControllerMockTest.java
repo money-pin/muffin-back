@@ -42,7 +42,7 @@ class SavedTermControllerMockTest {
     void setUp() {
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(USER_ID, null, List.of()));
-        mockMvc = standaloneSetup(new SavedTermController(termQueryService))
+        mockMvc = standaloneSetup(new TermController(termQueryService, null))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();

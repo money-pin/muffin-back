@@ -131,7 +131,7 @@ class NewsExplanationControllerDocsTest {
 
     private MockMvc mockMvcOf(
             NewsExplanationQueryService stubService, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(new NewsExplanationController(stubService))
+        return MockMvcBuilders.standaloneSetup(new NewsController(null, stubService))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)

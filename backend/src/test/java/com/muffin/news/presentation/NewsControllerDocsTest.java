@@ -380,7 +380,7 @@ class NewsControllerDocsTest {
     }
 
     private MockMvc mockMvcWith(NewsQueryService stubService, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(new NewsController(stubService))
+        return MockMvcBuilders.standaloneSetup(new NewsController(stubService, null))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)
