@@ -749,8 +749,8 @@ include::{snippets}/quiz-history-detail-invalid-date-format/response-fields.adoc
 |===
 |HTTP|code|message|설명
 
-|400|QUIZ_400_004|미래 날짜의 퀴즈 기록은 조회할 수 없습니다.|미래 날짜로 복습 상세를 요청함
-|400|QUIZ_400_005|날짜는 yyyy-MM-dd 형식으로 입력해 주세요.|복습 상세 날짜 형식이 올바르지 않음
+|400|QUIZ_400_002|미래 날짜의 퀴즈 기록은 조회할 수 없습니다.|미래 날짜로 복습 상세를 요청함
+|400|QUIZ_400_003|날짜는 yyyy-MM-dd 형식으로 입력해 주세요.|복습 상세 날짜 형식이 올바르지 않음
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |403|AUTH_403_001|요청이 거부되었습니다.|온보딩 미완료 등 접근 권한 없음
 |===

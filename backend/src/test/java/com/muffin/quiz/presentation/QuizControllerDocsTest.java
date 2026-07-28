@@ -468,7 +468,7 @@ class QuizControllerDocsTest {
                         pathParameters(parameterWithName("date").description("조회할 퀴즈 날짜(yyyy-MM-dd)")),
                         responseFields(
                                 fieldWithPath("isSuccess").description("성공 여부(false)"),
-                                fieldWithPath("code").description("에러 코드(QUIZ_400_004)"),
+                                fieldWithPath("code").description("에러 코드(QUIZ_400_002)"),
                                 fieldWithPath("message").description("에러 메시지"),
                                 fieldWithPath("errorDetail").description("에러 상세 메시지 목록"))));
     }
@@ -493,7 +493,7 @@ class QuizControllerDocsTest {
                         pathParameters(parameterWithName("date").description("조회할 퀴즈 날짜(yyyy-MM-dd)")),
                         responseFields(
                                 fieldWithPath("isSuccess").description("성공 여부(false)"),
-                                fieldWithPath("code").description("에러 코드(QUIZ_400_005)"),
+                                fieldWithPath("code").description("에러 코드(QUIZ_400_003)"),
                                 fieldWithPath("message").description("에러 메시지"),
                                 fieldWithPath("errorDetail").description("에러 상세 메시지 목록"))));
     }
