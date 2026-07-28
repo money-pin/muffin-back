@@ -420,6 +420,134 @@ include::{snippets}/nickname-change-duplicated/response-fields.adoc[]
 
 모의투자 API.
 
+[[investment-asset]]
+=== 총자산 현황 조회 (INVEST-01)
+
+현재 총자산과 직전 정산 대비 일일 변동을 조회한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자 자산이 아직 생성되지 않은 경우에도 초기 자산 1,000,000원을 기준으로 정상 응답한다.
+
+==== 요청
+
+include::{snippets}/investment-asset-success/http-request.adoc[]
+include::{snippets}/investment-asset-success/request-headers.adoc[]
+
+==== 응답
+
+include::{snippets}/investment-asset-success/http-response.adoc[]
+include::{snippets}/investment-asset-success/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|503|SECTOR_503_001|거래일 정보를 확인할 수 없습니다. 잠시 후 다시 시도해주세요.|거래일 정보 제공자 장애로 처리 대기 투자 여부를 판정할 수 없음
+|===
+
+[[investment-confirm]]
+=== 투자 확정 (INVEST-03-1)
+
+선택한 섹터와 수량으로 오늘의 모의투자를 확정한다. 최초 확정은 `201 Created`이며, 이미 확정한 투자와 동일한 구성으로 재요청하면 기존 결과를 `200 OK`로 반환한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 섹터 1수량은 100,000원이며, 투자 가능 시간·거래일·예산을 모두 만족해야 한다.
+
+==== 요청 및 응답 - 최초 확정
+
+include::{snippets}/investment-confirm-success/http-request.adoc[]
+include::{snippets}/investment-confirm-success/request-headers.adoc[]
+include::{snippets}/investment-confirm-success/request-fields.adoc[]
+include::{snippets}/investment-confirm-success/http-response.adoc[]
+include::{snippets}/investment-confirm-success/response-fields.adoc[]
+
+==== 응답 - 투자 불가 시간
+
+include::{snippets}/investment-confirm-window-closed/http-response.adoc[]
+include::{snippets}/investment-confirm-window-closed/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_002|요청 값 검증에 실패했습니다.|섹터 목록이 비어 있거나 섹터 코드·수량 형식이 올바르지 않음
+|400|INVESTMENT_400_001|현재는 투자할 수 없는 시간입니다.|거래일이 아니거나 10:00 이전, 처리 대기 투자가 있는 경우
+|400|INVESTMENT_400_002|투자할 수 없는 섹터가 포함되어 있습니다.|존재하지 않거나 비활성화된 섹터 포함
+|400|INVESTMENT_400_003|투자 금액이 보유 자산을 초과합니다.|선택한 섹터 수량의 총 투자 금액이 총자산을 초과
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|409|INVESTMENT_409_001|오늘 이미 다른 구성으로 투자를 확정했습니다.|동일 날짜에 다른 섹터 구성으로 다시 확정 요청
+|409|INVESTMENT_409_002|투자에 필요한 사용자 자산이 아직 생성되지 않았습니다.|온보딩 등으로 사용자 자산 초기화 전
+|503|SECTOR_503_001|거래일 정보를 확인할 수 없습니다. 잠시 후 다시 시도해주세요.|거래일 정보를 조회하지 못함
+|===
+
+[[investment-today]]
+=== 오늘의 모의투자 현황 조회 (INVEST-03-2)
+
+거래일·시간·정산 상태에 따른 화면 상태와 오늘 확정한 투자 내용을 조회한다.
+
+* `AVAILABLE`: 오늘 투자 가능
+* `CONFIRMED_EDITABLE`: 오늘 투자 확정 완료, 수정 가능
+* `UNAVAILABLE`: 정산 시작 전으로 아직 투자 불가
+* `SETTLING`: 정산 진행 중
+* `SETTLEMENT_DELAYED`: 이전 투자 정산이 지연됨
+* `CLOSED_WEEKEND`, `CLOSED_HOLIDAY`: 휴장일
+
+`confirmDeadline`, `remainingAmount`, `totalAmount`, `sectors`, `nextInvestmentAvailableAt`은 화면 상태에 따라 생략될 수 있다.
+
+==== 요청 및 응답
+
+include::{snippets}/investment-today-success/http-request.adoc[]
+include::{snippets}/investment-today-success/request-headers.adoc[]
+include::{snippets}/investment-today-success/http-response.adoc[]
+include::{snippets}/investment-today-success/response-fields.adoc[]
+
+==== 응답 - 거래일 정보 조회 실패
+
+include::{snippets}/investment-today-calendar-unavailable/http-response.adoc[]
+include::{snippets}/investment-today-calendar-unavailable/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|503|SECTOR_503_001|거래일 정보를 확인할 수 없습니다. 잠시 후 다시 시도해주세요.|거래일 정보를 조회하지 못해 fail-closed 처리
+|===
+
+[[investment-update-today]]
+=== 오늘 투자 수정 (INVEST-03-3)
+
+당일 수정 가능 시간에 확정한 투자 구성을 전체 교체한다. 요청·응답 구조는 투자 확정 API와 같다.
+
+==== 요청 및 응답
+
+include::{snippets}/investment-update-today-success/http-request.adoc[]
+include::{snippets}/investment-update-today-success/request-headers.adoc[]
+include::{snippets}/investment-update-today-success/request-fields.adoc[]
+include::{snippets}/investment-update-today-success/http-response.adoc[]
+include::{snippets}/investment-update-today-success/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_002|요청 값 검증에 실패했습니다.|섹터 목록이 비어 있거나 섹터 코드·수량 형식이 올바르지 않음
+|400|INVESTMENT_400_001|현재는 투자할 수 없는 시간입니다.|수정 가능 시간이 아니거나 거래일이 아님
+|400|INVESTMENT_400_002|투자할 수 없는 섹터가 포함되어 있습니다.|존재하지 않거나 비활성화된 섹터 포함
+|400|INVESTMENT_400_003|투자 금액이 보유 자산을 초과합니다.|선택한 섹터 수량의 총 투자 금액이 총자산을 초과
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|INVESTMENT_404_001|오늘 확정한 투자를 찾을 수 없습니다.|수정할 당일 확정 투자가 없음
+|409|INVESTMENT_409_002|투자에 필요한 사용자 자산이 아직 생성되지 않았습니다.|사용자 자산 초기화 전
+|503|SECTOR_503_001|거래일 정보를 확인할 수 없습니다. 잠시 후 다시 시도해주세요.|거래일 정보를 조회하지 못함
+|===
+
 [[investment-settlement-result]]
 === 정산 결과 팝업 조회 (INVEST-06)
 
@@ -451,6 +579,29 @@ include::{snippets}/settlement-result-reason/response-fields.adoc[]
 == Sector
 
 모의투자 섹터 API.
+
+[[sector-list]]
+=== 투자 가능 섹터 목록 조회 (INVEST-02)
+
+현재 활성화된 섹터를 그룹과 노출 순서에 따라 조회한다. 투자 수량 1단위의 금액은 `unitAmount`로 제공한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다.
+
+==== 요청 및 응답
+
+include::{snippets}/sector-list-success/http-request.adoc[]
+include::{snippets}/sector-list-success/request-headers.adoc[]
+include::{snippets}/sector-list-success/http-response.adoc[]
+include::{snippets}/sector-list-success/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===
 
 [[group-mypage]]
 == Mypage
