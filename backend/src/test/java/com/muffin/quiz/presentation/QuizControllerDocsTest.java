@@ -24,6 +24,12 @@ import com.muffin.quiz.exception.QuizErrorCode;
 import com.muffin.quiz.presentation.dto.request.QuizAttemptRequest;
 import com.muffin.quiz.presentation.dto.response.QuizAttemptProgressResponse;
 import com.muffin.quiz.presentation.dto.response.QuizAttemptResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryDetailResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryDetailSummaryResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryListResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryOptionResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryQuestionResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistorySummaryResponse;
 import com.muffin.quiz.presentation.dto.response.QuizOptionResponse;
 import com.muffin.quiz.presentation.dto.response.QuizProgressResponse;
 import com.muffin.quiz.presentation.dto.response.QuizQuestionResponse;
@@ -308,6 +314,190 @@ class QuizControllerDocsTest {
                                 fieldWithPath("errorDetail").description("에러 상세 메시지 목록"))));
     }
 
+    @Test
+    @DisplayName("지난 퀴즈 복습 목록 조회 성공 문서화")
+    void documentQuizHistoryListSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
+        QuizHistoryListResponse response = new QuizHistoryListResponse(List.of(
+                new QuizHistorySummaryResponse(LocalDate.of(2026, 5, 8), 3, 2, 1),
+                new QuizHistorySummaryResponse(LocalDate.of(2026, 5, 7), 3, 1, 2)));
+        MockMvc mockMvc = mockMvcOf(historyQueryStub(response, null), commandStub(null), restDocumentation);
+
+        mockMvc.perform(get("/api/quizzes/history").header("Authorization", AUTHORIZATION))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "quiz-history-list-success",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.histories[].quizDate").description("복습 가능한 퀴즈 날짜"),
+                                fieldWithPath("result.histories[].totalCount").description("해당 날짜 전체 문항 수"),
+                                fieldWithPath("result.histories[].correctCount").description("해당 날짜 정답 문항 수"),
+                                fieldWithPath("result.histories[].incorrectCount")
+                                        .description("해당 날짜 오답 문항 수"))));
+    }
+
+    @Test
+    @DisplayName("지난 퀴즈 복습 목록 빈 결과 문서화")
+    void documentQuizHistoryListEmpty(RestDocumentationContextProvider restDocumentation) throws Exception {
+        QuizHistoryListResponse response = new QuizHistoryListResponse(List.of());
+        MockMvc mockMvc = mockMvcOf(historyQueryStub(response, null), commandStub(null), restDocumentation);
+
+        mockMvc.perform(get("/api/quizzes/history").header("Authorization", AUTHORIZATION))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "quiz-history-list-empty",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.histories").description("복습 가능한 퀴즈 날짜 목록. 없으면 빈 배열"))));
+    }
+
+    @Test
+    @DisplayName("지난 퀴즈 복습 상세 조회 성공 문서화")
+    void documentQuizHistoryDetailSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
+        QuizHistoryDetailResponse response = new QuizHistoryDetailResponse(
+                LocalDate.of(2026, 5, 8),
+                new QuizHistoryDetailSummaryResponse(3, 2, 1),
+                List.of(
+                        new QuizHistoryQuestionResponse(
+                                101L,
+                                1,
+                                "반도체 산업에서 '파운드리'란 무엇을 의미하나요?",
+                                true,
+                                1002L,
+                                1002L,
+                                List.of(
+                                        new QuizHistoryOptionResponse(1001L, 1, "반도체 설계 전문 회사", false, false),
+                                        new QuizHistoryOptionResponse(1002L, 2, "반도체 생산 전문 회사", true, true),
+                                        new QuizHistoryOptionResponse(1003L, 3, "반도체 유통 회사", false, false)),
+                                "파운드리는 반도체 생산만 전문적으로 하는 회사를 의미해요."),
+                        new QuizHistoryQuestionResponse(
+                                103L,
+                                3,
+                                "메모리 반도체와 시스템 반도체의 차이는?",
+                                false,
+                                1007L,
+                                1009L,
+                                List.of(
+                                        new QuizHistoryOptionResponse(1007L, 1, "가격 차이", true, false),
+                                        new QuizHistoryOptionResponse(1008L, 2, "크기 차이", false, false),
+                                        new QuizHistoryOptionResponse(1009L, 3, "용도 차이", false, true)),
+                                "메모리 반도체는 데이터를 저장하고, 시스템 반도체는 데이터를 처리하는 용도로 사용돼요.")));
+        MockMvc mockMvc = mockMvcOf(historyQueryStub(null, response), commandStub(null), restDocumentation);
+
+        mockMvc.perform(get("/api/quizzes/history/{date}", "2026-05-08").header("Authorization", AUTHORIZATION))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "quiz-history-detail-success",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        pathParameters(parameterWithName("date").description("조회할 퀴즈 날짜(yyyy-MM-dd)")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.quizDate").description("복습 퀴즈 날짜"),
+                                fieldWithPath("result.summary.totalCount").description("전체 문항 수"),
+                                fieldWithPath("result.summary.correctCount").description("정답 문항 수"),
+                                fieldWithPath("result.summary.incorrectCount").description("오답 문항 수"),
+                                fieldWithPath("result.questions[].quizId").description("퀴즈 문항 ID"),
+                                fieldWithPath("result.questions[].questionOrder")
+                                        .description("문항 순서"),
+                                fieldWithPath("result.questions[].question").description("문제 텍스트"),
+                                fieldWithPath("result.questions[].isCorrect").description("사용자 정답 여부"),
+                                fieldWithPath("result.questions[].selectedOptionId")
+                                        .description("사용자가 선택한 선택지 ID"),
+                                fieldWithPath("result.questions[].correctOptionId")
+                                        .description("정답 선택지 ID"),
+                                fieldWithPath("result.questions[].options[].optionId")
+                                        .description("선택지 ID"),
+                                fieldWithPath("result.questions[].options[].optionOrder")
+                                        .description("선택지 순서"),
+                                fieldWithPath("result.questions[].options[].content")
+                                        .description("선택지 내용"),
+                                fieldWithPath("result.questions[].options[].isSelected")
+                                        .description("사용자가 선택한 선택지 여부"),
+                                fieldWithPath("result.questions[].options[].isCorrect")
+                                        .description("정답 선택지 여부"),
+                                fieldWithPath("result.questions[].explanation").description("문항 해설"))));
+    }
+
+    @Test
+    @DisplayName("지난 퀴즈 복습 상세 빈 결과 문서화")
+    void documentQuizHistoryDetailEmpty(RestDocumentationContextProvider restDocumentation) throws Exception {
+        QuizHistoryDetailResponse response = new QuizHistoryDetailResponse(
+                LocalDate.of(2026, 5, 8), new QuizHistoryDetailSummaryResponse(0, 0, 0), List.of());
+        MockMvc mockMvc = mockMvcOf(historyQueryStub(null, response), commandStub(null), restDocumentation);
+
+        mockMvc.perform(get("/api/quizzes/history/{date}", "2026-05-08").header("Authorization", AUTHORIZATION))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "quiz-history-detail-empty",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        pathParameters(parameterWithName("date").description("조회할 퀴즈 날짜(yyyy-MM-dd)")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.quizDate").description("복습 퀴즈 날짜"),
+                                fieldWithPath("result.summary.totalCount").description("전체 문항 수"),
+                                fieldWithPath("result.summary.correctCount").description("정답 문항 수"),
+                                fieldWithPath("result.summary.incorrectCount").description("오답 문항 수"),
+                                fieldWithPath("result.questions").description("복습 문항 목록. 기록이 없으면 빈 배열"))));
+    }
+
+    @Test
+    @DisplayName("지난 퀴즈 복습 상세 미래 날짜 실패 문서화")
+    void documentQuizHistoryDetailFutureDate(RestDocumentationContextProvider restDocumentation) throws Exception {
+        QuizQueryService queryService = new QuizQueryService(null, null, null) {
+            @Override
+            public QuizHistoryDetailResponse getQuizHistoryDetail(Long userId, String date) {
+                throw new GeneralException(QuizErrorCode.QUIZ_HISTORY_FUTURE_DATE);
+            }
+        };
+        MockMvc mockMvc = mockMvcOf(queryService, commandStub(null), restDocumentation);
+
+        mockMvc.perform(get("/api/quizzes/history/{date}", "2099-01-01").header("Authorization", AUTHORIZATION))
+                .andExpect(status().isBadRequest())
+                .andDo(document(
+                        "quiz-history-detail-future-date",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        pathParameters(parameterWithName("date").description("조회할 퀴즈 날짜(yyyy-MM-dd)")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부(false)"),
+                                fieldWithPath("code").description("에러 코드(QUIZ_400_002)"),
+                                fieldWithPath("message").description("에러 메시지"),
+                                fieldWithPath("errorDetail").description("에러 상세 메시지 목록"))));
+    }
+
+    @Test
+    @DisplayName("지난 퀴즈 복습 상세 날짜 형식 실패 문서화")
+    void documentQuizHistoryDetailInvalidDateFormat(RestDocumentationContextProvider restDocumentation)
+            throws Exception {
+        QuizQueryService queryService = new QuizQueryService(null, null, null) {
+            @Override
+            public QuizHistoryDetailResponse getQuizHistoryDetail(Long userId, String date) {
+                throw new GeneralException(QuizErrorCode.QUIZ_HISTORY_INVALID_DATE_FORMAT);
+            }
+        };
+        MockMvc mockMvc = mockMvcOf(queryService, commandStub(null), restDocumentation);
+
+        mockMvc.perform(get("/api/quizzes/history/{date}", "2026-05").header("Authorization", AUTHORIZATION))
+                .andExpect(status().isBadRequest())
+                .andDo(document(
+                        "quiz-history-detail-invalid-date-format",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        pathParameters(parameterWithName("date").description("조회할 퀴즈 날짜(yyyy-MM-dd)")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부(false)"),
+                                fieldWithPath("code").description("에러 코드(QUIZ_400_003)"),
+                                fieldWithPath("message").description("에러 메시지"),
+                                fieldWithPath("errorDetail").description("에러 상세 메시지 목록"))));
+    }
+
     private QuizQueryService queryStub(TodayQuizResponse todayResponse, QuizResultResponse resultResponse) {
         return new QuizQueryService(null, null, null) {
             @Override
@@ -318,6 +508,21 @@ class QuizControllerDocsTest {
             @Override
             public QuizResultResponse getTodayQuizResult(Long userId) {
                 return resultResponse;
+            }
+        };
+    }
+
+    private QuizQueryService historyQueryStub(
+            QuizHistoryListResponse listResponse, QuizHistoryDetailResponse detailResponse) {
+        return new QuizQueryService(null, null, null) {
+            @Override
+            public QuizHistoryListResponse getQuizHistories(Long userId) {
+                return listResponse;
+            }
+
+            @Override
+            public QuizHistoryDetailResponse getQuizHistoryDetail(Long userId, String date) {
+                return detailResponse;
             }
         };
     }

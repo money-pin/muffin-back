@@ -3,6 +3,8 @@ package com.muffin.quiz.presentation.swagger;
 import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.quiz.presentation.dto.request.QuizAttemptRequest;
 import com.muffin.quiz.presentation.dto.response.QuizAttemptResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryDetailResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryListResponse;
 import com.muffin.quiz.presentation.dto.response.QuizResultResponse;
 import com.muffin.quiz.presentation.dto.response.TodayQuizResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,6 +44,30 @@ public interface QuizApi {
                 description = "퀴즈를 모두 완료한 후 결과를 조회할 수 있습니다.")
     })
     ApiResponse<QuizResultResponse> getTodayQuizResult(@Parameter(hidden = true) Long userId);
+
+    @Operation(
+            summary = "지난 퀴즈 복습 목록 조회 (QUIZ-04)",
+            description = "사용자가 완료한 지난 퀴즈 기록을 날짜별 정답 수 요약으로 조회한다. " + "조회 결과가 없으면 빈 histories를 반환한다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "복습 목록 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "요청이 거부되었습니다.")
+    })
+    ApiResponse<QuizHistoryListResponse> getQuizHistories(@Parameter(hidden = true) Long userId);
+
+    @Operation(
+            summary = "지난 퀴즈 복습 상세 조회 (QUIZ-04)",
+            description = "특정 날짜에 완료한 퀴즈 3문항과 선택한 답안, 정답, 해설을 조회한다. " + "조회 결과가 없으면 빈 questions를 반환한다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "복습 상세 조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "400",
+                description = "날짜 형식 오류 또는 미래 날짜 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "요청이 거부되었습니다.")
+    })
+    ApiResponse<QuizHistoryDetailResponse> getQuizHistoryDetail(
+            @Parameter(hidden = true) Long userId, @Parameter(description = "조회할 퀴즈 날짜(yyyy-MM-dd)") String date);
 
     @Operation(
             summary = "퀴즈 답안 제출 (QUIZ-02)",

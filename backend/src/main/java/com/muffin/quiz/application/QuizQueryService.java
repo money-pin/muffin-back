@@ -11,6 +11,12 @@ import com.muffin.quiz.domain.quizset.QuizSet;
 import com.muffin.quiz.domain.quizset.QuizSetRepository;
 import com.muffin.quiz.domain.quizset.enums.QuizSetStatus;
 import com.muffin.quiz.exception.QuizErrorCode;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryDetailResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryDetailSummaryResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryListResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryOptionResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryQuestionResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistorySummaryResponse;
 import com.muffin.quiz.presentation.dto.response.QuizOptionResponse;
 import com.muffin.quiz.presentation.dto.response.QuizProgressResponse;
 import com.muffin.quiz.presentation.dto.response.QuizQuestionResponse;
@@ -22,9 +28,13 @@ import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -104,7 +114,46 @@ public class QuizQueryService {
         return toQuizResultResponse(session);
     }
 
-    /** 임시 userId 기반 인증 단계. 추후 Security 적용 시 인증 객체에서 사용자 식별자를 가져오도록 교체한다. */
+    @Transactional(readOnly = true)
+    public QuizHistoryListResponse getQuizHistories(Long userId) {
+        getValidatedUser(userId);
+
+        // 복습 목록은 완료된 퀴즈 세션만 날짜순으로 보여준다.
+        List<QuizHistorySummaryResponse> histories =
+                quizSessionRepository
+                        .findAllByUserIdAndStatusOrderByDateDesc(userId, QuizSessionStatus.FINISHED)
+                        .stream()
+                        .map(this::toQuizHistorySummaryResponse)
+                        .toList();
+
+        return new QuizHistoryListResponse(histories);
+    }
+
+    @Transactional(readOnly = true)
+    public QuizHistoryDetailResponse getQuizHistoryDetail(Long userId, String date) {
+        getValidatedUser(userId);
+        LocalDate quizDate = parseHistoryDate(date);
+
+        if (quizDate.isAfter(LocalDate.now(KST))) {
+            throw new GeneralException(QuizErrorCode.QUIZ_HISTORY_FUTURE_DATE);
+        }
+
+        Optional<QuizSession> sessionOptional =
+                quizSessionRepository.findByUserIdAndDateAndStatus(userId, quizDate, QuizSessionStatus.FINISHED);
+
+        if (sessionOptional.isEmpty()) {
+            return emptyQuizHistoryDetailResponse(quizDate);
+        }
+
+        QuizSession session = sessionOptional.get();
+        QuizSet quizSet = quizSetRepository
+                .findById(session.getDailyQuizSetId())
+                .orElseThrow(() -> new GeneralException(QuizErrorCode.QUIZ_UNAVAILABLE));
+
+        return toQuizHistoryDetailResponse(quizDate, session, quizSet);
+    }
+
+    /** 인증된 사용자 ID로 회원을 조회하고 퀴즈 이용에 필요한 온보딩 완료 여부를 검증한다. */
     private User getValidatedUser(Long userId) {
         User user =
                 userRepository.findById(userId).orElseThrow(() -> new GeneralException(GeneralErrorCode.UNAUTHORIZED));
@@ -184,5 +233,73 @@ public class QuizQueryService {
                 session.getStatus(),
                 new QuizResultProgressResponse(session.getTotalCount(), session.getCorrectCount(), incorrectCount),
                 new QuizRewardResponse(session.getRewardMoney(), session.isRewardClaimed()));
+    }
+
+    /** 복습 목록 카드에 필요한 날짜별 정답 수 요약으로 변환한다. */
+    private QuizHistorySummaryResponse toQuizHistorySummaryResponse(QuizSession session) {
+        int incorrectCount = session.getTotalCount() - session.getCorrectCount();
+        return new QuizHistorySummaryResponse(
+                session.getDate(), session.getTotalCount(), session.getCorrectCount(), incorrectCount);
+    }
+
+    private LocalDate parseHistoryDate(String date) {
+        try {
+            return LocalDate.parse(date);
+        } catch (DateTimeParseException exception) {
+            throw new GeneralException(QuizErrorCode.QUIZ_HISTORY_INVALID_DATE_FORMAT);
+        }
+    }
+
+    private QuizHistoryDetailResponse emptyQuizHistoryDetailResponse(LocalDate quizDate) {
+        return new QuizHistoryDetailResponse(quizDate, new QuizHistoryDetailSummaryResponse(0, 0, 0), List.of());
+    }
+
+    /** 복습 상세 화면에 필요한 세션 결과와 문제/선택지 정보를 조합한다. */
+    private QuizHistoryDetailResponse toQuizHistoryDetailResponse(
+            LocalDate quizDate, QuizSession session, QuizSet quizSet) {
+        Map<Long, com.muffin.quiz.domain.quizsession.QuizAttempt> attemptByQuizId = session.getAttempts().stream()
+                .collect(Collectors.toMap(
+                        com.muffin.quiz.domain.quizsession.QuizAttempt::getQuizId, Function.identity()));
+
+        List<QuizHistoryQuestionResponse> questions = quizSet.getQuizzes().stream()
+                .sorted(Comparator.comparingInt(Quiz::getQuizOrder))
+                .filter(quiz -> attemptByQuizId.containsKey(quiz.getId()))
+                .map(quiz -> toQuizHistoryQuestionResponse(quiz, attemptByQuizId.get(quiz.getId())))
+                .toList();
+
+        int incorrectCount = session.getTotalCount() - session.getCorrectCount();
+        QuizHistoryDetailSummaryResponse summary = new QuizHistoryDetailSummaryResponse(
+                session.getTotalCount(), session.getCorrectCount(), incorrectCount);
+
+        return new QuizHistoryDetailResponse(quizDate, summary, questions);
+    }
+
+    private QuizHistoryQuestionResponse toQuizHistoryQuestionResponse(
+            Quiz quiz, com.muffin.quiz.domain.quizsession.QuizAttempt attempt) {
+        QuizOption correctOption =
+                quiz.findCorrectOption().orElseThrow(() -> new GeneralException(QuizErrorCode.QUIZ_OPTION_NOT_FOUND));
+
+        return new QuizHistoryQuestionResponse(
+                quiz.getId(),
+                quiz.getQuizOrder(),
+                quiz.getQuestion(),
+                attempt.isCorrect(),
+                attempt.getOptionId(),
+                correctOption.getId(),
+                toHistoryOptionResponses(quiz, attempt),
+                quiz.getExplanation());
+    }
+
+    private List<QuizHistoryOptionResponse> toHistoryOptionResponses(
+            Quiz quiz, com.muffin.quiz.domain.quizsession.QuizAttempt attempt) {
+        return quiz.getOptions().stream()
+                .sorted(Comparator.comparingInt(QuizOption::getOptionNo))
+                .map(option -> new QuizHistoryOptionResponse(
+                        option.getId(),
+                        option.getOptionNo(),
+                        option.getContent(),
+                        option.getId().equals(attempt.getOptionId()),
+                        option.isCorrect()))
+                .toList();
     }
 }

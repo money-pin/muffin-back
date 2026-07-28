@@ -19,6 +19,8 @@ import com.muffin.quiz.domain.quizset.QuizSetRepository;
 import com.muffin.quiz.domain.quizset.enums.QuizDifficulty;
 import com.muffin.quiz.domain.quizset.enums.QuizSetStatus;
 import com.muffin.quiz.exception.QuizErrorCode;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryDetailResponse;
+import com.muffin.quiz.presentation.dto.response.QuizHistoryListResponse;
 import com.muffin.quiz.presentation.dto.response.QuizResultResponse;
 import com.muffin.quiz.presentation.dto.response.TodayQuizResponse;
 import com.muffin.user.domain.User;
@@ -26,6 +28,7 @@ import com.muffin.user.domain.UserRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -225,6 +228,118 @@ class QuizQueryServiceTest {
                 assertThrows(GeneralException.class, () -> quizQueryService.getTodayQuizResult(USER_ID));
 
         assertEquals(QuizErrorCode.QUIZ_UNAVAILABLE, exception.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("완료된 지난 퀴즈 세션을 날짜별 정답 수 요약으로 조회한다")
+    void getQuizHistories_returnsFinishedSessionSummaries() {
+        User user = onboardedUser("세현");
+        QuizSession firstSession = finishedSession(LocalDate.of(2026, 5, 8));
+        QuizSession secondSession = finishedSession(LocalDate.of(2026, 5, 7));
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSessionRepository.findAllByUserIdAndStatusOrderByDateDesc(USER_ID, QuizSessionStatus.FINISHED))
+                .thenReturn(List.of(firstSession, secondSession));
+
+        QuizHistoryListResponse response = quizQueryService.getQuizHistories(USER_ID);
+
+        assertEquals(2, response.histories().size());
+        assertEquals(LocalDate.of(2026, 5, 8), response.histories().getFirst().quizDate());
+        assertEquals(3, response.histories().getFirst().totalCount());
+        assertEquals(2, response.histories().getFirst().correctCount());
+        assertEquals(1, response.histories().getFirst().incorrectCount());
+        assertEquals(LocalDate.of(2026, 5, 7), response.histories().get(1).quizDate());
+    }
+
+    @Test
+    @DisplayName("완료된 지난 퀴즈 세션이 없으면 빈 복습 목록을 반환한다")
+    void getQuizHistories_returnsEmptyListWhenFinishedSessionDoesNotExist() {
+        User user = onboardedUser("세현");
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSessionRepository.findAllByUserIdAndStatusOrderByDateDesc(USER_ID, QuizSessionStatus.FINISHED))
+                .thenReturn(List.of());
+
+        QuizHistoryListResponse response = quizQueryService.getQuizHistories(USER_ID);
+
+        assertTrue(response.histories().isEmpty());
+    }
+
+    @Test
+    @DisplayName("특정 날짜의 지난 퀴즈 복습 상세를 조회한다")
+    void getQuizHistoryDetail_returnsFinishedSessionQuestions() {
+        LocalDate quizDate = LocalDate.of(2026, 5, 8);
+        User user = onboardedUser("세현");
+        QuizSession session = finishedSession(quizDate);
+        QuizSet quizSet = publishedQuizSet(quizDate);
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSessionRepository.findByUserIdAndDateAndStatus(USER_ID, quizDate, QuizSessionStatus.FINISHED))
+                .thenReturn(Optional.of(session));
+        when(quizSetRepository.findById(QUIZ_SET_ID)).thenReturn(Optional.of(quizSet));
+
+        QuizHistoryDetailResponse response = quizQueryService.getQuizHistoryDetail(USER_ID, "2026-05-08");
+
+        assertEquals(quizDate, response.quizDate());
+        assertEquals(3, response.summary().totalCount());
+        assertEquals(2, response.summary().correctCount());
+        assertEquals(1, response.summary().incorrectCount());
+        assertEquals(3, response.questions().size());
+        assertEquals(101L, response.questions().getFirst().quizId());
+        assertEquals(1, response.questions().getFirst().questionOrder());
+        assertTrue(response.questions().getFirst().isCorrect());
+        assertEquals(1011L, response.questions().getFirst().selectedOptionId());
+        assertEquals(1011L, response.questions().getFirst().correctOptionId());
+        assertEquals(3, response.questions().getFirst().options().size());
+        assertTrue(response.questions().getFirst().options().getFirst().isSelected());
+        assertTrue(response.questions().getFirst().options().getFirst().isCorrect());
+        assertEquals("해설 1", response.questions().getFirst().explanation());
+        assertEquals(103L, response.questions().get(2).quizId());
+        assertEquals(1033L, response.questions().get(2).selectedOptionId());
+        assertEquals(1031L, response.questions().get(2).correctOptionId());
+    }
+
+    @Test
+    @DisplayName("특정 날짜의 완료된 퀴즈 세션이 없으면 빈 복습 상세를 반환한다")
+    void getQuizHistoryDetail_returnsEmptyQuestionsWhenFinishedSessionDoesNotExist() {
+        LocalDate quizDate = LocalDate.of(2026, 5, 8);
+        User user = onboardedUser("세현");
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSessionRepository.findByUserIdAndDateAndStatus(USER_ID, quizDate, QuizSessionStatus.FINISHED))
+                .thenReturn(Optional.empty());
+
+        QuizHistoryDetailResponse response = quizQueryService.getQuizHistoryDetail(USER_ID, "2026-05-08");
+
+        assertEquals(quizDate, response.quizDate());
+        assertEquals(0, response.summary().totalCount());
+        assertEquals(0, response.summary().correctCount());
+        assertEquals(0, response.summary().incorrectCount());
+        assertTrue(response.questions().isEmpty());
+    }
+
+    @Test
+    @DisplayName("미래 날짜의 지난 퀴즈 복습 상세는 조회할 수 없다")
+    void getQuizHistoryDetail_throwsBadRequestWhenDateIsFuture() {
+        User user = onboardedUser("세현");
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+
+        GeneralException exception = assertThrows(
+                GeneralException.class, () -> quizQueryService.getQuizHistoryDetail(USER_ID, "2099-01-01"));
+
+        assertEquals(QuizErrorCode.QUIZ_HISTORY_FUTURE_DATE, exception.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("날짜 형식이 올바르지 않으면 지난 퀴즈 복습 상세를 조회할 수 없다")
+    void getQuizHistoryDetail_throwsBadRequestWhenDateFormatIsInvalid() {
+        User user = onboardedUser("세현");
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+
+        GeneralException exception = assertThrows(
+                GeneralException.class, () -> quizQueryService.getQuizHistoryDetail(USER_ID, "2026/05/08"));
+
+        assertEquals(QuizErrorCode.QUIZ_HISTORY_INVALID_DATE_FORMAT, exception.getErrorCode());
     }
 
     private User onboardedUser(String nickname) {
