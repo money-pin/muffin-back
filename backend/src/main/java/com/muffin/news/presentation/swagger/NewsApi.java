@@ -48,7 +48,7 @@ public interface NewsApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 뉴스입니다.")
     })
     ApiResponse<NewsDetailResponse> getNewsDetail(
-            @AuthenticationPrincipal Long userId, @Parameter(description = "조회할 뉴스 ID") Long newsSummaryId);
+            @AuthenticationPrincipal Long userId, @Parameter(description = "조회할 뉴스 ID") Long newsId);
 
     @Operation(
             summary = "뉴스 섹터 영향도 조회 (CONTENT-03)",
@@ -59,7 +59,7 @@ public interface NewsApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 뉴스입니다.")
     })
     ApiResponse<NewsSectorImpactResponse> getSectorImpacts(
-            @AuthenticationPrincipal Long userId, @Parameter(description = "조회할 뉴스 ID") Long newsSummaryId);
+            @AuthenticationPrincipal Long userId, @Parameter(description = "조회할 뉴스 ID") Long newsId);
 
     @Operation(
             summary = "뉴스 해설 카드 조회 (CONTENT-04)",

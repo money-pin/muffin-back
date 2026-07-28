@@ -83,7 +83,7 @@ class MyPageHomeQueryServiceTest {
         assertThat(response.character().characterType()).isEqualTo(MuffinType.PLAIN);
         assertThat(response.streak().currentStreak()).isEqualTo(1);
         assertThat(response.recentNews()).hasSize(1);
-        assertThat(response.recentNews().get(0).newsSummaryId()).isEqualTo(10L);
+        assertThat(response.recentNews().get(0).newsId()).isEqualTo(10L);
     }
 
     @Test

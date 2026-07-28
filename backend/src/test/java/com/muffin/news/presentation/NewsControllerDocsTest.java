@@ -158,7 +158,6 @@ class NewsControllerDocsTest {
     void documentNewsDetail(RestDocumentationContextProvider restDocumentation) throws Exception {
         NewsDetailResponse response = new NewsDetailResponse(
                 103L,
-                103L,
                 "환율 변동과 수출 기업",
                 "경제",
                 431L,
@@ -170,17 +169,16 @@ class NewsControllerDocsTest {
                 true);
         MockMvc mockMvc = mockMvcWith(stubNewsDetail(response), restDocumentation);
 
-        mockMvc.perform(post("/api/news/{newsSummaryId}", 103L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(post("/api/news/{newsId}", 103L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "news-detail-success",
                         requestHeaders(headerWithName("Authorization").description("Bearer access token")),
-                        pathParameters(parameterWithName("newsSummaryId").description("조회할 뉴스 ID")),
+                        pathParameters(parameterWithName("newsId").description("조회할 뉴스 ID")),
                         responseFields(
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드"),
                                 fieldWithPath("message").description("응답 메시지"),
-                                fieldWithPath("result.newsSummaryId").description("뉴스 요약 ID(현재 뉴스 ID와 동일)"),
                                 fieldWithPath("result.newsId").description("뉴스 ID"),
                                 fieldWithPath("result.title").description("뉴스 제목"),
                                 fieldWithPath("result.categoryName").description("카테고리 표시명. 없으면 null"),
@@ -203,12 +201,12 @@ class NewsControllerDocsTest {
     void documentNewsDetailNotPublished(RestDocumentationContextProvider restDocumentation) throws Exception {
         MockMvc mockMvc = mockMvcWith(stubNewsDetailError(NewsErrorCode.NEWS_NOT_PUBLISHED), restDocumentation);
 
-        mockMvc.perform(post("/api/news/{newsSummaryId}", 103L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(post("/api/news/{newsId}", 103L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isForbidden())
                 .andDo(document(
                         "news-detail-not-published",
                         requestHeaders(headerWithName("Authorization").description("Bearer access token")),
-                        pathParameters(parameterWithName("newsSummaryId").description("조회할 뉴스 ID")),
+                        pathParameters(parameterWithName("newsId").description("조회할 뉴스 ID")),
                         errorResponseFields("CONTENT_403_001")));
     }
 
@@ -217,12 +215,12 @@ class NewsControllerDocsTest {
     void documentNewsDetailNotFound(RestDocumentationContextProvider restDocumentation) throws Exception {
         MockMvc mockMvc = mockMvcWith(stubNewsDetailError(NewsErrorCode.NEWS_NOT_FOUND), restDocumentation);
 
-        mockMvc.perform(post("/api/news/{newsSummaryId}", 999L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(post("/api/news/{newsId}", 999L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isNotFound())
                 .andDo(document(
                         "news-detail-not-found",
                         requestHeaders(headerWithName("Authorization").description("Bearer access token")),
-                        pathParameters(parameterWithName("newsSummaryId").description("조회할 뉴스 ID")),
+                        pathParameters(parameterWithName("newsId").description("조회할 뉴스 ID")),
                         errorResponseFields("CONTENT_404_001")));
     }
 
@@ -246,17 +244,17 @@ class NewsControllerDocsTest {
                         impact("DEFENSE", "방산", ImpactType.NEUTRAL)));
         MockMvc mockMvc = mockMvcWith(stubSectorImpacts(response), restDocumentation);
 
-        mockMvc.perform(get("/api/news/{newsSummaryId}/sector-impacts", 104L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(get("/api/news/{newsId}/sector-impacts", 104L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "news-sector-impacts-success",
                         requestHeaders(headerWithName("Authorization").description("Bearer access token")),
-                        pathParameters(parameterWithName("newsSummaryId").description("조회할 뉴스 ID")),
+                        pathParameters(parameterWithName("newsId").description("조회할 뉴스 ID")),
                         responseFields(
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드"),
                                 fieldWithPath("message").description("응답 메시지"),
-                                fieldWithPath("result.newsSummaryId").description("뉴스 ID"),
+                                fieldWithPath("result.newsId").description("뉴스 ID"),
                                 fieldWithPath("result.sectorImpacts[]").description("표시 순서로 정렬된 12개 섹터"),
                                 fieldWithPath("result.sectorImpacts[].sectorCode")
                                         .description("섹터 코드"),
@@ -271,12 +269,12 @@ class NewsControllerDocsTest {
     void documentSectorImpactsNotFound(RestDocumentationContextProvider restDocumentation) throws Exception {
         MockMvc mockMvc = mockMvcWith(stubSectorImpactsError(), restDocumentation);
 
-        mockMvc.perform(get("/api/news/{newsSummaryId}/sector-impacts", 999L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(get("/api/news/{newsId}/sector-impacts", 999L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isNotFound())
                 .andDo(document(
                         "news-sector-impacts-not-found",
                         requestHeaders(headerWithName("Authorization").description("Bearer access token")),
-                        pathParameters(parameterWithName("newsSummaryId").description("조회할 뉴스 ID")),
+                        pathParameters(parameterWithName("newsId").description("조회할 뉴스 ID")),
                         errorResponseFields("CONTENT_404_001")));
     }
 

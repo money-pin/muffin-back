@@ -109,16 +109,36 @@ jobs:
           chmod 600 "$ENV_FILE"
           trap 'rm -f "$ENV_FILE"' EXIT
 
-          aws ssm get-parameters-by-path \
+          # --output text는 값에 들어있는 개행을 그대로 흘려보내 라인 단위 파싱을 깨뜨린다.
+          # (개행 포함 시크릿이 첫 줄만 남고 잘리거나, 뒷줄이 가짜 환경변수로 둔갑한다.)
+          # 그래서 json으로 받아 jq로 파싱한다. docker --env-file 자체가 여러 줄 값을
+          # 표현할 수 없으므로, 개행이 포함된 값은 조용히 자르지 말고 배포를 실패시킨다.
+          PARAMS_JSON="$(aws ssm get-parameters-by-path \
             --path "$SSM_PATH" \
             --recursive \
             --with-decryption \
             --region "$REGION" \
-            --query "Parameters[].[Name,Value]" \
-            --output text \
-          | while IFS=$'\t' read -r pname pvalue; do
-              printf '%s=%s\n' "${pname##*/}" "$pvalue"
-            done > "$ENV_FILE"
+            --output json)"
+
+          BAD="$(printf '%s' "$PARAMS_JSON" | jq -r '
+            .Parameters[]
+            | (.Name | split("/") | last) as $k
+            | select(.Value | test("[\n\r]"))
+            | $k')"
+
+          if [ -n "$BAD" ]; then
+            echo "ERROR: 값에 개행이 포함된 SSM 파라미터가 있어 배포를 중단합니다:" >&2
+            printf '  - %s\n' $BAD >&2
+            echo "해당 파라미터를 개행 없는 한 줄 값으로 다시 저장한 뒤 재배포하세요." >&2
+            exit 1
+          fi
+
+          # DB 계정 bootstrap 상태값은 애플리케이션 환경변수가 아니다.
+          printf '%s' "$PARAMS_JSON" | jq -r '
+            .Parameters[]
+            | (.Name | split("/") | last) as $k
+            | select($k != "DB_APP_BOOTSTRAPPED")
+            | "\($k)=\(.Value)"' > "$ENV_FILE"
 
           if [ ! -s "$ENV_FILE" ]; then
             echo "ERROR: $SSM_PATH 에서 파라미터를 하나도 읽지 못했습니다." >&2

@@ -43,17 +43,17 @@ public class NewsController implements NewsApi {
     }
 
     @Override
-    @PostMapping("/{newsSummaryId}")
+    @PostMapping("/{newsId}")
     public ApiResponse<NewsDetailResponse> getNewsDetail(
-            @AuthenticationPrincipal Long userId, @PathVariable Long newsSummaryId) {
-        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getNewsDetail(userId, newsSummaryId));
+            @AuthenticationPrincipal Long userId, @PathVariable Long newsId) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getNewsDetail(userId, newsId));
     }
 
     @Override
-    @GetMapping("/{newsSummaryId}/sector-impacts")
+    @GetMapping("/{newsId}/sector-impacts")
     public ApiResponse<NewsSectorImpactResponse> getSectorImpacts(
-            @AuthenticationPrincipal Long userId, @PathVariable Long newsSummaryId) {
-        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getSectorImpacts(newsSummaryId));
+            @AuthenticationPrincipal Long userId, @PathVariable Long newsId) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getSectorImpacts(newsId));
     }
 
     @Override

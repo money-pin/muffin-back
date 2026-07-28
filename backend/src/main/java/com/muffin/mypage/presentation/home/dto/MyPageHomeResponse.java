@@ -14,5 +14,5 @@ public record MyPageHomeResponse(
 
     public record WeeklyActivityDay(WeekDay day, boolean participated) {}
 
-    public record RecentNewsItem(Long newsSummaryId, String title, String thumbnailUrl, LocalDateTime readAt) {}
+    public record RecentNewsItem(Long newsId, String title, String thumbnailUrl, LocalDateTime readAt) {}
 }

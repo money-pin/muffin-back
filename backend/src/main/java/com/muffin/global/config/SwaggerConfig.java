@@ -19,8 +19,18 @@ public class SwaggerConfig {
     /**
      * 도메인 그룹 순서. REST Docs 목차 순서와 맞춘다. 목록에 없는 태그(Health 등)는 항상 맨 뒤로 간다.
      */
-    private static final List<String> TAG_ORDER =
-            List.of("Auth", "User", "Investment", "Sector", "Mypage", "Notification", "Quiz", "News", "Scrap", "Stats");
+    private static final List<String> TAG_ORDER = List.of(
+            "Auth",
+            "User",
+            "Investment",
+            "Sector",
+            "Mypage",
+            "Notification",
+            "Quiz",
+            "News",
+            "Scrap",
+            "Stats",
+            "Ranking");
 
     @Bean
     public OpenAPI muffinOpenAPI() {
