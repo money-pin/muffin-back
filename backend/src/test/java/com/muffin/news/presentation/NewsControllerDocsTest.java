@@ -25,6 +25,7 @@ import com.muffin.news.presentation.dto.NewsDetailResponse;
 import com.muffin.news.presentation.dto.NewsDetailResponse.BodySegment;
 import com.muffin.news.presentation.dto.NewsListResponse;
 import com.muffin.news.presentation.dto.NewsListResponse.NewsListItem;
+import com.muffin.news.presentation.dto.NewsReadResponse;
 import com.muffin.news.presentation.dto.NewsSectorImpactResponse;
 import com.muffin.news.presentation.dto.NewsSectorImpactResponse.SectorImpactItem;
 import com.muffin.news.presentation.dto.NewsTodayResponse;
@@ -178,7 +179,7 @@ class NewsControllerDocsTest {
                 true);
         MockMvc mockMvc = mockMvcWith(stubNewsDetail(response), restDocumentation);
 
-        mockMvc.perform(post("/api/news/{newsId}", 103L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(get("/api/news/{newsId}", 103L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "news-detail-success",
@@ -191,7 +192,7 @@ class NewsControllerDocsTest {
                                 fieldWithPath("result.newsId").description("뉴스 ID"),
                                 fieldWithPath("result.title").description("뉴스 제목"),
                                 fieldWithPath("result.categoryName").description("카테고리 표시명. 없으면 null"),
-                                fieldWithPath("result.viewCount").description("상세 조회 반영 후 조회수"),
+                                fieldWithPath("result.viewCount").description("현재 조회수"),
                                 fieldWithPath("result.publisher").description("언론사"),
                                 fieldWithPath("result.publishedAt").description("발행 시각"),
                                 fieldWithPath("result.thumbnailUrl").description("원본 썸네일 URL. 없으면 null"),
@@ -210,7 +211,7 @@ class NewsControllerDocsTest {
     void documentNewsDetailNotPublished(RestDocumentationContextProvider restDocumentation) throws Exception {
         MockMvc mockMvc = mockMvcWith(stubNewsDetailError(NewsErrorCode.NEWS_NOT_PUBLISHED), restDocumentation);
 
-        mockMvc.perform(post("/api/news/{newsId}", 103L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(get("/api/news/{newsId}", 103L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isForbidden())
                 .andDo(document(
                         "news-detail-not-published",
@@ -224,13 +225,31 @@ class NewsControllerDocsTest {
     void documentNewsDetailNotFound(RestDocumentationContextProvider restDocumentation) throws Exception {
         MockMvc mockMvc = mockMvcWith(stubNewsDetailError(NewsErrorCode.NEWS_NOT_FOUND), restDocumentation);
 
-        mockMvc.perform(post("/api/news/{newsId}", 999L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(get("/api/news/{newsId}", 999L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isNotFound())
                 .andDo(document(
                         "news-detail-not-found",
                         requestHeaders(headerWithName("Authorization").description("Bearer access token")),
                         pathParameters(parameterWithName("newsId").description("조회할 뉴스 ID")),
                         errorResponseFields("CONTENT_404_001")));
+    }
+
+    @Test
+    @DisplayName("뉴스 열람 처리 문서화")
+    void documentNewsRead(RestDocumentationContextProvider restDocumentation) throws Exception {
+        MockMvc mockMvc = mockMvcWith(stubNewsRead(new NewsReadResponse(432L)), restDocumentation);
+
+        mockMvc.perform(post("/api/news/{newsId}/read", 103L).header("Authorization", AUTHORIZATION))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "news-read-success",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        pathParameters(parameterWithName("newsId").description("열람할 뉴스 ID")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.viewCount").description("열람 처리 후 갱신된 조회수"))));
     }
 
     @Test
@@ -344,6 +363,15 @@ class NewsControllerDocsTest {
         });
     }
 
+    private NewsQueryService stubNewsRead(NewsReadResponse response) {
+        return stubService(new NewsQueryStub() {
+            @Override
+            public NewsReadResponse recordNewsRead(Long userId, Long newsId) {
+                return response;
+            }
+        });
+    }
+
     private NewsQueryService stubSectorImpacts(NewsSectorImpactResponse response) {
         return stubService(new NewsQueryStub() {
             @Override
@@ -380,6 +408,11 @@ class NewsControllerDocsTest {
             }
 
             @Override
+            public NewsReadResponse recordNewsRead(Long userId, Long newsId) {
+                return stub.recordNewsRead(userId, newsId);
+            }
+
+            @Override
             public NewsSectorImpactResponse getSectorImpacts(Long newsId) {
                 return stub.getSectorImpacts(newsId);
             }
@@ -408,6 +441,10 @@ class NewsControllerDocsTest {
         }
 
         NewsDetailResponse getNewsDetail(Long userId, Long newsId) {
+            throw new UnsupportedOperationException();
+        }
+
+        NewsReadResponse recordNewsRead(Long userId, Long newsId) {
             throw new UnsupportedOperationException();
         }
 

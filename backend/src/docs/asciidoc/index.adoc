@@ -1079,7 +1079,7 @@ include::{snippets}/news-today-success/response-fields.adoc[]
 [[news-detail]]
 === 뉴스 상세 조회 (CONTENT-02)
 
-뉴스 상세 본문을 조회한다. 조회수와 최근 열람 기록을 갱신하므로 `POST`를 사용한다.
+뉴스 상세 본문과 현재 사용자의 스크랩 여부를 조회한다. 조회수와 최근 열람 기록은 변경하지 않는다.
 
 NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다.
 
@@ -1110,6 +1110,32 @@ include::{snippets}/news-detail-not-found/response-fields.adoc[]
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |403|CONTENT_403_001|아직 공개되지 않은 뉴스입니다.|상세 조회 대상이 공개 상태가 아님
 |404|CONTENT_404_001|존재하지 않는 뉴스입니다.|상세 조회 대상 뉴스가 없음
+|===
+
+[[news-read]]
+=== 뉴스 열람 처리
+
+뉴스 상세 조회 성공 후 호출한다. 호출할 때마다 조회수를 1 증가시키고, 사용자 열람 기록이 없으면 생성하며 기존 기록이 있으면 `readAt`을 갱신한다. 동일 화면을 새로고침하거나 API를 반복 호출한 경우에도 각각 새로운 조회로 집계한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다.
+
+==== 정상
+
+include::{snippets}/news-read-success/http-request.adoc[]
+include::{snippets}/news-read-success/request-headers.adoc[]
+include::{snippets}/news-read-success/path-parameters.adoc[]
+include::{snippets}/news-read-success/http-response.adoc[]
+include::{snippets}/news-read-success/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|403|CONTENT_403_001|아직 공개되지 않은 뉴스입니다.|열람 처리 대상이 공개 상태가 아님
+|404|CONTENT_404_001|존재하지 않는 뉴스입니다.|열람 처리 대상 뉴스가 없음
 |===
 
 [[news-sector-impacts]]

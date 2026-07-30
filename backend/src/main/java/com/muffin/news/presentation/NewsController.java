@@ -6,6 +6,7 @@ import com.muffin.news.application.explanation.NewsExplanationQueryService;
 import com.muffin.news.application.query.NewsQueryService;
 import com.muffin.news.presentation.dto.NewsDetailResponse;
 import com.muffin.news.presentation.dto.NewsListResponse;
+import com.muffin.news.presentation.dto.NewsReadResponse;
 import com.muffin.news.presentation.dto.NewsSectorImpactResponse;
 import com.muffin.news.presentation.dto.NewsTodayResponse;
 import com.muffin.news.presentation.dto.response.NewsExplanationCardsResponse;
@@ -45,10 +46,17 @@ public class NewsController implements NewsApi {
     }
 
     @Override
-    @PostMapping("/{newsId}")
+    @GetMapping("/{newsId}")
     public ApiResponse<NewsDetailResponse> getNewsDetail(
             @AuthenticationPrincipal Long userId, @PathVariable Long newsId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getNewsDetail(userId, newsId));
+    }
+
+    @Override
+    @PostMapping("/{newsId}/read")
+    public ApiResponse<NewsReadResponse> recordNewsRead(
+            @AuthenticationPrincipal Long userId, @PathVariable Long newsId) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.recordNewsRead(userId, newsId));
     }
 
     @Override

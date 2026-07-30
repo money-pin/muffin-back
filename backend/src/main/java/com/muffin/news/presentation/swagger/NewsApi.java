@@ -3,6 +3,7 @@ package com.muffin.news.presentation.swagger;
 import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.news.presentation.dto.NewsDetailResponse;
 import com.muffin.news.presentation.dto.NewsListResponse;
+import com.muffin.news.presentation.dto.NewsReadResponse;
 import com.muffin.news.presentation.dto.NewsSectorImpactResponse;
 import com.muffin.news.presentation.dto.NewsTodayResponse;
 import com.muffin.news.presentation.dto.response.NewsExplanationCardsResponse;
@@ -42,7 +43,7 @@ public interface NewsApi {
 
     @Operation(
             summary = "뉴스 상세 조회 (CONTENT-02)",
-            description = "AI가 재구성한 본문과 스크랩 여부를 조회한다. 조회 시 조회수 증가와 열람 기록 갱신이 함께 일어나므로 POST를 사용한다.")
+            description = "조회수와 열람 기록을 변경하지 않고 AI가 재구성한 본문과 현재 사용자의 스크랩 여부를 조회한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다."),
@@ -51,6 +52,16 @@ public interface NewsApi {
     })
     ApiResponse<NewsDetailResponse> getNewsDetail(
             @AuthenticationPrincipal Long userId, @Parameter(description = "조회할 뉴스 ID") Long newsId);
+
+    @Operation(summary = "뉴스 열람 처리", description = "호출할 때마다 조회수를 1 증가시키고 사용자 열람 기록의 열람 시각을 생성 또는 갱신한 뒤 최신 조회수를 반환합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "열람 처리 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "아직 공개되지 않은 뉴스입니다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 뉴스입니다.")
+    })
+    ApiResponse<NewsReadResponse> recordNewsRead(
+            @AuthenticationPrincipal Long userId, @Parameter(description = "열람할 뉴스 ID") Long newsId);
 
     @Operation(
             summary = "뉴스 섹터 영향도 조회 (CONTENT-03)",
