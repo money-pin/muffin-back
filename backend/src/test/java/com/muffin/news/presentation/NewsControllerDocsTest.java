@@ -11,6 +11,7 @@ import static org.springframework.restdocs.request.RequestDocumentation.paramete
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.muffin.global.apiPayload.code.GeneralErrorCode;
@@ -177,7 +178,7 @@ class NewsControllerDocsTest {
                 true);
         MockMvc mockMvc = mockMvcWith(stubNewsDetail(response), restDocumentation);
 
-        mockMvc.perform(get("/api/news/{newsId}", 103L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(post("/api/news/{newsId}", 103L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "news-detail-success",
@@ -209,7 +210,7 @@ class NewsControllerDocsTest {
     void documentNewsDetailNotPublished(RestDocumentationContextProvider restDocumentation) throws Exception {
         MockMvc mockMvc = mockMvcWith(stubNewsDetailError(NewsErrorCode.NEWS_NOT_PUBLISHED), restDocumentation);
 
-        mockMvc.perform(get("/api/news/{newsId}", 103L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(post("/api/news/{newsId}", 103L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isForbidden())
                 .andDo(document(
                         "news-detail-not-published",
@@ -223,7 +224,7 @@ class NewsControllerDocsTest {
     void documentNewsDetailNotFound(RestDocumentationContextProvider restDocumentation) throws Exception {
         MockMvc mockMvc = mockMvcWith(stubNewsDetailError(NewsErrorCode.NEWS_NOT_FOUND), restDocumentation);
 
-        mockMvc.perform(get("/api/news/{newsId}", 999L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(post("/api/news/{newsId}", 999L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isNotFound())
                 .andDo(document(
                         "news-detail-not-found",

@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,7 +45,7 @@ public class NewsController implements NewsApi {
     }
 
     @Override
-    @GetMapping("/{newsId}")
+    @PostMapping("/{newsId}")
     public ApiResponse<NewsDetailResponse> getNewsDetail(
             @AuthenticationPrincipal Long userId, @PathVariable Long newsId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getNewsDetail(userId, newsId));

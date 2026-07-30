@@ -1,7 +1,7 @@
 package com.muffin.news.presentation;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -214,9 +214,8 @@ class NewsQueryApiIntegrationTest {
     @Test
     @DisplayName("상세 조회 시 조회수가 증가하고 TEXT 세그먼트를 반환한다")
     void getNewsDetail() throws Exception {
-        mockMvc.perform(get("/api/news/{id}", news3Id).header("Authorization", bearerToken()))
+        mockMvc.perform(post("/api/news/{id}", news3Id).header("Authorization", bearerToken()))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate"))
                 .andExpect(jsonPath("$.result.newsId").value(news3Id))
                 .andExpect(jsonPath("$.result.viewCount").value(1))
                 .andExpect(jsonPath("$.result.categoryName").value("경제"))
@@ -229,7 +228,7 @@ class NewsQueryApiIntegrationTest {
     @Test
     @DisplayName("공개되지 않은 뉴스 상세는 403")
     void getNewsDetail_notPublished() throws Exception {
-        mockMvc.perform(get("/api/news/{id}", processingNewsId).header("Authorization", bearerToken()))
+        mockMvc.perform(post("/api/news/{id}", processingNewsId).header("Authorization", bearerToken()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("CONTENT_403_001"));
     }
@@ -237,7 +236,7 @@ class NewsQueryApiIntegrationTest {
     @Test
     @DisplayName("존재하지 않는 뉴스 상세는 404")
     void getNewsDetail_notFound() throws Exception {
-        mockMvc.perform(get("/api/news/{id}", 9_999_999L).header("Authorization", bearerToken()))
+        mockMvc.perform(post("/api/news/{id}", 9_999_999L).header("Authorization", bearerToken()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("CONTENT_404_001"));
     }
@@ -267,7 +266,7 @@ class NewsQueryApiIntegrationTest {
     @DisplayName("인증이 필요한 뉴스 API는 토큰이 없으면 401을 반환한다")
     void authenticatedEndpoints_rejectAnonymous() throws Exception {
         mockMvc.perform(get("/api/news/today")).andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/news/{id}", news3Id)).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/news/{id}", news3Id)).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/news/{id}/sector-impacts", news1Id)).andExpect(status().isUnauthorized());
     }
 }

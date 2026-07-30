@@ -42,7 +42,7 @@ public interface NewsApi {
 
     @Operation(
             summary = "뉴스 상세 조회 (CONTENT-02)",
-            description = "AI가 재구성한 본문과 스크랩 여부를 조회한다. 조회 시 조회수 증가와 열람 기록 갱신이 함께 일어난다.")
+            description = "AI가 재구성한 본문과 스크랩 여부를 조회한다. 조회 시 조회수 증가와 열람 기록 갱신이 함께 일어나므로 POST를 사용한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다."),
