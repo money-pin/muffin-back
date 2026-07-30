@@ -5,6 +5,7 @@ import com.muffin.stats.presentation.dto.ProfitHistoryRequest;
 import com.muffin.stats.presentation.dto.ProfitHistoryResponse;
 import com.muffin.stats.presentation.dto.RecentDetailResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse;
+import com.muffin.stats.presentation.dto.TopSectorsResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -16,9 +17,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 public interface StatsApi {
 
     @Operation(
-            summary = "수익 통계 조회 (STATS-02)",
+            summary = "수익 통계 조회 (STATS-02-1)",
             description =
-                    "가입 이후 누적 손익, 최근 7일 누적 수익률 그래프, 수익 TOP3 섹터, 투자 성향을 한 번에 조회한다. 정산 완료(SETTLED) 투자만 집계하며, 정산 이력이 없으면 빈 상태로 응답한다.")
+                    "가입 이후 누적 손익, 최근 7일 누적 수익률 그래프, 수익 TOP3 섹터, 투자 성향을 한 번에 조회한다. 정산 완료(SETTLED) 투자만 집계하며, 정산 이력이 없으면 빈 상태로 응답한다. "
+                            + "TOP3만 필요한 화면(홈)은 이 API 대신 수익 TOP3 섹터 조회(STATS-02-2)를 쓴다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "200",
@@ -28,6 +30,21 @@ public interface StatsApi {
                 description = "인증이 필요합니다. (AUTH_401_001)")
     })
     ApiResponse<StatsSummaryResponse> getSummary(@Parameter(hidden = true) @AuthenticationPrincipal Long userId);
+
+    @Operation(
+            summary = "수익 TOP3 섹터 조회 (STATS-02-2)",
+            description = "누적 수익률 상위 3개 섹터만 조회한다. 홈 화면처럼 통계 전체가 아니라 TOP3만 필요한 경우에 쓰며, "
+                    + "선정/정렬 규칙과 항목 형태는 수익 통계 조회(STATS-02-1)의 topSectors와 완전히 동일하다. "
+                    + "정산 완료(SETTLED) 투자만 집계하고, 누적 매수금이 0인 섹터는 제외한다. 누적 수익률 내림차순이며 동률이면 누적 손익금 내림차순이다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "조회 성공. 정산 이력이 없거나 매수금이 있는 섹터가 없으면 topSectors는 빈 배열이다. 섹터가 3개 미만이면 있는 만큼만 내려간다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "인증이 필요합니다. (AUTH_401_001)")
+    })
+    ApiResponse<TopSectorsResponse> getTopSectors(@Parameter(hidden = true) @AuthenticationPrincipal Long userId);
 
     @Operation(
             summary = "누적 수익 내역 조회 (STATS-08)",

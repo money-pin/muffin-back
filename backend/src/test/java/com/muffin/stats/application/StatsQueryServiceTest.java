@@ -22,7 +22,8 @@ import com.muffin.stats.presentation.dto.ProfitHistoryResponse.SectorHistoryResp
 import com.muffin.stats.presentation.dto.RecentDetailResponse;
 import com.muffin.stats.presentation.dto.RecentDetailResponse.SectorDetailResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse;
-import com.muffin.stats.presentation.dto.StatsSummaryResponse.TopSectorResponse;
+import com.muffin.stats.presentation.dto.TopSectorResponse;
+import com.muffin.stats.presentation.dto.TopSectorsResponse;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -111,6 +112,73 @@ class StatsQueryServiceTest {
         assertEquals("GOLD", top.get(1).sectorCode());
         assertEquals(new BigDecimal("5.2"), top.get(1).profitRate());
         assertEquals("TECH", top.get(2).sectorCode());
+    }
+
+    @Test
+    @DisplayName("TOP3 단독 조회도 누적 수익률 내림차순 3개이고 통계 조회의 topSectors와 완전히 같다")
+    void getTopSectors_sameAsSummaryTopSectors() {
+        List<SectorStatProjection> sectors = List.of(
+                new SectorStatProjection("SEMICONDUCTOR", "반도체", "FUTURE_TECH", 642_000L, 52_000L), // 8.1%
+                new SectorStatProjection("GOLD", "금", "BASE_ASSET", 600_000L, 31_000L), // 5.2%
+                new SectorStatProjection("TECH", "테크", "FUTURE_TECH", 615_000L, 24_000L), // 3.9%
+                new SectorStatProjection("BOND", "채권", "BASE_ASSET", 400_000L, 4_000L)); // 1.0% (제외)
+        StatsQueryService service = serviceWith(List.of(new DailyProfitProjection(DAY_8, 111_000L)), sectors);
+
+        TopSectorsResponse response = service.getTopSectors(1L);
+
+        List<TopSectorResponse> top = response.topSectors();
+        assertEquals(3, top.size());
+        assertEquals(1, top.get(0).rank());
+        assertEquals("SEMICONDUCTOR", top.get(0).sectorCode());
+        assertEquals("반도체", top.get(0).sectorName());
+        assertEquals(52_000L, top.get(0).profitAmount());
+        assertEquals(new BigDecimal("8.1"), top.get(0).profitRate());
+        assertEquals(2, top.get(1).rank());
+        assertEquals("GOLD", top.get(1).sectorCode());
+        assertEquals(3, top.get(2).rank());
+        assertEquals("TECH", top.get(2).sectorCode());
+        assertEquals(service.getSummary(1L).topSectors(), top);
+    }
+
+    @Test
+    @DisplayName("TOP3 단독 조회: 정산 이력이 없으면 빈 배열이다")
+    void getTopSectors_emptyWhenNoSettlement() {
+        TopSectorsResponse response = serviceWith(List.of(), List.of()).getTopSectors(1L);
+
+        assertTrue(response.topSectors().isEmpty());
+    }
+
+    @Test
+    @DisplayName("TOP3 단독 조회: 누적 매수금이 0인 섹터는 제외하고 3개 미만이면 있는 만큼만 내려간다")
+    void getTopSectors_excludesZeroInvestmentAndAllowsFewerThanThree() {
+        List<SectorStatProjection> sectors = List.of(
+                new SectorStatProjection("GOLD", "금", "BASE_ASSET", 600_000L, 31_000L), // 5.2%
+                new SectorStatProjection("BOND", "채권", "BASE_ASSET", 0L, 0L)); // 매수금 0 (제외)
+
+        TopSectorsResponse response = serviceWith(List.of(new DailyProfitProjection(DAY_8, 31_000L)), sectors)
+                .getTopSectors(1L);
+
+        List<TopSectorResponse> top = response.topSectors();
+        assertEquals(1, top.size());
+        assertEquals("GOLD", top.getFirst().sectorCode());
+        assertEquals(1, top.getFirst().rank());
+    }
+
+    @Test
+    @DisplayName("TOP3 단독 조회: 수익률이 동률이면 누적 손익금이 큰 섹터가 먼저 온다")
+    void getTopSectors_tieBreaksByProfitAmount() {
+        List<SectorStatProjection> sectors = List.of(
+                new SectorStatProjection("GOLD", "금", "BASE_ASSET", 100_000L, 5_000L), // 5.0%
+                new SectorStatProjection("TECH", "테크", "FUTURE_TECH", 200_000L, 10_000L)); // 5.0%, 손익금 더 큼
+
+        TopSectorsResponse response = serviceWith(List.of(new DailyProfitProjection(DAY_8, 15_000L)), sectors)
+                .getTopSectors(1L);
+
+        List<TopSectorResponse> top = response.topSectors();
+        assertEquals(new BigDecimal("5.0"), top.get(0).profitRate());
+        assertEquals(new BigDecimal("5.0"), top.get(1).profitRate());
+        assertEquals("TECH", top.get(0).sectorCode());
+        assertEquals("GOLD", top.get(1).sectorCode());
     }
 
     @Test
