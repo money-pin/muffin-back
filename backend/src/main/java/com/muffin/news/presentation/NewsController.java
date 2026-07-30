@@ -30,16 +30,18 @@ public class NewsController implements NewsApi {
     @Override
     @GetMapping
     public ApiResponse<NewsListResponse> getNews(
+            @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) Long categoryId) {
-        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getNewsList(cursor, size, categoryId));
+        return ApiResponse.onSuccess(
+                GeneralSuccessCode.OK, newsQueryService.getNewsList(userId, cursor, size, categoryId));
     }
 
     @Override
     @GetMapping("/today")
     public ApiResponse<NewsTodayResponse> getTodayNews(@AuthenticationPrincipal Long userId) {
-        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getTodayNews());
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getTodayNews(userId));
     }
 
     @Override

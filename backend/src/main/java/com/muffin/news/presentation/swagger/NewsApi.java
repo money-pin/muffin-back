@@ -17,21 +17,23 @@ public interface NewsApi {
 
     @Operation(
             summary = "뉴스 목록 조회 (CONTENT-01-1)",
-            description = "공개된 뉴스를 최신 발행순(publishedAt DESC, newsId DESC)으로 커서 페이지네이션 조회한다. 인증이 필요 없다.")
+            description = "공개된 뉴스를 최신 발행순(publishedAt DESC, newsId DESC)으로 커서 페이지네이션 조회하고 현재 사용자의 스크랩 여부를 반환한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "400",
-                description = "커서가 올바르지 않거나 size가 허용 범위(1~50)를 벗어난 경우")
+                description = "커서가 올바르지 않거나 size가 허용 범위(1~50)를 벗어난 경우"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다.")
     })
     ApiResponse<NewsListResponse> getNews(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
             @Parameter(description = "다음 목록 조회를 위한 커서. 최초 요청 시 생략") String cursor,
             @Parameter(description = "한 번에 조회할 뉴스 개수 (1~50, 기본 20)") int size,
             @Parameter(description = "조회할 카테고리 ID. 미입력 시 전체 카테고리") Long categoryId);
 
     @Operation(
             summary = "오늘의 뉴스 조회 (CONTENT-01-2)",
-            description = "한국 시간(Asia/Seoul) 기준 당일 수집된 공개 뉴스 중 최신 발행순 상위 3건을 조회한다.")
+            description = "한국 시간(Asia/Seoul) 기준 당일 수집된 공개 뉴스 중 최신 발행순 상위 3건과 현재 사용자의 스크랩 여부를 조회한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다.")

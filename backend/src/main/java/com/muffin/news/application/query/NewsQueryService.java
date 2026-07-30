@@ -57,16 +57,16 @@ public class NewsQueryService {
     private final NewsCursorCodec newsCursorCodec;
     private final Clock clock;
 
-    /** 공개 뉴스를 커서 기반으로 최신순 조회한다. 인증이 필요 없다. */
+    /** 공개 뉴스를 커서 기반으로 최신순 조회하고 현재 사용자의 스크랩 여부를 함께 반환한다. */
     @Transactional(readOnly = true)
-    public NewsListResponse getNewsList(String cursorParam, int size, Long categoryId) {
+    public NewsListResponse getNewsList(Long userId, String cursorParam, int size, Long categoryId) {
         if (size < MIN_PAGE_SIZE || size > MAX_PAGE_SIZE) {
             throw new GeneralException(GeneralErrorCode.BAD_REQUEST, "size: 1 이상 50 이하여야 합니다.");
         }
 
         NewsCursor cursor = (cursorParam == null || cursorParam.isBlank()) ? null : newsCursorCodec.decode(cursorParam);
 
-        List<NewsSummaryRow> rows = newsQueryRepository.findPublishedNewsPage(cursor, categoryId, size + 1);
+        List<NewsSummaryRow> rows = newsQueryRepository.findPublishedNewsPage(userId, cursor, categoryId, size + 1);
         boolean hasNext = rows.size() > size;
         List<NewsSummaryRow> pageRows = hasNext ? rows.subList(0, size) : rows;
 
@@ -80,7 +80,8 @@ public class NewsQueryService {
                         row.publisher(),
                         row.publishedAt(),
                         originalThumbnail(row.thumbnailUrl()),
-                        row.viewCount()))
+                        row.viewCount(),
+                        row.isScrapped()))
                 .toList();
 
         String nextCursor = null;
@@ -94,13 +95,13 @@ public class NewsQueryService {
 
     /** 한국 시간 기준 당일 수집된 공개 뉴스 중 최신 발행순 상위 3건을 조회한다. */
     @Transactional(readOnly = true)
-    public NewsTodayResponse getTodayNews() {
+    public NewsTodayResponse getTodayNews(Long userId) {
         LocalDate today = LocalDate.now(clock);
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime startOfNextDay = startOfDay.plusDays(1);
 
         List<NewsSummaryRow> rows =
-                newsQueryRepository.findTodayPublishedNews(startOfDay, startOfNextDay, TODAY_NEWS_LIMIT);
+                newsQueryRepository.findTodayPublishedNews(userId, startOfDay, startOfNextDay, TODAY_NEWS_LIMIT);
 
         List<NewsTodayItem> items = new ArrayList<>(rows.size());
         for (NewsSummaryRow row : rows) {
@@ -113,7 +114,8 @@ public class NewsQueryService {
                     row.publisher(),
                     row.publishedAt(),
                     originalThumbnail(row.thumbnailUrl()),
-                    row.viewCount()));
+                    row.viewCount(),
+                    row.isScrapped()));
         }
 
         return new NewsTodayResponse(items);

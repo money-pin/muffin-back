@@ -9,6 +9,7 @@ import com.muffin.news.domain.category.QCategory;
 import com.muffin.news.domain.news.QNews;
 import com.muffin.news.domain.news.enums.NewsStatus;
 import com.muffin.news.domain.readhistory.QReadHistory;
+import com.muffin.scrap.domain.QScrap;
 import com.muffin.sector.domain.sector.QSector;
 import com.muffin.sector.domain.sectorgroup.QSectorGroup;
 import com.querydsl.core.BooleanBuilder;
@@ -26,9 +27,10 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public List<NewsSummaryRow> findPublishedNewsPage(NewsCursor cursor, Long categoryId, int limit) {
+    public List<NewsSummaryRow> findPublishedNewsPage(Long userId, NewsCursor cursor, Long categoryId, int limit) {
         QNews news = QNews.news;
         QCategory category = QCategory.category;
+        QScrap scrap = QScrap.scrap;
 
         BooleanBuilder where = publishedNewsPredicate(news);
         if (categoryId != null) {
@@ -41,10 +43,12 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
         }
 
         return queryFactory
-                .select(summaryProjection(news, category))
+                .select(summaryProjection(news, category, scrap))
                 .from(news)
                 .join(category)
                 .on(category.id.eq(news.categoryId))
+                .leftJoin(scrap)
+                .on(scrap.newsId.eq(news.id).and(scrap.userId.eq(userId)))
                 .where(where)
                 .orderBy(news.publishedAt.desc(), news.id.desc())
                 .limit(limit)
@@ -53,18 +57,21 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
 
     @Override
     public List<NewsSummaryRow> findTodayPublishedNews(
-            LocalDateTime startInclusive, LocalDateTime endExclusive, int limit) {
+            Long userId, LocalDateTime startInclusive, LocalDateTime endExclusive, int limit) {
         QNews news = QNews.news;
         QCategory category = QCategory.category;
+        QScrap scrap = QScrap.scrap;
 
         BooleanBuilder where = publishedNewsPredicate(news);
         where.and(news.createdAt.goe(startInclusive)).and(news.createdAt.lt(endExclusive));
 
         return queryFactory
-                .select(summaryProjection(news, category))
+                .select(summaryProjection(news, category, scrap))
                 .from(news)
                 .join(category)
                 .on(category.id.eq(news.categoryId))
+                .leftJoin(scrap)
+                .on(scrap.newsId.eq(news.id).and(scrap.userId.eq(userId)))
                 .where(where)
                 .orderBy(news.publishedAt.desc(), news.id.desc())
                 .limit(limit)
@@ -108,7 +115,7 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
     }
 
     private com.querydsl.core.types.ConstructorExpression<NewsSummaryRow> summaryProjection(
-            QNews news, QCategory category) {
+            QNews news, QCategory category, QScrap scrap) {
         return Projections.constructor(
                 NewsSummaryRow.class,
                 news.id,
@@ -119,6 +126,7 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
                 news.publisher,
                 news.publishedAt,
                 news.thumbnailUrl,
-                news.viewCount);
+                news.viewCount,
+                scrap.id.isNotNull());
     }
 }

@@ -75,15 +75,20 @@ class NewsControllerDocsTest {
                         "매일경제",
                         PUBLISHED_AT,
                         "https://cdn.example.com/news/101.jpg",
-                        1250L)),
+                        1250L,
+                        true)),
                 "eyJwdWJsaXNoZWRBdCI6IjIwMjYtMDctMjRUMDk6MDA6MDAiLCJuZXdzSWQiOjEwMX0",
                 true);
         MockMvc mockMvc = mockMvcWith(stubNewsList(response), restDocumentation);
 
-        mockMvc.perform(get("/api/news").param("size", "20").param("categoryId", "1"))
+        mockMvc.perform(get("/api/news")
+                        .header("Authorization", AUTHORIZATION)
+                        .param("size", "20")
+                        .param("categoryId", "1"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "news-list-success",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
                         queryParameters(
                                 parameterWithName("cursor").optional().description("이전 응답의 nextCursor. 최초 요청 시 생략"),
                                 parameterWithName("size").optional().description("페이지 크기 (1~50, 기본 20)"),
@@ -101,6 +106,7 @@ class NewsControllerDocsTest {
                                 fieldWithPath("result.items[].publishedAt").description("발행 시각"),
                                 fieldWithPath("result.items[].thumbnailUrl").description("원본 썸네일 URL. 없으면 null"),
                                 fieldWithPath("result.items[].viewCount").description("조회수"),
+                                fieldWithPath("result.items[].isScrapped").description("현재 사용자의 스크랩 여부"),
                                 fieldWithPath("result.nextCursor").optional().description("다음 페이지 커서. 다음 페이지가 없으면 생략"),
                                 fieldWithPath("result.hasNext").description("다음 페이지 존재 여부"))));
     }
@@ -110,10 +116,11 @@ class NewsControllerDocsTest {
     void documentNewsListInvalidSize(RestDocumentationContextProvider restDocumentation) throws Exception {
         MockMvc mockMvc = mockMvcWith(stubInvalidNewsList(), restDocumentation);
 
-        mockMvc.perform(get("/api/news").param("size", "51"))
+        mockMvc.perform(get("/api/news").header("Authorization", AUTHORIZATION).param("size", "51"))
                 .andExpect(status().isBadRequest())
                 .andDo(document(
                         "news-list-invalid",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
                         queryParameters(parameterWithName("size").description("허용 범위를 벗어난 페이지 크기")),
                         errorResponseFields("COMMON_400_001")));
     }
@@ -130,7 +137,8 @@ class NewsControllerDocsTest {
                 "매일경제",
                 PUBLISHED_AT,
                 "https://cdn.example.com/news/102.jpg",
-                980L)));
+                980L,
+                false)));
         MockMvc mockMvc = mockMvcWith(stubTodayNews(response), restDocumentation);
 
         mockMvc.perform(get("/api/news/today").header("Authorization", AUTHORIZATION))
@@ -150,7 +158,8 @@ class NewsControllerDocsTest {
                                 fieldWithPath("result.items[].publisher").description("언론사"),
                                 fieldWithPath("result.items[].publishedAt").description("발행 시각"),
                                 fieldWithPath("result.items[].thumbnailUrl").description("원본 썸네일 URL. 없으면 null"),
-                                fieldWithPath("result.items[].viewCount").description("조회수"))));
+                                fieldWithPath("result.items[].viewCount").description("조회수"),
+                                fieldWithPath("result.items[].isScrapped").description("현재 사용자의 스크랩 여부"))));
     }
 
     @Test
@@ -293,7 +302,7 @@ class NewsControllerDocsTest {
     private NewsQueryService stubNewsList(NewsListResponse response) {
         return stubService(new NewsQueryStub() {
             @Override
-            public NewsListResponse getNewsList(String cursor, int size, Long categoryId) {
+            public NewsListResponse getNewsList(Long userId, String cursor, int size, Long categoryId) {
                 return response;
             }
         });
@@ -302,7 +311,7 @@ class NewsControllerDocsTest {
     private NewsQueryService stubInvalidNewsList() {
         return stubService(new NewsQueryStub() {
             @Override
-            public NewsListResponse getNewsList(String cursor, int size, Long categoryId) {
+            public NewsListResponse getNewsList(Long userId, String cursor, int size, Long categoryId) {
                 throw new GeneralException(GeneralErrorCode.BAD_REQUEST, "size: 1 이상 50 이하여야 합니다.");
             }
         });
@@ -311,7 +320,7 @@ class NewsControllerDocsTest {
     private NewsQueryService stubTodayNews(NewsTodayResponse response) {
         return stubService(new NewsQueryStub() {
             @Override
-            public NewsTodayResponse getTodayNews() {
+            public NewsTodayResponse getTodayNews(Long userId) {
                 return response;
             }
         });
@@ -356,13 +365,13 @@ class NewsControllerDocsTest {
     private NewsQueryService stubService(NewsQueryStub stub) {
         return new NewsQueryService(null, null, null, null, null, null, null, null, null) {
             @Override
-            public NewsListResponse getNewsList(String cursor, int size, Long categoryId) {
-                return stub.getNewsList(cursor, size, categoryId);
+            public NewsListResponse getNewsList(Long userId, String cursor, int size, Long categoryId) {
+                return stub.getNewsList(userId, cursor, size, categoryId);
             }
 
             @Override
-            public NewsTodayResponse getTodayNews() {
-                return stub.getTodayNews();
+            public NewsTodayResponse getTodayNews(Long userId) {
+                return stub.getTodayNews(userId);
             }
 
             @Override
@@ -390,11 +399,11 @@ class NewsControllerDocsTest {
 
     private abstract static class NewsQueryStub {
 
-        NewsListResponse getNewsList(String cursor, int size, Long categoryId) {
+        NewsListResponse getNewsList(Long userId, String cursor, int size, Long categoryId) {
             throw new UnsupportedOperationException();
         }
 
-        NewsTodayResponse getTodayNews() {
+        NewsTodayResponse getTodayNews(Long userId) {
             throw new UnsupportedOperationException();
         }
 

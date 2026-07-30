@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -21,7 +20,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 /**
  * 세션을 쓰지 않는 stateless API 서버 구성. 로그인 없이는 쓸 수 없는 앱이라 로그인/회원가입/구글 로그인 등
  * 퍼블릭 엔드포인트만 "/auth/**"로 분리해 permitAll로 열어두고, 그 외 "/api/**"를 포함한 나머지 요청은 전부
- * authenticated()가 기본값이다. 뉴스 목록(GET /api/news)은 로그인 전 미리보기 목적으로 예외적으로 permitAll이다.
+ * authenticated()가 기본값이다.
  * logout/탈퇴/이메일 인증처럼 인증이 필요한 엔드포인트는 별도 화이트리스트 없이 이 기본값에 자연히 포함되도록
  * "/api/auth/**" 아래 그대로 둔다.
  *
@@ -53,8 +52,6 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/docs/**",
                                 "/api/health/readiness")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/news")
                         .permitAll()
                         .anyRequest()
                         .authenticated())

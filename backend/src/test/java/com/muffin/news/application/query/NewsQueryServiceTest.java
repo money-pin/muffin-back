@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -132,27 +133,33 @@ class NewsQueryServiceTest {
     /** 오늘의 뉴스 썸네일: 원본이 있으면 그 URL을, 없으면 null을 담는다(기본 이미지는 프론트가 처리). */
     @Test
     void getTodayNews_returnsOriginalThumbnailOrNull() {
-        when(newsQueryRepository.findTodayPublishedNews(any(), any(), anyInt()))
-                .thenReturn(List.of(summaryRow(1L, null), summaryRow(2L, "https://origin/2.jpg")));
+        when(newsQueryRepository.findTodayPublishedNews(anyLong(), any(), any(), anyInt()))
+                .thenReturn(List.of(summaryRow(1L, null, true), summaryRow(2L, "https://origin/2.jpg", false)));
 
-        NewsTodayResponse response = newsQueryService.getTodayNews();
+        NewsTodayResponse response = newsQueryService.getTodayNews(1L);
 
         assertThat(response.items())
                 .extracting(NewsTodayResponse.NewsTodayItem::thumbnailUrl)
                 .containsExactly(null, "https://origin/2.jpg");
+        assertThat(response.items())
+                .extracting(NewsTodayResponse.NewsTodayItem::isScrapped)
+                .containsExactly(true, false);
     }
 
     /** 목록 썸네일: 원본이 있으면 그 URL을, 없으면 null을 담는다(기본 이미지는 프론트가 처리). */
     @Test
     void getNewsList_returnsOriginalThumbnailOrNull() {
-        when(newsQueryRepository.findPublishedNewsPage(any(), any(), anyInt()))
-                .thenReturn(List.of(summaryRow(1L, null), summaryRow(2L, "https://origin/2.jpg")));
+        when(newsQueryRepository.findPublishedNewsPage(anyLong(), any(), any(), anyInt()))
+                .thenReturn(List.of(summaryRow(1L, null, true), summaryRow(2L, "https://origin/2.jpg", false)));
 
-        NewsListResponse response = newsQueryService.getNewsList(null, 10, null);
+        NewsListResponse response = newsQueryService.getNewsList(1L, null, 10, null);
 
         assertThat(response.items())
                 .extracting(NewsListResponse.NewsListItem::thumbnailUrl)
                 .containsExactly(null, "https://origin/2.jpg");
+        assertThat(response.items())
+                .extracting(NewsListResponse.NewsListItem::isScrapped)
+                .containsExactly(true, false);
     }
 
     /** 상세 썸네일: 원본이 없으면 thumbnailUrl은 null이다(기본 이미지는 프론트가 처리). */
@@ -170,8 +177,17 @@ class NewsQueryServiceTest {
                 .isNull();
     }
 
-    private static NewsSummaryRow summaryRow(Long newsId, String thumbnailUrl) {
+    private static NewsSummaryRow summaryRow(Long newsId, String thumbnailUrl, boolean isScrapped) {
         return new NewsSummaryRow(
-                newsId, 1L, "경제", "제목 " + newsId, "요약", "매일경제", LocalDateTime.of(2026, 7, 18, 9, 0), thumbnailUrl, 0L);
+                newsId,
+                1L,
+                "경제",
+                "제목 " + newsId,
+                "요약",
+                "매일경제",
+                LocalDateTime.of(2026, 7, 18, 9, 0),
+                thumbnailUrl,
+                0L,
+                isScrapped);
     }
 }
