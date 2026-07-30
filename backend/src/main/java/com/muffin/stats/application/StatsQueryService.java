@@ -19,7 +19,8 @@ import com.muffin.stats.presentation.dto.RecentDetailResponse.SectorDetailRespon
 import com.muffin.stats.presentation.dto.StatsSummaryResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.GraphPointResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.InvestmentTypeResponse;
-import com.muffin.stats.presentation.dto.StatsSummaryResponse.TopSectorResponse;
+import com.muffin.stats.presentation.dto.TopSectorResponse;
+import com.muffin.stats.presentation.dto.TopSectorsResponse;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -36,6 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 수익 통계 조회 읽기 서비스. 정산 완료(SETTLED)된 투자를 실시간 집계해 누적 손익/그래프/TOP3/성향을 조립한다.
+ *
+ * <p>TOP3는 통계 전체 응답(STATS-02-1)과 단독 응답(STATS-02-2)이 {@link #buildTopSectors}를 공유하므로 두 API의 선정/정렬 규칙이 갈라지지
+ * 않는다.
  */
 @Service
 @RequiredArgsConstructor
@@ -75,6 +79,15 @@ public class StatsQueryService {
                 buildGraph(cumulativeByDate, latestDate),
                 buildTopSectors(sectorStats),
                 buildInvestmentType(sectorStats));
+    }
+
+    /**
+     * 수익 TOP3 섹터 조회. 수익 통계 조회(STATS-02-1)의 TOP3 부분만 필요한 화면(홈)을 위해 같은 집계/정렬 로직을 그대로 재사용한다. 정산 완료 이력이 없으면 빈
+     * 배열이다.
+     */
+    @Transactional(readOnly = true)
+    public TopSectorsResponse getTopSectors(Long userId) {
+        return new TopSectorsResponse(buildTopSectors(statsSummaryQueryRepository.findSettledSectorStats(userId)));
     }
 
     /**

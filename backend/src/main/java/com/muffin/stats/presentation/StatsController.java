@@ -7,6 +7,7 @@ import com.muffin.stats.presentation.dto.ProfitHistoryRequest;
 import com.muffin.stats.presentation.dto.ProfitHistoryResponse;
 import com.muffin.stats.presentation.dto.RecentDetailResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse;
+import com.muffin.stats.presentation.dto.TopSectorsResponse;
 import com.muffin.stats.presentation.swagger.StatsApi;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,13 @@ public class StatsController implements StatsApi {
     public ApiResponse<StatsSummaryResponse> getSummary(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, statsQueryService.getSummary(userId));
+    }
+
+    @Override
+    @GetMapping("/top-sectors")
+    public ApiResponse<TopSectorsResponse> getTopSectors(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, statsQueryService.getTopSectors(userId));
     }
 
     @Override

@@ -24,7 +24,8 @@ import com.muffin.stats.presentation.dto.RecentDetailResponse.SectorDetailRespon
 import com.muffin.stats.presentation.dto.StatsSummaryResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.GraphPointResponse;
 import com.muffin.stats.presentation.dto.StatsSummaryResponse.InvestmentTypeResponse;
-import com.muffin.stats.presentation.dto.StatsSummaryResponse.TopSectorResponse;
+import com.muffin.stats.presentation.dto.TopSectorResponse;
+import com.muffin.stats.presentation.dto.TopSectorsResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -41,7 +42,10 @@ import org.springframework.security.web.method.annotation.AuthenticationPrincipa
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-/** STATS-02 수익 통계 / STATS-08 누적 수익 내역 / STATS-03 최근 투자 성과 상세 조회 API의 REST Docs 스니펫을 생성한다. */
+/**
+ * STATS-02-1 수익 통계 / STATS-02-2 수익 TOP3 섹터 / STATS-08 누적 수익 내역 / STATS-03 최근 투자 성과 상세 조회 API의 REST Docs 스니펫을
+ * 생성한다.
+ */
 @ExtendWith(RestDocumentationExtension.class)
 class StatsControllerDocsTest {
 
@@ -135,6 +139,48 @@ class StatsControllerDocsTest {
                                         .description("전부 0.0(이력 없음)"),
                                 fieldWithPath("result.topSectors").description("빈 배열(투자 이력 없음)"),
                                 fieldWithPath("result.investmentType").description("투자 이력이 없어 null"))));
+    }
+
+    @Test
+    @DisplayName("수익 TOP3 섹터 정상 응답 문서화")
+    void documentTopSectors(RestDocumentationContextProvider restDocumentation) throws Exception {
+        TopSectorsResponse response = new TopSectorsResponse(List.of(
+                new TopSectorResponse(1, "SEMICONDUCTOR", "반도체", 52_000L, new BigDecimal("8.1")),
+                new TopSectorResponse(2, "GOLD", "금", 31_000L, new BigDecimal("5.2")),
+                new TopSectorResponse(3, "TECH", "테크", 24_000L, new BigDecimal("3.9"))));
+        MockMvc mockMvc = mockMvcWith(topSectorsStub(response), restDocumentation);
+
+        mockMvc.perform(get("/api/stats/top-sectors"))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "stats-top-sectors",
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.topSectors[].rank").description("순위(1~3). 최대 3개"),
+                                fieldWithPath("result.topSectors[].sectorCode").description("섹터 코드"),
+                                fieldWithPath("result.topSectors[].sectorName").description("섹터 표시명"),
+                                fieldWithPath("result.topSectors[].profitAmount")
+                                        .description("섹터 누적 손익금(손실 시 음수)"),
+                                fieldWithPath("result.topSectors[].profitRate")
+                                        .description("섹터 누적 손익률(%). 그 섹터 누적 매수금 기준, 소수 첫째자리"))));
+    }
+
+    @Test
+    @DisplayName("수익 TOP3 섹터: 정산 이력이 없는 빈 상태 응답 문서화")
+    void documentEmptyTopSectors(RestDocumentationContextProvider restDocumentation) throws Exception {
+        MockMvc mockMvc = mockMvcWith(topSectorsStub(new TopSectorsResponse(List.of())), restDocumentation);
+
+        mockMvc.perform(get("/api/stats/top-sectors"))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "stats-top-sectors-empty",
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.topSectors").description("빈 배열(정산 이력이 없거나 매수금이 있는 섹터 없음)"))));
     }
 
     @Test
@@ -326,6 +372,15 @@ class StatsControllerDocsTest {
         return new StatsQueryService(null, null) {
             @Override
             public StatsSummaryResponse getSummary(Long userId) {
+                return response;
+            }
+        };
+    }
+
+    private StatsQueryService topSectorsStub(TopSectorsResponse response) {
+        return new StatsQueryService(null, null) {
+            @Override
+            public TopSectorsResponse getTopSectors(Long userId) {
                 return response;
             }
         };

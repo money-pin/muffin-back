@@ -1327,7 +1327,7 @@ include::{snippets}/scrap-not-published/response-fields.adoc[]
 수익 통계 API.
 
 [[stats-summary]]
-=== 수익 통계 조회 (STATS-02)
+=== 수익 통계 조회 (STATS-02-1)
 
 가입 이후 누적 손익, 최근 7일 누적 수익률 그래프, 수익 TOP3 섹터, 투자 성향을 한 번에 조회한다. 정산 완료(SETTLED)된 투자만 집계한다.
 
@@ -1353,6 +1353,43 @@ include::{snippets}/stats-summary/response-fields.adoc[]
 
 include::{snippets}/stats-summary-empty/http-response.adoc[]
 include::{snippets}/stats-summary-empty/response-fields.adoc[]
+
+[[stats-top-sectors]]
+=== 수익 TOP3 섹터 조회 (STATS-02-2)
+
+누적 수익률 상위 3개 섹터만 조회한다. 홈 화면처럼 통계 전체가 아니라 TOP3만 필요한 경우에 쓴다. 정산 완료(SETTLED)된 투자만 집계한다.
+
+* 선정/정렬 규칙과 항목 형태는 <<stats-summary,수익 통계 조회 (STATS-02-1)>>의 `topSectors`와 **완전히 동일**하다(서버가 같은 조립 로직을 공유하므로 두 API의 값이 갈라지지 않는다).
+* 정렬: 섹터 누적 수익률(그 섹터 누적 매수금 기준) 내림차순. 동률이면 누적 손익금 내림차순.
+* 누적 매수금이 0인 섹터는 제외한다. 대상 섹터가 3개 미만이면 있는 만큼만 내려간다.
+* `rank`는 1부터 순서대로 매겨진다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다. 인증 실패 시 `401 AUTH_401_001`을 반환한다.
+
+==== 요청
+
+include::{snippets}/stats-top-sectors/http-request.adoc[]
+
+==== 응답 - 정상
+
+include::{snippets}/stats-top-sectors/http-response.adoc[]
+include::{snippets}/stats-top-sectors/response-fields.adoc[]
+
+==== 응답 - 정산 이력 없음(빈 상태)
+
+정산 완료 이력이 없거나 누적 매수금이 있는 섹터가 없으면 `topSectors`는 빈 배열이다.
+
+include::{snippets}/stats-top-sectors-empty/http-response.adoc[]
+include::{snippets}/stats-top-sectors-empty/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|===
 
 [[stats-recent-detail]]
 === 최근 투자 성과 상세 (STATS-03)
