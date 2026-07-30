@@ -12,4 +12,5 @@ public record NewsSummaryRow(
         String publisher,
         LocalDateTime publishedAt,
         String thumbnailUrl,
-        Long viewCount) {}
+        Long viewCount,
+        boolean isScrapped) {}

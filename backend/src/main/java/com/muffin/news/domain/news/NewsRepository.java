@@ -1,10 +1,13 @@
 package com.muffin.news.domain.news;
 
 import com.muffin.news.domain.news.enums.NewsStatus;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,6 +17,10 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     boolean existsByOriginalUrl(String originalUrl);
 
     List<News> findAllByStatus(NewsStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT n FROM News n WHERE n.id = :id")
+    Optional<News> findByIdForUpdate(@Param("id") Long id);
 
     @Query(
             """

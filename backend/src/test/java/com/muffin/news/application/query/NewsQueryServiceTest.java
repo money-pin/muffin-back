@@ -1,13 +1,13 @@
 package com.muffin.news.application.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.muffin.news.domain.category.CategoryRepository;
@@ -27,10 +27,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
-/** 뉴스 상세 조회 시 열람 기록(ReadHistory) 동시 생성 경합에 대한 방어 로직을 검증한다. */
+/** 뉴스 상세 조회와 열람 처리 로직을 검증한다. */
 class NewsQueryServiceTest {
 
     private final NewsRepository newsRepository = mock(NewsRepository.class);
@@ -54,31 +53,45 @@ class NewsQueryServiceTest {
             newsCursorCodec,
             clock);
 
-    /**
-     * 동시 조회로 두 요청이 모두 findByUserIdAndNewsId에서 빈 값을 본 뒤 저장을 시도하면, 나중에 flush되는 쪽은
-     * (user_id, news_id) 유니크 제약을 위반한다. 이때 예외를 그대로 전파하지 않고 먼저 커밋된 레코드를 다시 조회해
-     * readAt만 갱신해야 상세 조회 자체가 실패하지 않는다.
-     */
     @Test
-    void upsertReadHistory_recoversFromConcurrentDuplicateInsert() {
+    void recordNewsRead_usesWriteLockAndCreatesReadHistoryWhenMissing() {
+        Long userId = 1L;
+        Long newsId = 10L;
+        News news = publishedNews(newsId);
+        when(newsRepository.findByIdForUpdate(newsId)).thenReturn(Optional.of(news));
+        when(readHistoryRepository.findByUserIdAndNewsId(userId, newsId)).thenReturn(Optional.empty());
+
+        assertThat(newsQueryService.recordNewsRead(userId, newsId).viewCount()).isEqualTo(1L);
+
+        verify(readHistoryRepository).save(any(ReadHistory.class));
+    }
+
+    @Test
+    void getNewsDetail_doesNotIncreaseViewCountOrSaveReadHistory() {
         Long userId = 1L;
         Long newsId = 10L;
         News news = publishedNews(newsId);
         when(newsRepository.findById(newsId)).thenReturn(Optional.of(news));
-
-        ReadHistory raceWinner = spy(ReadHistory.create(userId, newsId));
-        when(readHistoryRepository.findByUserIdAndNewsId(userId, newsId))
-                .thenReturn(Optional.empty())
-                .thenReturn(Optional.of(raceWinner));
-        when(readHistoryRepository.saveAndFlush(any(ReadHistory.class)))
-                .thenThrow(new DataIntegrityViolationException("uk_read_history_user_news"));
         when(scrapRepository.existsByUserIdAndNewsId(userId, newsId)).thenReturn(false);
         when(categoryRepository.findById(news.getCategoryId())).thenReturn(Optional.empty());
 
-        assertThatCode(() -> newsQueryService.getNewsDetail(userId, newsId)).doesNotThrowAnyException();
+        NewsDetailResponse response = newsQueryService.getNewsDetail(userId, newsId);
 
-        verify(raceWinner).updateReadAt();
-        verify(readHistoryRepository, never()).save(any(ReadHistory.class));
+        assertThat(response.viewCount()).isZero();
+        verifyNoInteractions(readHistoryRepository);
+    }
+
+    @Test
+    void recordNewsRead_increasesViewCountAndUpdatesExistingReadAt() {
+        Long userId = 1L;
+        Long newsId = 10L;
+        News news = publishedNews(newsId);
+        ReadHistory readHistory = spy(ReadHistory.create(userId, newsId));
+        when(newsRepository.findByIdForUpdate(newsId)).thenReturn(Optional.of(news));
+        when(readHistoryRepository.findByUserIdAndNewsId(userId, newsId)).thenReturn(Optional.of(readHistory));
+
+        assertThat(newsQueryService.recordNewsRead(userId, newsId).viewCount()).isEqualTo(1L);
+        verify(readHistory).updateReadAt();
     }
 
     @Test
@@ -132,27 +145,33 @@ class NewsQueryServiceTest {
     /** 오늘의 뉴스 썸네일: 원본이 있으면 그 URL을, 없으면 null을 담는다(기본 이미지는 프론트가 처리). */
     @Test
     void getTodayNews_returnsOriginalThumbnailOrNull() {
-        when(newsQueryRepository.findTodayPublishedNews(any(), any(), anyInt()))
-                .thenReturn(List.of(summaryRow(1L, null), summaryRow(2L, "https://origin/2.jpg")));
+        when(newsQueryRepository.findTodayPublishedNews(anyLong(), any(), any(), anyInt()))
+                .thenReturn(List.of(summaryRow(1L, null, true), summaryRow(2L, "https://origin/2.jpg", false)));
 
-        NewsTodayResponse response = newsQueryService.getTodayNews();
+        NewsTodayResponse response = newsQueryService.getTodayNews(1L);
 
         assertThat(response.items())
                 .extracting(NewsTodayResponse.NewsTodayItem::thumbnailUrl)
                 .containsExactly(null, "https://origin/2.jpg");
+        assertThat(response.items())
+                .extracting(NewsTodayResponse.NewsTodayItem::isScrapped)
+                .containsExactly(true, false);
     }
 
     /** 목록 썸네일: 원본이 있으면 그 URL을, 없으면 null을 담는다(기본 이미지는 프론트가 처리). */
     @Test
     void getNewsList_returnsOriginalThumbnailOrNull() {
-        when(newsQueryRepository.findPublishedNewsPage(any(), any(), anyInt()))
-                .thenReturn(List.of(summaryRow(1L, null), summaryRow(2L, "https://origin/2.jpg")));
+        when(newsQueryRepository.findPublishedNewsPage(anyLong(), any(), any(), anyInt()))
+                .thenReturn(List.of(summaryRow(1L, null, true), summaryRow(2L, "https://origin/2.jpg", false)));
 
-        NewsListResponse response = newsQueryService.getNewsList(null, 10, null);
+        NewsListResponse response = newsQueryService.getNewsList(1L, null, 10, null);
 
         assertThat(response.items())
                 .extracting(NewsListResponse.NewsListItem::thumbnailUrl)
                 .containsExactly(null, "https://origin/2.jpg");
+        assertThat(response.items())
+                .extracting(NewsListResponse.NewsListItem::isScrapped)
+                .containsExactly(true, false);
     }
 
     /** 상세 썸네일: 원본이 없으면 thumbnailUrl은 null이다(기본 이미지는 프론트가 처리). */
@@ -170,8 +189,17 @@ class NewsQueryServiceTest {
                 .isNull();
     }
 
-    private static NewsSummaryRow summaryRow(Long newsId, String thumbnailUrl) {
+    private static NewsSummaryRow summaryRow(Long newsId, String thumbnailUrl, boolean isScrapped) {
         return new NewsSummaryRow(
-                newsId, 1L, "경제", "제목 " + newsId, "요약", "매일경제", LocalDateTime.of(2026, 7, 18, 9, 0), thumbnailUrl, 0L);
+                newsId,
+                1L,
+                "경제",
+                "제목 " + newsId,
+                "요약",
+                "매일경제",
+                LocalDateTime.of(2026, 7, 18, 9, 0),
+                thumbnailUrl,
+                0L,
+                isScrapped);
     }
 }

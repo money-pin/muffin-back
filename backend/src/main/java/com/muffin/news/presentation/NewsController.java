@@ -6,6 +6,7 @@ import com.muffin.news.application.explanation.NewsExplanationQueryService;
 import com.muffin.news.application.query.NewsQueryService;
 import com.muffin.news.presentation.dto.NewsDetailResponse;
 import com.muffin.news.presentation.dto.NewsListResponse;
+import com.muffin.news.presentation.dto.NewsReadResponse;
 import com.muffin.news.presentation.dto.NewsSectorImpactResponse;
 import com.muffin.news.presentation.dto.NewsTodayResponse;
 import com.muffin.news.presentation.dto.response.NewsExplanationCardsResponse;
@@ -30,23 +31,32 @@ public class NewsController implements NewsApi {
     @Override
     @GetMapping
     public ApiResponse<NewsListResponse> getNews(
+            @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) Long categoryId) {
-        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getNewsList(cursor, size, categoryId));
+        return ApiResponse.onSuccess(
+                GeneralSuccessCode.OK, newsQueryService.getNewsList(userId, cursor, size, categoryId));
     }
 
     @Override
     @GetMapping("/today")
     public ApiResponse<NewsTodayResponse> getTodayNews(@AuthenticationPrincipal Long userId) {
-        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getTodayNews());
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getTodayNews(userId));
     }
 
     @Override
-    @PostMapping("/{newsId}")
+    @GetMapping("/{newsId}")
     public ApiResponse<NewsDetailResponse> getNewsDetail(
             @AuthenticationPrincipal Long userId, @PathVariable Long newsId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.getNewsDetail(userId, newsId));
+    }
+
+    @Override
+    @PostMapping("/{newsId}/read")
+    public ApiResponse<NewsReadResponse> recordNewsRead(
+            @AuthenticationPrincipal Long userId, @PathVariable Long newsId) {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.recordNewsRead(userId, newsId));
     }
 
     @Override

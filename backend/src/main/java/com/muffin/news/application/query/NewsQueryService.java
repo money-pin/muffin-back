@@ -21,6 +21,7 @@ import com.muffin.news.presentation.dto.NewsDetailResponse;
 import com.muffin.news.presentation.dto.NewsDetailResponse.BodySegment;
 import com.muffin.news.presentation.dto.NewsListResponse;
 import com.muffin.news.presentation.dto.NewsListResponse.NewsListItem;
+import com.muffin.news.presentation.dto.NewsReadResponse;
 import com.muffin.news.presentation.dto.NewsSectorImpactResponse;
 import com.muffin.news.presentation.dto.NewsSectorImpactResponse.SectorImpactItem;
 import com.muffin.news.presentation.dto.NewsTodayResponse;
@@ -35,7 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,16 +57,16 @@ public class NewsQueryService {
     private final NewsCursorCodec newsCursorCodec;
     private final Clock clock;
 
-    /** 공개 뉴스를 커서 기반으로 최신순 조회한다. 인증이 필요 없다. */
+    /** 공개 뉴스를 커서 기반으로 최신순 조회하고 현재 사용자의 스크랩 여부를 함께 반환한다. */
     @Transactional(readOnly = true)
-    public NewsListResponse getNewsList(String cursorParam, int size, Long categoryId) {
+    public NewsListResponse getNewsList(Long userId, String cursorParam, int size, Long categoryId) {
         if (size < MIN_PAGE_SIZE || size > MAX_PAGE_SIZE) {
             throw new GeneralException(GeneralErrorCode.BAD_REQUEST, "size: 1 이상 50 이하여야 합니다.");
         }
 
         NewsCursor cursor = (cursorParam == null || cursorParam.isBlank()) ? null : newsCursorCodec.decode(cursorParam);
 
-        List<NewsSummaryRow> rows = newsQueryRepository.findPublishedNewsPage(cursor, categoryId, size + 1);
+        List<NewsSummaryRow> rows = newsQueryRepository.findPublishedNewsPage(userId, cursor, categoryId, size + 1);
         boolean hasNext = rows.size() > size;
         List<NewsSummaryRow> pageRows = hasNext ? rows.subList(0, size) : rows;
 
@@ -80,7 +80,8 @@ public class NewsQueryService {
                         row.publisher(),
                         row.publishedAt(),
                         originalThumbnail(row.thumbnailUrl()),
-                        row.viewCount()))
+                        row.viewCount(),
+                        row.isScrapped()))
                 .toList();
 
         String nextCursor = null;
@@ -94,13 +95,13 @@ public class NewsQueryService {
 
     /** 한국 시간 기준 당일 수집된 공개 뉴스 중 최신 발행순 상위 3건을 조회한다. */
     @Transactional(readOnly = true)
-    public NewsTodayResponse getTodayNews() {
+    public NewsTodayResponse getTodayNews(Long userId) {
         LocalDate today = LocalDate.now(clock);
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime startOfNextDay = startOfDay.plusDays(1);
 
         List<NewsSummaryRow> rows =
-                newsQueryRepository.findTodayPublishedNews(startOfDay, startOfNextDay, TODAY_NEWS_LIMIT);
+                newsQueryRepository.findTodayPublishedNews(userId, startOfDay, startOfNextDay, TODAY_NEWS_LIMIT);
 
         List<NewsTodayItem> items = new ArrayList<>(rows.size());
         for (NewsSummaryRow row : rows) {
@@ -113,25 +114,17 @@ public class NewsQueryService {
                     row.publisher(),
                     row.publishedAt(),
                     originalThumbnail(row.thumbnailUrl()),
-                    row.viewCount()));
+                    row.viewCount(),
+                    row.isScrapped()));
         }
 
         return new NewsTodayResponse(items);
     }
 
-    /** 뉴스 상세를 조회하며 조회수 증가와 열람 기록 갱신을 함께 수행한다. */
-    @Transactional
+    /** 공개된 뉴스 상세를 부수 효과 없이 조회한다. */
+    @Transactional(readOnly = true)
     public NewsDetailResponse getNewsDetail(Long userId, Long newsId) {
-        News news = newsRepository
-                .findById(newsId)
-                .filter(found -> found.getDeletedAt() == null)
-                .orElseThrow(() -> new NewsException(NewsErrorCode.NEWS_NOT_FOUND));
-        if (news.getStatus() != NewsStatus.PUBLISHED) {
-            throw new NewsException(NewsErrorCode.NEWS_NOT_PUBLISHED);
-        }
-
-        news.increaseViewCount();
-        upsertReadHistory(userId, newsId);
+        News news = getPublishedNews(newsId);
 
         boolean scrapped = scrapRepository.existsByUserIdAndNewsId(userId, newsId);
         Optional<Category> category = categoryRepository.findById(news.getCategoryId());
@@ -150,6 +143,15 @@ public class NewsQueryService {
                 news.getOriginalUrl(),
                 bodySegments,
                 scrapped);
+    }
+
+    /** 뉴스 열람을 기록하고 호출 시점의 갱신된 조회수를 반환한다. */
+    @Transactional
+    public NewsReadResponse recordNewsRead(Long userId, Long newsId) {
+        News news = getPublishedNewsForUpdate(newsId);
+        news.increaseViewCount();
+        upsertReadHistory(userId, newsId);
+        return new NewsReadResponse(news.getViewCount());
     }
 
     /** 뉴스의 12개 섹터별 영향도를 조회한다. 분석 결과가 없는 섹터는 NEUTRAL로 채운다. */
@@ -267,11 +269,7 @@ public class NewsQueryService {
         }
     }
 
-    /**
-     * 열람 기록을 upsert한다. 동시 조회 시 findByUserIdAndNewsId가 둘 다 빈 값을 반환해 저장이 경합할 수 있으므로,
-     * {@code (user_id, news_id)} 유니크 제약 위반은 상대가 먼저 생성한 것으로 보고 그 행을 다시 조회해 갱신한다
-     * ({@link com.muffin.sector.infrastructure.EtfPriceWriter#upsert}와 동일한 방어 패턴).
-     */
+    /** 잠근 뉴스 행의 트랜잭션 안에서 열람 기록을 생성하거나 열람 시각을 갱신한다. */
     private void upsertReadHistory(Long userId, Long newsId) {
         Optional<ReadHistory> existing = readHistoryRepository.findByUserIdAndNewsId(userId, newsId);
         if (existing.isPresent()) {
@@ -279,14 +277,25 @@ public class NewsQueryService {
             return;
         }
 
-        try {
-            readHistoryRepository.saveAndFlush(ReadHistory.create(userId, newsId));
-        } catch (DataIntegrityViolationException exception) {
-            readHistoryRepository
-                    .findByUserIdAndNewsId(userId, newsId)
-                    .orElseThrow(() -> exception)
-                    .updateReadAt();
+        readHistoryRepository.save(ReadHistory.create(userId, newsId));
+    }
+
+    private News getPublishedNews(Long newsId) {
+        return requirePublishedNews(newsRepository.findById(newsId));
+    }
+
+    private News getPublishedNewsForUpdate(Long newsId) {
+        return requirePublishedNews(newsRepository.findByIdForUpdate(newsId));
+    }
+
+    private News requirePublishedNews(Optional<News> candidate) {
+        News news = candidate
+                .filter(found -> found.getDeletedAt() == null)
+                .orElseThrow(() -> new NewsException(NewsErrorCode.NEWS_NOT_FOUND));
+        if (news.getStatus() != NewsStatus.PUBLISHED) {
+            throw new NewsException(NewsErrorCode.NEWS_NOT_PUBLISHED);
         }
+        return news;
     }
 
     /**
