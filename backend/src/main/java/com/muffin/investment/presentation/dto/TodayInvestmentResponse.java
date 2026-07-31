@@ -11,10 +11,12 @@ public record TodayInvestmentResponse(
         Long remainingAmount,
         Long totalAmount,
         List<TodayInvestmentSectorResponse> sectors,
-        OffsetDateTime nextInvestmentAvailableAt) {
+        OffsetDateTime nextInvestmentAvailableAt,
+        PreviousInvestmentResponse previousInvestment) {
 
     public static TodayInvestmentResponse available(long totalAsset) {
-        return new TodayInvestmentResponse(TodayInvestmentStatus.AVAILABLE, null, totalAsset, 0L, List.of(), null);
+        return new TodayInvestmentResponse(
+                TodayInvestmentStatus.AVAILABLE, null, totalAsset, 0L, List.of(), null, null);
     }
 
     public static TodayInvestmentResponse confirmed(
@@ -28,15 +30,33 @@ public record TodayInvestmentResponse(
                 remainingAmount,
                 totalAmount,
                 List.copyOf(sectors),
+                null,
                 null);
     }
 
     public static TodayInvestmentResponse unavailable(OffsetDateTime nextInvestmentAvailableAt) {
-        return statusWithNext(TodayInvestmentStatus.UNAVAILABLE, nextInvestmentAvailableAt);
+        return unavailable(nextInvestmentAvailableAt, null);
+    }
+
+    public static TodayInvestmentResponse unavailable(
+            OffsetDateTime nextInvestmentAvailableAt, PreviousInvestmentResponse previousInvestment) {
+        return new TodayInvestmentResponse(
+                TodayInvestmentStatus.UNAVAILABLE,
+                null,
+                null,
+                null,
+                null,
+                nextInvestmentAvailableAt,
+                previousInvestment);
     }
 
     public static TodayInvestmentResponse settling() {
-        return statusOnly(TodayInvestmentStatus.SETTLING);
+        return settling(null);
+    }
+
+    public static TodayInvestmentResponse settling(PreviousInvestmentResponse previousInvestment) {
+        return new TodayInvestmentResponse(
+                TodayInvestmentStatus.SETTLING, null, null, null, null, null, previousInvestment);
     }
 
     public static TodayInvestmentResponse delayed() {
@@ -52,11 +72,11 @@ public record TodayInvestmentResponse(
     }
 
     private static TodayInvestmentResponse statusOnly(TodayInvestmentStatus status) {
-        return new TodayInvestmentResponse(status, null, null, null, null, null);
+        return new TodayInvestmentResponse(status, null, null, null, null, null, null);
     }
 
     private static TodayInvestmentResponse statusWithNext(
             TodayInvestmentStatus status, OffsetDateTime nextInvestmentAvailableAt) {
-        return new TodayInvestmentResponse(status, null, null, null, null, nextInvestmentAvailableAt);
+        return new TodayInvestmentResponse(status, null, null, null, null, nextInvestmentAvailableAt, null);
     }
 }

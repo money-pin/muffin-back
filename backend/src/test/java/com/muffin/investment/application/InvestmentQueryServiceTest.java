@@ -2,6 +2,8 @@ package com.muffin.investment.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,6 +45,7 @@ class InvestmentQueryServiceTest {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final Long USER_ID = 1L;
     private static final LocalDate MONDAY = LocalDate.of(2026, 7, 13);
+    private static final LocalDate TUESDAY = LocalDate.of(2026, 7, 14);
     private static final LocalDate PREVIOUS_TRADING_DAY = LocalDate.of(2026, 7, 10);
     private static final LocalDate NEXT_TRADING_DAY = LocalDate.of(2026, 7, 14);
     private static final List<SettlementStatus> REPROCESSABLE =
@@ -136,12 +139,32 @@ class InvestmentQueryServiceTest {
     void getToday_returnsUnavailableBeforeNine() {
         service = serviceAt("2026-07-13T08:59:59+09:00");
         mockTradingMonday();
+        mockPreviousFridayInvestment();
 
         TodayInvestmentResponse response = service.getToday(USER_ID);
 
         assertEquals(TodayInvestmentStatus.UNAVAILABLE, response.status());
         assertEquals(
                 "2026-07-13T10:00+09:00", response.nextInvestmentAvailableAt().toString());
+        assertNotNull(response.previousInvestment());
+        assertEquals(PREVIOUS_TRADING_DAY, response.previousInvestment().investDate());
+        assertEquals(200_000L, response.previousInvestment().totalAmount());
+        assertEquals("GOLD", response.previousInvestment().sectors().getFirst().sectorCode());
+    }
+
+    @Test
+    @DisplayName("공휴일 다음 거래일 오전에는 캘린더가 제공한 직전 거래일 투자 내역을 반환한다")
+    void getToday_returnsPreviousTradingDayInvestmentAfterHoliday() {
+        service = serviceAt("2026-07-14T08:00:00+09:00");
+        when(tradingCalendarService.getCalendar(TUESDAY))
+                .thenReturn(new TradingCalendar(TUESDAY, true, PREVIOUS_TRADING_DAY, LocalDate.of(2026, 7, 15)));
+        mockPreviousFridayInvestment();
+
+        TodayInvestmentResponse response = service.getToday(USER_ID);
+
+        assertEquals(TodayInvestmentStatus.UNAVAILABLE, response.status());
+        assertNotNull(response.previousInvestment());
+        assertEquals(PREVIOUS_TRADING_DAY, response.previousInvestment().investDate());
     }
 
     @Test
@@ -149,10 +172,13 @@ class InvestmentQueryServiceTest {
     void getToday_returnsSettlingBetweenNineAndTen() {
         service = serviceAt("2026-07-13T09:00:00+09:00");
         mockTradingMonday();
+        mockPreviousFridayInvestment();
 
         TodayInvestmentResponse response = service.getToday(USER_ID);
 
         assertEquals(TodayInvestmentStatus.SETTLING, response.status());
+        assertNotNull(response.previousInvestment());
+        assertEquals(PREVIOUS_TRADING_DAY, response.previousInvestment().investDate());
     }
 
     @Test
@@ -164,6 +190,7 @@ class InvestmentQueryServiceTest {
         TodayInvestmentResponse response = service.getToday(USER_ID);
 
         assertEquals(TodayInvestmentStatus.SETTLING, response.status());
+        assertNull(response.previousInvestment());
     }
 
     @Test
@@ -246,6 +273,16 @@ class InvestmentQueryServiceTest {
     private void mockTradingMonday() {
         when(tradingCalendarService.getCalendar(MONDAY))
                 .thenReturn(new TradingCalendar(MONDAY, true, PREVIOUS_TRADING_DAY, NEXT_TRADING_DAY));
+    }
+
+    private void mockPreviousFridayInvestment() {
+        Sector gold = sector(1L, "GOLD", "금", 1);
+        Investment investment = Investment.confirm(USER_ID, 10L, PREVIOUS_TRADING_DAY);
+        investment.addSector(gold.getId(), 2, 200_000L, null);
+        when(investmentRepository.findWithSectorsByUserIdAndInvestDateAndStatus(
+                        USER_ID, PREVIOUS_TRADING_DAY, InvestmentStatus.CONFIRMED))
+                .thenReturn(Optional.of(investment));
+        when(sectorRepository.findAllById(List.of(gold.getId()))).thenReturn(List.of(gold));
     }
 
     private static Sector sector(Long id, String code, String name, int order) {

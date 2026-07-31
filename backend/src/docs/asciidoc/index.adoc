@@ -497,12 +497,19 @@ include::{snippets}/investment-confirm-window-closed/response-fields.adoc[]
 
 `confirmDeadline`, `remainingAmount`, `totalAmount`, `sectors`, `nextInvestmentAvailableAt`은 화면 상태에 따라 생략될 수 있다.
 
+평일 00:00~10:00에는 `UNAVAILABLE` 또는 `SETTLING` 상태와 함께 직전 거래일의 확정 투자 내역을 `previousInvestment`로 반환한다. 직전 거래일에 확정한 투자가 없으면 해당 필드는 생략한다. 직전 거래일은 단순 전날이 아니라 거래일 캘린더를 기준으로 하므로 월요일에는 금요일 내역이 조회된다.
+
 ==== 요청 및 응답
 
 include::{snippets}/investment-today-success/http-request.adoc[]
 include::{snippets}/investment-today-success/request-headers.adoc[]
 include::{snippets}/investment-today-success/http-response.adoc[]
 include::{snippets}/investment-today-success/response-fields.adoc[]
+
+==== 응답 - 투자 불가 시간의 직전 거래일 투자 내역
+
+include::{snippets}/investment-today-unavailable-with-previous/http-response.adoc[]
+include::{snippets}/investment-today-unavailable-with-previous/response-fields.adoc[]
 
 ==== 응답 - 거래일 정보 조회 실패
 

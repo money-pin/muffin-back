@@ -24,10 +24,12 @@ import com.muffin.investment.application.InvestmentQueryService;
 import com.muffin.investment.exception.InvestmentErrorCode;
 import com.muffin.investment.presentation.dto.AssetChangeDirection;
 import com.muffin.investment.presentation.dto.InvestmentAssetResponse;
+import com.muffin.investment.presentation.dto.PreviousInvestmentResponse;
 import com.muffin.investment.presentation.dto.TodayInvestmentResponse;
 import com.muffin.investment.presentation.dto.TodayInvestmentSectorResponse;
 import com.muffin.sector.exception.SectorErrorCode;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -185,6 +187,51 @@ class InvestmentControllerDocsTest {
                         "investment-today-success",
                         requestHeaders(headerWithName("Authorization").description("Bearer access token")),
                         todayResponseFields()));
+    }
+
+    @Test
+    @DisplayName("투자 불가 시간의 직전 거래일 투자 내역 응답을 문서화한다")
+    void documentInvestmentTodayUnavailableWithPreviousInvestment() throws Exception {
+        PreviousInvestmentResponse previousInvestment = new PreviousInvestmentResponse(
+                LocalDate.of(2026, 7, 29),
+                500_000L,
+                List.of(
+                        new TodayInvestmentSectorResponse("GOLD", "금", 2, 200_000L, new BigDecimal("40.00")),
+                        new TodayInvestmentSectorResponse(
+                                "SEMICONDUCTOR", "반도체", 3, 300_000L, new BigDecimal("60.00"))));
+        TodayInvestmentResponse response = TodayInvestmentResponse.unavailable(
+                OffsetDateTime.of(2026, 7, 30, 10, 0, 0, 0, ZoneOffset.ofHours(9)), previousInvestment);
+        when(investmentQueryService.getToday(USER_ID)).thenReturn(response);
+
+        mockMvc.perform(get("/api/investments/today").header("Authorization", AUTHORIZATION))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "investment-today-unavailable-with-previous",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.status").description("현재 화면 상태(UNAVAILABLE 또는 SETTLING)"),
+                                fieldWithPath("result.nextInvestmentAvailableAt")
+                                        .description("다음 투자 가능 시각(KST). UNAVAILABLE에서 제공"),
+                                fieldWithPath("result.previousInvestment").description("직전 거래일 확정 투자 내역"),
+                                fieldWithPath("result.previousInvestment.investDate")
+                                        .description("직전 투자 거래일"),
+                                fieldWithPath("result.previousInvestment.totalAmount")
+                                        .description("직전 거래일의 총 투자 금액"),
+                                fieldWithPath("result.previousInvestment.sectors")
+                                        .description("직전 거래일의 섹터별 투자 내역"),
+                                fieldWithPath("result.previousInvestment.sectors[].sectorCode")
+                                        .description("섹터 코드"),
+                                fieldWithPath("result.previousInvestment.sectors[].sectorName")
+                                        .description("섹터 이름"),
+                                fieldWithPath("result.previousInvestment.sectors[].quantity")
+                                        .description("투자 수량"),
+                                fieldWithPath("result.previousInvestment.sectors[].amount")
+                                        .description("섹터별 투자 금액"),
+                                fieldWithPath("result.previousInvestment.sectors[].ratio")
+                                        .description("총 투자 금액 대비 비중(%)"))));
     }
 
     @Test

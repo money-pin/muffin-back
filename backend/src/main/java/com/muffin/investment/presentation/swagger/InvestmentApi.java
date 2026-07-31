@@ -64,7 +64,10 @@ public interface InvestmentApi {
     })
     ApiResponse<InvestmentAssetResponse> getAsset(@Parameter(hidden = true) Long userId);
 
-    @Operation(summary = "오늘의 모의투자 현황 조회 (INVEST-03-2)", description = "거래일과 정산 상태에 따른 화면 상태 및 오늘 확정 내역을 조회한다.")
+    @Operation(
+            summary = "오늘의 모의투자 현황 조회 (INVEST-03-2)",
+            description =
+                    "거래일과 정산 상태에 따른 화면 상태 및 오늘 확정 내역을 조회한다. 거래일 00:00~10:00의 UNAVAILABLE 또는 SETTLING 응답에는 직전 거래일 확정 투자 내역을 previousInvestment로 반환할 수 있으며, 확정 투자가 없으면 필드를 생략한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
