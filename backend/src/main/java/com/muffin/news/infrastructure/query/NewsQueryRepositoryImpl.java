@@ -17,6 +17,7 @@ import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -76,6 +77,21 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
                 .orderBy(news.publishedAt.desc(), news.id.desc())
                 .limit(limit)
                 .fetch();
+    }
+
+    @Override
+    public Optional<LocalDateTime> findLatestPublishedCreatedAtBefore(LocalDateTime endExclusive) {
+        QNews news = QNews.news;
+
+        BooleanBuilder where = publishedNewsPredicate(news);
+        where.and(news.createdAt.lt(endExclusive));
+
+        return Optional.ofNullable(queryFactory
+                .select(news.createdAt)
+                .from(news)
+                .where(where)
+                .orderBy(news.createdAt.desc())
+                .fetchFirst());
     }
 
     @Override

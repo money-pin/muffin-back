@@ -103,6 +103,18 @@ public class NewsQueryService {
         List<NewsSummaryRow> rows =
                 newsQueryRepository.findTodayPublishedNews(userId, startOfDay, startOfNextDay, TODAY_NEWS_LIMIT);
 
+        if (rows.isEmpty()) {
+            rows = newsQueryRepository
+                    .findLatestPublishedCreatedAtBefore(startOfDay)
+                    .map(latestCreatedAt -> {
+                        LocalDateTime fallbackStart =
+                                latestCreatedAt.toLocalDate().atStartOfDay();
+                        return newsQueryRepository.findTodayPublishedNews(
+                                userId, fallbackStart, fallbackStart.plusDays(1), TODAY_NEWS_LIMIT);
+                    })
+                    .orElseGet(List::of);
+        }
+
         List<NewsTodayItem> items = new ArrayList<>(rows.size());
         for (NewsSummaryRow row : rows) {
             items.add(new NewsTodayItem(

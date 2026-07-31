@@ -24,6 +24,10 @@ import com.muffin.sector.domain.sector.Sector;
 import com.muffin.sector.domain.sector.SectorRepository;
 import com.muffin.sector.domain.sectorgroup.SectorGroup;
 import com.muffin.sector.domain.sectorgroup.SectorGroupRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -71,10 +75,17 @@ class NewsQueryApiIntegrationTest {
     @Autowired
     private ReadHistoryRepository readHistoryRepository;
 
+    @Autowired
+    private Clock clock;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
     private static final Long USER_ID = 1L;
 
     private Long categoryId;
     private Long news1Id; // 가장 오래된 발행
+    private Long news2Id;
     private Long news3Id; // 가장 최신 발행
     private Long processingNewsId;
 
@@ -84,7 +95,7 @@ class NewsQueryApiIntegrationTest {
         categoryId = category.getId();
 
         news1Id = savePublished(category.getId(), "뉴스1", LocalDateTime.of(2026, 7, 16, 9, 0));
-        Long news2Id = savePublished(category.getId(), "뉴스2", LocalDateTime.of(2026, 7, 17, 9, 0));
+        news2Id = savePublished(category.getId(), "뉴스2", LocalDateTime.of(2026, 7, 17, 9, 0));
         news3Id = savePublished(category.getId(), "뉴스3", LocalDateTime.of(2026, 7, 18, 9, 0));
         scrapRepository.save(Scrap.create(USER_ID, news3Id));
 
@@ -214,6 +225,41 @@ class NewsQueryApiIntegrationTest {
                 .andExpect(jsonPath("$.result.items[0].title").value("뉴스3"))
                 .andExpect(jsonPath("$.result.items[0].isScrapped").value(true))
                 .andExpect(jsonPath("$.result.items[1].isScrapped").value(false));
+    }
+
+    @Test
+    @DisplayName("오늘 공개 뉴스가 없으면 상태와 삭제 여부를 제외한 가장 최근 공개일 뉴스만 반환한다")
+    void getTodayNews_returnsLatestPublishedDateNewsWhenTodayNewsIsEmpty() throws Exception {
+        LocalDate today = LocalDate.now(clock);
+        LocalDateTime latestPublishedDay = today.minusDays(2).atStartOfDay();
+        LocalDateTime excludedDay = today.minusDays(1).atStartOfDay();
+
+        Long deletedNewsId = savePublished(categoryId, "deleted-news", LocalDateTime.of(2026, 7, 19, 9, 0));
+        News deletedNews = newsRepository.findById(deletedNewsId).orElseThrow();
+        deletedNews.delete();
+        newsRepository.flush();
+
+        updateCreatedAt(news1Id, today.minusDays(4).atTime(9, 0));
+        updateCreatedAt(news2Id, latestPublishedDay.plusHours(9));
+        updateCreatedAt(news3Id, latestPublishedDay.plusHours(10));
+        updateCreatedAt(processingNewsId, excludedDay.plusHours(9));
+        updateCreatedAt(deletedNewsId, excludedDay.plusHours(10));
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/news/today").header("Authorization", bearerToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.items.length()").value(2))
+                .andExpect(jsonPath("$.result.items[0].title").value("뉴스3"))
+                .andExpect(jsonPath("$.result.items[0].isScrapped").value(true))
+                .andExpect(jsonPath("$.result.items[1].title").value("뉴스2"));
+    }
+
+    private void updateCreatedAt(Long newsId, LocalDateTime createdAt) {
+        entityManager
+                .createNativeQuery("UPDATE news SET created_at = :createdAt WHERE news_id = :newsId")
+                .setParameter("createdAt", createdAt)
+                .setParameter("newsId", newsId)
+                .executeUpdate();
     }
 
     @Test
