@@ -1,8 +1,11 @@
 package com.muffin.news.infrastructure.openai;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import com.muffin.news.application.exception.NewsErrorCode;
+import com.muffin.news.application.exception.NewsException;
 import com.muffin.news.application.explanation.NewsExplanationGenerationRequest;
 import com.muffin.news.application.explanation.NewsExplanationGenerationResult;
 import java.util.List;
@@ -59,6 +62,24 @@ class OpenAiNewsExplanationGeneratorTest {
             assertThat(card.order()).isEqualTo(2);
             assertThat(card.title()).isEqualTo("기준금리란?");
         });
+        context.server().verify();
+    }
+
+    @Test
+    void generate_rejectsDuplicatedOrderEvenOnRetryResponse() throws Exception {
+        TestContext context = context();
+        context.server().expect(request -> {}).andRespond(withSuccess("not-json", MediaType.APPLICATION_JSON));
+        context.server()
+                .expect(request -> {})
+                .andRespond(withSuccess(
+                        openAiResponse(outputText(List.of(
+                                card(1, "기준금리란?", validBody("기준금리"), "기준금리"),
+                                card(1, "통화정책은 무엇?", validBody("통화정책"), "통화정책")))),
+                        MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> context.generator().generate(request()))
+                .isInstanceOfSatisfying(NewsException.class, exception -> assertThat(exception.getErrorCode())
+                        .isEqualTo(NewsErrorCode.NEWS_EXPLANATION_RESPONSE_INVALID));
         context.server().verify();
     }
 

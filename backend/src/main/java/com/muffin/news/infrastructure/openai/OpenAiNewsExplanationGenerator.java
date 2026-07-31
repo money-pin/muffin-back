@@ -289,7 +289,8 @@ public class OpenAiNewsExplanationGenerator implements NewsExplanationGenerator 
 
         if (usableCards.isEmpty()
                 || usableCards.size() > MAX_CARD_COUNT
-                || (!allowPartialCards && (usableCards.size() != cards.size() || hasDuplicatedOrder(usableCards)))) {
+                || hasDuplicatedOrder(usableCards)
+                || (!allowPartialCards && usableCards.size() != cards.size())) {
             throw new IllegalStateException("OpenAI returned invalid explanation cards");
         }
 
