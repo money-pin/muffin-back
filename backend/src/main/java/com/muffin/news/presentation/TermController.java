@@ -14,7 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,13 +32,13 @@ public class TermController implements TermApi {
     }
 
     @Override
-    @PostMapping("/api/terms/{termId}/save")
+    @PutMapping("/api/terms/{termId}/saved-term")
     public ApiResponse<TermSaveResponse> saveTerm(@AuthenticationPrincipal Long userId, @PathVariable Long termId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, termCommandService.saveTerm(userId, termId));
     }
 
     @Override
-    @DeleteMapping("/api/terms/{termId}/save")
+    @DeleteMapping("/api/terms/{termId}/saved-term")
     public ApiResponse<TermSaveResponse> unsaveTerm(@AuthenticationPrincipal Long userId, @PathVariable Long termId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, termCommandService.unsaveTerm(userId, termId));
     }

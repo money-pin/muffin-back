@@ -11,7 +11,7 @@ import static org.springframework.restdocs.request.RequestDocumentation.paramete
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
@@ -102,7 +102,7 @@ class TermControllerDocsTest {
                 commandReturning(response),
                 restDocumentation);
 
-        mockMvc.perform(post("/api/terms/{termId}/save", 12L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(put("/api/terms/{termId}/saved-term", 12L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "term-save-success",
@@ -126,7 +126,7 @@ class TermControllerDocsTest {
                 commandThrowingNotFound(),
                 restDocumentation);
 
-        mockMvc.perform(post("/api/terms/{termId}/save", 999L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(put("/api/terms/{termId}/saved-term", 999L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isNotFound())
                 .andDo(document(
                         "term-save-not-found",
@@ -148,7 +148,7 @@ class TermControllerDocsTest {
                 commandReturning(response),
                 restDocumentation);
 
-        mockMvc.perform(delete("/api/terms/{termId}/save", 12L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(delete("/api/terms/{termId}/saved-term", 12L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "term-unsave-success",
@@ -170,7 +170,7 @@ class TermControllerDocsTest {
         MockMvc mockMvc = mockMvcOf(
                 stubReturning(new TermResponse(12L, "기준금리", "설명", true)), commandThrowingNotFound(), restDocumentation);
 
-        mockMvc.perform(delete("/api/terms/{termId}/save", 999L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(delete("/api/terms/{termId}/saved-term", 999L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isNotFound())
                 .andDo(document(
                         "term-unsave-not-found",

@@ -77,7 +77,7 @@ class NewsExplanationGenerationServiceTest {
         when(newsExplanationGenerator.generate(new NewsExplanationGenerationRequest(
                         newsId, news.getTitle(), news.getSummary(), news.getContent(), List.of())))
                 .thenReturn(new NewsExplanationGenerationResult(List.of(new NewsExplanationCardResult(
-                        1,
+                        2,
                         "왜 금리 변화가 생활비와 연결될까?",
                         "금리가 바뀌면 대출과 예금의 부담이 함께 움직입니다. 장바구니 가격을 보고 소비를 조절하듯, 사람들은 이자 부담에 따라 지출과 저축을 조정합니다.",
                         "금리 변화"))));

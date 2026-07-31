@@ -1256,8 +1256,8 @@ include::{snippets}/term-get-not-found/response-fields.adoc[]
 뉴스 본문 하이라이트 또는 용어 바텀시트에서 선택한 용어를 사용자의 학습 저장소에 저장하거나 저장 해제한다.
 두 API 모두 **멱등** 연산이라 같은 요청을 여러 번 보내도 최종 저장 상태가 같다.
 
-* `POST /api/terms/{termId}/save`: 용어 저장. 이미 저장한 용어에 다시 요청해도 기존 저장 상태를 유지한 채 성공한다.
-* `DELETE /api/terms/{termId}/save`: 용어 저장 해제. 저장하지 않은 용어에 요청해도 성공하며 `isSaved=false`를 반환한다.
+* `PUT /api/terms/{termId}/saved-term`: 용어 저장. 이미 저장한 용어에 다시 요청해도 기존 저장 상태를 유지한 채 성공한다.
+* `DELETE /api/terms/{termId}/saved-term`: 용어 저장 해제. 저장하지 않은 용어에 요청해도 성공하며 `isSaved=false`를 반환한다.
 
 NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
 
