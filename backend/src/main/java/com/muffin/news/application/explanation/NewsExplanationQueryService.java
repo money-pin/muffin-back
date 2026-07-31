@@ -9,6 +9,7 @@ import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.presentation.dto.response.NewsExplanationCardResponse;
 import com.muffin.news.presentation.dto.response.NewsExplanationCardsResponse;
 import java.util.List;
+import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,14 +39,19 @@ public class NewsExplanationQueryService {
             throw new NewsException(NewsErrorCode.NEWS_EXPLANATION_NOT_COMPLETED);
         }
 
-        List<NewsExplanationCardResponse> cards =
-                explanations.stream().map(this::toCardResponse).toList();
+        List<NewsExplanationCardResponse> cards = toCardResponses(explanations);
 
         return new NewsExplanationCardsResponse(newsId, cards);
     }
 
-    private NewsExplanationCardResponse toCardResponse(NewsExplanation explanation) {
+    private List<NewsExplanationCardResponse> toCardResponses(List<NewsExplanation> explanations) {
+        return IntStream.range(0, explanations.size())
+                .mapToObj(index -> toCardResponse(index + 1, explanations.get(index)))
+                .toList();
+    }
+
+    private NewsExplanationCardResponse toCardResponse(int displayOrder, NewsExplanation explanation) {
         return new NewsExplanationCardResponse(
-                explanation.getCardOrder(), explanation.getTitle(), explanation.getKeyTerm(), explanation.getContent());
+                displayOrder, explanation.getTitle(), explanation.getKeyTerm(), explanation.getContent());
     }
 }

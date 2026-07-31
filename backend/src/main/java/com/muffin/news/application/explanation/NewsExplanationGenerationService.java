@@ -9,6 +9,7 @@ import com.muffin.news.domain.news.NewsTerm;
 import com.muffin.news.domain.term.TermDictionaryRepository;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -85,11 +86,12 @@ public class NewsExplanationGenerationService {
             return 0;
         }
 
-        List<NewsExplanation> explanations = result.cards().stream()
-                .limit(3)
-                .map(card -> {
+        List<NewsExplanationCardResult> cards = result.cards().stream().limit(3).toList();
+        List<NewsExplanation> explanations = IntStream.range(0, cards.size())
+                .mapToObj(index -> {
+                    NewsExplanationCardResult card = cards.get(index);
                     NewsExplanation explanation =
-                            NewsExplanation.create(newsId, card.order(), card.title(), card.body(), card.keyTerm());
+                            NewsExplanation.create(newsId, index + 1, card.title(), card.body(), card.keyTerm());
                     explanation.complete();
                     return explanation;
                 })

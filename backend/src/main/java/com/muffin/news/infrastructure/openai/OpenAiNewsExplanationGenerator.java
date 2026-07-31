@@ -7,6 +7,7 @@ import com.muffin.news.application.explanation.NewsExplanationGenerationRequest;
 import com.muffin.news.application.explanation.NewsExplanationGenerationResult;
 import com.muffin.news.application.explanation.NewsExplanationGenerator;
 import com.muffin.news.infrastructure.retry.RetryExecutor;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,8 +53,9 @@ public class OpenAiNewsExplanationGenerator implements NewsExplanationGenerator 
         10. 카드 수는 최소 1개, 최대 3개이며 뉴스 이해에 가장 도움이 되는 개념과 배경을 우선한다.
         11. 설명할 만한 주제가 충분하면 서로 다른 관점의 카드 2~3개를 작성한다.
         12. 각 카드는 개념 자체, 발생 원인, 생활 또는 시장에 이어지는 영향 중 서로 다른 역할을 맡는다.
-        13. 한글 단어 중간에 불필요한 공백을 넣지 않는다.
-        14. 출력은 반드시 지정된 JSON 형식만 반환한다.
+        13. cards 배열과 order는 뉴스 이해에 중요한 순서대로 1부터 부여한다.
+        14. 한글 단어 중간에 불필요한 공백을 넣지 않는다.
+        15. 출력은 반드시 지정된 JSON 형식만 반환한다.
         """;
 
     private final RestClient restClient;
@@ -80,7 +82,7 @@ public class OpenAiNewsExplanationGenerator implements NewsExplanationGenerator 
         for (int attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
             try {
                 String responseBody = requestWithRetry(request, retryInstruction(attempt));
-                return parseResponse(responseBody);
+                return parseResponse(responseBody, attempt == MAX_GENERATION_ATTEMPTS);
             } catch (NewsException exception) {
                 if (exception.getErrorCode() != NewsErrorCode.NEWS_EXPLANATION_RESPONSE_INVALID) {
                     throw exception;
@@ -180,6 +182,7 @@ public class OpenAiNewsExplanationGenerator implements NewsExplanationGenerator 
                 - 예를 들어 "코픽스란?"이라고 쓰더라도, 은행 조달 비용이 주택담보대출 이자로 이어지는 흐름까지 설명한다.
                 - 설명할 만한 개념이 2개 이상이면 가능하면 2~3개 카드를 작성한다.
                 - 카드 주제는 서로 겹치지 않게 나눈다: 개념의 의미, 변화가 생긴 이유, 소비자나 시장에 이어지는 영향.
+                - cards 배열과 order는 중요도 순서로 작성한다. 1번 카드는 이 뉴스를 이해하는 데 가장 핵심적인 개념이어야 한다.
                 - "고려해야 합니다", "유의해야 합니다", "꼭 염두에 두어야 합니다"처럼 직접 조언하는 문장은 쓰지 않는다.
                 - 문장 끝은 "영향을 줄 수 있습니다", "부담으로 이어질 수 있습니다", "안정성 관리와 연결됩니다"처럼 설명형으로 쓴다.
                 - key_term은 띄어쓰기나 줄바꿈이 깨지지 않은 자연스러운 핵심어로 작성한다.
@@ -213,8 +216,9 @@ public class OpenAiNewsExplanationGenerator implements NewsExplanationGenerator 
         return """
 
                 [재생성 지시]
-                이전 응답은 JSON 형식, 본문 길이, 또는 투자 조언 금지 조건을 만족하지 못했다.
+                이전 응답은 JSON 형식, 카드 본문 길이, 문장 완결성, order 중복, 또는 투자 조언 금지 조건을 만족하지 못했다.
                 모든 카드 body를 160자 이상 190자 이하를 목표로 다시 작성하고, 투자 조언 표현과 행동 권유 문장을 제거하라.
+                cards 배열과 order는 뉴스 이해에 중요한 순서대로 1부터 다시 부여하라.
                 한글 단어 중간 공백 없이 완결된 문장으로 끝내라.
                 """;
     }
@@ -246,7 +250,7 @@ public class OpenAiNewsExplanationGenerator implements NewsExplanationGenerator 
     }
 
     /** Responses API 응답에서 output_text만 꺼내 도메인 결과로 변환한다. */
-    private NewsExplanationGenerationResult parseResponse(String responseBody) {
+    private NewsExplanationGenerationResult parseResponse(String responseBody, boolean allowPartialCards) {
         try {
             if (responseBody == null || responseBody.isBlank()) {
                 throw new IllegalStateException("OpenAI returned an empty response");
@@ -256,7 +260,7 @@ public class OpenAiNewsExplanationGenerator implements NewsExplanationGenerator 
             for (JsonNode output : response.path("output")) {
                 for (JsonNode content : output.path("content")) {
                     if ("output_text".equals(content.path("type").asText())) {
-                        return parseOutputText(content.path("text").asText());
+                        return parseOutputText(content.path("text").asText(), allowPartialCards);
                     }
                 }
             }
@@ -266,7 +270,8 @@ public class OpenAiNewsExplanationGenerator implements NewsExplanationGenerator 
         }
     }
 
-    private NewsExplanationGenerationResult parseOutputText(String outputText) throws JacksonException {
+    private NewsExplanationGenerationResult parseOutputText(String outputText, boolean allowPartialCards)
+            throws JacksonException {
         JsonNode result = objectMapper.readTree(outputText);
         List<NewsExplanationCardResult> cards = result.path("cards")
                 .valueStream()
@@ -275,14 +280,20 @@ public class OpenAiNewsExplanationGenerator implements NewsExplanationGenerator 
                         normalizeText(card.path("title").asText()),
                         normalizeText(card.path("body").asText()),
                         normalizeText(card.path("key_term").asText())))
-                .filter(OpenAiNewsExplanationGenerator::isUsableCard)
                 .toList();
 
-        if (cards.isEmpty() || cards.size() > MAX_CARD_COUNT || hasDuplicatedOrder(cards)) {
+        List<NewsExplanationCardResult> usableCards = cards.stream()
+                .filter(OpenAiNewsExplanationGenerator::isUsableCard)
+                .sorted(Comparator.comparingInt(NewsExplanationCardResult::order))
+                .toList();
+
+        if (usableCards.isEmpty()
+                || usableCards.size() > MAX_CARD_COUNT
+                || (!allowPartialCards && (usableCards.size() != cards.size() || hasDuplicatedOrder(usableCards)))) {
             throw new IllegalStateException("OpenAI returned invalid explanation cards");
         }
 
-        return new NewsExplanationGenerationResult(cards);
+        return new NewsExplanationGenerationResult(usableCards);
     }
 
     private static boolean hasDuplicatedOrder(List<NewsExplanationCardResult> cards) {

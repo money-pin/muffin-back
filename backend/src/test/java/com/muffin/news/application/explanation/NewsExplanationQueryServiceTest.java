@@ -62,11 +62,11 @@ class NewsExplanationQueryServiceTest {
     }
 
     @Test
-    @DisplayName("완료된 해설 카드를 cardOrder 순서로 최대 3개 조회해 응답으로 변환한다")
+    @DisplayName("완료된 해설 카드를 cardOrder 순서로 최대 3개 조회해 응답 순서를 1부터 다시 매긴다")
     void getExplanationCards_returnsDoneCards() {
         Long newsId = 1L;
-        NewsExplanation first = NewsExplanation.create(newsId, 1, "기준금리란?", "기준금리 해설", "기준금리");
-        NewsExplanation second = NewsExplanation.create(newsId, 2, "ETF란?", "ETF 해설", "ETF");
+        NewsExplanation first = NewsExplanation.create(newsId, 2, "기준금리란?", "기준금리 해설", "기준금리");
+        NewsExplanation second = NewsExplanation.create(newsId, 3, "ETF란?", "ETF 해설", "ETF");
 
         when(newsRepository.existsById(newsId)).thenReturn(true);
         when(newsExplanationRepository.findTop3ByNewsIdAndStatusOrderByCardOrderAsc(newsId, NewsExplanationStatus.DONE))
@@ -81,5 +81,6 @@ class NewsExplanationQueryServiceTest {
         assertThat(response.cards().getFirst().keyTerm()).isEqualTo("기준금리");
         assertThat(response.cards().getFirst().content()).isEqualTo("기준금리 해설");
         assertThat(response.cards().get(1).cardOrder()).isEqualTo(2);
+        assertThat(response.cards().get(1).title()).isEqualTo("ETF란?");
     }
 }
