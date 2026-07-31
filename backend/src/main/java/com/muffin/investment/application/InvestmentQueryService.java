@@ -8,6 +8,7 @@ import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
 import com.muffin.investment.presentation.dto.AssetChangeDirection;
 import com.muffin.investment.presentation.dto.InvestmentAssetResponse;
+import com.muffin.investment.presentation.dto.PreviousInvestmentResponse;
 import com.muffin.investment.presentation.dto.TodayInvestmentResponse;
 import com.muffin.investment.presentation.dto.TodayInvestmentSectorResponse;
 import com.muffin.sector.application.TradingCalendarService;
@@ -81,11 +82,13 @@ public class InvestmentQueryService {
         }
 
         LocalTime time = now.toLocalTime();
+        PreviousInvestmentResponse previousInvestment =
+                time.isBefore(INVESTMENT_START) ? previousInvestment(userId, calendar.previousTradingDay()) : null;
         if (time.isBefore(SETTLEMENT_START)) {
-            return TodayInvestmentResponse.unavailable(investmentStartAt(today));
+            return TodayInvestmentResponse.unavailable(investmentStartAt(today), previousInvestment);
         }
         if (time.isBefore(INVESTMENT_START)) {
-            return TodayInvestmentResponse.settling();
+            return TodayInvestmentResponse.settling(previousInvestment);
         }
         if (pendingInvestmentChecker.hasPendingInvestment(userId, calendar)) {
             return TodayInvestmentResponse.delayed();
@@ -102,6 +105,25 @@ public class InvestmentQueryService {
     }
 
     private TodayInvestmentResponse confirmedResponse(Investment investment, long totalAsset) {
+        List<TodayInvestmentSectorResponse> sectors = sectorResponses(investment);
+        OffsetDateTime confirmDeadline = investment
+                .getInvestDate()
+                .plusDays(1)
+                .atStartOfDay(clock.getZone())
+                .toOffsetDateTime();
+        return TodayInvestmentResponse.confirmed(
+                confirmDeadline, totalAsset - investment.getTotalAmount(), investment.getTotalAmount(), sectors);
+    }
+
+    private PreviousInvestmentResponse previousInvestment(Long userId, LocalDate previousTradingDay) {
+        return investmentRepository
+                .findWithSectorsByUserIdAndInvestDateAndStatus(userId, previousTradingDay, InvestmentStatus.CONFIRMED)
+                .map(investment -> new PreviousInvestmentResponse(
+                        investment.getInvestDate(), investment.getTotalAmount(), sectorResponses(investment)))
+                .orElse(null);
+    }
+
+    private List<TodayInvestmentSectorResponse> sectorResponses(Investment investment) {
         Map<Long, Sector> sectorsById =
                 sectorRepository
                         .findAllById(investment.getSectors().stream()
@@ -110,21 +132,13 @@ public class InvestmentQueryService {
                         .stream()
                         .collect(Collectors.toMap(Sector::getId, Function.identity()));
 
-        List<TodayInvestmentSectorResponse> sectors = investment.getSectors().stream()
+        return investment.getSectors().stream()
                 .map(investmentSector -> sectorResponse(
                         investmentSector,
                         requiredSector(sectorsById, investmentSector.getSectorId()),
                         investment.getTotalAmount()))
                 .sorted(Comparator.comparing(TodayInvestmentSectorResponse::sectorCode))
                 .toList();
-
-        OffsetDateTime confirmDeadline = investment
-                .getInvestDate()
-                .plusDays(1)
-                .atStartOfDay(clock.getZone())
-                .toOffsetDateTime();
-        return TodayInvestmentResponse.confirmed(
-                confirmDeadline, totalAsset - investment.getTotalAmount(), investment.getTotalAmount(), sectors);
     }
 
     private TodayInvestmentSectorResponse sectorResponse(
