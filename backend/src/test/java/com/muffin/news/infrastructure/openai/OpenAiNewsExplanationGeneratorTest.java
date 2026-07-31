@@ -2,6 +2,8 @@ package com.muffin.news.infrastructure.openai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.muffin.news.application.exception.NewsErrorCode;
@@ -41,6 +43,7 @@ class OpenAiNewsExplanationGeneratorTest {
 
         assertThat(result.cards()).hasSize(2);
         assertThat(result.cards()).extracting("order").containsExactly(1, 2);
+        assertThat(result.cards()).extracting("title").containsExactly("기준금리란?", "통화정책은 무엇?");
         context.server().verify();
     }
 
@@ -87,17 +90,17 @@ class OpenAiNewsExplanationGeneratorTest {
     void generate_returnsCardsByImportanceOrder() throws Exception {
         TestContext context = context();
         context.server()
-                .expect(request -> {})
+                .expect(content().string(containsString("cards 배열과 order는 중요도 순서로 작성한다")))
                 .andRespond(withSuccess(
                         openAiResponse(outputText(List.of(
-                                card(2, "통화정책은 무엇?", validBody("통화정책"), "통화정책"),
-                                card(1, "기준금리란?", validBody("기준금리"), "기준금리")))),
+                                card(2, "가계대출은 무엇?", validBody("가계대출"), "가계대출"),
+                                card(1, "통화정책은 무엇?", validBody("통화정책"), "통화정책")))),
                         MediaType.APPLICATION_JSON));
 
         NewsExplanationGenerationResult result = context.generator().generate(request());
 
         assertThat(result.cards()).extracting("order").containsExactly(1, 2);
-        assertThat(result.cards()).extracting("title").containsExactly("기준금리란?", "통화정책은 무엇?");
+        assertThat(result.cards()).extracting("title").containsExactly("통화정책은 무엇?", "가계대출은 무엇?");
         context.server().verify();
     }
 
