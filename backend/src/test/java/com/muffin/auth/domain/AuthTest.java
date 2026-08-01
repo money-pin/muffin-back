@@ -66,6 +66,20 @@ class AuthTest {
         }
 
         @Test
+        @DisplayName("허용된 특수문자(! @ # $ % ^ & * ( ) - _ = + . ?) 포함 → 성공")
+        void passwordAllowedSpecialChars() {
+            assertThatNoException()
+                    .isThrownBy(() -> Auth.createLocal(1L, "test@example.com", "ab1!@#$%^&*()-_=", "encoded"));
+        }
+
+        @Test
+        @DisplayName("허용되지 않은 특수문자(~) 포함 → 실패")
+        void passwordDisallowedSpecialChar() {
+            assertThatThrownBy(() -> Auth.createLocal(1L, "test@example.com", "abc12345~", "encoded"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
         @DisplayName("이메일 형식 위반 → 실패")
         void invalidEmail() {
             assertThatThrownBy(() -> Auth.createLocal(1L, "not-an-email", "password1", "encoded"))

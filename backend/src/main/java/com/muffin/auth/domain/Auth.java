@@ -27,8 +27,9 @@ public class Auth extends BaseEntity {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
-    // 비밀번호 형식: 영문, 숫자를 포함한 8~16자리 조합
-    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,16}$");
+    // 비밀번호 형식: 영문, 숫자를 포함한 8~16자리 조합 (특수문자 ! @ # $ % ^ & * ( ) - _ = + . ? 허용)
+    private static final Pattern PASSWORD_PATTERN =
+            Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d!@#$%^&*()\\-_=+.?]{8,16}$");
 
     // 이메일 형식: local@domain.tld (서브도메인 다중 허용, 예: dgu.ac.kr)
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[\\w.+-]+@[\\w-]+(?:\\.[\\w-]+)*\\.[a-zA-Z]{2,}$");
