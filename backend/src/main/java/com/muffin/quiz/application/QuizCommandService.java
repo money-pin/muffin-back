@@ -83,7 +83,7 @@ public class QuizCommandService {
                 .filter(todayQuizSet -> todayQuizSet.getStatus() == QuizSetStatus.PUBLISHED)
                 .orElseThrow(() -> new GeneralException(QuizErrorCode.QUIZ_UNAVAILABLE));
 
-        // 자정 이후 전날 quizId로 제출하면 오늘 퀴즈 세트에 속하지 않으므로 실패한다.
+        // 오늘 퀴즈가 공개된 뒤에는 해당 세트에 포함된 문항만 제출할 수 있다.
         Quiz quiz = quizSet.findQuiz(quizId).orElseThrow(() -> new GeneralException(QuizErrorCode.QUIZ_NOT_FOUND));
 
         // 요청 body의 optionId가 해당 문항에 속한 선택지인지 확인한다.

@@ -237,20 +237,19 @@ class QuizCommandServiceTest {
     }
 
     @Test
-    @DisplayName("자정 이후 전날 퀴즈 문항을 제출하면 오늘 퀴즈 문항이 아니므로 거부한다")
-    void submitAnswer_throwsWhenPreviousQuizIsSubmittedAfterMidnight() {
+    @DisplayName("자정 이후 오늘 공개된 퀴즈가 없으면 준비 중 예외가 발생한다")
+    void submitAnswer_throwsUnavailableWhenTodayQuizIsNotPublishedAfterMidnight() {
         LocalDate today = LocalDate.now(KST);
         User user = onboardedUser("세현");
-        QuizSet todayQuizSet = publishedQuizSet(today);
 
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
-        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(todayQuizSet));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.empty());
 
         GeneralException exception = assertThrows(
                 GeneralException.class,
                 () -> quizCommandService.submitAnswer(USER_ID, 201L, new QuizAttemptRequest(2011L)));
 
-        assertEquals(QuizErrorCode.QUIZ_NOT_FOUND, exception.getErrorCode());
+        assertEquals(QuizErrorCode.QUIZ_UNAVAILABLE, exception.getErrorCode());
         verify(quizSessionRepository, never()).saveAndFlush(any(QuizSession.class));
     }
 
