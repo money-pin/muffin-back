@@ -6,6 +6,8 @@ import com.muffin.auth.domain.enums.AuthProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class AuthTest {
 
@@ -65,11 +67,12 @@ class AuthTest {
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
-        @Test
-        @DisplayName("허용된 특수문자(! @ # $ % ^ & * ( ) - _ = + . ?) 포함 → 성공")
-        void passwordAllowedSpecialChars() {
+        @ParameterizedTest
+        @ValueSource(strings = {"!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "_", "=", "+", ".", "?"})
+        @DisplayName("허용된 특수문자를 개별 포함 → 성공")
+        void passwordAllowedSpecialChars(String specialChar) {
             assertThatNoException()
-                    .isThrownBy(() -> Auth.createLocal(1L, "test@example.com", "ab1!@#$%^&*()-_=", "encoded"));
+                    .isThrownBy(() -> Auth.createLocal(1L, "test@example.com", "abcd123" + specialChar, "encoded"));
         }
 
         @Test
