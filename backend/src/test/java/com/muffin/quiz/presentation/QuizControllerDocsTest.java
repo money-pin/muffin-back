@@ -528,7 +528,7 @@ class QuizControllerDocsTest {
     }
 
     private QuizCommandService commandStub(QuizAttemptResponse response) {
-        return new QuizCommandService(null, null, null, null) {
+        return new QuizCommandService(null, null, null, null, null) {
             @Override
             public QuizAttemptResponse submitAnswer(Long userId, Long quizId, QuizAttemptRequest request) {
                 return response;

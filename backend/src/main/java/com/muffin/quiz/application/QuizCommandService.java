@@ -25,8 +25,10 @@ import java.time.ZoneId;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
 @Service
@@ -34,15 +36,36 @@ import org.springframework.transaction.annotation.Transactional;
 public class QuizCommandService {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final int MAX_SUBMIT_RETRY_ATTEMPTS = 3;
 
     private final QuizSetRepository quizSetRepository;
     private final QuizSessionRepository quizSessionRepository;
     private final UserRepository userRepository;
     private final UserAssetRepository userAssetRepository;
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional
     public QuizAttemptResponse submitAnswer(Long userId, Long quizId, QuizAttemptRequest request) {
+        RuntimeException lastException = null;
+        for (int attempt = 1; attempt <= MAX_SUBMIT_RETRY_ATTEMPTS; attempt++) {
+            try {
+                return transactionTemplate.execute(status -> submitAnswerInTransaction(userId, quizId, request));
+            } catch (RuntimeException exception) {
+                if (!isRetryableOptimisticLock(exception) || attempt == MAX_SUBMIT_RETRY_ATTEMPTS) {
+                    throw exception;
+                }
+                lastException = exception;
+                log.warn(
+                        "Quiz answer submit retrying after optimistic lock conflict. userId={} quizId={} attempt={}/{}",
+                        userId,
+                        quizId,
+                        attempt,
+                        MAX_SUBMIT_RETRY_ATTEMPTS);
+            }
+        }
+        throw lastException;
+    }
 
+    protected QuizAttemptResponse submitAnswerInTransaction(Long userId, Long quizId, QuizAttemptRequest request) {
         // 임시 userId 기반 인증 단계. 추후 Security 적용 시 인증 객체에서 사용자 식별자를 가져오도록 교체한다.
         User user =
                 userRepository.findById(userId).orElseThrow(() -> new GeneralException(GeneralErrorCode.UNAUTHORIZED));
@@ -54,13 +77,13 @@ public class QuizCommandService {
 
         LocalDate today = LocalDate.now(KST);
 
-        // 제출은 오늘 공개(PUBLISHED)된 퀴즈 세트에 대해서만 허용한다.
+        // 제출은 KST 기준 오늘 공개(PUBLISHED)된 퀴즈 세트에 대해서만 허용한다.
         QuizSet quizSet = quizSetRepository
                 .findByQuizDate(today)
                 .filter(todayQuizSet -> todayQuizSet.getStatus() == QuizSetStatus.PUBLISHED)
                 .orElseThrow(() -> new GeneralException(QuizErrorCode.QUIZ_UNAVAILABLE));
 
-        // 요청 path의 quizId가 오늘 퀴즈 세트에 포함된 문항인지 확인한다.
+        // 자정 이후 전날 quizId로 제출하면 오늘 퀴즈 세트에 속하지 않으므로 실패한다.
         Quiz quiz = quizSet.findQuiz(quizId).orElseThrow(() -> new GeneralException(QuizErrorCode.QUIZ_NOT_FOUND));
 
         // 요청 body의 optionId가 해당 문항에 속한 선택지인지 확인한다.
@@ -114,6 +137,19 @@ public class QuizCommandService {
         }
 
         return toResponse(savedSession, quiz, attempt, correctOption);
+    }
+
+    private boolean isRetryableOptimisticLock(Throwable exception) {
+        Throwable current = exception;
+        while (current != null) {
+            if (current instanceof ObjectOptimisticLockingFailureException
+                    || current instanceof OptimisticLockingFailureException
+                    || current instanceof jakarta.persistence.OptimisticLockException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     /** 마지막 문항 제출로 세션이 완료되면 보상을 한 번만 자산에 반영한다. UserAsset의 @Version으로 동시 갱신 충돌을 감지한다. */
