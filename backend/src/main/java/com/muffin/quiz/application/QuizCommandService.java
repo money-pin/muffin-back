@@ -45,24 +45,23 @@ public class QuizCommandService {
     private final TransactionTemplate transactionTemplate;
 
     public QuizAttemptResponse submitAnswer(Long userId, Long quizId, QuizAttemptRequest request) {
-        RuntimeException lastException = null;
-        for (int attempt = 1; attempt <= MAX_SUBMIT_RETRY_ATTEMPTS; attempt++) {
+        int maxAttempts = MAX_SUBMIT_RETRY_ATTEMPTS + 1;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 return transactionTemplate.execute(status -> submitAnswerInTransaction(userId, quizId, request));
             } catch (RuntimeException exception) {
-                if (!isRetryableOptimisticLock(exception) || attempt == MAX_SUBMIT_RETRY_ATTEMPTS) {
+                if (!isRetryableOptimisticLock(exception) || attempt == maxAttempts) {
                     throw exception;
                 }
-                lastException = exception;
                 log.warn(
                         "Quiz answer submit retrying after optimistic lock conflict. userId={} quizId={} attempt={}/{}",
                         userId,
                         quizId,
                         attempt,
-                        MAX_SUBMIT_RETRY_ATTEMPTS);
+                        maxAttempts);
             }
         }
-        throw lastException;
+        throw new IllegalStateException("Unreachable: quiz submit retry loop exited without returning or throwing");
     }
 
     protected QuizAttemptResponse submitAnswerInTransaction(Long userId, Long quizId, QuizAttemptRequest request) {

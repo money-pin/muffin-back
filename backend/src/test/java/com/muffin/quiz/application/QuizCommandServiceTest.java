@@ -284,6 +284,38 @@ class QuizCommandServiceTest {
     }
 
     @Test
+    @DisplayName("낙관 락 충돌이 계속 발생하면 최초 시도 후 3회 재시도하고 예외를 전파한다")
+    void submitAnswer_throwsAfterThreeOptimisticLockRetries() {
+        LocalDate today = LocalDate.now(KST);
+        User user = onboardedUser("세현");
+        QuizSet quizSet = publishedQuizSet(today);
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(quizSet));
+        when(quizSessionRepository.findByUserIdAndDailyQuizSetId(USER_ID, QUIZ_SET_ID))
+                .thenReturn(
+                        Optional.of(almostFinishedSession(today)),
+                        Optional.of(almostFinishedSession(today)),
+                        Optional.of(almostFinishedSession(today)),
+                        Optional.of(almostFinishedSession(today)));
+        when(userAssetRepository.findByUserId(USER_ID))
+                .thenReturn(
+                        Optional.of(UserAsset.create(USER_ID, 1_000_000L)),
+                        Optional.of(UserAsset.create(USER_ID, 1_000_000L)),
+                        Optional.of(UserAsset.create(USER_ID, 1_000_000L)),
+                        Optional.of(UserAsset.create(USER_ID, 1_000_000L)));
+        when(quizSessionRepository.saveAndFlush(any(QuizSession.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(UserAsset.class, USER_ID));
+
+        assertThrows(
+                ObjectOptimisticLockingFailureException.class,
+                () -> quizCommandService.submitAnswer(USER_ID, 103L, new QuizAttemptRequest(1031L)));
+
+        verify(quizSessionRepository, times(4)).saveAndFlush(any(QuizSession.class));
+        verify(userAssetRepository, times(4)).findByUserId(USER_ID);
+    }
+
+    @Test
     @DisplayName("보상 지급 대상인데 사용자 자산이 없으면 예외가 발생하고 세션을 저장하지 않는다")
     void submitAnswer_throwsWhenUserAssetMissingForReward() {
         LocalDate today = LocalDate.now(KST);
