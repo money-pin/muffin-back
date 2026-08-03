@@ -377,7 +377,7 @@ class DailyQuizGenerationServiceTest {
     }
 
     @Test
-    @DisplayName("AI 결과가 단순 수치 암기형 문항이면 UNAVAILABLE 퀴즈 세트를 저장한다")
+    @DisplayName("AI 결과가 공백으로 우회한 단순 수치 암기형 문항이면 UNAVAILABLE 퀴즈 세트를 저장한다")
     void generate_savesUnavailableWhenQuestionAsksNumericRecall() {
         List<News> newsSources = defaultNewsSources();
 
@@ -390,7 +390,7 @@ class DailyQuizGenerationServiceTest {
                 .thenReturn(newsSources);
         when(dailyQuizGenerator.generate(any()))
                 .thenReturn(new DailyQuizGenerationResult(List.of(
-                        question(1, 1L, "이번 금리 인상은 몇 년 만에 처음 있었던 일인가요?", "기준금리가 올랐습니다."),
+                        question(1, 1L, "이번 금리 인상은 몇  년 만에 처음 있었던 일인가요?", "기준금리가 올랐습니다."),
                         question(2, 2L, "코픽스가 상승했습니다."),
                         question(3, 3L, "금융당국이 토스를 금융복합기업집단으로 지정했습니다."))));
 

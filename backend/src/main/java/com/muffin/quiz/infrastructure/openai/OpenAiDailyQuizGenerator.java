@@ -514,7 +514,9 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
         return FORBIDDEN_QUESTION_PHRASES.stream()
                         .map(OpenAiDailyQuizGenerator::normalizeForPhraseCheck)
                         .anyMatch(normalizedQuestion::contains)
-                || QuizQuestionPolicy.NUMERIC_RECALL_QUESTION_PHRASES.stream().anyMatch(questionText::contains);
+                || QuizQuestionPolicy.NUMERIC_RECALL_QUESTION_PHRASES.stream()
+                        .map(OpenAiDailyQuizGenerator::normalizeForPhraseCheck)
+                        .anyMatch(normalizedQuestion::contains);
     }
 
     private static boolean containsAnswerToken(String sourceSentence, String answer) {

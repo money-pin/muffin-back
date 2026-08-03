@@ -285,11 +285,18 @@ public class DailyQuizGenerationService {
     }
 
     private static boolean containsNumericRecallPhrase(String questionText) {
-        return QuizQuestionPolicy.NUMERIC_RECALL_QUESTION_PHRASES.stream().anyMatch(questionText::contains);
+        String normalizedQuestion = normalizeForPhraseCheck(questionText);
+        return QuizQuestionPolicy.NUMERIC_RECALL_QUESTION_PHRASES.stream()
+                .map(DailyQuizGenerationService::normalizeForPhraseCheck)
+                .anyMatch(normalizedQuestion::contains);
     }
 
     private static String normalizeText(String value) {
         return value == null ? "" : value.replaceAll("\\s+", " ").trim();
+    }
+
+    private static String normalizeForPhraseCheck(String value) {
+        return value == null ? "" : value.replaceAll("\\s+", "");
     }
 
     private static DailyQuizGenerationException generationException(
