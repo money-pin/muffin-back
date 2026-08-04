@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -23,7 +24,9 @@ import com.muffin.news.presentation.dto.NewsListResponse;
 import com.muffin.news.presentation.dto.NewsTodayResponse;
 import com.muffin.scrap.domain.ScrapRepository;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -31,6 +34,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 /** 뉴스 상세 조회와 열람 처리 로직을 검증한다. */
 class NewsQueryServiceTest {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-08-01T03:00:00Z"), KST);
 
     private final NewsRepository newsRepository = mock(NewsRepository.class);
     private final NewsQueryRepository newsQueryRepository = mock(NewsQueryRepository.class);
@@ -40,7 +46,7 @@ class NewsQueryServiceTest {
     private final ReadHistoryRepository readHistoryRepository = mock(ReadHistoryRepository.class);
     private final ScrapRepository scrapRepository = mock(ScrapRepository.class);
     private final NewsCursorCodec newsCursorCodec = mock(NewsCursorCodec.class);
-    private final Clock clock = Clock.systemDefaultZone();
+    private final Clock clock = FIXED_CLOCK;
 
     private final NewsQueryService newsQueryService = new NewsQueryService(
             newsRepository,
@@ -156,6 +162,51 @@ class NewsQueryServiceTest {
         assertThat(response.items())
                 .extracting(NewsTodayResponse.NewsTodayItem::isScrapped)
                 .containsExactly(true, false);
+    }
+
+    @Test
+    void getTodayNews_returnsTodayNewsWithoutFallbackWhenTodayNewsExists() {
+        LocalDateTime todayStart = LocalDateTime.of(2026, 8, 1, 0, 0);
+        when(newsQueryRepository.findTodayPublishedNews(1L, todayStart, todayStart.plusDays(1), 3))
+                .thenReturn(List.of(summaryRow(1L, null, false)));
+
+        NewsTodayResponse response = newsQueryService.getTodayNews(1L);
+
+        assertThat(response.items())
+                .extracting(NewsTodayResponse.NewsTodayItem::newsId)
+                .containsExactly(1L);
+        verify(newsQueryRepository, never()).findLatestPublishedCreatedAtBefore(todayStart);
+    }
+
+    @Test
+    void getTodayNews_returnsOnlyLatestPublishedDateNewsWhenTodayNewsIsEmpty() {
+        LocalDateTime todayStart = LocalDateTime.of(2026, 8, 1, 0, 0);
+        LocalDateTime latestPublishedCreatedAt = LocalDateTime.of(2026, 7, 29, 15, 30);
+        LocalDateTime fallbackStart = LocalDateTime.of(2026, 7, 29, 0, 0);
+        when(newsQueryRepository.findTodayPublishedNews(1L, todayStart, todayStart.plusDays(1), 3))
+                .thenReturn(List.of());
+        when(newsQueryRepository.findLatestPublishedCreatedAtBefore(todayStart))
+                .thenReturn(Optional.of(latestPublishedCreatedAt));
+        when(newsQueryRepository.findTodayPublishedNews(1L, fallbackStart, fallbackStart.plusDays(1), 3))
+                .thenReturn(List.of(summaryRow(2L, null, false), summaryRow(1L, null, false)));
+
+        NewsTodayResponse response = newsQueryService.getTodayNews(1L);
+
+        assertThat(response.items())
+                .extracting(NewsTodayResponse.NewsTodayItem::newsId)
+                .containsExactly(2L, 1L);
+    }
+
+    @Test
+    void getTodayNews_returnsEmptyItemsWhenPublishedNewsDoesNotExist() {
+        LocalDateTime todayStart = LocalDateTime.of(2026, 8, 1, 0, 0);
+        when(newsQueryRepository.findTodayPublishedNews(1L, todayStart, todayStart.plusDays(1), 3))
+                .thenReturn(List.of());
+        when(newsQueryRepository.findLatestPublishedCreatedAtBefore(todayStart)).thenReturn(Optional.empty());
+
+        NewsTodayResponse response = newsQueryService.getTodayNews(1L);
+
+        assertThat(response.items()).isEmpty();
     }
 
     /** 목록 썸네일: 원본이 있으면 그 URL을, 없으면 null을 담는다(기본 이미지는 프론트가 처리). */
