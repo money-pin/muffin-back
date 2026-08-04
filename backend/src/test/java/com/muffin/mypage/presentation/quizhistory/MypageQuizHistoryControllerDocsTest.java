@@ -1,5 +1,7 @@
 package com.muffin.mypage.presentation.quizhistory;
 
+import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
+import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
@@ -63,10 +65,14 @@ class MypageQuizHistoryControllerDocsTest {
                                 LocalDate.of(2026, 7, 5), 9L, QuizSessionStatus.PROGRESS, 1, 3, 0L, false)));
         MockMvc mockMvc = mockMvcWith(stubReturning(response), restDocumentation);
 
-        mockMvc.perform(get("/api/mypage/quiz-history").param("year", "2026").param("month", "7"))
+        mockMvc.perform(get("/api/mypage/quiz-history")
+                        .param("year", "2026")
+                        .param("month", "7")
+                        .header("Authorization", "Bearer {accessToken}"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "mypage-quiz-history",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
                         queryParameters(
                                 parameterWithName("year").description("조회할 연도(예: 2026)"),
                                 parameterWithName("month").description("조회할 월(1~12)")),

@@ -777,6 +777,7 @@ NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자�
 ==== 요청
 
 include::{snippets}/mypage-quiz-history/http-request.adoc[]
+include::{snippets}/mypage-quiz-history/request-headers.adoc[]
 include::{snippets}/mypage-quiz-history/query-parameters.adoc[]
 
 ==== 응답 - 정상
