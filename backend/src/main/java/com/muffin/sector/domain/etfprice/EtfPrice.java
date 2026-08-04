@@ -86,6 +86,9 @@ public class EtfPrice {
 
     /** 시가를 반영한다. 같은 값을 여러 번 반영해도 결과는 같다. */
     public void recordOpen(Long startPrice) {
+        if (startPriceStatus == PriceCollectionStatus.FINAL_MISSING) {
+            return;
+        }
         this.startPrice = requirePositive(startPrice, "startPrice");
         this.startPriceStatus = PriceCollectionStatus.SUCCESS;
     }
