@@ -4,6 +4,7 @@ import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.mypage.presentation.dto.RecentNewsResponse;
 import com.muffin.mypage.presentation.dto.ScrapListResponse;
 import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse;
+import com.muffin.mypage.presentation.quizhistory.dto.MypageQuizHistoryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -76,4 +77,28 @@ public interface MypageApi {
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
             @Parameter(description = "페이지네이션 커서(이전 응답의 nextCursor)") String cursor,
             @Parameter(description = "페이지 크기 (1~50, 기본 10)") int size);
+
+    @Operation(
+            summary = "월별 퀴즈 참여 내역 조회 (MYPAGE-05-1)",
+            description = "지정한 연/월에 사용자가 참여한 퀴즈 세션을 날짜 내림차순으로 조회한다. "
+                    + "각 세션의 정답 수, 전체 문항 수, 획득 보상 정보를 함께 내려준다. 해당 월에 참여 기록이 없으면 빈 배열을 반환한다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "조회 성공. 참여 기록이 없으면 quizSessions는 빈 배열이다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "400",
+                description = "year/month 파라미터가 누락되었거나 형식이 올바르지 않음. (COMMON_400_002) "
+                        + "또는 month가 1~12 범위를 벗어남. (MYPAGE_400_005)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "인증에 실패했습니다. (AUTH_401_001)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "404",
+                description = "사용자 정보를 찾을 수 없습니다. (MYPAGE_404_001)")
+    })
+    ApiResponse<MypageQuizHistoryResponse> getQuizHistory(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+            @Parameter(description = "조회할 연도(예: 2026)") int year,
+            @Parameter(description = "조회할 월(1~12)") int month);
 }
