@@ -113,6 +113,17 @@ public class User extends BaseEntity {
         }
     }
 
+    /**
+     * 구글 계정의 표시 이름(name)을 저장 전 잘라낸다. 학교 Google Workspace 계정은 관리자가 지정한 표시 이름이
+     * NAME_MAX_LENGTH를 넘는 경우가 있어(예: 학과명·영문 전체 이름 포함), 그대로 저장하면 회원가입이 실패한다.
+     */
+    public static String truncateName(String name) {
+        if (name == null || name.length() <= NAME_MAX_LENGTH) {
+            return name;
+        }
+        return name.substring(0, NAME_MAX_LENGTH);
+    }
+
     // 회원가입 공통 진입점
     public static User register(Long characterId, String userUuid, String name, String nickname) {
         return new User(characterId, userUuid, name, nickname);

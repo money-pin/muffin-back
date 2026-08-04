@@ -273,6 +273,35 @@ class UserTest {
     }
 
     @Nested
+    @DisplayName("truncateName")
+    class TruncateName {
+
+        @Test
+        @DisplayName("null → null 그대로 반환")
+        void nullPassesThrough() {
+            assertThat(User.truncateName(null)).isNull();
+        }
+
+        @Test
+        @DisplayName("10자 이하 → 그대로 반환")
+        void shortNamePassesThrough() {
+            assertThat(User.truncateName("홍길동")).isEqualTo("홍길동");
+        }
+
+        @Test
+        @DisplayName("정확히 10자 → 그대로 반환")
+        void exactlyTenCharsPassesThrough() {
+            assertThat(User.truncateName("일이삼사오육칠팔구십")).isEqualTo("일이삼사오육칠팔구십");
+        }
+
+        @Test
+        @DisplayName("10자 초과(예: 학교 Workspace 계정의 긴 표시 이름) → 앞 10자로 잘라냄")
+        void longNameTruncated() {
+            assertThat(User.truncateName("산업경영공학과 홍길동 20211234")).isEqualTo("산업경영공학과 홍길");
+        }
+    }
+
+    @Nested
     @DisplayName("changeNickname")
     class ChangeNickname {
 

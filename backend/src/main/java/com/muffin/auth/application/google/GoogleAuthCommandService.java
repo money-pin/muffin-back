@@ -77,7 +77,7 @@ public class GoogleAuthCommandService {
             throw new GeneralException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
         }
 
-        User user = User.register(null, UUID.randomUUID().toString(), payload.name(), null);
+        User user = User.register(null, UUID.randomUUID().toString(), User.truncateName(payload.name()), null);
         user.agreeToTerms();
         userRepository.save(user);
 
