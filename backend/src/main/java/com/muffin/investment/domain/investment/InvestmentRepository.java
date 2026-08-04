@@ -28,12 +28,10 @@ public interface InvestmentRepository extends JpaRepository<Investment, Long> {
     @EntityGraph(attributePaths = "sectors")
     Optional<Investment> findWithSectorsById(Long id);
 
-    // TODO : 확인필요 - 이슈 #23 오늘 투자 및 처리 대기 상태 조회를 위해 기존 Repository에 추가함.
     @EntityGraph(attributePaths = "sectors")
     Optional<Investment> findWithSectorsByUserIdAndInvestDateAndStatus(
             Long userId, LocalDate investDate, InvestmentStatus status);
 
-    // TODO : 확인필요 - 이슈 #40 멱등 POST와 PATCH-자정 마감 경합 처리를 위해 기존 Repository 조회를 확장함.
     @EntityGraph(attributePaths = "sectors")
     Optional<Investment> findWithSectorsByUserIdAndInvestDate(Long userId, LocalDate investDate);
 

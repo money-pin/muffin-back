@@ -74,7 +74,6 @@ public class Investment extends BaseEntity {
     @Column(name = "settled_at")
     private LocalDateTime settledAt;
 
-    // TODO : 확인필요 - 이슈 #40 자정 마감과 PATCH 경합을 제어하기 위해 기존 Investment에 마감 시각을 추가함.
     @Column(name = "finalized_at")
     private LocalDateTime finalizedAt;
 
@@ -114,7 +113,6 @@ public class Investment extends BaseEntity {
         recalculateTotalAmount();
     }
 
-    // TODO : 확인필요 - 이슈 #40 PATCH와 자정 마감을 애그리거트 루트에서 처리하도록 기존 도메인 동작을 확장함.
     /** 투자 수정 시 전달된 최종 구성으로 섹터를 전부 교체한다. 매수가는 자정 마감 전까지 비워 둔다. */
     public void replaceSectors(List<SectorAllocation> allocations) {
         sectors.clear();

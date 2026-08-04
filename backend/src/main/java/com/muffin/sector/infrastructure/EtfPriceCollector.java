@@ -50,7 +50,6 @@ public class EtfPriceCollector {
     private final TradingCalendarService tradingCalendarService;
     private final TossMarketDataClient tossMarketDataClient;
     private final EtfPriceWriter etfPriceWriter;
-    // TODO : 확인필요 - 이슈 #40 종가 재시도에서 이미 성공한 종목의 외부 API 재호출을 피하기 위해 기존 수집기에 상태 조회를 추가함.
     private final EtfPriceRepository etfPriceRepository;
 
     /** 장 시작 이후 호출해 시가를 수집한다. */
