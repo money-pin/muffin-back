@@ -6,6 +6,8 @@ import com.muffin.auth.domain.enums.AuthProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class AuthTest {
 
@@ -62,6 +64,21 @@ class AuthTest {
         @DisplayName("숫자만(영문 없음) → 실패")
         void passwordNoLetter() {
             assertThatThrownBy(() -> Auth.createLocal(1L, "test@example.com", "12345678", "encoded"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "_", "=", "+", ".", "?"})
+        @DisplayName("허용된 특수문자를 개별 포함 → 성공")
+        void passwordAllowedSpecialChars(String specialChar) {
+            assertThatNoException()
+                    .isThrownBy(() -> Auth.createLocal(1L, "test@example.com", "abcd123" + specialChar, "encoded"));
+        }
+
+        @Test
+        @DisplayName("허용되지 않은 특수문자(~) 포함 → 실패")
+        void passwordDisallowedSpecialChar() {
+            assertThatThrownBy(() -> Auth.createLocal(1L, "test@example.com", "abc12345~", "encoded"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
