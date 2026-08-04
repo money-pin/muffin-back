@@ -32,22 +32,22 @@ class OpenPriceCollectionSchedulerTest {
     }
 
     @Test
-    void collect_runsEveryFiveMinutesUntilNineTwentyFive() throws Exception {
+    void collect_runsEveryFiveMinutesUntilNineFifteen() throws Exception {
         scheduler.collect();
 
         verify(orchestrator).collectOpenPrices(DATE);
         Scheduled scheduled =
                 OpenPriceCollectionScheduler.class.getMethod("collect").getAnnotation(Scheduled.class);
-        assertEquals("${muffin.batch.open-price.collection-cron:0 0-25/5 9 * * *}", scheduled.cron());
+        assertEquals("${muffin.batch.open-price.collection-cron:0 0-15/5 9 * * *}", scheduled.cron());
     }
 
     @Test
-    void finalizeMissing_runsAtNineThirty() throws Exception {
+    void finalizeMissing_runsAtNineTwenty() throws Exception {
         scheduler.finalizeMissing();
 
-        verify(orchestrator).finalizeMissingOpenPrices(DATE);
+        verify(orchestrator).collectAndFinalizeOpenPrices(DATE);
         Scheduled scheduled =
                 OpenPriceCollectionScheduler.class.getMethod("finalizeMissing").getAnnotation(Scheduled.class);
-        assertEquals("${muffin.batch.open-price.finalization-cron:0 30 9 * * *}", scheduled.cron());
+        assertEquals("${muffin.batch.open-price.finalization-cron:0 20 9 * * *}", scheduled.cron());
     }
 }
