@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -38,7 +39,11 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 
 class QuizCommandServiceTest {
 
@@ -50,6 +55,7 @@ class QuizCommandServiceTest {
     private QuizSessionRepository quizSessionRepository;
     private UserRepository userRepository;
     private UserAssetRepository userAssetRepository;
+    private PlatformTransactionManager transactionManager;
     private QuizCommandService quizCommandService;
 
     @BeforeEach
@@ -58,8 +64,14 @@ class QuizCommandServiceTest {
         quizSessionRepository = mock(QuizSessionRepository.class);
         userRepository = mock(UserRepository.class);
         userAssetRepository = mock(UserAssetRepository.class);
-        quizCommandService =
-                new QuizCommandService(quizSetRepository, quizSessionRepository, userRepository, userAssetRepository);
+        transactionManager = mock(PlatformTransactionManager.class);
+        when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        quizCommandService = new QuizCommandService(
+                quizSetRepository,
+                quizSessionRepository,
+                userRepository,
+                userAssetRepository,
+                new TransactionTemplate(transactionManager));
     }
 
     @Test
@@ -225,6 +237,85 @@ class QuizCommandServiceTest {
     }
 
     @Test
+    @DisplayName("자정 이후 오늘 공개된 퀴즈가 없으면 준비 중 예외가 발생한다")
+    void submitAnswer_throwsUnavailableWhenTodayQuizIsNotPublishedAfterMidnight() {
+        LocalDate today = LocalDate.now(KST);
+        User user = onboardedUser("세현");
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.empty());
+
+        GeneralException exception = assertThrows(
+                GeneralException.class,
+                () -> quizCommandService.submitAnswer(USER_ID, 201L, new QuizAttemptRequest(2011L)));
+
+        assertEquals(QuizErrorCode.QUIZ_UNAVAILABLE, exception.getErrorCode());
+        verify(quizSessionRepository, never()).saveAndFlush(any(QuizSession.class));
+    }
+
+    @Test
+    @DisplayName("보상 지급 중 낙관 락 충돌이 발생하면 제출 처리를 재시도한다")
+    void submitAnswer_retriesWhenOptimisticLockConflictOccursWhileClaimingReward() {
+        LocalDate today = LocalDate.now(KST);
+        User user = onboardedUser("세현");
+        QuizSet quizSet = publishedQuizSet(today);
+        QuizSession firstSession = almostFinishedSession(today);
+        QuizSession retrySession = almostFinishedSession(today);
+        UserAsset firstUserAsset = UserAsset.create(USER_ID, 1_000_000L);
+        UserAsset retryUserAsset = UserAsset.create(USER_ID, 1_000_000L);
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(quizSet));
+        when(quizSessionRepository.findByUserIdAndDailyQuizSetId(USER_ID, QUIZ_SET_ID))
+                .thenReturn(Optional.of(firstSession), Optional.of(retrySession));
+        when(userAssetRepository.findByUserId(USER_ID))
+                .thenReturn(Optional.of(firstUserAsset), Optional.of(retryUserAsset));
+        when(quizSessionRepository.saveAndFlush(any(QuizSession.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(UserAsset.class, USER_ID))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        QuizAttemptResponse response = quizCommandService.submitAnswer(USER_ID, 103L, new QuizAttemptRequest(1031L));
+
+        assertEquals(QuizSessionStatus.FINISHED, response.sessionStatus());
+        assertTrue(retrySession.isRewardClaimed());
+        assertEquals(1_200_000L, retryUserAsset.getTotalAsset());
+        verify(quizSessionRepository, times(2)).saveAndFlush(any(QuizSession.class));
+        verify(userAssetRepository, times(2)).findByUserId(USER_ID);
+    }
+
+    @Test
+    @DisplayName("낙관 락 충돌이 계속 발생하면 최초 시도 후 3회 재시도하고 예외를 전파한다")
+    void submitAnswer_throwsAfterThreeOptimisticLockRetries() {
+        LocalDate today = LocalDate.now(KST);
+        User user = onboardedUser("세현");
+        QuizSet quizSet = publishedQuizSet(today);
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(quizSet));
+        when(quizSessionRepository.findByUserIdAndDailyQuizSetId(USER_ID, QUIZ_SET_ID))
+                .thenReturn(
+                        Optional.of(almostFinishedSession(today)),
+                        Optional.of(almostFinishedSession(today)),
+                        Optional.of(almostFinishedSession(today)),
+                        Optional.of(almostFinishedSession(today)));
+        when(userAssetRepository.findByUserId(USER_ID))
+                .thenReturn(
+                        Optional.of(UserAsset.create(USER_ID, 1_000_000L)),
+                        Optional.of(UserAsset.create(USER_ID, 1_000_000L)),
+                        Optional.of(UserAsset.create(USER_ID, 1_000_000L)),
+                        Optional.of(UserAsset.create(USER_ID, 1_000_000L)));
+        when(quizSessionRepository.saveAndFlush(any(QuizSession.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(UserAsset.class, USER_ID));
+
+        assertThrows(
+                ObjectOptimisticLockingFailureException.class,
+                () -> quizCommandService.submitAnswer(USER_ID, 103L, new QuizAttemptRequest(1031L)));
+
+        verify(quizSessionRepository, times(4)).saveAndFlush(any(QuizSession.class));
+        verify(userAssetRepository, times(4)).findByUserId(USER_ID);
+    }
+
+    @Test
     @DisplayName("보상 지급 대상인데 사용자 자산이 없으면 예외가 발생하고 세션을 저장하지 않는다")
     void submitAnswer_throwsWhenUserAssetMissingForReward() {
         LocalDate today = LocalDate.now(KST);
@@ -297,11 +388,16 @@ class QuizCommandServiceTest {
     }
 
     private QuizSet publishedQuizSet(LocalDate quizDate) {
+        return publishedQuizSet(quizDate, QUIZ_SET_ID, 101L);
+    }
+
+    private QuizSet publishedQuizSet(LocalDate quizDate, Long quizSetId, long firstQuizId) {
         QuizSet quizSet = QuizSet.create(quizDate);
-        ReflectionTestUtils.setField(quizSet, "id", QUIZ_SET_ID);
+        ReflectionTestUtils.setField(quizSet, "id", quizSetId);
         ReflectionTestUtils.setField(quizSet, "status", QuizSetStatus.PUBLISHED);
 
         for (int quizOrder = 1; quizOrder <= 3; quizOrder++) {
+            long quizId = firstQuizId + quizOrder - 1L;
             Quiz quiz = quizSet.addQuiz(
                     (long) quizOrder,
                     "질문 " + quizOrder,
@@ -310,14 +406,21 @@ class QuizCommandServiceTest {
                     quizOrder,
                     "근거 문장 " + quizOrder,
                     QuizDifficulty.EASY);
-            ReflectionTestUtils.setField(quiz, "id", 100L + quizOrder);
+            ReflectionTestUtils.setField(quiz, "id", quizId);
 
             for (int optionNo = 1; optionNo <= 3; optionNo++) {
                 QuizOption option = quiz.addOption(optionNo, "선택지 " + quizOrder + "-" + optionNo, optionNo == 1);
-                ReflectionTestUtils.setField(option, "id", 1000L + quizOrder * 10L + optionNo);
+                ReflectionTestUtils.setField(option, "id", quizId * 10L + optionNo);
             }
         }
 
         return quizSet;
+    }
+
+    private QuizSession almostFinishedSession(LocalDate today) {
+        QuizSession session = QuizSession.start(USER_ID, QUIZ_SET_ID, today, 3);
+        session.recordAttempt(101L, 1011L, true, 100000L, LocalDateTime.now());
+        session.recordAttempt(102L, 1022L, false, 100000L, LocalDateTime.now());
+        return session;
     }
 }

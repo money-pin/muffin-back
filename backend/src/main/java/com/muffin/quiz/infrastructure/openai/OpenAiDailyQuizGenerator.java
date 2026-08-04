@@ -35,34 +35,40 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
     private static final int QUESTION_COUNT = 3;
     private static final int OPTION_COUNT = 3;
     private static final int MAX_GENERATION_ATTEMPTS = 2;
-    private static final Set<String> FORBIDDEN_QUESTION_PHRASES =
-            Set.of("투자해야", "베팅", "유리할까요", "추천", "사야 할까요", "팔아야 할까요", "오를까요", "내릴까요");
-
+    private static final Set<String> FORBIDDEN_QUESTION_PHRASES = Set.of(
+            "오늘 뉴스에 나온",
+            "오늘 뉴스에서",
+            "뉴스에서 언급된",
+            "이 뉴스에서",
+            "기사에 따르면",
+            "이 기사에서",
+            "뉴스 본문을 보면",
+            "본문에 따르면",
+            "투자해야",
+            "베팅",
+            "유리할까요",
+            "추천",
+            "사야 할까요",
+            "팔아야 할까요",
+            "오를까요",
+            "내릴까요");
     private static final String INSTRUCTIONS =
             """
         당신은 경제·금융 교육 퀴즈를 출제하는 전문가입니다.
         퀴즈 수강자는 금융에 관심을 가지기 시작한 20~30대입니다.
 
         [퀴즈 출제 원칙]
-        1. 문항은 반드시 제공된 뉴스 본문에서만 근거를 가져온다. 외부 지식으로 출제하지 않는다.
-        2. 정답은 본문에 명확하게 서술된 사실이어야 한다.
-        3. 오답 보기는 그럴듯하지만 본문에서 틀린 것으로 확인 가능해야 한다.
-        4. 뉴스 1개당 1문항만 출제한다. 뉴스 3개면 총 3문항이다.
-        5. 정답 위치가 항상 특정 번호에 편중되지 않도록 1, 2, 3번에 분산한다.
-        6. source_sentence에는 정답의 근거가 된 뉴스 본문의 정확한 한 문장을 그대로 넣는다.
-        7. question_text의 정답은 source_sentence 한 문장만 읽어도 판단 가능해야 한다.
-        8. explanation은 source_sentence에서 확인되는 사실만 설명한다.
-        9. 본문에 없는 수치, 날짜, 기업명, 기관명을 만들지 않는다.
-        10. 투자 판단, 의견, 예측을 묻는 문항을 만들지 않는다.
-        11. 문항 유형은 용어형과 뉴스 연결형을 섞는다. 최소 1문항은 용어형으로 만든다.
-        12. "아닌 것은?", "틀린 것은?"처럼 부정형으로 묻는 문항은 피한다.
-        13. 단순 날짜, 기간, 수치, 금액만 맞히는 문항은 만들지 않는다.
-        14. "몇 년 만인가요?", "금리는 얼마인가요?", "자산은 몇 조 원인가요?"처럼 숫자 자체가 정답인 문항은 금지한다.
-        15. 정답 선택지는 숫자나 기간만 다르게 바꾼 보기로 구성하지 않는다.
-        16. source_sentence가 수치 문장이어도 문항은 경제 개념, 변화 방향, 원인과 영향의 의미를 묻는다.
-        17. 오답 보기는 정답과 같은 범주의 보기로 만든다. 너무 엉뚱한 범주나 쉽게 배제되는 보기는 만들지 않는다.
-        18. question_text는 앱 화면에 어울리는 자연스러운 말투로 작성한다.
-        19. 출력은 반드시 지정된 JSON 형식만 반환한다.
+        1. 뉴스 1개당 1문항씩 총 3문항을 만든다.
+        2. 기사 사건 암기보다 경제·금융 개념 이해를 묻는다.
+        3. 문제와 보기만으로 풀 수 있는 자기완결형 문항으로 작성한다.
+        4. 본문에 용어의 뜻·특징·역할 설명이 있으면 반드시 용어·개념 정의형을 우선하고, 근거가 부족할 때만 경제·금융 관점의 원인·결과·영향을 묻는다.
+        5. 정답과 explanation은 source_sentence 한 문장에서 직접 도출되어야 하며, source_sentence는 본문 문장 그대로 쓴다.
+        6. 본문 밖 수치·날짜·기업명·기관명은 만들지 않는다.
+        7. 투자 판단, 의견, 예측, 섹터 선택, 정책·군사 사건의 목적 확인, 부정형("아닌 것은?") 문항은 금지한다.
+        8. 날짜·기간·금액·비율 같은 숫자 자체를 맞히게 하지 않는다.
+        9. 오답 보기는 정답과 같은 범주로 자연스럽게 만들고, 선택지는 짧은 명사형/구 형태로 쓴다.
+        10. "오늘 뉴스에 나온", "본문에 따르면"처럼 본문을 읽었다는 전제 표현은 쓰지 않는다.
+        11. 정답 위치는 1, 2, 3번에 분산하고, JSON 형식만 반환한다.
         """;
 
     private final RestClient restClient;
@@ -181,25 +187,29 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 [작성 규칙]
                 - 각 뉴스에서 반드시 1문항씩, 총 3문항을 출제하라.
                 - related_news_title에는 입력으로 받은 뉴스 제목을 그대로 작성하라.
-                - question_text는 초보자가 뉴스 속 경제 개념이나 뉴스와 연결된 흐름을 이해하도록 작성하라.
-                - 3문항 중 최소 1문항은 용어형으로 작성하라. 예: "오늘 뉴스에 나온 코픽스는 무엇을 뜻할까요?"
-                - 3문항 중 가능하면 1문항은 뉴스 연결형으로 작성하라. 예: "이 뉴스와 가장 직접적으로 연결된 업종/금융 영역은 무엇일까요?"
-                - 뉴스 연결형은 본문에 나온 업종, 금융 영역, 정책 효과만 다룬다. 투자할 섹터를 고르게 하지 않는다.
-                - "아닌 것은?", "틀린 것은?"처럼 오답을 고르는 부정형 문항은 만들지 않는다.
+                - 사용자가 당일 뉴스 전체를 읽었다고 가정하지 말고, 문제와 보기만으로 풀 수 있게 개념 설명이나 상황 단서를 포함하라.
+                - question_text는 초보자가 뉴스 속 경제 개념이나 뉴스와 연결된 흐름을 이해하도록 작성하되, 뉴스 본문을 읽지 않아도 문제 문장과 보기만으로 풀 수 있게 만든다.
+                - 본문에 용어의 뜻·특징·역할 설명이 있으면 반드시 용어·개념 정의형을 우선한다. 예: "ETF는 무엇의 약자일까요?", "코픽스는 무엇을 뜻할까요?"
+                - 정의 근거가 부족할 때만 source_sentence의 경제·금융 관점 원인·결과·역할·영향을 묻는 맥락 이해형으로 작성하라.
+                - source_sentence가 용어를 단순히 언급만 하고 설명하지 않으면, 그 용어의 정의를 묻지 말고 원인·결과·역할·영향을 묻는 맥락 이해형으로 출제하라.
+                - 좋은 예: "은행들이 자금을 조달할 때 드는 평균 비용을 나타내는 지표는 무엇일까요?"
+                - 좋은 예: "코픽스가 오르면 변동금리 대출자의 부담이 커질 수 있는 이유는 무엇일까요?"
+                - 좋은 예: "메모리 반도체와 시스템 반도체의 차이는 무엇일까요?"
+                - 좋은 예: "반도체 산업에서 파운드리란 무엇을 의미하나요?"
+                - 좋은 예: "ETF는 무엇의 약자일까요?"
+                - 정책·군사·국제 사건은 "왜 했나요?", "주목적은 무엇인가요?"처럼 사건 목적을 묻지 말고, 물가·금리·전력비·운임·불확실성 등 경제 영향으로 바꿔 묻는다.
+                - 나쁜 예: "한국은행이 이번에 내린 결정은 무엇인가요?", "뉴욕주가 데이터센터 건설을 유예한 이유는 무엇인가요?", "미군의 공습과 봉쇄 강화의 주목적은 무엇인가요?", "어떤 업종에 투자하는 것이 좋을까요?"
+                - 나쁜 예: "새로운 공모주 청약 제도에서 투자자가 받을 수 있는 혜택은 무엇인가요?"
+                - 좋은 예: "전력 사용이 큰 데이터센터가 늘어날 때 소비자에게 생길 수 있는 부담은 무엇일까요?"
+                - 좋은 예: "군사적 긴장이 커질 때 금융 시장에서 함께 커질 수 있는 것은 무엇일까요?"
+                - 좋은 예: "공모주는 무엇을 의미하나요?"
+                - 출처 전제 표현("오늘 뉴스에 나온", "기사에 따르면", "본문에 따르면" 등), 부정형("아닌 것은?"), 투자 판단, 가격 전망은 금지한다.
+                - 숫자 자체를 맞히는 문제와 숫자만 바꾼 선택지는 금지한다.
+                - 선택지는 정답과 같은 범주의 짧은 명사형/구 형태로 쓴다. 예: "자금 조달 비용 지표", "위험 확산 방지"
+                - source_sentence는 뉴스 본문 문장 그대로 쓰고, 정답과 explanation은 그 한 문장에서 확인 가능해야 한다.
+                - 특정 기사에서 어떤 일이 있었는지나 정책·군사 조치의 목적만 확인하는 문항은 만들지 않는다.
+                - 본문 속 상황은 정답 검증 근거로 사용하되, 사용자가 경제 개념이나 흐름을 이해하도록 묻는다.
                 - 단순히 날짜, 기간, 수치, 금액만 맞히는 문제는 만들지 않는다.
-                - "몇 년 만인가요?", "금리는 얼마인가요?", "자산은 몇 조 원인가요?"처럼 숫자 자체가 정답인 문제는 금지한다.
-                - 정답 선택지를 "1년/3년/5년", "3조/10조/41조"처럼 숫자만 바꾼 보기로 만들지 않는다.
-                - 수치가 필요하다면 그 수치 자체보다 경제적 의미, 변화 방향, 원인과 영향을 묻게 하라.
-                - 오답 보기는 정답과 같은 범주의 보기로 만든다. 예를 들어 정책이면 다른 정책/상태, 금융 지표면 다른 금융 지표, 기업 지정 사유면 다른 지정 사유를 보기로 둔다.
-                - 오답 보기에 뉴스 주제와 무관한 엉뚱한 범주를 넣지 않는다. 예: 금융복합기업집단 문항에 "무역 회사로 지정됨" 같은 보기 금지.
-                - 오답은 너무 쉽게 탈락하지 않도록 자연스럽게 작성하되, 본문을 보면 틀렸다고 판단 가능해야 한다.
-                - question_text는 딱딱한 시험 문장보다 앱 화면에 자연스럽게 들어갈 말투로 작성하라.
-                - source_sentence 필드에는 정답의 근거가 된 뉴스 본문의 정확한 문장을 그대로 포함하라.
-                - question_text의 정답은 source_sentence 한 문장만 보고도 고를 수 있어야 한다.
-                - explanation은 source_sentence에 직접 포함된 사실을 쉬운 말로 풀어쓴다.
-                - 여러 문장을 합쳐야만 답이 되는 질문은 만들지 않는다.
-                - 오답 보기는 본문 내용을 바탕으로 틀렸다고 판단할 수 있어야 한다.
-                - 투자 판단, 매수·매도 판단, 가격 전망, 미래 가능성 예측을 묻지 않는다.
                 - 정답 번호는 1, 2, 3번에 가능하면 한 번씩 분산하라.
                 - 한글 단어 중간에 불필요한 공백을 넣지 않는다.
                 %s
@@ -236,12 +246,12 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
 
                 [재생성 지시]
                 이전 응답은 JSON 형식, 문항 수, 선택지 수, source_sentence, 문항 유형, 또는 투자 조언 금지 조건을 만족하지 못했다.
-                각 뉴스에서 정확히 1문항씩 다시 만들고, 최소 1문항은 용어형으로 작성하라.
-                날짜, 기간, 금액, 비율처럼 숫자 자체를 맞히는 문항은 만들지 말고, 경제 개념이나 뉴스 속 변화의 의미를 묻는 문항으로 작성하라.
-                정답 선택지를 숫자만 다르게 바꾼 보기로 구성하지 마라.
-                오답 보기는 정답과 같은 범주 안에서 자연스럽게 다시 작성하라.
-                source_sentence는 뉴스 본문에 존재하는 한 문장을 그대로 복사하라.
-                정답과 해설은 source_sentence 한 문장만으로 확인 가능한 내용으로 다시 작성하라.
+                각 뉴스에서 정확히 1문항씩 다시 만들고, 기사 확인형이 아닌 자기완결형 개념 학습 문제로 작성하라.
+                본문에 용어 설명이 있으면 정의형을 우선하고, 근거가 부족할 때만 경제·금융 관점의 원인·결과·역할·영향을 묻는다.
+                정책·군사·국제 사건의 목적 확인형은 만들지 말고, 물가·금리·비용·운임·불확실성 같은 경제 영향형으로 바꿔라.
+                출처 전제 표현, 부정형, 투자 판단, 숫자 암기형, 숫자만 바꾼 선택지는 금지한다.
+                오답은 정답과 같은 범주로, 선택지는 짧은 명사형/구 형태로 작성하라.
+                source_sentence는 본문 문장 그대로 쓰고, 정답과 해설은 그 한 문장에서 확인 가능해야 한다.
                 """;
     }
 
@@ -414,6 +424,20 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
         if (question.options().stream().anyMatch(option -> isBlank(option.text()))) {
             throw new IllegalStateException("OpenAI returned blank quiz option");
         }
+        validateCorrectAnswerMentionedInSourceSentence(question);
+    }
+
+    private void validateCorrectAnswerMentionedInSourceSentence(DailyQuizQuestionResult question) {
+        DailyQuizOptionResult correctOption = question.options().stream()
+                .filter(option -> option.order() == question.correctOptionOrder())
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("OpenAI returned missing correct option"));
+
+        String normalizedSource = normalizeText(question.sourceSentence());
+        String normalizedAnswer = normalizeText(correctOption.text());
+        if (!containsAnswerToken(normalizedSource, normalizedAnswer)) {
+            throw new IllegalStateException("OpenAI returned question answer not supported by source_sentence");
+        }
     }
 
     private static boolean hasDuplicatedQuestionOrder(List<DailyQuizQuestionResult> questions) {
@@ -433,8 +457,27 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
     }
 
     private static boolean containsForbiddenQuestionPhrase(String questionText) {
-        return FORBIDDEN_QUESTION_PHRASES.stream().anyMatch(questionText::contains)
-                || QuizQuestionPolicy.NUMERIC_RECALL_QUESTION_PHRASES.stream().anyMatch(questionText::contains);
+        String normalizedQuestion = normalizeForPhraseCheck(questionText);
+        return FORBIDDEN_QUESTION_PHRASES.stream()
+                        .map(OpenAiDailyQuizGenerator::normalizeForPhraseCheck)
+                        .anyMatch(normalizedQuestion::contains)
+                || QuizQuestionPolicy.NUMERIC_RECALL_QUESTION_PHRASES.stream()
+                        .map(OpenAiDailyQuizGenerator::normalizeForPhraseCheck)
+                        .anyMatch(normalizedQuestion::contains);
+    }
+
+    private static boolean containsAnswerToken(String sourceSentence, String answer) {
+        String normalizedSource = normalizeForPhraseCheck(sourceSentence);
+        String normalizedAnswer = normalizeForPhraseCheck(answer);
+        if (normalizedSource.contains(normalizedAnswer)) {
+            return true;
+        }
+        for (String token : answer.split("[^가-힣A-Za-z0-9]+")) {
+            if (token.length() >= 2 && normalizedSource.contains(normalizeForPhraseCheck(token))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isBlank(String value) {
@@ -443,6 +486,10 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
 
     private static String normalizeText(String value) {
         return value == null ? "" : value.replaceAll("\\s+", " ").trim();
+    }
+
+    private static String normalizeForPhraseCheck(String value) {
+        return value == null ? "" : value.replaceAll("\\s+", "");
     }
 
     private static class InvalidDailyQuizResponseException extends IllegalStateException {

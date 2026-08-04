@@ -11,6 +11,8 @@ import com.muffin.quiz.domain.quizset.enums.QuizSetStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +35,7 @@ public class DailyQuizGenerationService {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final int DAILY_QUIZ_COUNT = 3;
+    private static final int QUIZ_SOURCE_CANDIDATE_COUNT = 15;
     private static final int OPTION_COUNT = 3;
     private static final long REWARD_MONEY = 100000L;
 
@@ -133,13 +136,55 @@ public class DailyQuizGenerationService {
         });
     }
 
-    /** 사용자 공개 전이라도 재구성 결과가 있는 발행 대기 뉴스 3개를 퀴즈 출처로 사용한다. */
+    /** 사용자 공개 전이라도 재구성 결과가 있는 발행 대기 뉴스 후보 중 퀴즈에 적합한 3개를 고른다. */
     private List<News> findQuizSourceNews(LocalDate quizDate) {
         LocalDateTime startInclusive = quizDate.atStartOfDay();
         LocalDateTime endExclusive = quizDate.plusDays(1).atStartOfDay();
 
-        return newsRepository.findQuizCandidates(
-                NewsStatus.PENDING, startInclusive, endExclusive, PageRequest.of(0, DAILY_QUIZ_COUNT));
+        List<News> candidates = newsRepository.findQuizCandidates(
+                NewsStatus.PENDING, startInclusive, endExclusive, PageRequest.of(0, QUIZ_SOURCE_CANDIDATE_COUNT));
+
+        return selectQuizSourceNews(candidates);
+    }
+
+    /**
+     * 최신 뉴스만 3개 고르면 같은 주제에 치우칠 수 있어, 카테고리 다양성과 용어 매핑 수를 우선해 선별한다.
+     *
+     * <p>1차로 서로 다른 카테고리에서 용어가 많은 뉴스를 고르고, 부족한 경우 남은 후보 중 용어 수와 최신순 기준으로 채운다.
+     */
+    private List<News> selectQuizSourceNews(List<News> candidates) {
+        List<News> rankedCandidates = candidates.stream()
+                .sorted(Comparator.comparingInt(DailyQuizGenerationService::termCount)
+                        .reversed()
+                        .thenComparing(News::getPublishedAt, Comparator.reverseOrder()))
+                .toList();
+
+        List<News> selectedNews = new ArrayList<>();
+        Set<Long> selectedCategoryIds = new java.util.HashSet<>();
+
+        for (News news : rankedCandidates) {
+            if (selectedNews.size() == DAILY_QUIZ_COUNT) {
+                break;
+            }
+            if (selectedCategoryIds.add(news.getCategoryId())) {
+                selectedNews.add(news);
+            }
+        }
+
+        for (News news : rankedCandidates) {
+            if (selectedNews.size() == DAILY_QUIZ_COUNT) {
+                break;
+            }
+            if (!selectedNews.contains(news)) {
+                selectedNews.add(news);
+            }
+        }
+
+        return selectedNews;
+    }
+
+    private static int termCount(News news) {
+        return news.getTerms().size();
     }
 
     private DailyQuizGenerationRequest toRequest(LocalDate quizDate, List<News> newsSources) {
@@ -240,11 +285,18 @@ public class DailyQuizGenerationService {
     }
 
     private static boolean containsNumericRecallPhrase(String questionText) {
-        return QuizQuestionPolicy.NUMERIC_RECALL_QUESTION_PHRASES.stream().anyMatch(questionText::contains);
+        String normalizedQuestion = normalizeForPhraseCheck(questionText);
+        return QuizQuestionPolicy.NUMERIC_RECALL_QUESTION_PHRASES.stream()
+                .map(DailyQuizGenerationService::normalizeForPhraseCheck)
+                .anyMatch(normalizedQuestion::contains);
     }
 
     private static String normalizeText(String value) {
         return value == null ? "" : value.replaceAll("\\s+", " ").trim();
+    }
+
+    private static String normalizeForPhraseCheck(String value) {
+        return value == null ? "" : value.replaceAll("\\s+", "");
     }
 
     private static DailyQuizGenerationException generationException(
