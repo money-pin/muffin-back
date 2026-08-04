@@ -135,7 +135,8 @@ public class EtfPrice {
     }
 
     private void markOpenUnavailable(PriceCollectionStatus status) {
-        if (startPriceStatus == PriceCollectionStatus.SUCCESS) {
+        if (startPriceStatus == PriceCollectionStatus.SUCCESS
+                || startPriceStatus == PriceCollectionStatus.FINAL_MISSING) {
             return;
         }
         this.startPrice = null;

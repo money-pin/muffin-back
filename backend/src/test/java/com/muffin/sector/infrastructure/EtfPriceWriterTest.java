@@ -157,6 +157,32 @@ class EtfPriceWriterTest {
     }
 
     @Test
+    @DisplayName("최종 미확보 시가는 이후 실패 응답으로도 덮어쓰지 않는다")
+    void markOpenFailed_preservesFinalMissingStatus() {
+        etfPriceWriter.markOpenFinalMissing(ETF_ID, PRICE_DATE);
+
+        etfPriceWriter.markOpenFailed(ETF_ID, PRICE_DATE);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertNull(saved.getStartPrice());
+        assertEquals(PriceCollectionStatus.FINAL_MISSING, saved.getStartPriceStatus());
+    }
+
+    @Test
+    @DisplayName("최종 미확보 시가는 이후 미수신 응답으로도 덮어쓰지 않는다")
+    void markOpenNoData_preservesFinalMissingStatus() {
+        etfPriceWriter.markOpenFinalMissing(ETF_ID, PRICE_DATE);
+
+        etfPriceWriter.markOpenNoData(ETF_ID, PRICE_DATE);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertNull(saved.getStartPrice());
+        assertEquals(PriceCollectionStatus.FINAL_MISSING, saved.getStartPriceStatus());
+    }
+
+    @Test
     @DisplayName("코인 기준가를 기록하면 시가와 종가에 동일한 값이 SUCCESS로 저장된다")
     void writeBasePrice_createsRecordWithSameOpenAndClose() {
         etfPriceWriter.writeBasePrice(ETF_ID, PRICE_DATE, 50_000_000L);
