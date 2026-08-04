@@ -121,7 +121,11 @@ public class User extends BaseEntity {
         if (name == null || name.length() <= NAME_MAX_LENGTH) {
             return name;
         }
-        return name.substring(0, NAME_MAX_LENGTH);
+        int cutIndex = NAME_MAX_LENGTH;
+        if (Character.isHighSurrogate(name.charAt(cutIndex - 1)) && Character.isLowSurrogate(name.charAt(cutIndex))) {
+            cutIndex--;
+        }
+        return name.substring(0, cutIndex);
     }
 
     // 회원가입 공통 진입점

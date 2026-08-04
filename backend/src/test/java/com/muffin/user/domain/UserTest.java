@@ -299,6 +299,19 @@ class UserTest {
         void longNameTruncated() {
             assertThat(User.truncateName("산업경영공학과 홍길동 20211234")).isEqualTo("산업경영공학과 홍길");
         }
+
+        @Test
+        @DisplayName("자르는 지점이 surrogate pair(예: 이모지) 중간이면 쌍이 깨지지 않도록 한 글자 덜 잘라낸다")
+        void doesNotSplitSurrogatePair() {
+            // 9자(BMP) + 이모지 1개(2 code unit) = length() 11 → 10번째 code unit에서 자르면 이모지가 반으로 쪼개짐
+            String nineCharsPlusEmoji = "일이삼사오육칠팔구" + "😀";
+
+            String truncated = User.truncateName(nineCharsPlusEmoji);
+
+            assertThat(truncated).isEqualTo("일이삼사오육칠팔구");
+            assertThat(Character.isHighSurrogate(truncated.charAt(truncated.length() - 1)))
+                    .isFalse();
+        }
     }
 
     @Nested
