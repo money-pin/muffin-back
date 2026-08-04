@@ -10,14 +10,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
 import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.EtfPriceRepository;
-import com.muffin.sector.exception.SectorErrorCode;
+import com.muffin.sector.domain.exception.SectorException;
+import com.muffin.sector.domain.exception.code.SectorErrorCode;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
 import com.muffin.sector.infrastructure.toss.exception.TossApiException;
@@ -169,9 +169,9 @@ class EtfPriceCollectorTest {
     @DisplayName("거래일을 확인할 수 없으면 가격 상태를 변경하지 않고 실행을 중단한다")
     void collect_aborts_whenMarketCalendarFails() {
         when(tradingCalendarService.getCalendar(DATE))
-                .thenThrow(new GeneralException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE));
+                .thenThrow(new SectorException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE));
 
-        assertThrows(GeneralException.class, () -> collector.collectOpen(DATE));
+        assertThrows(SectorException.class, () -> collector.collectOpen(DATE));
 
         verify(etfRepository, never()).findAll();
         verify(etfPriceWriter, never()).markOpenFailed(any(), any());

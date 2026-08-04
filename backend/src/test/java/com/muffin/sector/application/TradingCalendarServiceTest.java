@@ -6,9 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
-import com.muffin.sector.exception.SectorErrorCode;
+import com.muffin.sector.domain.exception.SectorException;
+import com.muffin.sector.domain.exception.code.SectorErrorCode;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
 import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.BusinessDay;
 import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.Result;
@@ -68,8 +68,7 @@ class TradingCalendarServiceTest {
     void getCalendar_rejectsMismatchedDate() {
         when(tossMarketDataClient.getMarketCalendar(DATE)).thenReturn(calendar(tradingBusinessDay(DATE.minusDays(1))));
 
-        GeneralException exception =
-                assertThrows(GeneralException.class, () -> tradingCalendarService.getCalendar(DATE));
+        SectorException exception = assertThrows(SectorException.class, () -> tradingCalendarService.getCalendar(DATE));
 
         assertEquals(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE, exception.getErrorCode());
     }
@@ -81,8 +80,7 @@ class TradingCalendarServiceTest {
                 tradingBusinessDay(DATE), new BusinessDay(PREVIOUS_DATE, null), tradingBusinessDay(NEXT_DATE));
         when(tossMarketDataClient.getMarketCalendar(DATE)).thenReturn(result);
 
-        GeneralException exception =
-                assertThrows(GeneralException.class, () -> tradingCalendarService.getCalendar(DATE));
+        SectorException exception = assertThrows(SectorException.class, () -> tradingCalendarService.getCalendar(DATE));
 
         assertEquals(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE, exception.getErrorCode());
     }
@@ -93,8 +91,7 @@ class TradingCalendarServiceTest {
         when(tossMarketDataClient.getMarketCalendar(DATE))
                 .thenThrow(new TossApiException("request", "SERVER_ERROR", null, "provider failure"));
 
-        GeneralException exception =
-                assertThrows(GeneralException.class, () -> tradingCalendarService.getCalendar(DATE));
+        SectorException exception = assertThrows(SectorException.class, () -> tradingCalendarService.getCalendar(DATE));
 
         assertEquals(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE, exception.getErrorCode());
     }

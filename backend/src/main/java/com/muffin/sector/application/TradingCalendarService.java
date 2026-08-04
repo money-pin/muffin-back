@@ -1,7 +1,7 @@
 package com.muffin.sector.application;
 
-import com.muffin.global.apiPayload.exception.GeneralException;
-import com.muffin.sector.exception.SectorErrorCode;
+import com.muffin.sector.domain.exception.SectorException;
+import com.muffin.sector.domain.exception.code.SectorErrorCode;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
 import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.BusinessDay;
 import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.Result;
@@ -75,11 +75,11 @@ public class TradingCalendarService {
                 && !regularMarket.endTime().isBlank();
     }
 
-    private GeneralException unavailable() {
-        return new GeneralException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE);
+    private SectorException unavailable() {
+        return new SectorException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE);
     }
 
-    private GeneralException unavailable(LocalDate date, String reason) {
+    private SectorException unavailable(LocalDate date, String reason) {
         log.warn("거래일 API 응답을 사용할 수 없습니다. date={}, reason={}", date, reason);
         return unavailable();
     }
