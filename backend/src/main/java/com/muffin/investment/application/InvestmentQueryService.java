@@ -1,5 +1,6 @@
 package com.muffin.investment.application;
 
+import com.muffin.investment.domain.exception.InvestmentDataIntegrityException;
 import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.InvestmentRepository;
 import com.muffin.investment.domain.investment.InvestmentSector;
@@ -155,7 +156,7 @@ public class InvestmentQueryService {
     private Sector requiredSector(Map<Long, Sector> sectorsById, Long sectorId) {
         Sector sector = sectorsById.get(sectorId);
         if (sector == null) {
-            throw new IllegalStateException("투자 섹터 기준 정보를 찾을 수 없습니다: sectorId=" + sectorId);
+            throw new InvestmentDataIntegrityException(sectorId);
         }
         return sector;
     }
