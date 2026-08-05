@@ -52,7 +52,7 @@ class WeeklyRankingAggregationRepositoryTest {
     @DisplayName("정산 완료된 활성 사용자 투자만 사용자별로 합산한다")
     void findSettledCandidates_aggregatesActiveSettledInvestmentsOnly() {
         User activeUser = saveUser("active", "11111111-2222-4333-8444-555555555555");
-        User suspendedUser = saveUser("suspended", "22222222-3333-4444-8555-666666666666");
+        User suspendedUser = saveUser("banned", "22222222-3333-4444-8555-666666666666");
         suspendedUser.suspend();
         persistSettledInvestment(activeUser, WEEK_START_DATE, 100_000L, 5_000L);
         persistSettledInvestment(activeUser, WEEK_START_DATE.plusDays(1), 200_000L, 8_000L);
