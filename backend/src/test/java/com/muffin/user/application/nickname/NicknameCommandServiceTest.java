@@ -94,9 +94,9 @@ class NicknameCommandServiceTest {
     }
 
     @Test
-    @DisplayName("10자 초과 → IllegalArgumentException")
+    @DisplayName("6자 초과 → IllegalArgumentException")
     void tooLong() {
-        assertThatThrownBy(() -> nicknameCommandService.changeNickname(USER_ID, "일이삼사오육칠팔구십일"))
+        assertThatThrownBy(() -> nicknameCommandService.changeNickname(USER_ID, "일이삼사오육칠"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

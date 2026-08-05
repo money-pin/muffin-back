@@ -60,10 +60,10 @@ public class User extends BaseEntity {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private UserOnboarding userOnboarding;
 
-    private static final int NAME_MAX_LENGTH = 10;
+    private static final int NAME_MAX_LENGTH = 6;
     private static final int NICKNAME_MIN_LENGTH = 2;
-    private static final int NICKNAME_MAX_LENGTH = 10;
-    // 한글/영문/숫자/공백만 허용, 2~10자. 정규화(NFC) 후의 문자열에 대해서만 검증한다.
+    private static final int NICKNAME_MAX_LENGTH = 6;
+    // 한글/영문/숫자/공백만 허용, 2~6자. 정규화(NFC) 후의 문자열에 대해서만 검증한다.
     private static final Pattern NICKNAME_PATTERN =
             Pattern.compile("^[가-힣a-zA-Z0-9 ]{" + NICKNAME_MIN_LENGTH + "," + NICKNAME_MAX_LENGTH + "}$");
 
@@ -111,6 +111,21 @@ public class User extends BaseEntity {
         if (value != null && value.length() > maxLength) {
             throw new IllegalArgumentException(fieldName + "은 " + maxLength + "자를 초과할 수 없습니다.");
         }
+    }
+
+    /**
+     * 구글 계정의 표시 이름(name)을 저장 전 잘라낸다. 학교 Google Workspace 계정은 관리자가 지정한 표시 이름이
+     * NAME_MAX_LENGTH를 넘는 경우가 있어(예: 학과명·영문 전체 이름 포함), 그대로 저장하면 회원가입이 실패한다.
+     */
+    public static String truncateName(String name) {
+        if (name == null || name.length() <= NAME_MAX_LENGTH) {
+            return name;
+        }
+        int cutIndex = NAME_MAX_LENGTH;
+        if (Character.isHighSurrogate(name.charAt(cutIndex - 1)) && Character.isLowSurrogate(name.charAt(cutIndex))) {
+            cutIndex--;
+        }
+        return name.substring(0, cutIndex);
     }
 
     // 회원가입 공통 진입점

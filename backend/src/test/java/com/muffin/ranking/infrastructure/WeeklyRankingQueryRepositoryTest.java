@@ -62,7 +62,7 @@ class WeeklyRankingQueryRepositoryTest {
     void findTop10AndMyRank_readsSnapshotByWeek() {
         User first = saveUser("first", "1111-2222-3333-4444");
         User second = saveUser("second", "2222-2222-3333-4444");
-        User outsideTop10 = saveUser("outside", "3333-2222-3333-4444");
+        User outsideTop10 = saveUser("outer", "3333-2222-3333-4444");
         saveRanking(first, 1, 1_000L, 1);
         saveRanking(second, 2, 500L, 2);
         saveRanking(outsideTop10, 11, 100L, 11);
@@ -82,7 +82,7 @@ class WeeklyRankingQueryRepositoryTest {
     @Test
     @DisplayName("TOP 10의 정산 완료 투자와 섹터 상세를 사용자별로 일괄 집계한다")
     void findWeeklyInvestmentsAndSectors_aggregatesSettledConfirmedOnly() {
-        User first = saveUser("investor", "4444-2222-3333-4444");
+        User first = saveUser("invest", "4444-2222-3333-4444");
         User second = saveUser("second", "5555-2222-3333-4444");
         Long gold = saveSector("GOLD", "금");
         Long tech = saveSector("TECH", "테크");
@@ -111,7 +111,7 @@ class WeeklyRankingQueryRepositoryTest {
     @Test
     @DisplayName("스냅샷이 없고 미정산 확정 투자 또는 활성 사용자의 정산 완료 투자가 있으면 집계 중 대상이다")
     void hasCalculatingTarget_identifiesPendingTarget() {
-        User user = saveUser("calcuser", "6666-2222-3333-4444");
+        User user = saveUser("calcus", "6666-2222-3333-4444");
         Long gold = saveSector("GOLD", "금");
 
         assertFalse(weeklyRankingQueryRepository.hasCalculatingTarget(WEEK_START_DATE, WEEK_END_DATE));
@@ -123,7 +123,7 @@ class WeeklyRankingQueryRepositoryTest {
     @Test
     @DisplayName("활성 사용자의 정산 완료 투자가 있으면 집계 중 대상이다")
     void hasCalculatingTarget_identifiesSettledTargetOfActiveUser() {
-        User user = saveUser("settled", "7777-2222-3333-4444");
+        User user = saveUser("settle", "7777-2222-3333-4444");
         Long gold = saveSector("GOLD", "금");
 
         persistSettledInvestment(user, WEEK_START_DATE, Map.of(gold, amount(100_000L, 5_000L)));
@@ -134,7 +134,7 @@ class WeeklyRankingQueryRepositoryTest {
     @Test
     @DisplayName("탈퇴 사용자의 투자는 집계 중 대상으로 보지 않는다")
     void hasCalculatingTarget_ignoresWithdrawnUser() {
-        User user = saveUser("withdrawn", "8888-2222-3333-4444");
+        User user = saveUser("wdrawn", "8888-2222-3333-4444");
         Long gold = saveSector("GOLD", "금");
         user.withdraw();
         userRepository.saveAndFlush(user);

@@ -61,9 +61,9 @@ class NicknameQueryServiceTest {
     }
 
     @Test
-    @DisplayName("10자 초과 → IllegalArgumentException")
+    @DisplayName("6자 초과 → IllegalArgumentException")
     void tooLong() {
-        assertThatThrownBy(() -> nicknameQueryService.isAvailable("일이삼사오육칠팔구십일"))
+        assertThatThrownBy(() -> nicknameQueryService.isAvailable("일이삼사오육칠"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

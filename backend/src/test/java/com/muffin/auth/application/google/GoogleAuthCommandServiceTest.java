@@ -107,6 +107,23 @@ class GoogleAuthCommandServiceTest {
     }
 
     @Test
+    @DisplayName("구글 name이 6자를 초과해도(예: 학교 Workspace 계정) 잘라서 저장하고 가입에 성공한다")
+    void authenticate_newAccount_longNameIsTruncated() {
+        stubPayload("google-sub-6", "student@g.hongik.ac.kr", "산업경영공학과 홍길동 20211234");
+
+        TokenPair result = googleAuthCommandService.authenticate(ID_TOKEN);
+
+        assertThat(result.accessToken()).isNotBlank();
+        User user = userRepository
+                .findById(authRepository
+                        .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-6")
+                        .orElseThrow()
+                        .getUserId())
+                .orElseThrow();
+        assertThat(user.getName()).isEqualTo("산업경영공학");
+    }
+
+    @Test
     @DisplayName("탈퇴한 계정이면 WITHDRAWN_ACCOUNT(AUTH_403_002)")
     void authenticate_withdrawnAccount() {
         stubPayload("google-sub-5", "withdrawn@example.com", "홍길동");
