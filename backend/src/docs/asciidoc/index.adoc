@@ -859,7 +859,7 @@ include::{snippets}/quiz-today-success/response-fields.adoc[]
 
 ==== 이어 풀기
 
-이미 일부 문항을 제출한 사용자는 `sessionStatus=PROGRESS`와 `currentQuestionOrder`를 기준으로 이어 풀 문항부터 진입한다. 이미 제출한 문항의 답안 수정은 허용하지 않는다.
+이미 일부 문항을 제출한 사용자는 `sessionStatus=PROGRESS`와 `nextQuestionOrder`를 기준으로 이어 풀 문항부터 진입한다. 이미 제출한 문항의 답안 수정은 허용하지 않는다.
 
 include::{snippets}/quiz-today-progress/http-request.adoc[]
 include::{snippets}/quiz-today-progress/request-headers.adoc[]

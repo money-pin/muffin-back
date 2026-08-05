@@ -74,7 +74,7 @@ class QuizQueryServiceTest {
         assertEquals(3, response.progress().totalCount());
         assertEquals(0, response.progress().solvedCount());
         assertEquals(0, response.progress().correctCount());
-        assertNull(response.progress().currentQuestionOrder());
+        assertNull(response.progress().nextQuestionOrder());
         assertTrue(response.questions().isEmpty());
     }
 
@@ -98,7 +98,7 @@ class QuizQueryServiceTest {
         assertEquals(3, response.progress().totalCount());
         assertEquals(0, response.progress().solvedCount());
         assertEquals(0, response.progress().correctCount());
-        assertEquals(1, response.progress().currentQuestionOrder());
+        assertEquals(1, response.progress().nextQuestionOrder());
         assertEquals(3, response.questions().size());
         assertEquals(101L, response.questions().getFirst().quizId());
         assertEquals(1, response.questions().getFirst().quizOrder());
@@ -130,7 +130,7 @@ class QuizQueryServiceTest {
         assertEquals(3, response.progress().totalCount());
         assertEquals(1, response.progress().solvedCount());
         assertEquals(1, response.progress().correctCount());
-        assertEquals(2, response.progress().currentQuestionOrder());
+        assertEquals(2, response.progress().nextQuestionOrder());
         assertEquals(3, response.questions().size());
     }
 
@@ -156,7 +156,7 @@ class QuizQueryServiceTest {
         assertEquals(3, response.progress().totalCount());
         assertEquals(3, response.progress().solvedCount());
         assertEquals(2, response.progress().correctCount());
-        assertNull(response.progress().currentQuestionOrder());
+        assertNull(response.progress().nextQuestionOrder());
         assertTrue(response.questions().isEmpty());
     }
 
