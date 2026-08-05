@@ -46,17 +46,17 @@ public class OpenPriceCollectionOrchestrator {
             log.warn("[open-price] no target ETFs priceDate={}", priceDate);
             return;
         }
-        if (isCompleted(targets, pricesByEtfId(priceDate))) {
-            log.info("[open-price] already completed, skip priceDate={}", priceDate);
-            return;
-        }
 
         collectSafely("BTC", priceDate, () -> btcPriceCollector.collect(priceDate, true));
         collectSafely("TOSS", priceDate, () -> etfPriceCollector.collectOpen(priceDate, true));
-        publishWhenCompleted(targets, priceDate);
     }
 
-    public void finalizeMissingOpenPrices(LocalDate priceDate) {
+    public void collectAndFinalizeOpenPrices(LocalDate priceDate) {
+        collectOpenPrices(priceDate);
+        finalizeMissingOpenPrices(priceDate);
+    }
+
+    private void finalizeMissingOpenPrices(LocalDate priceDate) {
         if (!tradingCalendarService.getCalendar(priceDate).tradingDay()) {
             log.info("[open-price] market closed, skip finalization priceDate={}", priceDate);
             return;
@@ -68,23 +68,21 @@ public class OpenPriceCollectionOrchestrator {
             return;
         }
         Map<Long, EtfPrice> pricesByEtfId = pricesByEtfId(priceDate);
-        if (isCompleted(targets, pricesByEtfId)) {
-            log.info("[open-price] already finalized, skip priceDate={}", priceDate);
-            return;
-        }
+        if (!isCompleted(targets, pricesByEtfId)) {
 
-        for (Etf target : targets) {
-            if (isTerminal(pricesByEtfId.get(target.getId()))) {
-                continue;
-            }
-            try {
-                etfPriceWriter.markOpenFinalMissing(target.getId(), priceDate);
-            } catch (RuntimeException exception) {
-                log.error(
-                        "[open-price] FINAL_MISSING save failed etfCode={} priceDate={}",
-                        target.getEtfCode(),
-                        priceDate,
-                        exception);
+            for (Etf target : targets) {
+                if (isTerminal(pricesByEtfId.get(target.getId()))) {
+                    continue;
+                }
+                try {
+                    etfPriceWriter.markOpenFinalMissing(target.getId(), priceDate);
+                } catch (RuntimeException exception) {
+                    log.error(
+                            "[open-price] FINAL_MISSING save failed etfCode={} priceDate={}",
+                            target.getEtfCode(),
+                            priceDate,
+                            exception);
+                }
             }
         }
         publishWhenCompleted(targets, priceDate);
