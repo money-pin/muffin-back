@@ -108,7 +108,7 @@ class QuizControllerDocsTest {
                                 fieldWithPath("result.progress.totalCount").description("전체 문항 수"),
                                 fieldWithPath("result.progress.solvedCount").description("풀이 완료 문항 수"),
                                 fieldWithPath("result.progress.correctCount").description("정답 문항 수"),
-                                fieldWithPath("result.progress.currentQuestionOrder")
+                                fieldWithPath("result.progress.nextQuestionOrder")
                                         .description("이어 풀 문항 순서. 완료/이용 불가 상태면 null"),
                                 fieldWithPath("result.questions[].quizId").description("퀴즈 문항 ID"),
                                 fieldWithPath("result.questions[].quizOrder").description("문항 순서"),
@@ -167,7 +167,7 @@ class QuizControllerDocsTest {
                                 fieldWithPath("result.progress.totalCount").description("전체 문항 수"),
                                 fieldWithPath("result.progress.solvedCount").description("풀이 완료 문항 수"),
                                 fieldWithPath("result.progress.correctCount").description("정답 문항 수"),
-                                fieldWithPath("result.progress.currentQuestionOrder")
+                                fieldWithPath("result.progress.nextQuestionOrder")
                                         .description("이어 풀 문항 순서. 프론트는 이 문항부터 보여준다."),
                                 fieldWithPath("result.questions[].quizId").description("퀴즈 문항 ID"),
                                 fieldWithPath("result.questions[].quizOrder").description("문항 순서"),
@@ -210,7 +210,7 @@ class QuizControllerDocsTest {
                                 fieldWithPath("result.progress.totalCount").description("전체 문항 수(정책상 3)"),
                                 fieldWithPath("result.progress.solvedCount").description("풀이 완료 문항 수"),
                                 fieldWithPath("result.progress.correctCount").description("정답 문항 수"),
-                                fieldWithPath("result.progress.currentQuestionOrder")
+                                fieldWithPath("result.progress.nextQuestionOrder")
                                         .description("이용 불가 상태이므로 null"),
                                 fieldWithPath("result.questions").description("빈 배열"))));
     }

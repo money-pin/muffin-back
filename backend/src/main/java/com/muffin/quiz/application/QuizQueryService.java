@@ -210,11 +210,11 @@ public class QuizQueryService {
 
     /** 기존 세션의 진행 상태를 기준으로 이어 풀기 또는 완료 화면 응답을 만든다. */
     private TodayQuizResponse sessionResponse(LocalDate today, String nickname, QuizSet quizSet, QuizSession session) {
-        Integer currentQuestionOrder =
+        Integer nextQuestionOrder =
                 session.getSolvedCount() >= session.getTotalCount() ? null : session.getSolvedCount() + 1;
 
         QuizProgressResponse progress = new QuizProgressResponse(
-                session.getTotalCount(), session.getSolvedCount(), session.getCorrectCount(), currentQuestionOrder);
+                session.getTotalCount(), session.getSolvedCount(), session.getCorrectCount(), nextQuestionOrder);
 
         List<QuizQuestionResponse> questions =
                 session.getStatus() == QuizSessionStatus.FINISHED ? List.of() : toQuestionResponses(quizSet);
