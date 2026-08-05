@@ -7,7 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
+import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.investment.application.InvestmentQueryService;
+import com.muffin.investment.domain.exception.InvestmentDataIntegrityException;
 import com.muffin.investment.presentation.dto.AssetChangeDirection;
 import com.muffin.investment.presentation.dto.InvestmentAssetResponse;
 import com.muffin.investment.presentation.dto.TodayInvestmentResponse;
@@ -38,6 +40,7 @@ class InvestmentQueryControllerTest {
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(1L, null, List.of()));
         mockMvc = standaloneSetup(new InvestmentController(null, investmentQueryService, null))
+                .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();
     }
@@ -78,5 +81,18 @@ class InvestmentQueryControllerTest {
                 .andExpect(jsonPath("$.result.nextInvestmentAvailableAt").doesNotExist());
 
         verify(investmentQueryService).getToday(1L);
+    }
+
+    @Test
+    @DisplayName("투자 섹터 기준정보 누락은 내부 정보를 노출하지 않고 500으로 반환한다")
+    void getToday_missingSectorReferenceReturns500() throws Exception {
+        when(investmentQueryService.getToday(1L)).thenThrow(new InvestmentDataIntegrityException(99L));
+
+        mockMvc.perform(get("/api/investments/today"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.isSuccess").value(false))
+                .andExpect(jsonPath("$.code").value("COMMON_500_001"))
+                .andExpect(jsonPath("$.message").value("예기치 않은 서버 에러가 발생했습니다."))
+                .andExpect(jsonPath("$.errorDetail").doesNotExist());
     }
 }

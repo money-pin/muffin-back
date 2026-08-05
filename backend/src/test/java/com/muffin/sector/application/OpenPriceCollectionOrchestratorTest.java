@@ -9,14 +9,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.event.EtfPricesLoadedEvent;
 import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
 import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.EtfPriceRepository;
-import com.muffin.sector.exception.SectorErrorCode;
+import com.muffin.sector.domain.exception.SectorException;
+import com.muffin.sector.domain.exception.code.SectorErrorCode;
 import com.muffin.sector.infrastructure.BtcPriceCollector;
 import com.muffin.sector.infrastructure.EtfPriceCollector;
 import com.muffin.sector.infrastructure.EtfPriceWriter;
@@ -128,9 +128,9 @@ class OpenPriceCollectionOrchestratorTest {
     @Test
     void collectOpenPrices_failsClosedWhenCalendarIsUnavailable() {
         when(tradingCalendarService.getCalendar(DATE))
-                .thenThrow(new GeneralException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE));
+                .thenThrow(new SectorException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE));
 
-        assertThrows(GeneralException.class, () -> orchestrator.collectOpenPrices(DATE));
+        assertThrows(SectorException.class, () -> orchestrator.collectOpenPrices(DATE));
 
         verify(etfRepository, never()).findAll();
         verify(btcPriceCollector, never()).collect(any(), anyBoolean());

@@ -4,11 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.muffin.investment.domain.exception.InvestmentDataIntegrityException;
 import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.InvestmentRepository;
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
@@ -165,6 +167,24 @@ class InvestmentQueryServiceTest {
         assertEquals(TodayInvestmentStatus.UNAVAILABLE, response.status());
         assertNotNull(response.previousInvestment());
         assertEquals(PREVIOUS_TRADING_DAY, response.previousInvestment().investDate());
+    }
+
+    @Test
+    @DisplayName("직전 투자 내역의 섹터 기준정보가 없으면 서버 데이터 정합성 오류가 발생한다")
+    void getToday_throwsDataIntegrityExceptionWhenSectorReferenceIsMissing() {
+        service = serviceAt("2026-07-13T08:00:00+09:00");
+        mockTradingMonday();
+        Investment investment = Investment.confirm(USER_ID, 10L, PREVIOUS_TRADING_DAY);
+        investment.addSector(1L, 2, 200_000L, null);
+        when(investmentRepository.findWithSectorsByUserIdAndInvestDateAndStatus(
+                        USER_ID, PREVIOUS_TRADING_DAY, InvestmentStatus.CONFIRMED))
+                .thenReturn(Optional.of(investment));
+        when(sectorRepository.findAllById(List.of(1L))).thenReturn(List.of());
+
+        InvestmentDataIntegrityException exception =
+                assertThrows(InvestmentDataIntegrityException.class, () -> service.getToday(USER_ID));
+
+        assertTrue(exception.getMessage().contains("sectorId=1"));
     }
 
     @Test

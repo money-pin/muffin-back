@@ -68,7 +68,6 @@ muffin:
       finalization-cron: "0 20 9 * * *"
       zone: Asia/Seoul
 
-    # TODO : 확인필요 - 이슈 #40 확정 정책에 맞춰 종가 수집과 자정 투자 마감 스케줄을 추가함.
     close-price:
       scheduler-enabled: true
       afternoon-cron: "0 35,45,55 15 * * *"

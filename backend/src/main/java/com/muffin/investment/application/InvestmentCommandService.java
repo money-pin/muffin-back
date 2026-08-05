@@ -1,6 +1,7 @@
 package com.muffin.investment.application;
 
-import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.investment.domain.exception.InvestmentException;
+import com.muffin.investment.domain.exception.code.InvestmentErrorCode;
 import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.Investment.SectorAllocation;
 import com.muffin.investment.domain.investment.InvestmentRepository;
@@ -8,7 +9,6 @@ import com.muffin.investment.domain.investment.InvestmentSector;
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
-import com.muffin.investment.exception.InvestmentErrorCode;
 import com.muffin.investment.presentation.dto.InvestmentRequest;
 import com.muffin.investment.presentation.dto.InvestmentSectorRequest;
 import com.muffin.investment.presentation.dto.TodayInvestmentResponse;
@@ -64,7 +64,7 @@ public class InvestmentCommandService {
                 return new InvestmentCommandResult(
                         toResponse(existing, asset.getTotalAsset(), normalized.sectors()), false);
             }
-            throw new GeneralException(InvestmentErrorCode.INVESTMENT_ALREADY_CONFIRMED);
+            throw new InvestmentException(InvestmentErrorCode.INVESTMENT_ALREADY_CONFIRMED);
         }
 
         requireInvestmentWindow(userId, now);
@@ -85,13 +85,13 @@ public class InvestmentCommandService {
         Investment investment = investmentRepository
                 .findWithSectorsForUpdate(userId, requestedAt.toLocalDate())
                 .filter(existing -> existing.getStatus() == InvestmentStatus.CONFIRMED)
-                .orElseThrow(() -> new GeneralException(InvestmentErrorCode.INVESTMENT_NOT_FOUND));
+                .orElseThrow(() -> new InvestmentException(InvestmentErrorCode.INVESTMENT_NOT_FOUND));
 
         ZonedDateTime lockedAt = now();
         if (!lockedAt.toLocalDate().equals(investment.getInvestDate())
                 || lockedAt.toLocalTime().isBefore(INVESTMENT_START)
                 || investment.getFinalizedAt() != null) {
-            throw new GeneralException(InvestmentErrorCode.INVESTMENT_WINDOW_CLOSED);
+            throw new InvestmentException(InvestmentErrorCode.INVESTMENT_WINDOW_CLOSED);
         }
 
         NormalizedInvestment normalized = normalize(request);
@@ -103,7 +103,7 @@ public class InvestmentCommandService {
     private UserAsset requiredAssetForUpdate(Long userId) {
         return userAssetRepository
                 .findByUserIdForUpdate(userId)
-                .orElseThrow(() -> new GeneralException(InvestmentErrorCode.USER_ASSET_NOT_INITIALIZED));
+                .orElseThrow(() -> new InvestmentException(InvestmentErrorCode.USER_ASSET_NOT_INITIALIZED));
     }
 
     private void requireInvestmentWindow(Long userId, ZonedDateTime now) {
@@ -112,7 +112,7 @@ public class InvestmentCommandService {
         if (!calendar.tradingDay()
                 || now.toLocalTime().isBefore(INVESTMENT_START)
                 || pendingInvestmentChecker.hasPendingInvestment(userId, calendar)) {
-            throw new GeneralException(InvestmentErrorCode.INVESTMENT_WINDOW_CLOSED);
+            throw new InvestmentException(InvestmentErrorCode.INVESTMENT_WINDOW_CLOSED);
         }
     }
 
@@ -122,7 +122,7 @@ public class InvestmentCommandService {
             try {
                 quantities.merge(sector.sectorCode(), sector.quantity(), Math::addExact);
             } catch (ArithmeticException exception) {
-                throw new GeneralException(InvestmentErrorCode.BUDGET_EXCEEDED);
+                throw new InvestmentException(InvestmentErrorCode.BUDGET_EXCEEDED);
             }
         }
 
@@ -133,13 +133,13 @@ public class InvestmentCommandService {
             Sector sector = sectorRepository
                     .findBySectorCode(entry.getKey())
                     .filter(Sector::isActive)
-                    .orElseThrow(() -> new GeneralException(InvestmentErrorCode.INVALID_SECTOR));
+                    .orElseThrow(() -> new InvestmentException(InvestmentErrorCode.INVALID_SECTOR));
             long amount;
             try {
                 amount = Math.multiplyExact(UNIT_AMOUNT, entry.getValue().longValue());
                 totalAmount = Math.addExact(totalAmount, amount);
             } catch (ArithmeticException exception) {
-                throw new GeneralException(InvestmentErrorCode.BUDGET_EXCEEDED);
+                throw new InvestmentException(InvestmentErrorCode.BUDGET_EXCEEDED);
             }
             sectors.add(sector);
             allocations.add(new SectorAllocation(sector.getId(), entry.getValue(), amount));
@@ -149,7 +149,7 @@ public class InvestmentCommandService {
 
     private void requireWithinBudget(long totalAmount, long totalAsset) {
         if (totalAmount > totalAsset) {
-            throw new GeneralException(InvestmentErrorCode.BUDGET_EXCEEDED);
+            throw new InvestmentException(InvestmentErrorCode.BUDGET_EXCEEDED);
         }
     }
 
@@ -176,7 +176,7 @@ public class InvestmentCommandService {
 
     private TodayInvestmentSectorResponse sectorResponse(InvestmentSector item, Sector sector, long totalAmount) {
         if (sector == null) {
-            throw new GeneralException(InvestmentErrorCode.INVALID_SECTOR);
+            throw new InvestmentException(InvestmentErrorCode.INVALID_SECTOR);
         }
         BigDecimal ratio = InvestmentRatioCalculator.calculate(item.getAmount(), totalAmount);
         return new TodayInvestmentSectorResponse(
