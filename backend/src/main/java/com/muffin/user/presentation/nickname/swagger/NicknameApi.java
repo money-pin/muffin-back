@@ -18,7 +18,7 @@ public interface NicknameApi {
 
     @Operation(
             summary = "닉네임 중복 조회 (MYPAGE-02-1)",
-            description = "온보딩/마이페이지에서 입력한 닉네임이 이미 사용 중인지 확인한다. 형식(2~10자, 한글/영문/숫자/공백) 위반이나 비속어 포함 시 400을 반환한다.")
+            description = "온보딩/마이페이지에서 입력한 닉네임이 이미 사용 중인지 확인한다. 형식(2~6자, 한글/영문/숫자/공백) 위반이나 비속어 포함 시 400을 반환한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(

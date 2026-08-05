@@ -283,32 +283,32 @@ class UserTest {
         }
 
         @Test
-        @DisplayName("10자 이하 → 그대로 반환")
+        @DisplayName("6자 이하 → 그대로 반환")
         void shortNamePassesThrough() {
             assertThat(User.truncateName("홍길동")).isEqualTo("홍길동");
         }
 
         @Test
-        @DisplayName("정확히 10자 → 그대로 반환")
-        void exactlyTenCharsPassesThrough() {
-            assertThat(User.truncateName("일이삼사오육칠팔구십")).isEqualTo("일이삼사오육칠팔구십");
+        @DisplayName("정확히 6자 → 그대로 반환")
+        void exactlySixCharsPassesThrough() {
+            assertThat(User.truncateName("일이삼사오육")).isEqualTo("일이삼사오육");
         }
 
         @Test
-        @DisplayName("10자 초과(예: 학교 Workspace 계정의 긴 표시 이름) → 앞 10자로 잘라냄")
+        @DisplayName("6자 초과(예: 학교 Workspace 계정의 긴 표시 이름) → 앞 6자로 잘라냄")
         void longNameTruncated() {
-            assertThat(User.truncateName("산업경영공학과 홍길동 20211234")).isEqualTo("산업경영공학과 홍길");
+            assertThat(User.truncateName("산업경영공학과 홍길동 20211234")).isEqualTo("산업경영공학");
         }
 
         @Test
         @DisplayName("자르는 지점이 surrogate pair(예: 이모지) 중간이면 쌍이 깨지지 않도록 한 글자 덜 잘라낸다")
         void doesNotSplitSurrogatePair() {
-            // 9자(BMP) + 이모지 1개(2 code unit) = length() 11 → 10번째 code unit에서 자르면 이모지가 반으로 쪼개짐
-            String nineCharsPlusEmoji = "일이삼사오육칠팔구" + "😀";
+            // 5자(BMP) + 이모지 1개(2 code unit) = length() 7 → 6번째 code unit에서 자르면 이모지가 반으로 쪼개짐
+            String fiveCharsPlusEmoji = "일이삼사오" + "😀";
 
-            String truncated = User.truncateName(nineCharsPlusEmoji);
+            String truncated = User.truncateName(fiveCharsPlusEmoji);
 
-            assertThat(truncated).isEqualTo("일이삼사오육칠팔구");
+            assertThat(truncated).isEqualTo("일이삼사오");
             assertThat(Character.isHighSurrogate(truncated.charAt(truncated.length() - 1)))
                     .isFalse();
         }
@@ -337,11 +337,11 @@ class UserTest {
         }
 
         @Test
-        @DisplayName("10자 초과 → IllegalArgumentException")
+        @DisplayName("6자 초과 → IllegalArgumentException")
         void tooLong() {
             User user = defaultUser();
 
-            assertThatThrownBy(() -> user.changeNickname("일이삼사오육칠팔구십일")).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changeNickname("일이삼사오육칠")).isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
@@ -353,11 +353,11 @@ class UserTest {
         }
 
         @Test
-        @DisplayName("정확히 10자 → 성공")
-        void exactlyTenChars() {
+        @DisplayName("정확히 6자 → 성공")
+        void exactlySixChars() {
             User user = defaultUser();
 
-            assertThatNoException().isThrownBy(() -> user.changeNickname("일이삼사오육칠팔구십"));
+            assertThatNoException().isThrownBy(() -> user.changeNickname("일이삼사오육"));
         }
 
         @Test

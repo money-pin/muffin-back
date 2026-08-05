@@ -114,7 +114,7 @@ class NicknameControllerDocsTest {
                 .andExpect(status().isOk())
                 .andDo(document(
                         "nickname-change-success",
-                        requestFields(fieldWithPath("nickname").description("변경할 닉네임(2~10자)")),
+                        requestFields(fieldWithPath("nickname").description("변경할 닉네임(2~6자)")),
                         responseFields(
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드"),

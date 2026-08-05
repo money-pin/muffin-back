@@ -60,10 +60,10 @@ public class User extends BaseEntity {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private UserOnboarding userOnboarding;
 
-    private static final int NAME_MAX_LENGTH = 10;
+    private static final int NAME_MAX_LENGTH = 6;
     private static final int NICKNAME_MIN_LENGTH = 2;
-    private static final int NICKNAME_MAX_LENGTH = 10;
-    // 한글/영문/숫자/공백만 허용, 2~10자. 정규화(NFC) 후의 문자열에 대해서만 검증한다.
+    private static final int NICKNAME_MAX_LENGTH = 6;
+    // 한글/영문/숫자/공백만 허용, 2~6자. 정규화(NFC) 후의 문자열에 대해서만 검증한다.
     private static final Pattern NICKNAME_PATTERN =
             Pattern.compile("^[가-힣a-zA-Z0-9 ]{" + NICKNAME_MIN_LENGTH + "," + NICKNAME_MAX_LENGTH + "}$");
 

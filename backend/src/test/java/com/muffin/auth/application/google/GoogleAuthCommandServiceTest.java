@@ -107,7 +107,7 @@ class GoogleAuthCommandServiceTest {
     }
 
     @Test
-    @DisplayName("구글 name이 10자를 초과해도(예: 학교 Workspace 계정) 잘라서 저장하고 가입에 성공한다")
+    @DisplayName("구글 name이 6자를 초과해도(예: 학교 Workspace 계정) 잘라서 저장하고 가입에 성공한다")
     void authenticate_newAccount_longNameIsTruncated() {
         stubPayload("google-sub-6", "student@g.hongik.ac.kr", "산업경영공학과 홍길동 20211234");
 
@@ -120,7 +120,7 @@ class GoogleAuthCommandServiceTest {
                         .orElseThrow()
                         .getUserId())
                 .orElseThrow();
-        assertThat(user.getName()).isEqualTo("산업경영공학과 홍길");
+        assertThat(user.getName()).isEqualTo("산업경영공학");
     }
 
     @Test
