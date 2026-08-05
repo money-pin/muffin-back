@@ -95,6 +95,9 @@ public class EtfPrice {
 
     /** 종가를 반영한다. 같은 값을 여러 번 반영해도 결과는 같다. */
     public void recordClose(Long endPrice) {
+        if (endPriceStatus == PriceCollectionStatus.FINAL_MISSING) {
+            return;
+        }
         this.endPrice = requirePositive(endPrice, "endPrice");
         this.endPriceStatus = PriceCollectionStatus.SUCCESS;
     }
@@ -144,7 +147,7 @@ public class EtfPrice {
     }
 
     private void markCloseUnavailable(PriceCollectionStatus status) {
-        if (endPriceStatus == PriceCollectionStatus.SUCCESS) {
+        if (endPriceStatus == PriceCollectionStatus.SUCCESS || endPriceStatus == PriceCollectionStatus.FINAL_MISSING) {
             return;
         }
         this.endPrice = null;
