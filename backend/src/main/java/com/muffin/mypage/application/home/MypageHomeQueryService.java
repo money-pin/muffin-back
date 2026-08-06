@@ -4,11 +4,11 @@ import com.muffin.character.domain.CharacterProfile;
 import com.muffin.character.domain.CharacterRepository;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.mypage.domain.StreakCalculator;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.CharacterSummary;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.RecentNewsItem;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.StreakSummary;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.WeeklyActivityDay;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.CharacterSummary;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.RecentNewsItem;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.StreakSummary;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.WeeklyActivityDay;
 import com.muffin.mypage.presentation.home.dto.WeekDay;
 import com.muffin.news.application.query.NewsQueryRepository;
 import com.muffin.news.application.query.RecentReadNewsRow;
@@ -30,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class MyPageHomeQueryService {
+public class MypageHomeQueryService {
 
     private static final int RECENT_NEWS_LIMIT = 3;
 
@@ -40,7 +40,7 @@ public class MyPageHomeQueryService {
     private final NewsQueryRepository newsQueryRepository;
     private final Clock clock;
 
-    public MyPageHomeResponse getHome(Long userId) {
+    public MypageHomeResponse getHome(Long userId) {
         User user =
                 userRepository.findById(userId).orElseThrow(() -> new GeneralException(UserErrorCode.USER_NOT_FOUND));
         if (user.getCharacterId() == null) {
@@ -56,7 +56,7 @@ public class MyPageHomeQueryService {
 
         List<RecentReadNewsRow> recentNewsRows = newsQueryRepository.findRecentReadNews(userId, RECENT_NEWS_LIMIT);
 
-        return new MyPageHomeResponse(
+        return new MypageHomeResponse(
                 user.getNickname(),
                 new CharacterSummary(
                         character.getCharacterId(),

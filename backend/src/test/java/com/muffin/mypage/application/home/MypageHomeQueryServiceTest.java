@@ -10,7 +10,7 @@ import com.muffin.character.domain.CharacterProfile;
 import com.muffin.character.domain.CharacterRepository;
 import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.global.apiPayload.exception.GeneralException;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse;
 import com.muffin.news.application.query.NewsQueryRepository;
 import com.muffin.news.application.query.RecentReadNewsRow;
 import com.muffin.quiz.domain.quizsession.QuizSessionRepository;
@@ -34,7 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
-class MyPageHomeQueryServiceTest {
+class MypageHomeQueryServiceTest {
 
     private static final Long USER_ID = 1L;
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
@@ -54,11 +54,11 @@ class MyPageHomeQueryServiceTest {
     private final Clock clock =
             Clock.fixed(LocalDate.of(2026, 7, 23).atStartOfDay(KST).toInstant(), KST);
 
-    private MyPageHomeQueryService myPageHomeQueryService;
+    private MypageHomeQueryService myPageHomeQueryService;
 
     @BeforeEach
     void setUp() {
-        myPageHomeQueryService = new MyPageHomeQueryService(
+        myPageHomeQueryService = new MypageHomeQueryService(
                 userRepository, characterRepository, quizSessionRepository, newsQueryRepository, clock);
     }
 
@@ -76,7 +76,7 @@ class MyPageHomeQueryServiceTest {
         when(newsQueryRepository.findRecentReadNews(any(), anyInt()))
                 .thenReturn(List.of(new RecentReadNewsRow(10L, "제목", "http://thumb", LocalDateTime.now())));
 
-        MyPageHomeResponse response = myPageHomeQueryService.getHome(USER_ID);
+        MypageHomeResponse response = myPageHomeQueryService.getHome(USER_ID);
 
         assertThat(response.nickname()).isEqualTo("길동이");
         assertThat(response.character().characterId()).isEqualTo(1L);

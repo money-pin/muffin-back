@@ -10,13 +10,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
-import com.muffin.mypage.application.home.MyPageHomeQueryService;
+import com.muffin.mypage.application.home.MypageHomeQueryService;
 import com.muffin.mypage.presentation.MypageController;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.CharacterSummary;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.RecentNewsItem;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.StreakSummary;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.WeeklyActivityDay;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.CharacterSummary;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.RecentNewsItem;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.StreakSummary;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.WeeklyActivityDay;
 import com.muffin.mypage.presentation.home.dto.WeekDay;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,7 +35,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 /** 마이페이지 홈 조회 API의 REST Docs 스니펫을 생성한다. */
 @ExtendWith(RestDocumentationExtension.class)
-class MyPageHomeControllerDocsTest {
+class MypageHomeControllerDocsTest {
 
     private static final Long USER_ID = 1L;
 
@@ -53,9 +53,9 @@ class MyPageHomeControllerDocsTest {
     @Test
     @DisplayName("마이페이지 홈 조회 문서화")
     void documentGetHome(RestDocumentationContextProvider restDocumentation) throws Exception {
-        MyPageHomeQueryService stub = new MyPageHomeQueryService(null, null, null, null, null) {
+        MypageHomeQueryService stub = new MypageHomeQueryService(null, null, null, null, null) {
             @Override
-            public MyPageHomeResponse getHome(Long userId) {
+            public MypageHomeResponse getHome(Long userId) {
                 List<WeeklyActivityDay> weeklyActivity = List.of(
                         new WeeklyActivityDay(WeekDay.SUN, false),
                         new WeeklyActivityDay(WeekDay.MON, true),
@@ -64,7 +64,7 @@ class MyPageHomeControllerDocsTest {
                         new WeeklyActivityDay(WeekDay.THU, true),
                         new WeeklyActivityDay(WeekDay.FRI, true),
                         new WeeklyActivityDay(WeekDay.SAT, false));
-                return new MyPageHomeResponse(
+                return new MypageHomeResponse(
                         "윤성",
                         new CharacterSummary(
                                 1L, MuffinType.PLAIN, "플레인 머핀", "https://example.com/images/characters/plain.png"),
@@ -112,7 +112,7 @@ class MyPageHomeControllerDocsTest {
                                 fieldWithPath("result.recentNews[].readAt").description("열람 시각"))));
     }
 
-    private MockMvc mockMvcOf(MyPageHomeQueryService stub, RestDocumentationContextProvider restDocumentation) {
+    private MockMvc mockMvcOf(MypageHomeQueryService stub, RestDocumentationContextProvider restDocumentation) {
         return MockMvcBuilders.standaloneSetup(new MypageController(null, null, stub, null))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())

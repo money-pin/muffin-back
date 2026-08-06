@@ -1,7 +1,7 @@
 package com.muffin.notification.presentation.swagger;
 
 import com.muffin.global.apiPayload.ApiResponse;
-import com.muffin.notification.presentation.dto.MyPageSettingsResponse;
+import com.muffin.notification.presentation.dto.MypageSettingsResponse;
 import com.muffin.notification.presentation.dto.NotificationSettingsUpdateRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -12,7 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "Notification", description = "마이페이지 설정/알림 API")
-public interface MyPageSettingsApi {
+public interface MypageSettingsApi {
 
     @Operation(summary = "마이페이지 설정 조회 (MYPAGE-06-1)", description = "마이페이지 설정 화면에 필요한 값을 조회한다. 현재는 알림 설정만 포함한다.")
     @ApiResponses({
@@ -21,7 +21,7 @@ public interface MyPageSettingsApi {
                 responseCode = "401",
                 description = "인증이 필요합니다. (AUTH_401_001)")
     })
-    ApiResponse<MyPageSettingsResponse> getSettings(@Parameter(hidden = true) @AuthenticationPrincipal Long userId);
+    ApiResponse<MypageSettingsResponse> getSettings(@Parameter(hidden = true) @AuthenticationPrincipal Long userId);
 
     @Operation(
             summary = "알림 설정 조회 (MYPAGE-06-2)",
@@ -32,7 +32,7 @@ public interface MyPageSettingsApi {
                 responseCode = "401",
                 description = "인증이 필요합니다. (AUTH_401_001)")
     })
-    ApiResponse<MyPageSettingsResponse> getNotificationSettings(
+    ApiResponse<MypageSettingsResponse> getNotificationSettings(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId);
 
     @Operation(summary = "알림 설정 변경 (MYPAGE-06-3)", description = "알림 설정 4개 토글을 한 번에 갱신한다(전체 교체, 부분 갱신 아님).")
@@ -45,7 +45,7 @@ public interface MyPageSettingsApi {
                 responseCode = "401",
                 description = "인증이 필요합니다. (AUTH_401_001)")
     })
-    ApiResponse<MyPageSettingsResponse> updateNotificationSettings(
+    ApiResponse<MypageSettingsResponse> updateNotificationSettings(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
             @RequestBody @Valid NotificationSettingsUpdateRequest request);
 }

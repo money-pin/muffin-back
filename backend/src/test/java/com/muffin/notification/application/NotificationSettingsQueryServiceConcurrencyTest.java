@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.muffin.global.config.JpaAuditingConfig;
 import com.muffin.notification.domain.NotificationSettingsRepository;
-import com.muffin.notification.presentation.dto.MyPageSettingsResponse;
+import com.muffin.notification.presentation.dto.MypageSettingsResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -64,24 +64,24 @@ class NotificationSettingsQueryServiceConcurrencyTest {
         CountDownLatch ready = new CountDownLatch(requestCount);
         CountDownLatch start = new CountDownLatch(1);
 
-        List<Callable<MyPageSettingsResponse>> tasks = IntStream.range(0, requestCount)
-                .<Callable<MyPageSettingsResponse>>mapToObj(i -> () -> {
+        List<Callable<MypageSettingsResponse>> tasks = IntStream.range(0, requestCount)
+                .<Callable<MypageSettingsResponse>>mapToObj(i -> () -> {
                     ready.countDown();
                     start.await();
                     return notificationSettingsQueryService.getSettings(USER_ID);
                 })
                 .toList();
 
-        List<Future<MyPageSettingsResponse>> futures = new ArrayList<>();
-        for (Callable<MyPageSettingsResponse> task : tasks) {
+        List<Future<MypageSettingsResponse>> futures = new ArrayList<>();
+        for (Callable<MypageSettingsResponse> task : tasks) {
             futures.add(executor.submit(task));
         }
 
         ready.await();
         start.countDown();
 
-        List<MyPageSettingsResponse> results = new ArrayList<>();
-        for (Future<MyPageSettingsResponse> future : futures) {
+        List<MypageSettingsResponse> results = new ArrayList<>();
+        for (Future<MypageSettingsResponse> future : futures) {
             results.add(future.get(10, TimeUnit.SECONDS));
         }
         executor.shutdown();

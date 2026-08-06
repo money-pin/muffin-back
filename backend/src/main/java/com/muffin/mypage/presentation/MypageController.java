@@ -4,11 +4,11 @@ import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.global.apiPayload.code.GeneralSuccessCode;
 import com.muffin.mypage.application.MypageRecentNewsQueryService;
 import com.muffin.mypage.application.MypageScrapQueryService;
-import com.muffin.mypage.application.home.MyPageHomeQueryService;
+import com.muffin.mypage.application.home.MypageHomeQueryService;
 import com.muffin.mypage.application.quizhistory.MypageQuizHistoryQueryService;
 import com.muffin.mypage.presentation.dto.RecentNewsResponse;
 import com.muffin.mypage.presentation.dto.ScrapListResponse;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse;
 import com.muffin.mypage.presentation.quizhistory.dto.MypageQuizHistoryResponse;
 import com.muffin.mypage.presentation.swagger.MypageApi;
 import lombok.RequiredArgsConstructor;
@@ -23,12 +23,12 @@ public class MypageController implements MypageApi {
 
     private final MypageScrapQueryService mypageScrapQueryService;
     private final MypageRecentNewsQueryService mypageRecentNewsQueryService;
-    private final MyPageHomeQueryService myPageHomeQueryService;
+    private final MypageHomeQueryService myPageHomeQueryService;
     private final MypageQuizHistoryQueryService mypageQuizHistoryQueryService;
 
     @Override
     @GetMapping("/api/mypage/home")
-    public ApiResponse<MyPageHomeResponse> getHome(@AuthenticationPrincipal Long userId) {
+    public ApiResponse<MypageHomeResponse> getHome(@AuthenticationPrincipal Long userId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, myPageHomeQueryService.getHome(userId));
     }
 

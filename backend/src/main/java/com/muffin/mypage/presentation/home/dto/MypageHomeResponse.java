@@ -4,7 +4,7 @@ import com.muffin.character.domain.enums.MuffinType;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public record MyPageHomeResponse(
+public record MypageHomeResponse(
         String nickname, CharacterSummary character, StreakSummary streak, List<RecentNewsItem> recentNews) {
 
     public record CharacterSummary(

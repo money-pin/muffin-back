@@ -3,7 +3,7 @@ package com.muffin.mypage.presentation.swagger;
 import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.mypage.presentation.dto.RecentNewsResponse;
 import com.muffin.mypage.presentation.dto.ScrapListResponse;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse;
 import com.muffin.mypage.presentation.quizhistory.dto.MypageQuizHistoryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,7 +29,7 @@ public interface MypageApi {
                 responseCode = "409",
                 description = "온보딩을 먼저 완료해야 합니다. (USER_409_001)")
     })
-    ApiResponse<MyPageHomeResponse> getHome(@Parameter(hidden = true) @AuthenticationPrincipal Long userId);
+    ApiResponse<MypageHomeResponse> getHome(@Parameter(hidden = true) @AuthenticationPrincipal Long userId);
 
     @Operation(
             summary = "스크랩한 뉴스 목록 조회 (MYPAGE-04-1)",

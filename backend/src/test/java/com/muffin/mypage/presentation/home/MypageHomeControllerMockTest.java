@@ -9,11 +9,11 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 
 import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
-import com.muffin.mypage.application.home.MyPageHomeQueryService;
+import com.muffin.mypage.application.home.MypageHomeQueryService;
 import com.muffin.mypage.presentation.MypageController;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.CharacterSummary;
-import com.muffin.mypage.presentation.home.dto.MyPageHomeResponse.StreakSummary;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.CharacterSummary;
+import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.StreakSummary;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,14 +27,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** MyPageHomeController를 서비스는 mock으로 격리해 컨트롤러 계층만 단위 테스트한다. */
+/** MypageHomeController를 서비스는 mock으로 격리해 컨트롤러 계층만 단위 테스트한다. */
 @ExtendWith(MockitoExtension.class)
-class MyPageHomeControllerMockTest {
+class MypageHomeControllerMockTest {
 
     private static final Long USER_ID = 1L;
 
     @Mock
-    private MyPageHomeQueryService myPageHomeQueryService;
+    private MypageHomeQueryService myPageHomeQueryService;
 
     private MockMvc mockMvc;
 
@@ -57,7 +57,7 @@ class MyPageHomeControllerMockTest {
     @DisplayName("GET /home은 access token의 userId로 서비스를 호출하고 결과를 그대로 응답한다")
     void getHome_delegatesToServiceWithAuthenticatedUserId() throws Exception {
         when(myPageHomeQueryService.getHome(USER_ID))
-                .thenReturn(new MyPageHomeResponse(
+                .thenReturn(new MypageHomeResponse(
                         "길동이",
                         new CharacterSummary(1L, MuffinType.PLAIN, "플레인 머핀", "http://image"),
                         new StreakSummary(3, 5, List.of()),
