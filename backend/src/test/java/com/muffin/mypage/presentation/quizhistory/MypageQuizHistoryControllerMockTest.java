@@ -10,9 +10,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.mypage.application.quizhistory.MypageQuizHistoryQueryService;
 import com.muffin.mypage.presentation.MypageController;
-import com.muffin.mypage.presentation.quizhistory.dto.MypageQuizHistoryResponse;
-import com.muffin.mypage.presentation.quizhistory.dto.MypageQuizHistoryResponse.QuizSessionSummary;
-import com.muffin.quiz.domain.quizsession.enums.QuizSessionStatus;
+import com.muffin.quiz.domain.quizsession.QuizSession;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -25,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** MypageController의 퀴즈 참여 내역 조회를 서비스는 mock으로 격리해 컨트롤러 계층만 단위 테스트한다. */
@@ -56,12 +55,14 @@ class MypageQuizHistoryControllerMockTest {
     @Test
     @DisplayName("GET /quiz-history는 access token의 userId와 year/month 파라미터로 서비스를 호출하고 결과를 그대로 응답한다")
     void getQuizHistory_delegatesToServiceWithAuthenticatedUserIdAndParams() throws Exception {
-        when(mypageQuizHistoryQueryService.getQuizHistory(USER_ID, 2026, 7))
-                .thenReturn(new MypageQuizHistoryResponse(
-                        2026,
-                        7,
-                        List.of(new QuizSessionSummary(
-                                LocalDate.of(2026, 7, 20), 10L, QuizSessionStatus.FINISHED, 2, 3, 200L, true))));
+        LocalDate date = LocalDate.of(2026, 7, 20);
+        QuizSession session = QuizSession.start(USER_ID, 1L, date, 3);
+        session.recordAttempt(1L, 1L, true, 100L, date.atStartOfDay());
+        session.recordAttempt(2L, 2L, true, 100L, date.atStartOfDay());
+        session.recordAttempt(3L, 3L, false, null, date.atStartOfDay());
+        ReflectionTestUtils.setField(session, "id", 10L);
+
+        when(mypageQuizHistoryQueryService.getQuizHistory(USER_ID, 2026, 7)).thenReturn(List.of(session));
 
         mockMvc.perform(get("/api/mypage/quiz-history").param("year", "2026").param("month", "7"))
                 .andExpect(status().isOk())

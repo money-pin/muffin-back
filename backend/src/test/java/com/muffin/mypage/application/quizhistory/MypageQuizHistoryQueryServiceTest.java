@@ -6,7 +6,6 @@ import static org.mockito.Mockito.when;
 
 import com.muffin.mypage.domain.exception.MypageException;
 import com.muffin.mypage.domain.exception.code.MypageErrorCode;
-import com.muffin.mypage.presentation.quizhistory.dto.MypageQuizHistoryResponse;
 import com.muffin.quiz.domain.quizsession.QuizSession;
 import com.muffin.quiz.domain.quizsession.QuizSessionRepository;
 import com.muffin.quiz.domain.quizsession.enums.QuizSessionStatus;
@@ -53,7 +52,7 @@ class MypageQuizHistoryQueryServiceTest {
     }
 
     @Test
-    @DisplayName("연/월 범위의 세션을 저장소가 준 순서(날짜 내림차순) 그대로 응답 DTO로 옮긴다")
+    @DisplayName("연/월 범위의 세션을 저장소가 준 순서(날짜 내림차순) 그대로 반환한다")
     void getQuizHistory_success() {
         QuizSession session1 = finishedSession(10L, LocalDate.of(2026, 7, 20), 3, 2, true);
         QuizSession session2 = finishedSession(11L, LocalDate.of(2026, 7, 5), 3, 1, false);
@@ -63,24 +62,22 @@ class MypageQuizHistoryQueryServiceTest {
                         USER_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31)))
                 .thenReturn(List.of(session1, session2));
 
-        MypageQuizHistoryResponse response = mypageQuizHistoryQueryService.getQuizHistory(USER_ID, 2026, 7);
+        List<QuizSession> quizSessions = mypageQuizHistoryQueryService.getQuizHistory(USER_ID, 2026, 7);
 
-        assertThat(response.year()).isEqualTo(2026);
-        assertThat(response.month()).isEqualTo(7);
-        assertThat(response.quizSessions()).hasSize(2);
+        assertThat(quizSessions).hasSize(2);
 
-        var first = response.quizSessions().get(0);
-        assertThat(first.date()).isEqualTo(LocalDate.of(2026, 7, 20));
-        assertThat(first.sessionId()).isEqualTo(10L);
-        assertThat(first.status()).isEqualTo(QuizSessionStatus.FINISHED);
-        assertThat(first.correctCount()).isEqualTo(2);
-        assertThat(first.totalCount()).isEqualTo(3);
-        assertThat(first.rewardMoney()).isEqualTo(200L);
-        assertThat(first.rewardClaimed()).isTrue();
+        var first = quizSessions.get(0);
+        assertThat(first.getDate()).isEqualTo(LocalDate.of(2026, 7, 20));
+        assertThat(first.getId()).isEqualTo(10L);
+        assertThat(first.getStatus()).isEqualTo(QuizSessionStatus.FINISHED);
+        assertThat(first.getCorrectCount()).isEqualTo(2);
+        assertThat(first.getTotalCount()).isEqualTo(3);
+        assertThat(first.getRewardMoney()).isEqualTo(200L);
+        assertThat(first.isRewardClaimed()).isTrue();
 
-        var second = response.quizSessions().get(1);
-        assertThat(second.date()).isEqualTo(LocalDate.of(2026, 7, 5));
-        assertThat(second.rewardClaimed()).isFalse();
+        var second = quizSessions.get(1);
+        assertThat(second.getDate()).isEqualTo(LocalDate.of(2026, 7, 5));
+        assertThat(second.isRewardClaimed()).isFalse();
     }
 
     @Test
@@ -91,9 +88,9 @@ class MypageQuizHistoryQueryServiceTest {
                         USER_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31)))
                 .thenReturn(List.of());
 
-        MypageQuizHistoryResponse response = mypageQuizHistoryQueryService.getQuizHistory(USER_ID, 2026, 7);
+        List<QuizSession> quizSessions = mypageQuizHistoryQueryService.getQuizHistory(USER_ID, 2026, 7);
 
-        assertThat(response.quizSessions()).isEmpty();
+        assertThat(quizSessions).isEmpty();
     }
 
     @Test

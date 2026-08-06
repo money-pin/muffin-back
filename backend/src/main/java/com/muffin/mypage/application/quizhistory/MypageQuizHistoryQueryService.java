@@ -3,8 +3,6 @@ package com.muffin.mypage.application.quizhistory;
 import com.muffin.mypage.domain.QuizHistoryPeriod;
 import com.muffin.mypage.domain.exception.MypageException;
 import com.muffin.mypage.domain.exception.code.MypageErrorCode;
-import com.muffin.mypage.presentation.quizhistory.dto.MypageQuizHistoryResponse;
-import com.muffin.mypage.presentation.quizhistory.dto.MypageQuizHistoryResponse.QuizSessionSummary;
 import com.muffin.quiz.domain.quizsession.QuizSession;
 import com.muffin.quiz.domain.quizsession.QuizSessionRepository;
 import com.muffin.user.domain.UserRepository;
@@ -23,21 +21,14 @@ public class MypageQuizHistoryQueryService {
     private final UserRepository userRepository;
     private final QuizSessionRepository quizSessionRepository;
 
-    public MypageQuizHistoryResponse getQuizHistory(Long userId, int year, int month) {
+    public List<QuizSession> getQuizHistory(Long userId, int year, int month) {
         if (!userRepository.existsById(userId)) {
             throw new MypageException(MypageErrorCode.USER_NOT_FOUND, null);
         }
 
         QuizHistoryPeriod.Range range = resolveRange(year, month);
 
-        List<QuizSessionSummary> quizSessions =
-                quizSessionRepository
-                        .findAllByUserIdAndDateBetweenOrderByDateDesc(userId, range.start(), range.end())
-                        .stream()
-                        .map(this::toSummary)
-                        .toList();
-
-        return new MypageQuizHistoryResponse(year, month, quizSessions);
+        return quizSessionRepository.findAllByUserIdAndDateBetweenOrderByDateDesc(userId, range.start(), range.end());
     }
 
     private QuizHistoryPeriod.Range resolveRange(int year, int month) {
@@ -46,16 +37,5 @@ public class MypageQuizHistoryQueryService {
         } catch (DateTimeException e) {
             throw new MypageException(MypageErrorCode.INVALID_YEAR_MONTH, null);
         }
-    }
-
-    private QuizSessionSummary toSummary(QuizSession session) {
-        return new QuizSessionSummary(
-                session.getDate(),
-                session.getId(),
-                session.getStatus(),
-                session.getCorrectCount(),
-                session.getTotalCount(),
-                session.getRewardMoney(),
-                session.isRewardClaimed());
     }
 }

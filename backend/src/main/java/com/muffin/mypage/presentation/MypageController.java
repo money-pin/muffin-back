@@ -58,6 +58,8 @@ public class MypageController implements MypageApi {
     public ApiResponse<MypageQuizHistoryResponse> getQuizHistory(
             @AuthenticationPrincipal Long userId, @RequestParam int year, @RequestParam int month) {
         return ApiResponse.onSuccess(
-                GeneralSuccessCode.OK, mypageQuizHistoryQueryService.getQuizHistory(userId, year, month));
+                GeneralSuccessCode.OK,
+                MypageQuizHistoryResponse.from(
+                        year, month, mypageQuizHistoryQueryService.getQuizHistory(userId, year, month)));
     }
 }

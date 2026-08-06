@@ -17,9 +17,7 @@ import com.muffin.mypage.application.quizhistory.MypageQuizHistoryQueryService;
 import com.muffin.mypage.domain.exception.MypageException;
 import com.muffin.mypage.domain.exception.code.MypageErrorCode;
 import com.muffin.mypage.presentation.MypageController;
-import com.muffin.mypage.presentation.quizhistory.dto.MypageQuizHistoryResponse;
-import com.muffin.mypage.presentation.quizhistory.dto.MypageQuizHistoryResponse.QuizSessionSummary;
-import com.muffin.quiz.domain.quizsession.enums.QuizSessionStatus;
+import com.muffin.quiz.domain.quizsession.QuizSession;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -32,6 +30,7 @@ import org.springframework.restdocs.RestDocumentationExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -55,15 +54,20 @@ class MypageQuizHistoryControllerDocsTest {
     @Test
     @DisplayName("월별 퀴즈 참여 내역 정상 응답 문서화")
     void documentQuizHistory(RestDocumentationContextProvider restDocumentation) throws Exception {
-        MypageQuizHistoryResponse response = new MypageQuizHistoryResponse(
-                2026,
-                7,
-                List.of(
-                        new QuizSessionSummary(
-                                LocalDate.of(2026, 7, 20), 10L, QuizSessionStatus.FINISHED, 2, 3, 200L, true),
-                        new QuizSessionSummary(
-                                LocalDate.of(2026, 7, 5), 9L, QuizSessionStatus.PROGRESS, 1, 3, 0L, false)));
-        MockMvc mockMvc = mockMvcWith(stubReturning(response), restDocumentation);
+        LocalDate finishedDate = LocalDate.of(2026, 7, 20);
+        QuizSession finishedSession = QuizSession.start(USER_ID, 1L, finishedDate, 3);
+        finishedSession.recordAttempt(1L, 1L, true, 100L, finishedDate.atStartOfDay());
+        finishedSession.recordAttempt(2L, 2L, true, 100L, finishedDate.atStartOfDay());
+        finishedSession.recordAttempt(3L, 3L, false, null, finishedDate.atStartOfDay());
+        finishedSession.claimReward();
+        ReflectionTestUtils.setField(finishedSession, "id", 10L);
+
+        LocalDate progressDate = LocalDate.of(2026, 7, 5);
+        QuizSession progressSession = QuizSession.start(USER_ID, 2L, progressDate, 3);
+        progressSession.recordAttempt(4L, 4L, false, null, progressDate.atStartOfDay());
+        ReflectionTestUtils.setField(progressSession, "id", 9L);
+
+        MockMvc mockMvc = mockMvcWith(stubReturning(List.of(finishedSession, progressSession)), restDocumentation);
 
         mockMvc.perform(get("/api/mypage/quiz-history")
                         .param("year", "2026")
@@ -99,8 +103,7 @@ class MypageQuizHistoryControllerDocsTest {
     @Test
     @DisplayName("해당 월에 참여 기록이 없는 빈 상태 응답 문서화")
     void documentEmptyQuizHistory(RestDocumentationContextProvider restDocumentation) throws Exception {
-        MypageQuizHistoryResponse response = new MypageQuizHistoryResponse(2026, 7, List.of());
-        MockMvc mockMvc = mockMvcWith(stubReturning(response), restDocumentation);
+        MockMvc mockMvc = mockMvcWith(stubReturning(List.of()), restDocumentation);
 
         mockMvc.perform(get("/api/mypage/quiz-history").param("year", "2026").param("month", "7"))
                 .andExpect(status().isOk())
@@ -147,11 +150,11 @@ class MypageQuizHistoryControllerDocsTest {
                                 fieldWithPath("errorDetail").description("상세 원인"))));
     }
 
-    private MypageQuizHistoryQueryService stubReturning(MypageQuizHistoryResponse response) {
+    private MypageQuizHistoryQueryService stubReturning(List<QuizSession> quizSessions) {
         return new MypageQuizHistoryQueryService(null, null) {
             @Override
-            public MypageQuizHistoryResponse getQuizHistory(Long userId, int year, int month) {
-                return response;
+            public List<QuizSession> getQuizHistory(Long userId, int year, int month) {
+                return quizSessions;
             }
         };
     }
@@ -159,7 +162,7 @@ class MypageQuizHistoryControllerDocsTest {
     private MypageQuizHistoryQueryService stubThrowing(MypageErrorCode errorCode) {
         return new MypageQuizHistoryQueryService(null, null) {
             @Override
-            public MypageQuizHistoryResponse getQuizHistory(Long userId, int year, int month) {
+            public List<QuizSession> getQuizHistory(Long userId, int year, int month) {
                 throw new MypageException(errorCode, "detail");
             }
         };
