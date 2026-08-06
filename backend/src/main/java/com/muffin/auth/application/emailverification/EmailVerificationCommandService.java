@@ -1,8 +1,8 @@
 package com.muffin.auth.application.emailverification;
 
-import com.muffin.auth.domain.Auth;
-import com.muffin.auth.domain.AuthRepository;
 import com.muffin.auth.domain.PasswordEncoder;
+import com.muffin.auth.domain.auth.Auth;
+import com.muffin.auth.domain.auth.AuthRepository;
 import com.muffin.auth.domain.emailverification.EmailVerification;
 import com.muffin.auth.domain.emailverification.EmailVerificationRepository;
 import com.muffin.auth.domain.exception.AuthException;

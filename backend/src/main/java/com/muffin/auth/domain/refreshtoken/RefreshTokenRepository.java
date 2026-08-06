@@ -1,4 +1,4 @@
-package com.muffin.auth.domain;
+package com.muffin.auth.domain.refreshtoken;
 
 import java.util.List;
 import java.util.Optional;

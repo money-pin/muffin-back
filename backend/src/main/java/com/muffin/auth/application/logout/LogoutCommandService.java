@@ -1,6 +1,6 @@
 package com.muffin.auth.application.logout;
 
-import com.muffin.auth.domain.RefreshTokenRepository;
+import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

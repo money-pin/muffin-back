@@ -1,4 +1,4 @@
-package com.muffin.auth.domain;
+package com.muffin.auth.domain.deletedemail;
 
 import java.time.LocalDateTime;
 import org.springframework.data.jpa.repository.JpaRepository;

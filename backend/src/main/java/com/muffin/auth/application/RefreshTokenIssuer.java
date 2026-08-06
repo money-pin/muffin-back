@@ -1,7 +1,7 @@
 package com.muffin.auth.application;
 
-import com.muffin.auth.domain.RefreshToken;
-import com.muffin.auth.domain.RefreshTokenRepository;
+import com.muffin.auth.domain.refreshtoken.RefreshToken;
+import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

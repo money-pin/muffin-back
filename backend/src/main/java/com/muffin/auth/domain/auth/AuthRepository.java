@@ -1,4 +1,4 @@
-package com.muffin.auth.domain;
+package com.muffin.auth.domain.auth;
 
 import com.muffin.auth.domain.enums.AuthProvider;
 import java.time.LocalDateTime;
