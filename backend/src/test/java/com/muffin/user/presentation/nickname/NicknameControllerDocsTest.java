@@ -12,11 +12,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.user.application.nickname.NicknameCommandService;
 import com.muffin.user.application.nickname.NicknameQueryService;
-import com.muffin.user.exception.UserErrorCode;
+import com.muffin.user.domain.exception.UserException;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import com.muffin.user.presentation.nickname.dto.NicknameChangeRequest;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -128,7 +128,7 @@ class NicknameControllerDocsTest {
         NicknameCommandService stub = new NicknameCommandService(null, null) {
             @Override
             public String changeNickname(Long userId, String newNickname) {
-                throw new GeneralException(UserErrorCode.NICKNAME_DUPLICATED);
+                throw new UserException(UserErrorCode.NICKNAME_DUPLICATED);
             }
         };
         MockMvc mockMvc = mockMvcOf(null, stub, restDocumentation);

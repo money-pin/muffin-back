@@ -1,4 +1,4 @@
-package com.muffin.auth.application.exception;
+package com.muffin.auth.domain.exception.code;
 
 import com.muffin.global.apiPayload.code.BaseErrorCode;
 import lombok.AllArgsConstructor;

@@ -11,11 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.muffin.auth.application.JwtProperties;
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.application.google.GoogleAuthCommandService;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.auth.presentation.AuthController;
 import com.muffin.auth.presentation.RefreshTokenCookieHelper;
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,7 +64,7 @@ class GoogleAuthControllerDocsTest {
         GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null) {
             @Override
             public TokenPair authenticate(String idToken) {
-                throw new GeneralException(AuthErrorCode.INVALID_GOOGLE_TOKEN);
+                throw new AuthException(AuthErrorCode.INVALID_GOOGLE_TOKEN);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);

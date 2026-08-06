@@ -10,14 +10,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.domain.Auth;
 import com.muffin.auth.domain.AuthRepository;
 import com.muffin.auth.domain.DeletedEmailRepository;
 import com.muffin.auth.domain.GoogleIdTokenPayload;
 import com.muffin.auth.domain.GoogleIdTokenVerifier;
 import com.muffin.auth.domain.RefreshTokenRepository;
-import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import java.util.UUID;
@@ -148,7 +148,7 @@ class GoogleAuthControllerTest {
     @DisplayName("유효하지 않은 구글 ID Token이면 401 (AUTH_401_004)")
     void authenticate_invalidGoogleToken() throws Exception {
         when(googleIdTokenVerifier.verify("bogus-id-token"))
-                .thenThrow(new GeneralException(AuthErrorCode.INVALID_GOOGLE_TOKEN));
+                .thenThrow(new AuthException(AuthErrorCode.INVALID_GOOGLE_TOKEN));
 
         mockMvc.perform(post("/auth/google")
                         .contentType("application/json")

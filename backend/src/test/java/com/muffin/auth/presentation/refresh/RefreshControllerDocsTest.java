@@ -10,11 +10,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.muffin.auth.application.JwtProperties;
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.application.refresh.RefreshCommandService;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.auth.presentation.AuthController;
 import com.muffin.auth.presentation.RefreshTokenCookieHelper;
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
@@ -77,7 +77,7 @@ class RefreshControllerDocsTest {
         RefreshCommandService stub = new RefreshCommandService(null, null, null) {
             @Override
             public TokenPair refresh(String rawRefreshToken) {
-                throw new GeneralException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+                throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);

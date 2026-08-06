@@ -9,7 +9,7 @@ import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.NicknameProfanityPolicy;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
-import com.muffin.user.exception.UserErrorCode;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import java.text.Normalizer;
 import java.util.Optional;
 import java.util.UUID;

@@ -11,11 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.muffin.auth.application.JwtProperties;
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.application.signup.SignupCommandService;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.auth.presentation.AuthController;
 import com.muffin.auth.presentation.RefreshTokenCookieHelper;
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -70,7 +70,7 @@ class SignupControllerDocsTest {
         SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null) {
             @Override
             public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
-                throw new GeneralException(AuthErrorCode.TERMS_NOT_AGREED);
+                throw new AuthException(AuthErrorCode.TERMS_NOT_AGREED);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
@@ -96,7 +96,7 @@ class SignupControllerDocsTest {
         SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null) {
             @Override
             public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
-                throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
+                throw new AuthException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
@@ -122,7 +122,7 @@ class SignupControllerDocsTest {
         SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null) {
             @Override
             public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
-                throw new GeneralException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
+                throw new AuthException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);

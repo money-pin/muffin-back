@@ -4,12 +4,12 @@ import com.muffin.character.domain.CharacterProfile;
 import com.muffin.character.domain.CharacterRecommendedSector;
 import com.muffin.character.domain.CharacterRecommendedSectorRepository;
 import com.muffin.character.domain.CharacterRepository;
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.sector.domain.sector.Sector;
 import com.muffin.sector.domain.sector.SectorRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
-import com.muffin.user.exception.UserErrorCode;
+import com.muffin.user.domain.exception.UserException;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import com.muffin.user.presentation.onboarding.dto.CharacterResultRequest;
 import com.muffin.user.presentation.onboarding.dto.CharacterResultResponse;
 import com.muffin.user.presentation.onboarding.dto.RecommendedSectorResponse;
@@ -35,12 +35,11 @@ public class CharacterResultCommandService {
     private final OnboardingCompletionService onboardingCompletionService;
 
     public CharacterResultResponse submit(Long userId, CharacterResultRequest request) {
-        User user =
-                userRepository.findById(userId).orElseThrow(() -> new GeneralException(UserErrorCode.USER_NOT_FOUND));
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
 
         CharacterProfile character = characterRepository
                 .findByMuffinType(request.muffin())
-                .orElseThrow(() -> new GeneralException(UserErrorCode.CHARACTER_NOT_FOUND));
+                .orElseThrow(() -> new UserException(UserErrorCode.CHARACTER_NOT_FOUND));
 
         user.assignCharacter(character.getCharacterId());
         user.completeOnboarding(request.firstQuestion(), request.secondQuestion(), request.thirdQuestion());

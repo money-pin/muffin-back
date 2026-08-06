@@ -9,11 +9,11 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.response
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.user.application.onboarding.CharacterResultCommandService;
 import com.muffin.user.application.onboarding.OnboardingCompletionService;
-import com.muffin.user.exception.UserErrorCode;
+import com.muffin.user.domain.exception.UserException;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import com.muffin.user.presentation.onboarding.dto.CharacterResultRequest;
 import com.muffin.user.presentation.onboarding.dto.CharacterResultResponse;
 import com.muffin.user.presentation.onboarding.dto.OnboardingCompleteResponse;
@@ -125,7 +125,7 @@ class OnboardingControllerDocsTest {
         CharacterResultCommandService stub = new CharacterResultCommandService(null, null, null, null, null) {
             @Override
             public CharacterResultResponse submit(Long userId, CharacterResultRequest request) {
-                throw new GeneralException(UserErrorCode.CHARACTER_NOT_FOUND);
+                throw new UserException(UserErrorCode.CHARACTER_NOT_FOUND);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, stubCompletionService(), restDocumentation);
@@ -171,7 +171,7 @@ class OnboardingControllerDocsTest {
         OnboardingCompletionService stub = new OnboardingCompletionService(null, null, null) {
             @Override
             public OnboardingCompleteResponse complete(Long userId) {
-                throw new GeneralException(UserErrorCode.ONBOARDING_NOT_COMPLETED);
+                throw new UserException(UserErrorCode.ONBOARDING_NOT_COMPLETED);
             }
         };
         MockMvc mockMvc = mockMvcOf(stubCharacterResultService(), stub, restDocumentation);

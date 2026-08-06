@@ -17,7 +17,7 @@ import com.muffin.quiz.domain.quizsession.QuizSessionRepository;
 import com.muffin.quiz.domain.quizsession.enums.QuizSessionStatus;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
-import com.muffin.user.exception.UserErrorCode;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

@@ -1,4 +1,4 @@
-package com.muffin.user.exception;
+package com.muffin.user.domain.exception.code;
 
 import com.muffin.global.apiPayload.code.BaseErrorCode;
 import lombok.AllArgsConstructor;

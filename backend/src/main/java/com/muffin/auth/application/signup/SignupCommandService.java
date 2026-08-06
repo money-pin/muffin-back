@@ -3,14 +3,14 @@ package com.muffin.auth.application.signup;
 import com.muffin.auth.application.ConstraintViolations;
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.domain.AccessTokenProvider;
 import com.muffin.auth.domain.Auth;
 import com.muffin.auth.domain.AuthRepository;
 import com.muffin.auth.domain.DeletedEmail;
 import com.muffin.auth.domain.DeletedEmailRepository;
 import com.muffin.auth.domain.PasswordEncoder;
-import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import java.time.LocalDateTime;
@@ -39,14 +39,14 @@ public class SignupCommandService {
     @Transactional
     public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
         if (!termsAgreed) {
-            throw new GeneralException(AuthErrorCode.TERMS_NOT_AGREED);
+            throw new AuthException(AuthErrorCode.TERMS_NOT_AGREED);
         }
         LocalDateTime cutoff = LocalDateTime.now(KST).minusDays(DELETED_EMAIL_BLOCK_DAYS);
         if (deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(DeletedEmail.hash(email), cutoff)) {
-            throw new GeneralException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
+            throw new AuthException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
         }
         if (authRepository.existsByEmail(email)) {
-            throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
+            throw new AuthException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
         }
 
         User user = User.register(null, UUID.randomUUID().toString(), name, null);
@@ -63,7 +63,7 @@ public class SignupCommandService {
             if (!ConstraintViolations.isConstraint(e, "uk_provider_email")) {
                 throw e;
             }
-            throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
+            throw new AuthException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
         }
 
         String accessToken =
