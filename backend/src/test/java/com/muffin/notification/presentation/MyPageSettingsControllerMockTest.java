@@ -5,7 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -88,14 +88,14 @@ class MyPageSettingsControllerMockTest {
     }
 
     @Test
-    @DisplayName("PATCH /settings/notifications는 서비스 호출 결과를 응답에 매핑한다")
+    @DisplayName("PUT /settings/notifications는 서비스 호출 결과를 응답에 매핑한다")
     void updateNotificationSettings_delegatesToService() throws Exception {
         NotificationSettingsUpdateRequest request = new NotificationSettingsUpdateRequest(false, true, false, true);
         when(notificationSettingsCommandService.updateSettings(eq(USER_ID), eq(request)))
                 .thenReturn(new MyPageSettingsResponse(new NotificationSettingsItem(false, true, false, true)));
 
         mockMvc.perform(
-                        patch("/api/mypage/settings/notifications")
+                        put("/api/mypage/settings/notifications")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         "{\"newsUpdate\":false,\"dailyQuiz\":true,\"investResult\":false,\"rankingChange\":true}"))
@@ -107,9 +107,9 @@ class MyPageSettingsControllerMockTest {
     }
 
     @Test
-    @DisplayName("PATCH 필드 하나라도 누락되면 서비스 호출 없이 400")
+    @DisplayName("PUT 필드 하나라도 누락되면 서비스 호출 없이 400")
     void updateNotificationSettings_missingField_badRequestWithoutCallingService() throws Exception {
-        mockMvc.perform(patch("/api/mypage/settings/notifications")
+        mockMvc.perform(put("/api/mypage/settings/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"newsUpdate\":true,\"dailyQuiz\":true,\"investResult\":true}"))
                 .andExpect(status().isBadRequest());

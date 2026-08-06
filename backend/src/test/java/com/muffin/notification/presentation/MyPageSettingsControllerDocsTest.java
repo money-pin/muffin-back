@@ -7,7 +7,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWit
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
@@ -116,7 +116,7 @@ class MyPageSettingsControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(null, commandStub, restDocumentation);
 
-        mockMvc.perform(patch("/api/mypage/settings/notifications")
+        mockMvc.perform(put("/api/mypage/settings/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 new NotificationSettingsUpdateRequest(true, false, true, false))))

@@ -3,7 +3,7 @@ package com.muffin.notification.presentation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -72,9 +72,9 @@ class MyPageSettingsControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /settings/notifications로 변경 후 재조회 시 반영된다")
+    @DisplayName("PUT /settings/notifications로 변경 후 재조회 시 반영된다")
     void updateThenGet_reflectsChange() throws Exception {
-        mockMvc.perform(patch("/api/mypage/settings/notifications")
+        mockMvc.perform(put("/api/mypage/settings/notifications")
                         .header("Authorization", bearerToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
@@ -98,9 +98,9 @@ class MyPageSettingsControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH 필드 누락이면 400")
+    @DisplayName("PUT 필드 누락이면 400")
     void updateSettings_missingField_badRequest() throws Exception {
-        mockMvc.perform(patch("/api/mypage/settings/notifications")
+        mockMvc.perform(put("/api/mypage/settings/notifications")
                         .header("Authorization", bearerToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"newsUpdate\": true, \"dailyQuiz\": true, \"investResult\": true}"))
