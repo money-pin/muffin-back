@@ -113,7 +113,7 @@ class MyPageHomeControllerDocsTest {
     }
 
     private MockMvc mockMvcOf(MyPageHomeQueryService stub, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(new MypageController(null, null, stub))
+        return MockMvcBuilders.standaloneSetup(new MypageController(null, null, stub, null))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)
