@@ -31,7 +31,6 @@ public class InvestmentFinalizationService {
 
     public InvestmentFinalizationResult finalizeInvestments(LocalDate investDate, LocalDateTime finalizedAt) {
         if (!tradingCalendarService.getCalendar(investDate).tradingDay()) {
-            log.info("[investment-finalization] market closed, skip investDate={}", investDate);
             return InvestmentFinalizationResult.marketClosed(investDate);
         }
 
@@ -64,7 +63,6 @@ public class InvestmentFinalizationService {
 
         InvestmentFinalizationResult result =
                 new InvestmentFinalizationResult(investDate, true, targetCount, success, failure);
-        log.info("[investment-finalization] done {}", result);
         return result;
     }
 }

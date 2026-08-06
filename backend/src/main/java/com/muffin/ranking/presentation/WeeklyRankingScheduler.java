@@ -1,16 +1,19 @@
 package com.muffin.ranking.presentation;
 
+import com.muffin.global.batch.BatchJob;
+import com.muffin.global.batch.BatchJobReport;
+import com.muffin.global.batch.BatchJobRunner;
+import com.muffin.global.batch.BatchTrigger;
+import com.muffin.ranking.application.WeeklyRankingBatchResult;
 import com.muffin.ranking.application.WeeklyRankingBatchService;
 import java.time.Clock;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /** 지난주 랭킹이 아직 없을 때만 하루 세 차례 생성한다. */
-@Slf4j
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Component;
 public class WeeklyRankingScheduler {
 
     private final WeeklyRankingBatchService weeklyRankingBatchService;
+    private final BatchJobRunner batchJobRunner;
     private final Clock clock;
 
     @Scheduled(
@@ -38,10 +42,18 @@ public class WeeklyRankingScheduler {
 
     private void run() {
         LocalDate referenceDate = LocalDate.now(clock);
-        try {
-            weeklyRankingBatchService.createPreviousWeekRanking(referenceDate);
-        } catch (RuntimeException exception) {
-            log.error("[weekly-ranking] aborted referenceDate={}", referenceDate, exception);
-        }
+        batchJobRunner.run(BatchJob.WEEKLY_RANKING, BatchTrigger.SCHEDULER, referenceDate, () -> {
+            WeeklyRankingBatchResult result = weeklyRankingBatchService.createPreviousWeekRanking(referenceDate);
+            return report(result).with("week_start", result.weekStartDate());
+        });
+    }
+
+    private BatchJobReport report(WeeklyRankingBatchResult result) {
+        return switch (result.outcome()) {
+            case CREATED -> BatchJobReport.success().with("participants", result.participantCount());
+            case ALREADY_CREATED -> BatchJobReport.skipped("already_created");
+            case SETTLEMENT_PENDING -> BatchJobReport.skipped("settlement_pending");
+            case NO_PARTICIPANTS -> BatchJobReport.skipped("no_participants");
+        };
     }
 }
