@@ -1,5 +1,6 @@
 package com.muffin.sector.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -81,8 +82,9 @@ class OpenPriceCollectionOrchestratorTest {
         when(etfRepository.findAll()).thenReturn(targets);
         when(etfPriceRepository.findByPriceDate(DATE)).thenReturn(List.of()).thenReturn(completedPrices());
 
-        orchestrator.collectOpenPrices(DATE);
+        OpenPriceCollectionResult result = orchestrator.collectOpenPrices(DATE);
 
+        assertThat(result.outcome()).isEqualTo(OpenPriceCollectionResult.Outcome.COMPLETED);
         InOrder order = inOrder(btcPriceCollector, etfPriceCollector, eventPublisher);
         order.verify(btcPriceCollector).collect(DATE, true);
         order.verify(etfPriceCollector).collectOpen(DATE, true);
@@ -98,8 +100,9 @@ class OpenPriceCollectionOrchestratorTest {
                 .thenReturn(List.of())
                 .thenReturn(List.of(EtfPrice.create(BTC_ID, DATE, 50_000_000L, 50_000_000L)));
 
-        orchestrator.collectOpenPrices(DATE);
+        OpenPriceCollectionResult result = orchestrator.collectOpenPrices(DATE);
 
+        assertThat(result.outcome()).isEqualTo(OpenPriceCollectionResult.Outcome.INCOMPLETE);
         verify(eventPublisher, never()).publishEvent(any());
     }
 
@@ -109,8 +112,9 @@ class OpenPriceCollectionOrchestratorTest {
         when(etfRepository.findAll()).thenReturn(targets);
         when(etfPriceRepository.findByPriceDate(DATE)).thenReturn(completedPrices());
 
-        orchestrator.collectOpenPrices(DATE);
+        OpenPriceCollectionResult result = orchestrator.collectOpenPrices(DATE);
 
+        assertThat(result.outcome()).isEqualTo(OpenPriceCollectionResult.Outcome.ALREADY_COMPLETED);
         verify(btcPriceCollector, never()).collect(any(), anyBoolean());
         verify(etfPriceCollector, never()).collectOpen(any(), anyBoolean());
         verify(eventPublisher, never()).publishEvent(any());
@@ -121,8 +125,9 @@ class OpenPriceCollectionOrchestratorTest {
         when(tradingCalendarService.getCalendar(DATE))
                 .thenReturn(new TradingCalendar(DATE, false, DATE.minusDays(3), DATE.plusDays(1)));
 
-        orchestrator.collectOpenPrices(DATE);
+        OpenPriceCollectionResult result = orchestrator.collectOpenPrices(DATE);
 
+        assertThat(result.outcome()).isEqualTo(OpenPriceCollectionResult.Outcome.MARKET_CLOSED);
         verify(etfRepository, never()).findAll();
         verify(btcPriceCollector).collect(DATE, false);
         verify(etfPriceCollector).collectOpen(DATE, false);

@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
  * 이메일 인증을 끝내지 않은 채 TTL이 지난 로컬 계정을 정리하는 배치. User/Auth/RefreshToken은 FK로 묶여있지 않은
  * 느슨한 결합이라 userId 목록을 기준으로 세 테이블을 각각 정리한다.
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UnverifiedAccountCleanupService {
@@ -29,14 +27,16 @@ public class UnverifiedAccountCleanupService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final UnverifiedAccountCleanupProperties properties;
 
+    /**
+     * @return 삭제한 계정 수. 호출자가 배치 실행 로그에 남긴다.
+     */
     @Transactional
-    public void cleanupUnverified() {
+    public int cleanupUnverified() {
         LocalDateTime cutoff = LocalDateTime.now(KST).minusMinutes(properties.ttlMinutes());
         List<Auth> candidates =
                 authRepository.findAllByProviderAndEmailVerifiedFalseAndCreatedAtBefore(AuthProvider.LOCAL, cutoff);
         if (candidates.isEmpty()) {
-            log.info("[unverified-account-cleanup] deleted=0");
-            return;
+            return 0;
         }
 
         List<Long> userIds = candidates.stream().map(Auth::getUserId).toList();
@@ -45,6 +45,6 @@ public class UnverifiedAccountCleanupService {
         authRepository.deleteAll(candidates);
         userRepository.deleteAllById(userIds);
 
-        log.info("[unverified-account-cleanup] deleted={}", candidates.size());
+        return candidates.size();
     }
 }
