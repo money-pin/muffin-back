@@ -8,9 +8,11 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.response
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.ranking.application.WeeklyRankingQueryService;
 import com.muffin.ranking.presentation.dto.WeeklyRankingResponse;
+import com.muffin.ranking.presentation.dto.WeeklyRankingResponse.CharacterResponse;
 import com.muffin.ranking.presentation.dto.WeeklyRankingResponse.MyRankResponse;
 import com.muffin.ranking.presentation.dto.WeeklyRankingResponse.SectorResponse;
 import com.muffin.ranking.presentation.dto.WeeklyRankingResponse.Top10DetailResponse;
@@ -58,6 +60,8 @@ class RankingControllerDocsTest {
                 List.of(new Top10Response(
                         1,
                         "수익마스터왕",
+                        new CharacterResponse(
+                                1L, MuffinType.PLAIN, "플레인 머핀", "https://example.com/images/characters/plain.png"),
                         98_000L,
                         new BigDecimal("9.8"),
                         new Top10DetailResponse(
@@ -85,6 +89,21 @@ class RankingControllerDocsTest {
                                 fieldWithPath("result.myRank.topPercent").description("상위 백분율. 미참여면 null"),
                                 fieldWithPath("result.top10[].rank").description("순위(1~10)"),
                                 fieldWithPath("result.top10[].nickname").description("닉네임 스냅샷"),
+                                fieldWithPath("result.top10[].character")
+                                        .description("현재 사용자 캐릭터. 연결 정보가 없으면 null")
+                                        .optional(),
+                                fieldWithPath("result.top10[].character.characterId")
+                                        .description("캐릭터 ID")
+                                        .optional(),
+                                fieldWithPath("result.top10[].character.characterType")
+                                        .description("캐릭터 타입(PLAIN/SPRINKLE/BUTTER)")
+                                        .optional(),
+                                fieldWithPath("result.top10[].character.characterName")
+                                        .description("캐릭터명")
+                                        .optional(),
+                                fieldWithPath("result.top10[].character.characterImageUrl")
+                                        .description("캐릭터 이미지 URL")
+                                        .optional(),
                                 fieldWithPath("result.top10[].profitAmount").description("주간 수익금"),
                                 fieldWithPath("result.top10[].profitRate").description("주간 수익률(소수 첫째 자리)"),
                                 fieldWithPath("result.top10[].detail.totalInvestment")

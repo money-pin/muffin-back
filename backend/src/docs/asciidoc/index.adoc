@@ -1570,7 +1570,7 @@ include::{snippets}/stats-history-invalid-period/response-fields.adoc[]
 
 지난주(월요일~일요일, KST) 수익률 랭킹의 내 순위와 TOP 10을 조회한다. 집계 스냅샷이 아직 생성되지 않았고 정산 대상이 남아 있으면 `CALCULATING`, 집계할 참여자가 없으면 `EMPTY`를 반환한다.
 
-NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. TOP 10에는 사용자 식별자·이메일 등 개인정보를 포함하지 않고 닉네임 스냅샷만 반환한다.
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. TOP 10에는 사용자 식별자·이메일 등 개인정보를 포함하지 않고 닉네임 스냅샷과 현재 캐릭터 정보를 반환한다. 캐릭터 연결 정보가 없는 경우 `character`는 `null`이다.
 
 ==== 요청
 
