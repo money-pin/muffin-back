@@ -89,7 +89,7 @@ public interface MypageApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "400",
                 description = "year/month 파라미터가 누락되었거나 형식이 올바르지 않음. (COMMON_400_002) "
-                        + "또는 month가 1~12 범위를 벗어남. (MYPAGE_400_005)"),
+                        + "또는 year/month 값이 올바르지 않음. (MYPAGE_400_005)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "401",
                 description = "인증에 실패했습니다. (AUTH_401_001)"),
