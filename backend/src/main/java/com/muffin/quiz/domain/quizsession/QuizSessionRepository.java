@@ -17,6 +17,9 @@ public interface QuizSessionRepository extends JpaRepository<QuizSession, Long> 
 
     List<QuizSession> findAllByUserIdAndStatusOrderByDateDesc(Long userId, QuizSessionStatus status);
 
+    /** 마이페이지 월별 퀴즈 참여 내역 조회용: 특정 연월(start~end) 범위의 세션을 날짜 내림차순으로 조회한다. */
+    List<QuizSession> findAllByUserIdAndDateBetweenOrderByDateDesc(Long userId, LocalDate start, LocalDate end);
+
     Optional<QuizSession> findByUserIdAndDateAndStatus(Long userId, LocalDate date, QuizSessionStatus status);
 
     /** 마이페이지 홈의 스트릭(연속 참여) 계산용: 사용자가 완료(FINISHED)한 퀴즈 세션의 날짜 목록. */

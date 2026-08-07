@@ -16,18 +16,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.investment.application.InvestmentCommandResult;
 import com.muffin.investment.application.InvestmentCommandService;
 import com.muffin.investment.application.InvestmentQueryService;
-import com.muffin.investment.exception.InvestmentErrorCode;
+import com.muffin.investment.domain.exception.InvestmentException;
+import com.muffin.investment.domain.exception.code.InvestmentErrorCode;
 import com.muffin.investment.presentation.dto.AssetChangeDirection;
 import com.muffin.investment.presentation.dto.InvestmentAssetResponse;
 import com.muffin.investment.presentation.dto.PreviousInvestmentResponse;
 import com.muffin.investment.presentation.dto.TodayInvestmentResponse;
 import com.muffin.investment.presentation.dto.TodayInvestmentSectorResponse;
-import com.muffin.sector.exception.SectorErrorCode;
+import com.muffin.sector.domain.exception.SectorException;
+import com.muffin.sector.domain.exception.code.SectorErrorCode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -116,7 +117,7 @@ class InvestmentControllerDocsTest {
     @DisplayName("투자 확정 불가 시간 오류 응답을 문서화한다")
     void documentInvestmentConfirmWindowClosed() throws Exception {
         when(investmentCommandService.confirm(eq(USER_ID), any()))
-                .thenThrow(new GeneralException(InvestmentErrorCode.INVESTMENT_WINDOW_CLOSED));
+                .thenThrow(new InvestmentException(InvestmentErrorCode.INVESTMENT_WINDOW_CLOSED));
 
         mockMvc.perform(post("/api/investments")
                         .header("Authorization", AUTHORIZATION)
@@ -238,7 +239,7 @@ class InvestmentControllerDocsTest {
     @DisplayName("오늘의 모의투자 현황 거래일 정보 오류 응답을 문서화한다")
     void documentInvestmentTodayCalendarUnavailable() throws Exception {
         when(investmentQueryService.getToday(USER_ID))
-                .thenThrow(new GeneralException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE));
+                .thenThrow(new SectorException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE));
 
         mockMvc.perform(get("/api/investments/today").header("Authorization", AUTHORIZATION))
                 .andExpect(status().isServiceUnavailable())

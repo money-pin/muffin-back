@@ -34,6 +34,8 @@ public class OpenPriceCollectionOrchestrator {
     private final ApplicationEventPublisher eventPublisher;
 
     /**
+     * 시가를 수집하기만 한다. 이벤트는 발행하지 않는다.
+     *
      * @return 이번 실행이 무엇을 했는지. 호출자가 배치 실행 로그에 남긴다.
      */
     public OpenPriceCollectionResult collectOpenPrices(LocalDate priceDate) {
@@ -49,19 +51,23 @@ public class OpenPriceCollectionOrchestrator {
             log.warn("[open-price] no target ETFs priceDate={}", priceDate);
             return OpenPriceCollectionResult.of(Outcome.NO_TARGETS, 0);
         }
-        if (isCompleted(targets, pricesByEtfId(priceDate))) {
-            return OpenPriceCollectionResult.of(Outcome.ALREADY_COMPLETED, targets.size());
-        }
 
         collectSafely("BTC", priceDate, () -> btcPriceCollector.collect(priceDate, true));
         collectSafely("TOSS", priceDate, () -> etfPriceCollector.collectOpen(priceDate, true));
-        return publishWhenCompleted(targets, priceDate);
+        return OpenPriceCollectionResult.of(Outcome.COLLECTED, targets.size());
     }
 
     /**
-     * @return 이번 실행이 무엇을 했는지. 호출자가 배치 실행 로그에 남긴다.
+     * 마지막으로 한 번 더 수집한 뒤 끝내 못 받은 종목을 확정하고, 시세가 다 찼으면 정산 트리거 이벤트를 발행한다.
+     *
+     * @return 종결 단계의 결과. 호출자가 배치 실행 로그에 남긴다.
      */
-    public OpenPriceCollectionResult finalizeMissingOpenPrices(LocalDate priceDate) {
+    public OpenPriceCollectionResult collectAndFinalizeOpenPrices(LocalDate priceDate) {
+        collectOpenPrices(priceDate);
+        return finalizeMissingOpenPrices(priceDate);
+    }
+
+    private OpenPriceCollectionResult finalizeMissingOpenPrices(LocalDate priceDate) {
         if (!tradingCalendarService.getCalendar(priceDate).tradingDay()) {
             return OpenPriceCollectionResult.of(Outcome.MARKET_CLOSED, 0);
         }
@@ -72,22 +78,20 @@ public class OpenPriceCollectionOrchestrator {
             return OpenPriceCollectionResult.of(Outcome.NO_TARGETS, 0);
         }
         Map<Long, EtfPrice> pricesByEtfId = pricesByEtfId(priceDate);
-        if (isCompleted(targets, pricesByEtfId)) {
-            return OpenPriceCollectionResult.of(Outcome.ALREADY_COMPLETED, targets.size());
-        }
-
-        for (Etf target : targets) {
-            if (isTerminal(pricesByEtfId.get(target.getId()))) {
-                continue;
-            }
-            try {
-                etfPriceWriter.markOpenFinalMissing(target.getId(), priceDate);
-            } catch (RuntimeException exception) {
-                log.error(
-                        "[open-price] FINAL_MISSING save failed etfCode={} priceDate={}",
-                        target.getEtfCode(),
-                        priceDate,
-                        exception);
+        if (!isCompleted(targets, pricesByEtfId)) {
+            for (Etf target : targets) {
+                if (isTerminal(pricesByEtfId.get(target.getId()))) {
+                    continue;
+                }
+                try {
+                    etfPriceWriter.markOpenFinalMissing(target.getId(), priceDate);
+                } catch (RuntimeException exception) {
+                    log.error(
+                            "[open-price] FINAL_MISSING save failed etfCode={} priceDate={}",
+                            target.getEtfCode(),
+                            priceDate,
+                            exception);
+                }
             }
         }
         return publishWhenCompleted(targets, priceDate);

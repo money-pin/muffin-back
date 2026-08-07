@@ -35,7 +35,7 @@ import org.springframework.stereotype.Component;
  * <p>{@link TradingCalendarService}로 거래일 여부를 먼저 확인해, 거래일이 아니면 API 호출 없이 전체를
  * MARKET_CLOSED로 기록한다. 거래일인데 특정 ETF만 캔들이 없는 경우는 거래정지인지 데이터 반영 지연인지 이 시점에서 단정할 수 없으므로
  * NO_DATA로 기록한다. API·파싱·저장 실패는 FAILED로 기록해 가격 null과 실패 원인을 구분한다.
- * 완료 이벤트 발행과 09:30 시가 FINAL_MISSING 전환은 통합 시가 수집 오케스트레이터가 담당한다. 종가는 16:05 마지막 수집 후
+ * 완료 이벤트 발행과 09:20 시가 FINAL_MISSING 전환은 통합 시가 수집 오케스트레이터가 담당한다. 종가는 16:05 마지막 수집 후
  * {@link #finalizeMissingClosePrices(LocalDate)}가 같은 상태로 종결한다.
  */
 @Slf4j
@@ -50,7 +50,6 @@ public class EtfPriceCollector {
     private final TradingCalendarService tradingCalendarService;
     private final TossMarketDataClient tossMarketDataClient;
     private final EtfPriceWriter etfPriceWriter;
-    // TODO : 확인필요 - 이슈 #40 종가 재시도에서 이미 성공한 종목의 외부 API 재호출을 피하기 위해 기존 수집기에 상태 조회를 추가함.
     private final EtfPriceRepository etfPriceRepository;
 
     /** 장 시작 이후 호출해 시가를 수집한다. */
@@ -124,7 +123,7 @@ public class EtfPriceCollector {
         List<String> failedEtfCodes = new ArrayList<>();
 
         for (Etf etf : etfs) {
-            if (alreadyCollected(target, etf.getId(), date)) {
+            if (target == CollectionTarget.CLOSE && alreadyCollected(target, etf.getId(), date)) {
                 successCount++;
                 continue;
             }

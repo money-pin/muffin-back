@@ -42,7 +42,7 @@ class MyPageHomeControllerMockTest {
     void setUp() {
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(USER_ID, null, List.of()));
-        mockMvc = standaloneSetup(new MypageController(null, null, myPageHomeQueryService))
+        mockMvc = standaloneSetup(new MypageController(null, null, myPageHomeQueryService, null))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();

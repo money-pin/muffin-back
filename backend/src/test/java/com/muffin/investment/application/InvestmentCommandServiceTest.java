@@ -8,13 +8,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.investment.domain.exception.InvestmentException;
+import com.muffin.investment.domain.exception.code.InvestmentErrorCode;
 import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.InvestmentRepository;
 import com.muffin.investment.domain.investment.enums.SettlementStatus;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
-import com.muffin.investment.exception.InvestmentErrorCode;
 import com.muffin.investment.presentation.dto.InvestmentRequest;
 import com.muffin.investment.presentation.dto.InvestmentSectorRequest;
 import com.muffin.investment.presentation.dto.TodayInvestmentResponse;
@@ -129,8 +129,8 @@ class InvestmentCommandServiceTest {
         when(investmentRepository.findWithSectorsByUserIdAndInvestDate(USER_ID, TODAY))
                 .thenReturn(Optional.of(existing));
 
-        GeneralException exception = assertThrows(
-                GeneralException.class,
+        InvestmentException exception = assertThrows(
+                InvestmentException.class,
                 () -> service.confirm(USER_ID, request(new InvestmentSectorRequest("SEMICONDUCTOR", 2))));
 
         assertEquals(InvestmentErrorCode.INVESTMENT_ALREADY_CONFIRMED, exception.getErrorCode());
@@ -144,8 +144,8 @@ class InvestmentCommandServiceTest {
                 .thenReturn(Optional.empty());
         when(sectorRepository.findBySectorCode("SEMICONDUCTOR")).thenReturn(Optional.of(semiconductor));
 
-        GeneralException exception = assertThrows(
-                GeneralException.class,
+        InvestmentException exception = assertThrows(
+                InvestmentException.class,
                 () -> service.confirm(USER_ID, request(new InvestmentSectorRequest("SEMICONDUCTOR", 11))));
 
         assertEquals(InvestmentErrorCode.BUDGET_EXCEEDED, exception.getErrorCode());
@@ -179,8 +179,8 @@ class InvestmentCommandServiceTest {
         when(sectorRepository.findBySectorCode("SEMICONDUCTOR")).thenReturn(Optional.of(semiconductor));
         mockTradingDay();
 
-        GeneralException exception = assertThrows(
-                GeneralException.class,
+        InvestmentException exception = assertThrows(
+                InvestmentException.class,
                 () -> service.confirm(USER_ID, request(new InvestmentSectorRequest("SEMICONDUCTOR", 1))));
 
         assertEquals(InvestmentErrorCode.INVESTMENT_WINDOW_CLOSED, exception.getErrorCode());

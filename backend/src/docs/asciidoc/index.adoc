@@ -762,6 +762,56 @@ include::{snippets}/mypage-saved-terms-get/response-fields.adoc[]
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |===
 
+[[mypage-quiz-history]]
+=== 월별 퀴즈 참여 내역 조회 (MYPAGE-05-1)
+
+지정한 연/월에 사용자가 참여한 퀴즈 세션을 날짜 내림차순으로 조회한다. 각 세션의 정답 수, 전체 문항 수, 획득 보상 정보(가상 머니, 수령 여부)를 함께 내려준다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다. 사용자는 access token에서 해석하므로 별도 요청 파라미터가 없다.
+
+* `year`/`month`는 필수 파라미터다. 둘 중 하나라도 없으면 `400 COMMON_400_002`를 반환한다.
+* `month`는 1~12 범위여야 한다. 범위를 벗어나면 `400 MYPAGE_400_005`를 반환한다.
+* 해당 월에 참여 기록이 없으면 `quizSessions`는 빈 배열이다.
+* `status`는 `PROGRESS`(진행 중) 또는 `FINISHED`(완료)만 내려간다.
+
+==== 요청
+
+include::{snippets}/mypage-quiz-history/http-request.adoc[]
+include::{snippets}/mypage-quiz-history/request-headers.adoc[]
+include::{snippets}/mypage-quiz-history/query-parameters.adoc[]
+
+==== 응답 - 정상
+
+include::{snippets}/mypage-quiz-history/http-response.adoc[]
+include::{snippets}/mypage-quiz-history/response-fields.adoc[]
+
+==== 응답 - 참여 기록 없음(빈 상태)
+
+include::{snippets}/mypage-quiz-history-empty/http-response.adoc[]
+include::{snippets}/mypage-quiz-history-empty/response-fields.adoc[]
+
+==== 응답 - 실패(month 범위 오류)
+
+include::{snippets}/mypage-quiz-history-invalid-month/http-response.adoc[]
+include::{snippets}/mypage-quiz-history-invalid-month/response-fields.adoc[]
+
+==== 응답 - 실패(사용자 없음)
+
+include::{snippets}/mypage-quiz-history-user-not-found/http-response.adoc[]
+include::{snippets}/mypage-quiz-history-user-not-found/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|400|COMMON_400_002|요청 값 검증에 실패했습니다.|`year` 또는 `month` 파라미터 누락/타입 오류
+|400|MYPAGE_400_005|month는 1~12 사이의 값이어야 합니다.|`month`가 1~12 범위를 벗어남
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|404|MYPAGE_404_001|사용자 정보를 찾을 수 없습니다.|access token의 userId에 해당하는 사용자 없음
+|===
+
 [[group-notification]]
 == Notification
 
@@ -859,7 +909,7 @@ include::{snippets}/quiz-today-success/response-fields.adoc[]
 
 ==== 이어 풀기
 
-이미 일부 문항을 제출한 사용자는 `sessionStatus=PROGRESS`와 `currentQuestionOrder`를 기준으로 이어 풀 문항부터 진입한다. 이미 제출한 문항의 답안 수정은 허용하지 않는다.
+이미 일부 문항을 제출한 사용자는 `sessionStatus=PROGRESS`와 `nextQuestionOrder`를 기준으로 이어 풀 문항부터 진입한다. 이미 제출한 문항의 답안 수정은 허용하지 않는다.
 
 include::{snippets}/quiz-today-progress/http-request.adoc[]
 include::{snippets}/quiz-today-progress/request-headers.adoc[]

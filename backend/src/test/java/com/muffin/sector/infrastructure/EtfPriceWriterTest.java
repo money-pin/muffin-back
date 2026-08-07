@@ -131,6 +131,32 @@ class EtfPriceWriterTest {
     }
 
     @Test
+    @DisplayName("최종 미확보 종가는 이후 수집 결과로 덮어쓰지 않는다")
+    void writeClose_preservesFinalMissingStatus() {
+        etfPriceWriter.markCloseFinalMissing(ETF_ID, PRICE_DATE);
+
+        etfPriceWriter.writeClose(ETF_ID, PRICE_DATE, 10_500L);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertNull(saved.getEndPrice());
+        assertEquals(PriceCollectionStatus.FINAL_MISSING, saved.getEndPriceStatus());
+    }
+
+    @Test
+    @DisplayName("최종 미확보 종가는 이후 실패 응답으로도 덮어쓰지 않는다")
+    void markCloseFailed_preservesFinalMissingStatus() {
+        etfPriceWriter.markCloseFinalMissing(ETF_ID, PRICE_DATE);
+
+        etfPriceWriter.markCloseFailed(ETF_ID, PRICE_DATE);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertNull(saved.getEndPrice());
+        assertEquals(PriceCollectionStatus.FINAL_MISSING, saved.getEndPriceStatus());
+    }
+
+    @Test
     @DisplayName("재시도에서 정상 시가를 받으면 실패 상태를 SUCCESS로 갱신한다")
     void writeOpen_changesFailedStatusToSuccess() {
         etfPriceWriter.markOpenFailed(ETF_ID, PRICE_DATE);
@@ -141,6 +167,45 @@ class EtfPriceWriterTest {
                 etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
         assertEquals(10_000L, saved.getStartPrice());
         assertEquals(PriceCollectionStatus.SUCCESS, saved.getStartPriceStatus());
+    }
+
+    @Test
+    @DisplayName("최종 미확보 시가는 뒤늦은 수집 결과로 덮어쓰지 않는다")
+    void writeOpen_preservesFinalMissingStatus() {
+        etfPriceWriter.markOpenFinalMissing(ETF_ID, PRICE_DATE);
+
+        etfPriceWriter.writeOpen(ETF_ID, PRICE_DATE, 10_000L);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertNull(saved.getStartPrice());
+        assertEquals(PriceCollectionStatus.FINAL_MISSING, saved.getStartPriceStatus());
+    }
+
+    @Test
+    @DisplayName("최종 미확보 시가는 이후 실패 응답으로도 덮어쓰지 않는다")
+    void markOpenFailed_preservesFinalMissingStatus() {
+        etfPriceWriter.markOpenFinalMissing(ETF_ID, PRICE_DATE);
+
+        etfPriceWriter.markOpenFailed(ETF_ID, PRICE_DATE);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertNull(saved.getStartPrice());
+        assertEquals(PriceCollectionStatus.FINAL_MISSING, saved.getStartPriceStatus());
+    }
+
+    @Test
+    @DisplayName("최종 미확보 시가는 이후 미수신 응답으로도 덮어쓰지 않는다")
+    void markOpenNoData_preservesFinalMissingStatus() {
+        etfPriceWriter.markOpenFinalMissing(ETF_ID, PRICE_DATE);
+
+        etfPriceWriter.markOpenNoData(ETF_ID, PRICE_DATE);
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertNull(saved.getStartPrice());
+        assertEquals(PriceCollectionStatus.FINAL_MISSING, saved.getStartPriceStatus());
     }
 
     @Test

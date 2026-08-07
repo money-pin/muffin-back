@@ -10,14 +10,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.event.EtfPricesLoadedEvent;
 import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
 import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.EtfPriceRepository;
-import com.muffin.sector.exception.SectorErrorCode;
+import com.muffin.sector.domain.exception.SectorException;
+import com.muffin.sector.domain.exception.code.SectorErrorCode;
 import com.muffin.sector.infrastructure.BtcPriceCollector;
 import com.muffin.sector.infrastructure.EtfPriceCollector;
 import com.muffin.sector.infrastructure.EtfPriceWriter;
@@ -77,18 +77,17 @@ class OpenPriceCollectionOrchestratorTest {
     }
 
     @Test
-    void collectOpenPrices_collectsSequentiallyAndPublishesWhenCompleted() {
+    void collectOpenPrices_collectsSequentiallyWithoutPublishing() {
         mockTradingDay();
         when(etfRepository.findAll()).thenReturn(targets);
-        when(etfPriceRepository.findByPriceDate(DATE)).thenReturn(List.of()).thenReturn(completedPrices());
 
         OpenPriceCollectionResult result = orchestrator.collectOpenPrices(DATE);
 
-        assertThat(result.outcome()).isEqualTo(OpenPriceCollectionResult.Outcome.COMPLETED);
-        InOrder order = inOrder(btcPriceCollector, etfPriceCollector, eventPublisher);
+        assertThat(result.outcome()).isEqualTo(OpenPriceCollectionResult.Outcome.COLLECTED);
+        InOrder order = inOrder(btcPriceCollector, etfPriceCollector);
         order.verify(btcPriceCollector).collect(DATE, true);
         order.verify(etfPriceCollector).collectOpen(DATE, true);
-        order.verify(eventPublisher).publishEvent(new EtfPricesLoadedEvent(DATE));
+        verify(eventPublisher, never()).publishEvent(any());
         verify(tradingCalendarService).getCalendar(DATE);
     }
 
@@ -96,27 +95,21 @@ class OpenPriceCollectionOrchestratorTest {
     void collectOpenPrices_doesNotPublishWhenAnyTargetIsIncomplete() {
         mockTradingDay();
         when(etfRepository.findAll()).thenReturn(targets);
-        when(etfPriceRepository.findByPriceDate(DATE))
-                .thenReturn(List.of())
-                .thenReturn(List.of(EtfPrice.create(BTC_ID, DATE, 50_000_000L, 50_000_000L)));
 
-        OpenPriceCollectionResult result = orchestrator.collectOpenPrices(DATE);
+        orchestrator.collectOpenPrices(DATE);
 
-        assertThat(result.outcome()).isEqualTo(OpenPriceCollectionResult.Outcome.INCOMPLETE);
         verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
-    void collectOpenPrices_doesNotRepeatCompletedDate() {
+    void collectOpenPrices_recollectsCompletedDateWithoutPublishing() {
         mockTradingDay();
         when(etfRepository.findAll()).thenReturn(targets);
-        when(etfPriceRepository.findByPriceDate(DATE)).thenReturn(completedPrices());
 
-        OpenPriceCollectionResult result = orchestrator.collectOpenPrices(DATE);
+        orchestrator.collectOpenPrices(DATE);
 
-        assertThat(result.outcome()).isEqualTo(OpenPriceCollectionResult.Outcome.ALREADY_COMPLETED);
-        verify(btcPriceCollector, never()).collect(any(), anyBoolean());
-        verify(etfPriceCollector, never()).collectOpen(any(), anyBoolean());
+        verify(btcPriceCollector).collect(DATE, true);
+        verify(etfPriceCollector).collectOpen(DATE, true);
         verify(eventPublisher, never()).publishEvent(any());
     }
 
@@ -138,9 +131,9 @@ class OpenPriceCollectionOrchestratorTest {
     @Test
     void collectOpenPrices_failsClosedWhenCalendarIsUnavailable() {
         when(tradingCalendarService.getCalendar(DATE))
-                .thenThrow(new GeneralException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE));
+                .thenThrow(new SectorException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE));
 
-        assertThrows(GeneralException.class, () -> orchestrator.collectOpenPrices(DATE));
+        assertThrows(SectorException.class, () -> orchestrator.collectOpenPrices(DATE));
 
         verify(etfRepository, never()).findAll();
         verify(btcPriceCollector, never()).collect(any(), anyBoolean());
@@ -153,8 +146,9 @@ class OpenPriceCollectionOrchestratorTest {
         when(tradingCalendarService.getCalendar(DATE))
                 .thenReturn(new TradingCalendar(DATE, false, DATE.minusDays(3), DATE.plusDays(1)));
 
-        orchestrator.finalizeMissingOpenPrices(DATE);
+        OpenPriceCollectionResult result = orchestrator.collectAndFinalizeOpenPrices(DATE);
 
+        assertThat(result.outcome()).isEqualTo(OpenPriceCollectionResult.Outcome.MARKET_CLOSED);
         verify(etfRepository, never()).findAll();
         verify(etfPriceWriter, never()).markOpenFinalMissing(any(), any());
         verify(eventPublisher, never()).publishEvent(any());
@@ -173,8 +167,9 @@ class OpenPriceCollectionOrchestratorTest {
                 .thenReturn(List.of(btc, tossFailed))
                 .thenReturn(List.of(btc, tossFinalMissing));
 
-        orchestrator.finalizeMissingOpenPrices(DATE);
+        OpenPriceCollectionResult result = orchestrator.collectAndFinalizeOpenPrices(DATE);
 
+        assertThat(result.outcome()).isEqualTo(OpenPriceCollectionResult.Outcome.COMPLETED);
         verify(etfPriceWriter, never()).markOpenFinalMissing(BTC_ID, DATE);
         verify(etfPriceWriter).markOpenFinalMissing(TOSS_ID, DATE);
         verify(eventPublisher).publishEvent(new EtfPricesLoadedEvent(DATE));
@@ -192,9 +187,22 @@ class OpenPriceCollectionOrchestratorTest {
                 .thenReturn(List.of(btc, tossFailed));
         doThrow(new RuntimeException("db error")).when(etfPriceWriter).markOpenFinalMissing(TOSS_ID, DATE);
 
-        orchestrator.finalizeMissingOpenPrices(DATE);
+        OpenPriceCollectionResult result = orchestrator.collectAndFinalizeOpenPrices(DATE);
 
+        assertThat(result.outcome()).isEqualTo(OpenPriceCollectionResult.Outcome.INCOMPLETE);
         verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void collectAndFinalizeOpenPrices_publishesWhenAllTargetsAlreadyCompleted() {
+        mockTradingDay();
+        when(etfRepository.findAll()).thenReturn(targets);
+        when(etfPriceRepository.findByPriceDate(DATE)).thenReturn(completedPrices());
+
+        orchestrator.collectAndFinalizeOpenPrices(DATE);
+
+        verify(etfPriceWriter, never()).markOpenFinalMissing(any(), any());
+        verify(eventPublisher).publishEvent(new EtfPricesLoadedEvent(DATE));
     }
 
     private void mockTradingDay() {

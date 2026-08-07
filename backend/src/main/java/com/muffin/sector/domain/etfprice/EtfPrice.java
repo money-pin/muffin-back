@@ -86,12 +86,18 @@ public class EtfPrice {
 
     /** 시가를 반영한다. 같은 값을 여러 번 반영해도 결과는 같다. */
     public void recordOpen(Long startPrice) {
+        if (startPriceStatus == PriceCollectionStatus.FINAL_MISSING) {
+            return;
+        }
         this.startPrice = requirePositive(startPrice, "startPrice");
         this.startPriceStatus = PriceCollectionStatus.SUCCESS;
     }
 
     /** 종가를 반영한다. 같은 값을 여러 번 반영해도 결과는 같다. */
     public void recordClose(Long endPrice) {
+        if (endPriceStatus == PriceCollectionStatus.FINAL_MISSING) {
+            return;
+        }
         this.endPrice = requirePositive(endPrice, "endPrice");
         this.endPriceStatus = PriceCollectionStatus.SUCCESS;
     }
@@ -132,7 +138,8 @@ public class EtfPrice {
     }
 
     private void markOpenUnavailable(PriceCollectionStatus status) {
-        if (startPriceStatus == PriceCollectionStatus.SUCCESS) {
+        if (startPriceStatus == PriceCollectionStatus.SUCCESS
+                || startPriceStatus == PriceCollectionStatus.FINAL_MISSING) {
             return;
         }
         this.startPrice = null;
@@ -140,7 +147,7 @@ public class EtfPrice {
     }
 
     private void markCloseUnavailable(PriceCollectionStatus status) {
-        if (endPriceStatus == PriceCollectionStatus.SUCCESS) {
+        if (endPriceStatus == PriceCollectionStatus.SUCCESS || endPriceStatus == PriceCollectionStatus.FINAL_MISSING) {
             return;
         }
         this.endPrice = null;

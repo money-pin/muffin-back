@@ -10,14 +10,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
 import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.EtfPriceRepository;
-import com.muffin.sector.exception.SectorErrorCode;
+import com.muffin.sector.domain.exception.SectorException;
+import com.muffin.sector.domain.exception.code.SectorErrorCode;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
 import com.muffin.sector.infrastructure.toss.exception.TossApiException;
@@ -132,19 +132,21 @@ class EtfPriceCollectorTest {
     }
 
     @Test
-    @DisplayName("시가 재시도는 이미 성공한 종목을 외부 API로 다시 조회하지 않는다")
-    void collectOpen_skipsAlreadySuccessfulPrice() {
+    @DisplayName("시가 수집은 이전 성공 상태와 관계없이 외부 API를 다시 조회한다")
+    void collectOpen_recollectsSuccessfulPrice() {
         Etf etf = Etf.create("459580", "KODEX CD금리액티브(합성)");
         ReflectionTestUtils.setField(etf, "id", 1L);
-        EtfPrice price = EtfPrice.open(1L, DATE, 10_000L);
         when(etfRepository.findAll()).thenReturn(List.of(etf));
-        when(etfPriceRepository.findByEtfIdAndPriceDate(1L, DATE)).thenReturn(Optional.of(price));
+        when(tossMarketDataClient.getDailyCandle("459580", DATE))
+                .thenReturn(Optional.of(
+                        new Candle("2026-07-10T09:15:00+09:00", "10100", "10600", "9900", "10500", "12345", "KRW")));
 
         EtfPriceCollector.CollectionSummary summary = collector.collectOpen(DATE);
 
         assertEquals(1, summary.successCount());
-        verify(tossMarketDataClient, never()).getDailyCandle(any(), any());
-        verify(etfPriceWriter, never()).writeOpen(any(), any(), any());
+        verify(etfPriceRepository, never()).findByEtfIdAndPriceDate(any(), any());
+        verify(tossMarketDataClient).getDailyCandle("459580", DATE);
+        verify(etfPriceWriter).writeOpen(1L, DATE, 10_100L);
     }
 
     @Test
@@ -169,9 +171,9 @@ class EtfPriceCollectorTest {
     @DisplayName("거래일을 확인할 수 없으면 가격 상태를 변경하지 않고 실행을 중단한다")
     void collect_aborts_whenMarketCalendarFails() {
         when(tradingCalendarService.getCalendar(DATE))
-                .thenThrow(new GeneralException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE));
+                .thenThrow(new SectorException(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE));
 
-        assertThrows(GeneralException.class, () -> collector.collectOpen(DATE));
+        assertThrows(SectorException.class, () -> collector.collectOpen(DATE));
 
         verify(etfRepository, never()).findAll();
         verify(etfPriceWriter, never()).markOpenFailed(any(), any());
