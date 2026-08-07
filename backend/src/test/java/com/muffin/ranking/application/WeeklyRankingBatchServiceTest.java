@@ -1,5 +1,6 @@
 package com.muffin.ranking.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -44,8 +45,11 @@ class WeeklyRankingBatchServiceTest {
         when(aggregationRepository.findSettledCandidates(weekStartDate, weekEndDate))
                 .thenReturn(List.of(new WeeklyRankingCandidate(1L, "muffin", "abcd-1234", 100_000L, 5_000L)));
 
-        service.createPreviousWeekRanking(LocalDate.of(2026, 7, 14));
+        WeeklyRankingBatchResult result = service.createPreviousWeekRanking(LocalDate.of(2026, 7, 14));
 
+        assertThat(result.outcome()).isEqualTo(WeeklyRankingBatchResult.Outcome.CREATED);
+        assertThat(result.participantCount()).isEqualTo(1);
+        assertThat(result.weekStartDate()).isEqualTo(weekStartDate);
         verify(weeklyRankingRepository).saveAll(rankingsCaptor.capture());
         WeeklyRanking ranking = rankingsCaptor.getValue().getFirst();
         org.junit.jupiter.api.Assertions.assertEquals(weekStartDate, ranking.getWeekStartDate());
@@ -60,8 +64,9 @@ class WeeklyRankingBatchServiceTest {
         LocalDate weekStartDate = LocalDate.of(2026, 7, 6);
         when(aggregationRepository.existsByWeekStartDate(weekStartDate)).thenReturn(true);
 
-        service.createPreviousWeekRanking(LocalDate.of(2026, 7, 13));
+        WeeklyRankingBatchResult result = service.createPreviousWeekRanking(LocalDate.of(2026, 7, 13));
 
+        assertThat(result.outcome()).isEqualTo(WeeklyRankingBatchResult.Outcome.ALREADY_CREATED);
         verify(aggregationRepository).existsByWeekStartDate(weekStartDate);
         verifyNoMoreInteractions(aggregationRepository, weeklyRankingRepository);
     }
@@ -77,8 +82,9 @@ class WeeklyRankingBatchServiceTest {
         when(aggregationRepository.hasUnsettledConfirmedInvestment(weekStartDate, weekEndDate))
                 .thenReturn(true);
 
-        service.createPreviousWeekRanking(LocalDate.of(2026, 7, 13));
+        WeeklyRankingBatchResult result = service.createPreviousWeekRanking(LocalDate.of(2026, 7, 13));
 
+        assertThat(result.outcome()).isEqualTo(WeeklyRankingBatchResult.Outcome.SETTLEMENT_PENDING);
         verify(aggregationRepository).hasUnsettledConfirmedInvestment(weekStartDate, weekEndDate);
         verify(weeklyRankingRepository, never()).saveAll(any());
     }

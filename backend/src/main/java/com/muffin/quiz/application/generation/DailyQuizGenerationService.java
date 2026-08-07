@@ -6,6 +6,7 @@ import com.muffin.news.domain.explanation.enums.NewsExplanationStatus;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.news.enums.NewsStatus;
+import com.muffin.quiz.application.generation.DailyQuizGenerationSummary.Outcome;
 import com.muffin.quiz.domain.quizset.Quiz;
 import com.muffin.quiz.domain.quizset.QuizQuestionPolicy;
 import com.muffin.quiz.domain.quizset.QuizSet;
@@ -50,8 +51,8 @@ public class DailyQuizGenerationService {
     private final TransactionTemplate transactionTemplate;
 
     /** 오늘 날짜 기준으로 해설카드까지 생성된 발행 대기 뉴스 3개를 골라 하루치 퀴즈를 생성한다. */
-    public void generateToday() {
-        generate(LocalDate.now(KST));
+    public DailyQuizGenerationSummary generateToday() {
+        return generate(LocalDate.now(KST));
     }
 
     /**
@@ -61,18 +62,17 @@ public class DailyQuizGenerationService {
      * 뉴스가 3개 미만이면 아직 생성 시점이 아니라고 보고 건너뛴다. 뉴스 3개가 모인 뒤 생성에 실패하면 조회 API가 UNAVAILABLE로 응답할 수
      * 있도록 빈 퀴즈 세트를 이용 불가 상태로 저장한다.
      */
-    public void generate(LocalDate quizDate) {
+    public DailyQuizGenerationSummary generate(LocalDate quizDate) {
         Optional<QuizSet> reservation = reserveGeneration(quizDate);
         if (reservation.isEmpty()) {
-            return;
+            return DailyQuizGenerationSummary.of(Outcome.ALREADY_RESERVED);
         }
         QuizSet quizSet = reservation.get();
 
         List<News> newsSources = transactionTemplate.execute(status -> findQuizSourceNews(quizDate));
         if (newsSources.size() < DAILY_QUIZ_COUNT) {
             releaseGenerationReservation(quizSet);
-            log.info("Daily quiz generation skipped: quizDate={} sourceNewsCount={}", quizDate, newsSources.size());
-            return;
+            return DailyQuizGenerationSummary.of(Outcome.INSUFFICIENT_NEWS);
         }
 
         try {
@@ -81,10 +81,7 @@ public class DailyQuizGenerationService {
                     transactionTemplate.execute(status -> toRequest(quizDate, newsSources));
             DailyQuizGenerationResult result = dailyQuizGenerator.generate(request);
             completeQuizSet(quizSet, newsSources, result);
-            log.info(
-                    "Daily quiz generation completed: quizDate={} questionCount={}",
-                    quizDate,
-                    result.questions().size());
+            return DailyQuizGenerationSummary.generated(result.questions().size());
         } catch (DailyQuizGenerationException exception) {
             saveUnavailableQuizSetSafely(quizSet);
             log.error(
@@ -92,9 +89,11 @@ public class DailyQuizGenerationService {
                     quizDate,
                     exception.getReason(),
                     exception);
+            return DailyQuizGenerationSummary.of(Outcome.FAILED);
         } catch (RuntimeException exception) {
             saveUnavailableQuizSetSafely(quizSet);
             log.error("Daily quiz generation failed: quizDate={}", quizDate, exception);
+            return DailyQuizGenerationSummary.of(Outcome.FAILED);
         }
     }
 

@@ -1,5 +1,6 @@
 package com.muffin.ranking.application;
 
+import com.muffin.ranking.application.projection.Top10RankingProjection;
 import com.muffin.ranking.application.projection.WeeklyInvestmentProjection;
 import com.muffin.ranking.application.projection.WeeklyRankingProjection;
 import com.muffin.ranking.application.projection.WeeklySectorProjection;
@@ -16,7 +17,7 @@ public interface WeeklyRankingQueryRepository {
 
     Optional<WeeklyRankingProjection> findMyRank(Long userId, LocalDate weekStartDate);
 
-    List<WeeklyRankingProjection> findTop10(LocalDate weekStartDate);
+    List<Top10RankingProjection> findTop10(LocalDate weekStartDate);
 
     List<WeeklyInvestmentProjection> findWeeklyInvestments(
             List<Long> userIds, LocalDate weekStartDate, LocalDate weekEndDate);

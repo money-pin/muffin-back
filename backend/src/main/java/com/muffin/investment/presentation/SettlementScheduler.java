@@ -1,10 +1,12 @@
 package com.muffin.investment.presentation;
 
+import com.muffin.global.batch.BatchJob;
+import com.muffin.global.batch.BatchJobRunner;
+import com.muffin.global.batch.BatchTrigger;
 import com.muffin.investment.application.settlement.SettlementCommandService;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,14 +17,16 @@ import org.springframework.stereotype.Component;
  *
  * <p>오케스트레이터가 멱등하므로(적재 가드 + SETTLED 스킵) 이벤트와 이중 실행돼도 안전하다. {@code muffin.batch.settlement.scheduler-enabled=false}로
  * 비활성화할 수 있다.
+ *
+ * <p>이벤트 트리거({@link SettlementEventListener})와 같은 잡이지만 로그의 {@code trigger=} 값으로 구분된다.
  */
-@Slf4j
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "muffin.batch.settlement.scheduler-enabled", havingValue = "true", matchIfMissing = true)
 public class SettlementScheduler {
 
     private final SettlementCommandService settlementCommandService;
+    private final BatchJobRunner batchJobRunner;
 
     @Value("${muffin.batch.settlement.zone:Asia/Seoul}")
     private String zone;
@@ -30,7 +34,10 @@ public class SettlementScheduler {
     @Scheduled(cron = "${muffin.batch.settlement.cron}", zone = "${muffin.batch.settlement.zone:Asia/Seoul}")
     public void run() {
         LocalDate settlementDate = LocalDate.now(ZoneId.of(zone));
-        log.info("[settlement] triggered by scheduler settlementDate={}", settlementDate);
-        settlementCommandService.settle(settlementDate);
+        batchJobRunner.run(
+                BatchJob.SETTLEMENT,
+                BatchTrigger.SCHEDULER,
+                settlementDate,
+                () -> SettlementBatchReports.from(settlementCommandService.settle(settlementDate)));
     }
 }
