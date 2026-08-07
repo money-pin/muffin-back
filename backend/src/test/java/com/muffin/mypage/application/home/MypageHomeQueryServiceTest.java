@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 import com.muffin.character.domain.characterprofile.CharacterProfile;
 import com.muffin.character.domain.characterprofile.CharacterRepository;
 import com.muffin.character.domain.enums.MuffinType;
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.mypage.presentation.home.dto.MypageHomeResponse;
 import com.muffin.news.application.query.NewsQueryRepository;
 import com.muffin.news.application.query.RecentReadNewsRow;
@@ -17,6 +16,7 @@ import com.muffin.quiz.domain.quizsession.QuizSessionRepository;
 import com.muffin.quiz.domain.quizsession.enums.QuizSessionStatus;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
+import com.muffin.user.domain.exception.UserException;
 import com.muffin.user.domain.exception.code.UserErrorCode;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -92,9 +92,9 @@ class MypageHomeQueryServiceTest {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> myPageHomeQueryService.getHome(USER_ID))
-                .isInstanceOf(GeneralException.class)
-                .satisfies(ex ->
-                        assertThat(((GeneralException) ex).getErrorCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND));
+                .isInstanceOf(UserException.class)
+                .satisfies(
+                        ex -> assertThat(((UserException) ex).getErrorCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND));
     }
 
     @Test
@@ -104,8 +104,8 @@ class MypageHomeQueryServiceTest {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> myPageHomeQueryService.getHome(USER_ID))
-                .isInstanceOf(GeneralException.class)
-                .satisfies(ex -> assertThat(((GeneralException) ex).getErrorCode())
+                .isInstanceOf(UserException.class)
+                .satisfies(ex -> assertThat(((UserException) ex).getErrorCode())
                         .isEqualTo(UserErrorCode.ONBOARDING_NOT_COMPLETED));
     }
 
@@ -117,8 +117,8 @@ class MypageHomeQueryServiceTest {
         when(characterRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> myPageHomeQueryService.getHome(USER_ID))
-                .isInstanceOf(GeneralException.class)
-                .satisfies(ex -> assertThat(((GeneralException) ex).getErrorCode())
-                        .isEqualTo(UserErrorCode.CHARACTER_NOT_FOUND));
+                .isInstanceOf(UserException.class)
+                .satisfies(ex ->
+                        assertThat(((UserException) ex).getErrorCode()).isEqualTo(UserErrorCode.CHARACTER_NOT_FOUND));
     }
 }
