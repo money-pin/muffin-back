@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 
+import com.muffin.news.application.explanation.NewsExplanationGeneratedEvent;
 import com.muffin.news.application.explanation.NewsExplanationGenerationService;
 import com.muffin.news.application.term.NewsTermMappingService;
 import com.muffin.quiz.application.generation.DailyQuizGenerationService;
@@ -70,6 +71,7 @@ class NewsReconstructedEventAsyncTest {
                 .generateToday();
 
         eventPublisher.publishEvent(new NewsReconstructedEvent(newsId));
+        eventPublisher.publishEvent(new NewsExplanationGeneratedEvent(newsId));
 
         assertThat(latch.await(2, TimeUnit.SECONDS)).isTrue();
         assertThat(listenerThreadName.get()).isNotEqualTo(publisherThreadName);
