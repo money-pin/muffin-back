@@ -69,14 +69,14 @@ public class DailyQuizGenerationService {
         }
         QuizSet quizSet = reservation.get();
 
-        List<News> newsSources = transactionTemplate.execute(status -> findQuizSourceNews(quizDate));
-        if (newsSources.size() < DAILY_QUIZ_COUNT) {
-            releaseGenerationReservation(quizSet);
-            return DailyQuizGenerationSummary.of(Outcome.INSUFFICIENT_NEWS);
-        }
-
         try {
             // 외부 API 대기 중 DB 커넥션을 오래 잡지 않도록 OpenAI 호출은 트랜잭션 밖에서 실행한다.
+            List<News> newsSources = transactionTemplate.execute(status -> findQuizSourceNews(quizDate));
+            if (newsSources.size() < DAILY_QUIZ_COUNT) {
+                releaseGenerationReservation(quizSet);
+                return DailyQuizGenerationSummary.of(Outcome.INSUFFICIENT_NEWS);
+            }
+
             DailyQuizGenerationRequest request =
                     transactionTemplate.execute(status -> toRequest(quizDate, newsSources));
             DailyQuizGenerationResult result = dailyQuizGenerator.generate(request);

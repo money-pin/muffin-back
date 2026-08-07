@@ -339,6 +339,25 @@ class DailyQuizGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("예약 이후 뉴스 후보 조회가 실패하면 UNAVAILABLE 퀴즈 세트를 저장하고 FAILED를 반환한다")
+    void generate_savesUnavailableWhenSourceNewsLookupFails() {
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
+        when(newsRepository.findQuizCandidates(
+                        NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
+                        QUIZ_DATE.atStartOfDay(),
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 15)))
+                .thenThrow(new IllegalStateException("DB failed"));
+
+        DailyQuizGenerationSummary summary = generationService.generate(QUIZ_DATE);
+
+        assertThat(summary.outcome()).isEqualTo(DailyQuizGenerationSummary.Outcome.FAILED);
+        verify(dailyQuizGenerator, never()).generate(any());
+        assertUnavailableQuizSetSaved();
+    }
+
+    @Test
     @DisplayName("AI 결과의 근거 문장이 뉴스 본문에 없으면 UNAVAILABLE 퀴즈 세트를 저장한다")
     void generate_savesUnavailableWhenSourceSentenceIsInvalid() {
         List<News> newsSources = List.of(
