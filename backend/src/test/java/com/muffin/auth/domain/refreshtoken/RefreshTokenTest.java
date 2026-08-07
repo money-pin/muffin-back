@@ -30,6 +30,15 @@ class RefreshTokenTest {
     }
 
     @Test
+    @DisplayName("만료시각과 현재 시각이 같으면 isExpired는 true(경계값 포함)")
+    void isExpired_atExpiry_true() {
+        LocalDateTime now = LocalDateTime.now(KST);
+        RefreshToken token = RefreshToken.issue(1L, "hash", now);
+
+        assertThat(token.isExpired()).isTrue();
+    }
+
+    @Test
     @DisplayName("rotate하면 해시값과 만료시각이 새 값으로 교체된다")
     void rotate_replacesHashAndExpiry() {
         RefreshToken token =
