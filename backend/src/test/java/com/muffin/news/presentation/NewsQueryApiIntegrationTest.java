@@ -217,41 +217,41 @@ class NewsQueryApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("오늘의 뉴스는 당일 공개 뉴스를 최신순 최대 3건 반환한다")
+    @DisplayName("오늘의 뉴스는 경제·증권·세계의 당일 최신 뉴스를 카테고리 순서로 반환한다")
     void getTodayNews() throws Exception {
+        Category stock = categoryRepository.save(Category.create("증권", "https://img/stock.png"));
+        Category world = categoryRepository.save(Category.create("세계", "https://img/world.png"));
+        savePublished(stock.getId(), "증권뉴스", LocalDateTime.of(2026, 7, 18, 12, 0));
+        savePublished(world.getId(), "세계뉴스", LocalDateTime.of(2026, 7, 18, 11, 0));
+
         mockMvc.perform(get("/api/news/today").header("Authorization", bearerToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.items.length()").value(3))
                 .andExpect(jsonPath("$.result.items[0].title").value("뉴스3"))
                 .andExpect(jsonPath("$.result.items[0].isScrapped").value(true))
-                .andExpect(jsonPath("$.result.items[1].isScrapped").value(false));
+                .andExpect(jsonPath("$.result.items[1].title").value("증권뉴스"))
+                .andExpect(jsonPath("$.result.items[2].title").value("세계뉴스"));
     }
 
     @Test
-    @DisplayName("오늘 공개 뉴스가 없으면 상태와 삭제 여부를 제외한 가장 최근 공개일 뉴스만 반환한다")
-    void getTodayNews_returnsLatestPublishedDateNewsWhenTodayNewsIsEmpty() throws Exception {
+    @DisplayName("오늘 공개 뉴스가 없는 카테고리는 과거 뉴스로 채우지 않는다")
+    void getTodayNews_doesNotFillMissingCategoryWithPastNews() throws Exception {
         LocalDate today = LocalDate.now(clock);
-        LocalDateTime latestPublishedDay = today.minusDays(2).atStartOfDay();
-        LocalDateTime excludedDay = today.minusDays(1).atStartOfDay();
-
-        Long deletedNewsId = savePublished(categoryId, "deleted-news", LocalDateTime.of(2026, 7, 19, 9, 0));
-        News deletedNews = newsRepository.findById(deletedNewsId).orElseThrow();
-        deletedNews.delete();
-        newsRepository.flush();
+        Category stock = categoryRepository.save(Category.create("증권", "https://img/stock.png"));
+        Long stockNewsId = savePublished(stock.getId(), "증권뉴스", LocalDateTime.of(2026, 7, 18, 12, 0));
 
         updateCreatedAt(news1Id, today.minusDays(4).atTime(9, 0));
-        updateCreatedAt(news2Id, latestPublishedDay.plusHours(9));
-        updateCreatedAt(news3Id, latestPublishedDay.plusHours(10));
-        updateCreatedAt(processingNewsId, excludedDay.plusHours(9));
-        updateCreatedAt(deletedNewsId, excludedDay.plusHours(10));
+        updateCreatedAt(news2Id, today.minusDays(2).atTime(9, 0));
+        updateCreatedAt(news3Id, today.minusDays(2).atTime(10, 0));
+        updateCreatedAt(processingNewsId, today.minusDays(1).atTime(9, 0));
+        updateCreatedAt(stockNewsId, today.atTime(10, 0));
         entityManager.clear();
 
         mockMvc.perform(get("/api/news/today").header("Authorization", bearerToken()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.items.length()").value(2))
-                .andExpect(jsonPath("$.result.items[0].title").value("뉴스3"))
-                .andExpect(jsonPath("$.result.items[0].isScrapped").value(true))
-                .andExpect(jsonPath("$.result.items[1].title").value("뉴스2"));
+                .andExpect(jsonPath("$.result.items.length()").value(1))
+                .andExpect(jsonPath("$.result.items[0].categoryName").value("증권"))
+                .andExpect(jsonPath("$.result.items[0].title").value("증권뉴스"));
     }
 
     private void updateCreatedAt(Long newsId, LocalDateTime createdAt) {

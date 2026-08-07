@@ -45,7 +45,7 @@ public class NewsQueryService {
 
     private static final int MIN_PAGE_SIZE = 1;
     private static final int MAX_PAGE_SIZE = 50;
-    private static final int TODAY_NEWS_LIMIT = 3;
+    private static final List<String> TODAY_NEWS_CATEGORIES = List.of("경제", "증권", "세계");
 
     private final NewsRepository newsRepository;
     private final NewsQueryRepository newsQueryRepository;
@@ -93,27 +93,23 @@ public class NewsQueryService {
         return new NewsListResponse(items, nextCursor, hasNext);
     }
 
-    /** 한국 시간 기준 당일 수집된 공개 뉴스 중 최신 발행순 상위 3건을 조회한다. */
+    /** 한국 시간 기준 당일 수집된 공개 뉴스 중 경제·증권·세계 카테고리별 최신 1건을 조회한다. */
     @Transactional(readOnly = true)
     public NewsTodayResponse getTodayNews(Long userId) {
         LocalDate today = LocalDate.now(clock);
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime startOfNextDay = startOfDay.plusDays(1);
 
-        List<NewsSummaryRow> rows =
-                newsQueryRepository.findTodayPublishedNews(userId, startOfDay, startOfNextDay, TODAY_NEWS_LIMIT);
-
-        if (rows.isEmpty()) {
-            rows = newsQueryRepository
-                    .findLatestPublishedCreatedAtBefore(startOfDay)
-                    .map(latestCreatedAt -> {
-                        LocalDateTime fallbackStart =
-                                latestCreatedAt.toLocalDate().atStartOfDay();
-                        return newsQueryRepository.findTodayPublishedNews(
-                                userId, fallbackStart, fallbackStart.plusDays(1), TODAY_NEWS_LIMIT);
-                    })
-                    .orElseGet(List::of);
+        List<NewsSummaryRow> candidates =
+                newsQueryRepository.findTodayPublishedNews(userId, startOfDay, startOfNextDay, TODAY_NEWS_CATEGORIES);
+        Map<String, NewsSummaryRow> latestByCategory = new HashMap<>();
+        for (NewsSummaryRow candidate : candidates) {
+            latestByCategory.putIfAbsent(candidate.categoryName(), candidate);
         }
+        List<NewsSummaryRow> rows = TODAY_NEWS_CATEGORIES.stream()
+                .map(latestByCategory::get)
+                .filter(java.util.Objects::nonNull)
+                .toList();
 
         List<NewsTodayItem> items = new ArrayList<>(rows.size());
         for (NewsSummaryRow row : rows) {
