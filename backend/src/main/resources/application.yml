@@ -143,3 +143,27 @@ muffin:
 
       quiz:
         model: ${QUIZ_GENERATION_MODEL:gpt-4o}
+
+# 배치 관측용 지표 노출. 외부에는 열지 않는다: EC2 보안그룹이 80/443만 허용해
+# 8080 직접 접근이 불가능하고, Nginx에서 /actuator를 차단한다(인프라 PR).
+management:
+  endpoints:
+    web:
+      exposure:
+        # 필요한 것만 연다. 기본값(health)에 prometheus만 더한다.
+        include: health,prometheus
+  endpoint:
+    health:
+      # 외부에 DB/디스크 상태 상세를 흘리지 않는다.
+      show-details: never
+  metrics:
+    tags:
+      application: muffin
+    distribution:
+      # 백분위 히스토그램은 켜지 않는다. 엔드포인트마다 버킷이 수십 개씩 붙어
+      # 활성 시계열이 한 자릿수 배로 늘고, 수집 한도를 넘기면 배치 알림까지 멈춘다.
+      # 대신 자주 보는 지연대에만 경계를 두어 p95를 근사하고 "1초 초과 비율"은 정확히 얻는다.
+      percentiles-histogram:
+        http.server.requests: false
+      slo:
+        http.server.requests: 50ms, 100ms, 200ms, 300ms, 500ms, 1s, 2s

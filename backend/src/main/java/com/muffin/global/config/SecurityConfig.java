@@ -51,7 +51,11 @@ public class SecurityConfig {
                                 "/v3/api-docs",
                                 "/v3/api-docs/**",
                                 "/docs/**",
-                                "/api/health/readiness")
+                                "/api/health/readiness",
+                                // 온박스 수집기(Alloy)가 인증 없이 긁어간다. 외부 노출은 네트워크에서 막는다:
+                                // EC2 보안그룹이 80/443만 열어 8080 직접 접근이 불가능하고, Nginx가 /actuator를 차단한다.
+                                "/actuator/health",
+                                "/actuator/prometheus")
                         .permitAll()
                         .anyRequest()
                         .authenticated())

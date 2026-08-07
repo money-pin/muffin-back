@@ -25,6 +25,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>로거를 잡의 도메인 패키지({@link BatchJob#loggerName()})로 잡기 때문에, 러너가 {@code global} 패키지에 있어도 로그의 {@code domain}
  * 필드는 실제 도메인(investment, news 등)으로 남는다.
+ *
+ * <p>같은 지점에서 {@link BatchJobMetrics}로 지표도 발행한다. 로그와 지표의 발행 지점을 하나로 두어 <b>둘이 서로 다른 얘기를 하는 상황을 만들지 않는다.</b>
  */
 @Component
 public class BatchJobRunner {
@@ -33,6 +35,12 @@ public class BatchJobRunner {
 
     /** 이 문자가 하나라도 있으면 값을 따옴표로 감싼다. 필드 경계(공백), 키값 구분자(=), 레코드 경계(개행/탭), 인용 문자(따옴표/역슬래시). */
     private static final String QUOTE_TRIGGERS = " =\"\\\r\n\t";
+
+    private final BatchJobMetrics metrics;
+
+    public BatchJobRunner(BatchJobMetrics metrics) {
+        this.metrics = metrics;
+    }
 
     /** 기준 일자가 없는 잡(주기적 정리 등)을 위한 축약형. */
     public void run(BatchJob job, BatchTrigger trigger, BatchJobCallback callback) {
@@ -44,14 +52,18 @@ public class BatchJobRunner {
         long startedAt = System.nanoTime();
         try {
             BatchJobReport report = callback.execute();
-            String line = reportedLine(job, trigger, businessDate, elapsedMillis(startedAt), report);
+            long durationMillis = elapsedMillis(startedAt);
+            String line = reportedLine(job, trigger, businessDate, durationMillis, report);
             if (report.outcome() == BatchOutcome.FAILURE) {
                 log.error(line);
             } else {
                 log.info(line);
             }
+            metrics.record(job, trigger, report.outcome(), durationMillis);
         } catch (Exception exception) {
-            log.error(failureLine(job, trigger, businessDate, elapsedMillis(startedAt), exception), exception);
+            long durationMillis = elapsedMillis(startedAt);
+            log.error(failureLine(job, trigger, businessDate, durationMillis, exception), exception);
+            metrics.record(job, trigger, BatchOutcome.FAILURE, durationMillis);
         }
     }
 

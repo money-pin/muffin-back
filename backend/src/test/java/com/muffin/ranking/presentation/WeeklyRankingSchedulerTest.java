@@ -8,7 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.muffin.global.batch.BatchJob;
-import com.muffin.global.batch.BatchJobRunner;
+import com.muffin.global.batch.BatchJobRunners;
 import com.muffin.global.batch.BatchLogCapture;
 import com.muffin.ranking.application.WeeklyRankingBatchResult;
 import com.muffin.ranking.application.WeeklyRankingBatchService;
@@ -31,8 +31,8 @@ class WeeklyRankingSchedulerTest {
     @Test
     @DisplayName("집계가 끝나면 참가자 수와 대상 주를 배치 로그 한 줄에 남긴다")
     void run_logsParticipantCountOnCreation() {
-        WeeklyRankingScheduler scheduler =
-                new WeeklyRankingScheduler(batchService, new BatchJobRunner(), clockAt("2026-07-13T09:40:00+09:00"));
+        WeeklyRankingScheduler scheduler = new WeeklyRankingScheduler(
+                batchService, BatchJobRunners.forTest(), clockAt("2026-07-13T09:40:00+09:00"));
         LocalDate weekStartDate = LocalDate.of(2026, 7, 6);
         when(batchService.createPreviousWeekRanking(LocalDate.of(2026, 7, 13)))
                 .thenReturn(new WeeklyRankingBatchResult(WeeklyRankingBatchResult.Outcome.CREATED, weekStartDate, 42));
@@ -48,8 +48,8 @@ class WeeklyRankingSchedulerTest {
     @Test
     @DisplayName("이미 생성돼 있으면 건너뛴 이유를 배치 로그에 남긴다")
     void run_logsSkipReasonWhenAlreadyCreated() {
-        WeeklyRankingScheduler scheduler =
-                new WeeklyRankingScheduler(batchService, new BatchJobRunner(), clockAt("2026-07-13T10:00:00+09:00"));
+        WeeklyRankingScheduler scheduler = new WeeklyRankingScheduler(
+                batchService, BatchJobRunners.forTest(), clockAt("2026-07-13T10:00:00+09:00"));
         when(batchService.createPreviousWeekRanking(LocalDate.of(2026, 7, 13)))
                 .thenReturn(new WeeklyRankingBatchResult(
                         WeeklyRankingBatchResult.Outcome.ALREADY_CREATED, LocalDate.of(2026, 7, 6), 0));
@@ -64,8 +64,8 @@ class WeeklyRankingSchedulerTest {
     @Test
     @DisplayName("오전 및 최종 재시도 스케줄은 KST 기준일로 같은 배치 서비스를 호출한다")
     void run_callsBatchServiceWithKstDate() {
-        WeeklyRankingScheduler scheduler =
-                new WeeklyRankingScheduler(batchService, new BatchJobRunner(), clockAt("2026-07-13T09:40:00+09:00"));
+        WeeklyRankingScheduler scheduler = new WeeklyRankingScheduler(
+                batchService, BatchJobRunners.forTest(), clockAt("2026-07-13T09:40:00+09:00"));
         when(batchService.createPreviousWeekRanking(LocalDate.of(2026, 7, 13)))
                 .thenReturn(new WeeklyRankingBatchResult(
                         WeeklyRankingBatchResult.Outcome.ALREADY_CREATED, LocalDate.of(2026, 7, 6), 0));
@@ -79,8 +79,8 @@ class WeeklyRankingSchedulerTest {
     @Test
     @DisplayName("배치 실패가 발생해도 다음 스케줄 실행을 위해 예외를 전파하지 않는다")
     void run_catchesBatchFailure() {
-        WeeklyRankingScheduler scheduler =
-                new WeeklyRankingScheduler(batchService, new BatchJobRunner(), clockAt("2026-07-13T10:00:00+09:00"));
+        WeeklyRankingScheduler scheduler = new WeeklyRankingScheduler(
+                batchService, BatchJobRunners.forTest(), clockAt("2026-07-13T10:00:00+09:00"));
         doThrow(new IllegalStateException("database unavailable"))
                 .when(batchService)
                 .createPreviousWeekRanking(LocalDate.of(2026, 7, 13));

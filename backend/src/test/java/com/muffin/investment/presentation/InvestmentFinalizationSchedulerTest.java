@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import com.muffin.global.batch.BatchJob;
-import com.muffin.global.batch.BatchJobRunner;
+import com.muffin.global.batch.BatchJobRunners;
 import com.muffin.global.batch.BatchLogCapture;
 import com.muffin.investment.application.InvestmentFinalizationResult;
 import com.muffin.investment.application.InvestmentFinalizationService;
@@ -33,7 +33,7 @@ class InvestmentFinalizationSchedulerTest {
     void run_finalizesPreviousDay() {
         Clock clock = clockAt("2026-07-14T08:50:00+09:00");
         InvestmentFinalizationScheduler scheduler =
-                new InvestmentFinalizationScheduler(service, new BatchJobRunner(), clock);
+                new InvestmentFinalizationScheduler(service, BatchJobRunners.forTest(), clock);
         when(service.finalizeInvestments(LocalDate.of(2026, 7, 13), LocalDateTime.of(2026, 7, 14, 8, 50)))
                 .thenReturn(new InvestmentFinalizationResult(LocalDate.of(2026, 7, 13), true, 3, 3, 0));
 
@@ -47,7 +47,7 @@ class InvestmentFinalizationSchedulerTest {
     void run_logsFailureWhenEveryTargetFailed() {
         Clock clock = clockAt("2026-07-14T08:50:00+09:00");
         InvestmentFinalizationScheduler scheduler =
-                new InvestmentFinalizationScheduler(service, new BatchJobRunner(), clock);
+                new InvestmentFinalizationScheduler(service, BatchJobRunners.forTest(), clock);
         when(service.finalizeInvestments(LocalDate.of(2026, 7, 13), LocalDateTime.of(2026, 7, 14, 8, 50)))
                 .thenReturn(new InvestmentFinalizationResult(LocalDate.of(2026, 7, 13), true, 3, 0, 3));
 
@@ -64,7 +64,7 @@ class InvestmentFinalizationSchedulerTest {
     void run_keepsPartialFailureAsSuccess() {
         Clock clock = clockAt("2026-07-14T08:50:00+09:00");
         InvestmentFinalizationScheduler scheduler =
-                new InvestmentFinalizationScheduler(service, new BatchJobRunner(), clock);
+                new InvestmentFinalizationScheduler(service, BatchJobRunners.forTest(), clock);
         when(service.finalizeInvestments(LocalDate.of(2026, 7, 13), LocalDateTime.of(2026, 7, 14, 8, 50)))
                 .thenReturn(new InvestmentFinalizationResult(LocalDate.of(2026, 7, 13), true, 3, 2, 1));
 
@@ -80,7 +80,7 @@ class InvestmentFinalizationSchedulerTest {
     void run_catchesFailureForNextRetry() {
         Clock clock = clockAt("2026-07-14T00:10:00+09:00");
         InvestmentFinalizationScheduler scheduler =
-                new InvestmentFinalizationScheduler(service, new BatchJobRunner(), clock);
+                new InvestmentFinalizationScheduler(service, BatchJobRunners.forTest(), clock);
         when(service.finalizeInvestments(LocalDate.of(2026, 7, 13), LocalDateTime.of(2026, 7, 14, 0, 10)))
                 .thenThrow(new IllegalStateException("calendar unavailable"));
 

@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import com.muffin.global.batch.BatchJob;
-import com.muffin.global.batch.BatchJobRunner;
+import com.muffin.global.batch.BatchJobRunners;
 import com.muffin.global.batch.BatchLogCapture;
 import com.muffin.quiz.application.generation.DailyQuizGenerationService;
 import com.muffin.quiz.application.generation.DailyQuizGenerationSummary;
@@ -26,7 +26,7 @@ class DailyQuizGenerationRetrySchedulerTest {
 
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-12T22:10:00Z"), ZoneId.of("Asia/Seoul"));
     private final DailyQuizGenerationRetryScheduler scheduler =
-            new DailyQuizGenerationRetryScheduler(dailyQuizGenerationService, new BatchJobRunner(), clock);
+            new DailyQuizGenerationRetryScheduler(dailyQuizGenerationService, BatchJobRunners.forTest(), clock);
 
     @Test
     @DisplayName("재시도 스케줄러는 오늘 퀴즈 생성을 호출하고 생성 문항 수를 로그에 남긴다")

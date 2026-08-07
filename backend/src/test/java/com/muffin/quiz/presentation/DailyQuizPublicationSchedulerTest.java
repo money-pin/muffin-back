@@ -6,7 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.muffin.global.batch.BatchJob;
-import com.muffin.global.batch.BatchJobRunner;
+import com.muffin.global.batch.BatchJobRunners;
 import com.muffin.global.batch.BatchLogCapture;
 import com.muffin.quiz.application.generation.DailyQuizPublicationService;
 import java.time.Clock;
@@ -25,7 +25,7 @@ class DailyQuizPublicationSchedulerTest {
     private final DailyQuizPublicationService dailyQuizPublicationService = mock(DailyQuizPublicationService.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-13T00:00:00Z"), ZoneId.of("Asia/Seoul"));
     private final DailyQuizPublicationScheduler scheduler =
-            new DailyQuizPublicationScheduler(dailyQuizPublicationService, new BatchJobRunner(), clock);
+            new DailyQuizPublicationScheduler(dailyQuizPublicationService, BatchJobRunners.forTest(), clock);
 
     @Test
     @DisplayName("발행 기준일을 스케줄러가 정해 서비스와 배치 로그에 같은 값을 넘긴다")

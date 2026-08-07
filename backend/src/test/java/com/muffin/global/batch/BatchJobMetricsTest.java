@@ -1,0 +1,80 @@
+package com.muffin.global.batch;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+class BatchJobMetricsTest {
+
+    private static final Instant NOW = Instant.parse("2026-08-07T00:35:00Z");
+
+    private final MeterRegistry registry = new SimpleMeterRegistry();
+    private final BatchJobMetrics metrics = new BatchJobMetrics(registry, Clock.fixed(NOW, ZoneId.of("Asia/Seoul")));
+
+    @Test
+    @DisplayName("한 번도 실행되지 않은 잡도 기동 시점에 게이지가 등록돼 대시보드에서 빈 자리가 생기지 않는다")
+    void construct_registersGaugeForEveryJob() {
+        assertThat(registry.find(BatchJobMetrics.LAST_SUCCESS_METRIC).gauges()).hasSize(BatchJob.values().length);
+        assertThat(lastSuccess(BatchJob.SETTLEMENT)).isZero();
+    }
+
+    @Test
+    @DisplayName("성공하면 마지막 성공 시각이 현재 시각으로 갱신된다")
+    void record_updatesLastSuccessOnSuccess() {
+        metrics.record(BatchJob.SETTLEMENT, BatchTrigger.SCHEDULER, BatchOutcome.SUCCESS, 1_240);
+
+        assertThat(lastSuccess(BatchJob.SETTLEMENT)).isEqualTo(NOW.getEpochSecond());
+    }
+
+    @Test
+    @DisplayName("휴장일 스킵도 정상 동작이므로 마지막 성공 시각을 갱신한다")
+    void record_updatesLastSuccessOnSkip() {
+        metrics.record(BatchJob.OPEN_PRICE_COLLECT, BatchTrigger.SCHEDULER, BatchOutcome.SKIPPED, 8);
+
+        assertThat(lastSuccess(BatchJob.OPEN_PRICE_COLLECT)).isEqualTo(NOW.getEpochSecond());
+    }
+
+    @Test
+    @DisplayName("실패는 마지막 성공 시각을 갱신하지 않아 침묵이 알림으로 이어진다")
+    void record_leavesLastSuccessOnFailure() {
+        metrics.record(BatchJob.RSS_COLLECTION, BatchTrigger.SCHEDULER, BatchOutcome.FAILURE, 3_011);
+
+        assertThat(lastSuccess(BatchJob.RSS_COLLECTION)).isZero();
+    }
+
+    @Test
+    @DisplayName("소요시간은 잡·트리거·결과별로 나뉘어 기록된다")
+    void record_tagsDurationByJobTriggerAndOutcome() {
+        metrics.record(BatchJob.SETTLEMENT, BatchTrigger.EVENT, BatchOutcome.SUCCESS, 1_240);
+        metrics.record(BatchJob.SETTLEMENT, BatchTrigger.SCHEDULER, BatchOutcome.SKIPPED, 12);
+
+        Timer eventTimer = registry.find(BatchJobMetrics.DURATION_METRIC)
+                .tags("job", "settlement", "trigger", "event", "outcome", "success")
+                .timer();
+        assertThat(eventTimer).isNotNull();
+        assertThat(eventTimer.count()).isEqualTo(1);
+        assertThat(eventTimer.totalTime(TimeUnit.MILLISECONDS)).isEqualTo(1_240);
+
+        assertThat(registry.find(BatchJobMetrics.DURATION_METRIC)
+                        .tags("job", "settlement", "trigger", "scheduler", "outcome", "skipped")
+                        .timer())
+                .isNotNull();
+    }
+
+    private double lastSuccess(BatchJob job) {
+        Gauge gauge = registry.find(BatchJobMetrics.LAST_SUCCESS_METRIC)
+                .tag("job", job.code())
+                .gauge();
+        assertThat(gauge).isNotNull();
+        return gauge.value();
+    }
+}
