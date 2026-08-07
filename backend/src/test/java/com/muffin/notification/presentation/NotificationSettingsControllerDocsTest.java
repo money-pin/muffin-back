@@ -13,8 +13,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.notification.application.NotificationSettingsCommandService;
 import com.muffin.notification.application.NotificationSettingsQueryService;
-import com.muffin.notification.presentation.dto.MypageSettingsResponse;
 import com.muffin.notification.presentation.dto.NotificationSettingsItem;
+import com.muffin.notification.presentation.dto.NotificationSettingsResponse;
 import com.muffin.notification.presentation.dto.NotificationSettingsUpdateRequest;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -34,7 +34,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** 마이페이지 설정/알림 설정 API의 REST Docs 스니펫을 생성한다. */
 @ExtendWith(RestDocumentationExtension.class)
-class MypageSettingsControllerDocsTest {
+class NotificationSettingsControllerDocsTest {
 
     private static final Long USER_ID = 1L;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -55,8 +55,8 @@ class MypageSettingsControllerDocsTest {
     void documentGetSettings(RestDocumentationContextProvider restDocumentation) throws Exception {
         NotificationSettingsQueryService queryStub = new NotificationSettingsQueryService(null) {
             @Override
-            public MypageSettingsResponse getSettings(Long userId) {
-                return new MypageSettingsResponse(new NotificationSettingsItem(true, true, true, false));
+            public NotificationSettingsResponse getSettings(Long userId) {
+                return new NotificationSettingsResponse(new NotificationSettingsItem(true, true, true, false));
             }
         };
         MockMvc mockMvc = mockMvcOf(queryStub, null, restDocumentation);
@@ -82,8 +82,8 @@ class MypageSettingsControllerDocsTest {
     void documentGetNotificationSettings(RestDocumentationContextProvider restDocumentation) throws Exception {
         NotificationSettingsQueryService queryStub = new NotificationSettingsQueryService(null) {
             @Override
-            public MypageSettingsResponse getSettings(Long userId) {
-                return new MypageSettingsResponse(new NotificationSettingsItem(true, true, true, false));
+            public NotificationSettingsResponse getSettings(Long userId) {
+                return new NotificationSettingsResponse(new NotificationSettingsItem(true, true, true, false));
             }
         };
         MockMvc mockMvc = mockMvcOf(queryStub, null, restDocumentation);
@@ -109,8 +109,8 @@ class MypageSettingsControllerDocsTest {
     void documentUpdateNotificationSettings(RestDocumentationContextProvider restDocumentation) throws Exception {
         NotificationSettingsCommandService commandStub = new NotificationSettingsCommandService(null) {
             @Override
-            public MypageSettingsResponse updateSettings(Long userId, NotificationSettingsUpdateRequest request) {
-                return new MypageSettingsResponse(new NotificationSettingsItem(
+            public NotificationSettingsResponse updateSettings(Long userId, NotificationSettingsUpdateRequest request) {
+                return new NotificationSettingsResponse(new NotificationSettingsItem(
                         request.newsUpdate(), request.dailyQuiz(), request.investResult(), request.rankingChange()));
             }
         };
@@ -144,7 +144,7 @@ class MypageSettingsControllerDocsTest {
             NotificationSettingsQueryService queryStub,
             NotificationSettingsCommandService commandStub,
             RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(new MypageSettingsController(queryStub, commandStub))
+        return MockMvcBuilders.standaloneSetup(new NotificationSettingsController(queryStub, commandStub))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)

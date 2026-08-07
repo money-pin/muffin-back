@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.muffin.notification.domain.NotificationSettings;
-import com.muffin.notification.presentation.dto.MypageSettingsResponse;
+import com.muffin.notification.presentation.dto.NotificationSettingsResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +30,7 @@ class NotificationSettingsQueryServiceTest {
         settings.updateRankingChangedPush(false);
         when(notificationSettingsFinder.findOrCreate(USER_ID)).thenReturn(settings);
 
-        MypageSettingsResponse response = notificationSettingsQueryService.getSettings(USER_ID);
+        NotificationSettingsResponse response = notificationSettingsQueryService.getSettings(USER_ID);
 
         assertThat(response.notifications().newsUpdate()).isTrue();
         assertThat(response.notifications().dailyQuiz()).isTrue();

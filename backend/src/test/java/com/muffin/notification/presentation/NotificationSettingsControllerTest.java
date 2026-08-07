@@ -25,7 +25,7 @@ import tools.jackson.databind.ObjectMapper;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class MypageSettingsControllerTest {
+class NotificationSettingsControllerTest {
 
     private static final Long USER_ID = 100L;
 

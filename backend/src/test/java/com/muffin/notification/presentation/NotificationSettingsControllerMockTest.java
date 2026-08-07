@@ -13,8 +13,8 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.notification.application.NotificationSettingsCommandService;
 import com.muffin.notification.application.NotificationSettingsQueryService;
-import com.muffin.notification.presentation.dto.MypageSettingsResponse;
 import com.muffin.notification.presentation.dto.NotificationSettingsItem;
+import com.muffin.notification.presentation.dto.NotificationSettingsResponse;
 import com.muffin.notification.presentation.dto.NotificationSettingsUpdateRequest;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -30,9 +30,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** MypageSettingsController를 서비스는 mock으로 격리해 컨트롤러 계층만 단위 테스트한다. */
+/** NotificationSettingsController를 서비스는 mock으로 격리해 컨트롤러 계층만 단위 테스트한다. */
 @ExtendWith(MockitoExtension.class)
-class MypageSettingsControllerMockTest {
+class NotificationSettingsControllerMockTest {
 
     private static final Long USER_ID = 1L;
 
@@ -48,7 +48,7 @@ class MypageSettingsControllerMockTest {
     void setUp() {
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(USER_ID, null, List.of()));
-        mockMvc = standaloneSetup(new MypageSettingsController(
+        mockMvc = standaloneSetup(new NotificationSettingsController(
                         notificationSettingsQueryService, notificationSettingsCommandService))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
@@ -64,7 +64,7 @@ class MypageSettingsControllerMockTest {
     @DisplayName("GET /settings는 서비스 결과를 그대로 응답한다")
     void getSettings_delegatesToService() throws Exception {
         when(notificationSettingsQueryService.getSettings(USER_ID))
-                .thenReturn(new MypageSettingsResponse(new NotificationSettingsItem(true, false, true, false)));
+                .thenReturn(new NotificationSettingsResponse(new NotificationSettingsItem(true, false, true, false)));
 
         mockMvc.perform(get("/api/mypage/settings"))
                 .andExpect(status().isOk())
@@ -78,7 +78,7 @@ class MypageSettingsControllerMockTest {
     @DisplayName("GET /settings/notifications도 같은 서비스를 통해 응답한다")
     void getNotificationSettings_delegatesToService() throws Exception {
         when(notificationSettingsQueryService.getSettings(USER_ID))
-                .thenReturn(new MypageSettingsResponse(new NotificationSettingsItem(true, true, true, true)));
+                .thenReturn(new NotificationSettingsResponse(new NotificationSettingsItem(true, true, true, true)));
 
         mockMvc.perform(get("/api/mypage/settings/notifications"))
                 .andExpect(status().isOk())
@@ -92,7 +92,7 @@ class MypageSettingsControllerMockTest {
     void updateNotificationSettings_delegatesToService() throws Exception {
         NotificationSettingsUpdateRequest request = new NotificationSettingsUpdateRequest(false, true, false, true);
         when(notificationSettingsCommandService.updateSettings(eq(USER_ID), eq(request)))
-                .thenReturn(new MypageSettingsResponse(new NotificationSettingsItem(false, true, false, true)));
+                .thenReturn(new NotificationSettingsResponse(new NotificationSettingsItem(false, true, false, true)));
 
         mockMvc.perform(
                         put("/api/mypage/settings/notifications")

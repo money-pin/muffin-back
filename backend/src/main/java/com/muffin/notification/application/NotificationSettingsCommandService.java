@@ -1,8 +1,8 @@
 package com.muffin.notification.application;
 
 import com.muffin.notification.domain.NotificationSettings;
-import com.muffin.notification.presentation.dto.MypageSettingsResponse;
 import com.muffin.notification.presentation.dto.NotificationSettingsItem;
+import com.muffin.notification.presentation.dto.NotificationSettingsResponse;
 import com.muffin.notification.presentation.dto.NotificationSettingsUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,7 +16,7 @@ public class NotificationSettingsCommandService {
 
     private final NotificationSettingsFinder notificationSettingsFinder;
 
-    public MypageSettingsResponse updateSettings(Long userId, NotificationSettingsUpdateRequest request) {
+    public NotificationSettingsResponse updateSettings(Long userId, NotificationSettingsUpdateRequest request) {
         NotificationSettings settings = notificationSettingsFinder.findOrCreate(userId);
 
         settings.updateNewsUpdatePush(request.newsUpdate());
@@ -24,7 +24,7 @@ public class NotificationSettingsCommandService {
         settings.updateInvestmentResultPush(request.investResult());
         settings.updateRankingChangedPush(request.rankingChange());
 
-        return new MypageSettingsResponse(new NotificationSettingsItem(
+        return new NotificationSettingsResponse(new NotificationSettingsItem(
                 settings.isNewsUpdatePushEnabled(),
                 settings.isQuizPushEnabled(),
                 settings.isInvestmentResultPushEnabled(),
