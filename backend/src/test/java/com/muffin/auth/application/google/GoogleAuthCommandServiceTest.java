@@ -122,6 +122,9 @@ class GoogleAuthCommandServiceTest {
 
         assertThat(authRepository.count()).isEqualTo(1);
         assertThat(userRepository.count()).isEqualTo(1);
+        assertThat(userRepository.findById(localUser.getUserId())).isPresent();
+        assertThat(authRepository.findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-shared"))
+                .isEmpty();
     }
 
     @Test
