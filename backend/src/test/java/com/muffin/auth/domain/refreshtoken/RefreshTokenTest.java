@@ -35,7 +35,7 @@ class RefreshTokenTest {
         LocalDateTime now = LocalDateTime.now(KST);
         RefreshToken token = RefreshToken.issue(1L, "hash", now);
 
-        assertThat(token.isExpired()).isTrue();
+        assertThat(token.isExpired(now)).isTrue();
     }
 
     @Test

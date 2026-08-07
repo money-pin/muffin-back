@@ -53,7 +53,11 @@ public class RefreshToken extends BaseEntity {
     }
 
     public boolean isExpired() {
-        return !expiresAt.isAfter(LocalDateTime.now(KST));
+        return isExpired(LocalDateTime.now(KST));
+    }
+
+    public boolean isExpired(LocalDateTime now) {
+        return !expiresAt.isAfter(now);
     }
 
     /** 재발급(refresh) 시 또는 같은 유저가 새로 로그인해 기존 세션을 대체할 때 호출한다. */
