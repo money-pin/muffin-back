@@ -364,6 +364,54 @@ class DailyQuizGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("AI 결과의 근거 문장이 null이면 UNAVAILABLE 퀴즈 세트를 저장한다")
+    void generate_savesUnavailableWhenSourceSentenceIsNull() {
+        List<News> newsSources = defaultNewsSources();
+
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
+        when(newsRepository.findQuizCandidates(
+                        NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
+                        QUIZ_DATE.atStartOfDay(),
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 15)))
+                .thenReturn(newsSources);
+        when(dailyQuizGenerator.generate(any()))
+                .thenReturn(new DailyQuizGenerationResult(List.of(
+                        question(1, 1L, (String) null),
+                        question(2, 2L, "코픽스가 상승했습니다."),
+                        question(3, 3L, "금융당국이 토스를 금융복합기업집단으로 지정했습니다."))));
+
+        generationService.generate(QUIZ_DATE);
+
+        assertUnavailableQuizSetSaved();
+    }
+
+    @Test
+    @DisplayName("AI 결과의 근거 문장이 공백이면 UNAVAILABLE 퀴즈 세트를 저장한다")
+    void generate_savesUnavailableWhenSourceSentenceIsBlank() {
+        List<News> newsSources = defaultNewsSources();
+
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
+        when(newsRepository.findQuizCandidates(
+                        NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
+                        QUIZ_DATE.atStartOfDay(),
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 15)))
+                .thenReturn(newsSources);
+        when(dailyQuizGenerator.generate(any()))
+                .thenReturn(new DailyQuizGenerationResult(List.of(
+                        question(1, 1L, "   "),
+                        question(2, 2L, "코픽스가 상승했습니다."),
+                        question(3, 3L, "금융당국이 토스를 금융복합기업집단으로 지정했습니다."))));
+
+        generationService.generate(QUIZ_DATE);
+
+        assertUnavailableQuizSetSaved();
+    }
+
+    @Test
     @DisplayName("AI 결과의 근거 문장이 해설카드에 있으면 READY 퀴즈 세트를 저장한다")
     void generate_savesReadyWhenSourceSentenceExistsInExplanationCard() {
         List<News> newsSources = List.of(

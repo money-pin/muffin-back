@@ -67,11 +67,29 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
         7. 본문 밖 수치·날짜·기업명·기관명은 만들지 않는다.
         8. 투자 판단, 의견, 예측, 섹터 선택, 정책·군사 사건의 목적 확인, 부정형("아닌 것은?") 문항은 금지한다.
         9. 날짜·기간·금액·비율 같은 숫자 자체를 맞히게 하지 않는다.
-        10. 오답 보기는 정답과 같은 범주로 자연스럽게 만들고, 선택지는 짧은 명사형/구 형태로 쓴다.
+        10. 오답 보기는 정답과 같은 범주로 자연스럽게 만들고, 선택지는 source_sentence에서 직접 확인 가능한 구체 명사형/구 형태로 쓴다.
         11. "오늘 뉴스에 나온", "본문에 따르면"처럼 본문을 읽었다는 전제 표현은 쓰지 않는다.
         12. explanation은 source_sentence를 그대로 반복하지 말고, 정답이 왜 맞는지 쉬운 말로 풀어쓴다.
         13. 세 문항의 question_topic은 서로 겹치지 않게 작성한다.
         14. 정답 위치는 1, 2, 3번에 분산하고, JSON 형식만 반환한다.
+        """;
+    private static final String FALLBACK_INSTRUCTIONS =
+            """
+        당신은 경제·금융 교육 퀴즈를 출제하는 전문가입니다.
+        퀴즈 수강자는 금융에 관심을 가지기 시작한 20~30대입니다.
+
+        [최종 fallback 출제 원칙]
+        1. 뉴스 1개당 1문항씩 총 3문항을 만든다.
+        2. rewritten_body만 근거로 사용해 경제·금융 개념 이해를 묻는다.
+        3. 문제와 보기만으로 풀 수 있는 자기완결형 문항으로 작성한다.
+        4. 정답과 explanation은 source_sentence 한 문장에서 직접 도출되어야 하며, source_sentence는 뉴스 본문 문장 그대로 쓴다.
+        5. 투자 판단, 의견, 예측, 섹터 선택, 정책·군사 사건의 목적 확인, 부정형("아닌 것은?") 문항은 금지한다.
+        6. 날짜·기간·금액·비율 같은 숫자 자체를 맞히게 하지 않는다.
+        7. 오답 보기는 정답과 같은 범주로 자연스럽게 만들고, 선택지는 source_sentence에서 직접 확인 가능한 구체 명사형/구 형태로 쓴다.
+        8. "오늘 뉴스에 나온", "본문에 따르면"처럼 본문을 읽었다는 전제 표현은 쓰지 않는다.
+        9. explanation은 source_sentence를 그대로 반복하지 말고, 정답이 왜 맞는지 쉬운 말로 풀어쓴다.
+        10. 세 문항의 question_topic은 서로 겹치지 않게 작성한다.
+        11. 정답 위치는 1, 2, 3번에 분산하고, JSON 형식만 반환한다.
         """;
 
     private final RestClient restClient;
@@ -97,7 +115,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
 
         for (int attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
             try {
-                String responseBody = requestWithRetry(request, retryInstruction(attempt));
+                String responseBody = requestWithRetry(request, retryInstruction(attempt), isFallbackAttempt(attempt));
                 return parseResponse(request, responseBody);
             } catch (InvalidDailyQuizResponseException exception) {
                 lastInvalidResponseException = exception;
@@ -107,7 +125,8 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
         throw lastInvalidResponseException;
     }
 
-    private String requestWithRetry(DailyQuizGenerationRequest request, String retryInstruction) {
+    private String requestWithRetry(
+            DailyQuizGenerationRequest request, String retryInstruction, boolean fallbackAttempt) {
         try {
             return RetryExecutor.execute(
                     "OpenAI daily quiz request",
@@ -118,7 +137,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                             .uri(openAiProperties.endpoint())
                             .contentType(MediaType.APPLICATION_JSON)
                             .header("Authorization", "Bearer " + openAiProperties.apiKey())
-                            .body(requestBody(request, retryInstruction))
+                            .body(requestBody(request, retryInstruction, fallbackAttempt))
                             .retrieve()
                             .body(String.class),
                     OpenAiDailyQuizGenerator::isRetryableException);
@@ -142,7 +161,8 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
     }
 
     /** 재구성 본문과 해설카드를 함께 전달해 해설카드 중심으로 퀴즈 주제와 근거를 고른다. */
-    private Map<String, Object> requestBody(DailyQuizGenerationRequest request, String retryInstruction) {
+    private Map<String, Object> requestBody(
+            DailyQuizGenerationRequest request, String retryInstruction, boolean fallbackAttempt) {
         String input;
 
         try {
@@ -151,10 +171,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                     request.quizDate().toString(),
                     "news",
                     request.newsSources().stream()
-                            .map(source -> Map.of(
-                                    "title", source.title(),
-                                    "rewritten_body", source.rewrittenBody(),
-                                    "explanation_cards", toExplanationCardInputs(source)))
+                            .map(source -> toNewsInput(source, fallbackAttempt))
                             .toList()));
         } catch (JacksonException exception) {
             throw new IllegalStateException("OpenAI daily quiz request body serialization failed", exception);
@@ -164,7 +181,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 "model",
                 properties.model(),
                 "instructions",
-                INSTRUCTIONS,
+                fallbackAttempt ? FALLBACK_INSTRUCTIONS : INSTRUCTIONS,
                 "input",
                 prompt(input, retryInstruction),
                 "text",
@@ -179,6 +196,19 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                                 true,
                                 "schema",
                                 responseSchema())));
+    }
+
+    private static Map<String, Object> toNewsInput(DailyQuizNewsSource source, boolean fallbackAttempt) {
+        if (fallbackAttempt) {
+            return Map.of("title", source.title(), "rewritten_body", source.rewrittenBody());
+        }
+        return Map.of(
+                "title",
+                source.title(),
+                "rewritten_body",
+                source.rewrittenBody(),
+                "explanation_cards",
+                toExplanationCardInputs(source));
     }
 
     private String prompt(String input, String retryInstruction) {
@@ -214,6 +244,11 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 - 출처 전제 표현("오늘 뉴스에 나온", "기사에 따르면", "본문에 따르면" 등), 부정형("아닌 것은?"), 투자 판단, 가격 전망은 금지한다.
                 - 숫자 자체를 맞히는 문제와 숫자만 바꾼 선택지는 금지한다.
                 - 선택지는 정답과 같은 범주의 짧은 명사형/구 형태로 쓴다. 예: "자금 조달 비용 지표", "위험 확산 방지"
+                - 정답 선택지는 source_sentence에서 직접 확인 가능한 구체 명사형으로 작성한다.
+                - 정답 선택지는 source_sentence의 핵심 표현을 그대로 쓰거나, 의미가 바뀌지 않는 짧은 명사형으로만 바꾼다.
+                - 정답 선택지를 너무 일반적인 표현으로 만들지 말고, 무엇이 어떻게 되는지 드러나게 작성한다. 예: "전기요금 인상", "자금 조달 비용 지표", "시장 불확실성 증가"
+                - 오답도 정답과 같은 범주의 구체적인 명사형으로 작성한다.
+                - "긍정적인 영향", "부정적인 영향", "경제적 변화", "시장 변화", "위험 증가", "부담 증가"처럼 범위가 넓고 추상적인 표현은 정답/오답 보기로 쓰지 않는다.
                 - source_sentence는 해설카드 content 또는 뉴스 본문 문장 그대로 쓰고, 정답과 explanation은 그 한 문장에서 확인 가능해야 한다.
                 - explanation은 source_sentence를 그대로 반복하지 말고, 정답이 왜 맞는지 초보자가 이해할 수 있게 1~2문장으로 풀어쓴다.
                 - 특정 기사에서 어떤 일이 있었는지나 정책·군사 조치의 목적만 확인하는 문항은 만들지 않는다.
@@ -263,6 +298,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                     출처 전제 표현, 부정형, 투자 판단, 숫자 암기형, 숫자만 바꾼 선택지는 금지한다.
                     세 문항의 question_topic은 서로 다르게 작성하고, 같은 용어 또는 같은 개념을 반복하지 마라.
                     오답은 정답과 같은 범주로, 선택지는 짧은 명사형/구 형태로 작성하라.
+                    정답/오답 선택지는 source_sentence에서 직접 확인 가능한 구체 명사형으로 작성하고, "부정적인 영향", "시장 변화" 같은 추상 표현은 쓰지 마라.
                     explanation은 source_sentence를 그대로 반복하지 말고, 정답이 왜 맞는지 쉬운 말로 풀어써라.
                     """;
         }
@@ -277,9 +313,14 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 출처 전제 표현, 부정형, 투자 판단, 숫자 암기형, 숫자만 바꾼 선택지는 금지한다.
                 세 문항의 question_topic은 서로 다르게 작성하고, 같은 용어 또는 같은 개념을 반복하지 마라.
                 오답은 정답과 같은 범주로, 선택지는 짧은 명사형/구 형태로 작성하라.
+                정답/오답 선택지는 source_sentence에서 직접 확인 가능한 구체 명사형으로 작성하고, "부정적인 영향", "시장 변화" 같은 추상 표현은 쓰지 마라.
                 source_sentence는 해설카드 content 또는 본문 문장 그대로 쓰고, 정답과 해설은 그 한 문장에서 확인 가능해야 한다.
                 explanation은 source_sentence를 그대로 반복하지 말고, 정답이 왜 맞는지 쉬운 말로 풀어써라.
                 """;
+    }
+
+    private static boolean isFallbackAttempt(int attempt) {
+        return attempt == MAX_GENERATION_ATTEMPTS;
     }
 
     private static List<Map<String, Object>> toExplanationCardInputs(DailyQuizNewsSource source) {

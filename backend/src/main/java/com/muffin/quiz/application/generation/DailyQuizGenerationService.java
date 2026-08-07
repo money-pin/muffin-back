@@ -340,6 +340,9 @@ public class DailyQuizGenerationService {
 
     private boolean containsEvidenceSentence(News news, String sourceSentence) {
         String normalizedSourceSentence = normalizeForPhraseCheck(sourceSentence);
+        if (normalizedSourceSentence.isEmpty()) {
+            return false;
+        }
         return normalizeForPhraseCheck(news.getContent()).contains(normalizedSourceSentence)
                 || toExplanationCardSources(news.getId()).stream()
                         .map(DailyQuizExplanationCardSource::content)
