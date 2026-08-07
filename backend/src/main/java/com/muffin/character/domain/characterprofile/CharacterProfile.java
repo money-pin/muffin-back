@@ -1,4 +1,4 @@
-package com.muffin.character.domain;
+package com.muffin.character.domain.characterprofile;
 
 import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.global.entity.BaseEntity;

@@ -1,7 +1,7 @@
 package com.muffin.mypage.application.home;
 
-import com.muffin.character.domain.CharacterProfile;
-import com.muffin.character.domain.CharacterRepository;
+import com.muffin.character.domain.characterprofile.CharacterProfile;
+import com.muffin.character.domain.characterprofile.CharacterRepository;
 import com.muffin.mypage.domain.StreakCalculator;
 import com.muffin.mypage.presentation.home.dto.MypageHomeResponse;
 import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.CharacterSummary;

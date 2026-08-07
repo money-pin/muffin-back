@@ -1,4 +1,4 @@
-package com.muffin.character.domain;
+package com.muffin.character.domain.characterrecommendedsector;
 
 import com.muffin.global.entity.BaseEntity;
 import jakarta.persistence.Column;

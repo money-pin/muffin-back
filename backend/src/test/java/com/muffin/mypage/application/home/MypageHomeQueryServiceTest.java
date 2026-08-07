@@ -6,8 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
-import com.muffin.character.domain.CharacterProfile;
-import com.muffin.character.domain.CharacterRepository;
+import com.muffin.character.domain.characterprofile.CharacterProfile;
+import com.muffin.character.domain.characterprofile.CharacterRepository;
 import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.mypage.presentation.home.dto.MypageHomeResponse;

@@ -1,4 +1,4 @@
-package com.muffin.character.domain;
+package com.muffin.character.domain.characterrecommendedsector;
 
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;

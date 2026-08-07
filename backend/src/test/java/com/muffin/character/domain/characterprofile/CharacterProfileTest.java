@@ -1,4 +1,4 @@
-package com.muffin.character.domain;
+package com.muffin.character.domain.characterprofile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

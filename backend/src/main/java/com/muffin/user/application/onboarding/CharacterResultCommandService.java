@@ -1,9 +1,9 @@
 package com.muffin.user.application.onboarding;
 
-import com.muffin.character.domain.CharacterProfile;
-import com.muffin.character.domain.CharacterRecommendedSector;
-import com.muffin.character.domain.CharacterRecommendedSectorRepository;
-import com.muffin.character.domain.CharacterRepository;
+import com.muffin.character.domain.characterprofile.CharacterProfile;
+import com.muffin.character.domain.characterprofile.CharacterRepository;
+import com.muffin.character.domain.characterrecommendedsector.CharacterRecommendedSector;
+import com.muffin.character.domain.characterrecommendedsector.CharacterRecommendedSectorRepository;
 import com.muffin.sector.domain.sector.Sector;
 import com.muffin.sector.domain.sector.SectorRepository;
 import com.muffin.user.domain.User;
