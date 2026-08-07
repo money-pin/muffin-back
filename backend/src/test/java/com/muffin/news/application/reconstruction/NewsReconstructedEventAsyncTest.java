@@ -41,11 +41,13 @@ class NewsReconstructedEventAsyncTest {
         Long newsId = 1L;
         String publisherThreadName = Thread.currentThread().getName();
         AtomicReference<String> listenerThreadName = new AtomicReference<>();
+        AtomicReference<String> quizListenerThreadName = new AtomicReference<>();
         CountDownLatch latch = new CountDownLatch(3);
 
         doAnswer(invocation -> {
                     listenerThreadName.compareAndSet(
                             null, Thread.currentThread().getName());
+                    quizListenerThreadName.set(Thread.currentThread().getName());
                     latch.countDown();
                     return null;
                 })
@@ -75,6 +77,7 @@ class NewsReconstructedEventAsyncTest {
 
         assertThat(latch.await(2, TimeUnit.SECONDS)).isTrue();
         assertThat(listenerThreadName.get()).isNotEqualTo(publisherThreadName);
+        assertThat(quizListenerThreadName.get()).isNotNull().isNotEqualTo(publisherThreadName);
         verify(newsTermMappingService).mapTerms(newsId);
         verify(newsExplanationGenerationService).generate(newsId);
         verify(dailyQuizGenerationService).generateToday();
