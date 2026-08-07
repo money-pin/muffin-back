@@ -109,6 +109,33 @@ class BatchJobRunnerTest {
     }
 
     @Test
+    @DisplayName("개행과 탭이 섞인 값도 한 줄을 깨지 않도록 이스케이프한다")
+    void run_escapesLineBreakingCharacters() {
+        runner.run(BatchJob.SETTLEMENT, BatchTrigger.SCHEDULER, BUSINESS_DATE, () -> BatchJobReport.success()
+                .with("note", "first\nsecond\tthird"));
+
+        assertThat(message()).contains("note=\"first\\nsecond\\tthird\"").doesNotContain("\n", "\t");
+    }
+
+    @Test
+    @DisplayName("역슬래시를 먼저 이스케이프해 값 끝의 역슬래시가 닫는 따옴표를 삼키지 않는다")
+    void run_escapesBackslashBeforeQuote() {
+        runner.run(BatchJob.SETTLEMENT, BatchTrigger.SCHEDULER, BUSINESS_DATE, () -> BatchJobReport.success()
+                .with("path", "C:\\logs\\"));
+
+        assertThat(message()).endsWith("path=\"C:\\\\logs\\\\\"");
+    }
+
+    @Test
+    @DisplayName("보고서를 만들지 못해 null이 올라오면 성공이 아니라 실패로 남긴다")
+    void run_treatsNullReportAsFailure() {
+        runner.run(BatchJob.SETTLEMENT, BatchTrigger.SCHEDULER, BUSINESS_DATE, () -> null);
+
+        assertThat(message()).contains("outcome=failure", "error=NullPointerException");
+        assertThat(event().getLevel()).isEqualTo(Level.ERROR);
+    }
+
+    @Test
     @DisplayName("잡의 도메인 패키지 로거로 남겨 로그의 domain 필드가 global이 아닌 실제 도메인이 되게 한다")
     void run_logsThroughDomainLogger() {
         runner.run(BatchJob.SETTLEMENT, BatchTrigger.SCHEDULER, BUSINESS_DATE, BatchJobReport::success);

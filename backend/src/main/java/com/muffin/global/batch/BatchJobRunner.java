@@ -31,6 +31,9 @@ public class BatchJobRunner {
 
     private static final String MESSAGE_PREFIX = "batch";
 
+    /** 이 문자가 하나라도 있으면 값을 따옴표로 감싼다. 필드 경계(공백), 키값 구분자(=), 레코드 경계(개행/탭), 인용 문자(따옴표/역슬래시). */
+    private static final String QUOTE_TRIGGERS = " =\"\\\r\n\t";
+
     /** 기준 일자가 없는 잡(주기적 정리 등)을 위한 축약형. */
     public void run(BatchJob job, BatchTrigger trigger, BatchJobCallback callback) {
         run(job, trigger, null, callback);
@@ -42,7 +45,7 @@ public class BatchJobRunner {
         try {
             BatchJobReport report = callback.execute();
             String line = reportedLine(job, trigger, businessDate, elapsedMillis(startedAt), report);
-            if (report != null && report.outcome() == BatchOutcome.FAILURE) {
+            if (report.outcome() == BatchOutcome.FAILURE) {
                 log.error(line);
             } else {
                 log.info(line);
@@ -54,10 +57,9 @@ public class BatchJobRunner {
 
     private String reportedLine(
             BatchJob job, BatchTrigger trigger, LocalDate businessDate, long durationMillis, BatchJobReport report) {
-        BatchJobReport resolved = (report != null) ? report : BatchJobReport.success();
-        StringBuilder line = header(job, trigger, businessDate, durationMillis, resolved.outcome());
-        append(line, "reason", resolved.reason());
-        for (Map.Entry<String, Object> detail : resolved.details().entrySet()) {
+        StringBuilder line = header(job, trigger, businessDate, durationMillis, report.outcome());
+        append(line, "reason", report.reason());
+        for (Map.Entry<String, Object> detail : report.details().entrySet()) {
             append(line, detail.getKey(), detail.getValue());
         }
         return line.toString();
@@ -89,15 +91,35 @@ public class BatchJobRunner {
         line.append(' ').append(key).append('=').append(quoteIfNeeded(String.valueOf(value)));
     }
 
-    /** logfmt는 공백으로 필드를 나누므로 공백/구분자/따옴표가 섞인 값만 따옴표로 감싼다. */
+    /**
+     * logfmt는 공백으로 필드를, 개행으로 레코드를 나눈다. 그 경계를 무너뜨릴 문자가 섞인 값만 따옴표로 감싸고 이스케이프한다.
+     *
+     * <p>개행과 탭까지 다루는 이유는 <b>"실행 1회 = 로그 한 줄"이 이 규칙의 전부이기 때문</b>이다. 값 하나에 개행이 들어가면 한 실행이 여러 줄로 쪼개져 파싱도
+     * 집계도 어긋난다. 역슬래시를 가장 먼저 이스케이프하지 않으면 값 끝의 {@code \}가 닫는 따옴표를 잡아먹는다.
+     */
     private String quoteIfNeeded(String value) {
         if (value.isEmpty()) {
             return "\"\"";
         }
-        if (value.indexOf(' ') < 0 && value.indexOf('=') < 0 && value.indexOf('"') < 0) {
+        if (!needsQuoting(value)) {
             return value;
         }
-        return '"' + value.replace("\"", "\\\"") + '"';
+        return '"'
+                + value.replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("\r", "\\r")
+                        .replace("\n", "\\n")
+                        .replace("\t", "\\t")
+                + '"';
+    }
+
+    private boolean needsQuoting(String value) {
+        for (int index = 0; index < value.length(); index++) {
+            if (QUOTE_TRIGGERS.indexOf(value.charAt(index)) >= 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private long elapsedMillis(long startedAt) {

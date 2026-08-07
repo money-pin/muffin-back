@@ -12,19 +12,26 @@ import com.muffin.global.batch.BatchJobRunner;
 import com.muffin.global.batch.BatchLogCapture;
 import com.muffin.quiz.application.generation.DailyQuizGenerationService;
 import com.muffin.quiz.application.generation.DailyQuizGenerationSummary;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class DailyQuizGenerationRetrySchedulerTest {
 
     private final DailyQuizGenerationService dailyQuizGenerationService = mock(DailyQuizGenerationService.class);
+    private static final LocalDate QUIZ_DATE = LocalDate.of(2026, 7, 13);
+
+    private final Clock clock = Clock.fixed(Instant.parse("2026-07-12T22:10:00Z"), ZoneId.of("Asia/Seoul"));
     private final DailyQuizGenerationRetryScheduler scheduler =
-            new DailyQuizGenerationRetryScheduler(dailyQuizGenerationService, new BatchJobRunner());
+            new DailyQuizGenerationRetryScheduler(dailyQuizGenerationService, new BatchJobRunner(), clock);
 
     @Test
     @DisplayName("재시도 스케줄러는 오늘 퀴즈 생성을 호출하고 생성 문항 수를 로그에 남긴다")
     void retryDailyQuizGeneration_callsGenerationService() {
-        when(dailyQuizGenerationService.generateToday())
+        when(dailyQuizGenerationService.generate(QUIZ_DATE))
                 .thenReturn(new DailyQuizGenerationSummary(DailyQuizGenerationSummary.Outcome.GENERATED, 5));
 
         try (BatchLogCapture capture = BatchLogCapture.on(BatchJob.QUIZ_GENERATION_RETRY)) {
@@ -32,13 +39,13 @@ class DailyQuizGenerationRetrySchedulerTest {
 
             assertThat(capture.line()).contains("job=quiz_generation_retry", "outcome=success", "questions=5");
         }
-        verify(dailyQuizGenerationService).generateToday();
+        verify(dailyQuizGenerationService).generate(QUIZ_DATE);
     }
 
     @Test
     @DisplayName("생성 서비스가 예외를 삼키고 실패로 끝나면 배치 로그도 실패로 남는다")
     void retryDailyQuizGeneration_logsFailureWhenGenerationFails() {
-        when(dailyQuizGenerationService.generateToday())
+        when(dailyQuizGenerationService.generate(QUIZ_DATE))
                 .thenReturn(new DailyQuizGenerationSummary(DailyQuizGenerationSummary.Outcome.FAILED, 0));
 
         try (BatchLogCapture capture = BatchLogCapture.on(BatchJob.QUIZ_GENERATION_RETRY)) {
@@ -52,7 +59,7 @@ class DailyQuizGenerationRetrySchedulerTest {
     @Test
     @DisplayName("뉴스가 아직 부족하면 실패가 아니라 건너뛴 것으로 남긴다")
     void retryDailyQuizGeneration_logsSkipWhenNewsIsInsufficient() {
-        when(dailyQuizGenerationService.generateToday())
+        when(dailyQuizGenerationService.generate(QUIZ_DATE))
                 .thenReturn(new DailyQuizGenerationSummary(DailyQuizGenerationSummary.Outcome.INSUFFICIENT_NEWS, 0));
 
         try (BatchLogCapture capture = BatchLogCapture.on(BatchJob.QUIZ_GENERATION_RETRY)) {
@@ -67,10 +74,10 @@ class DailyQuizGenerationRetrySchedulerTest {
     void retryDailyQuizGeneration_doesNotThrowWhenGenerationFails() {
         doThrow(new IllegalStateException("generation failed"))
                 .when(dailyQuizGenerationService)
-                .generateToday();
+                .generate(QUIZ_DATE);
 
         scheduler.retryDailyQuizGeneration();
 
-        verify(dailyQuizGenerationService).generateToday();
+        verify(dailyQuizGenerationService).generate(QUIZ_DATE);
     }
 }

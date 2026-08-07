@@ -6,6 +6,8 @@ import com.muffin.global.batch.BatchJobRunner;
 import com.muffin.global.batch.BatchTrigger;
 import com.muffin.quiz.application.generation.DailyQuizGenerationService;
 import com.muffin.quiz.application.generation.DailyQuizGenerationSummary;
+import java.time.Clock;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,16 +21,20 @@ public class DailyQuizGenerationRetryScheduler {
 
     private final DailyQuizGenerationService dailyQuizGenerationService;
     private final BatchJobRunner batchJobRunner;
+    private final Clock clock;
 
     /** 이벤트 기반 생성이 실패했거나 누락된 경우를 대비해 발행 전까지 오늘 퀴즈 생성을 재시도한다. */
     @Scheduled(
             cron = "${muffin.batch.quiz-generation-retry.cron:0 */10 6-8 * * *}",
             zone = "${muffin.batch.quiz-generation-retry.zone:Asia/Seoul}")
     public void retryDailyQuizGeneration() {
+        // 기준일을 여기서 한 번만 정해 로그와 실제 처리 대상이 어긋나지 않게 한다(자정 근처 경합 방지).
+        LocalDate quizDate = LocalDate.now(clock);
         batchJobRunner.run(
                 BatchJob.QUIZ_GENERATION_RETRY,
                 BatchTrigger.SCHEDULER,
-                () -> report(dailyQuizGenerationService.generateToday()));
+                quizDate,
+                () -> report(dailyQuizGenerationService.generate(quizDate)));
     }
 
     /**

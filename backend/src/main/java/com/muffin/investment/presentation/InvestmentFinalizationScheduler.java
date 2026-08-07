@@ -38,8 +38,11 @@ public class InvestmentFinalizationScheduler {
             if (!result.tradingDay()) {
                 return BatchJobReport.skipped("market_closed");
             }
-            return BatchJobReport.success()
-                    .with("target", result.targetCount())
+            // 일부 실패는 수치로만 남긴다(다음 실행에서 재처리). 대상이 있는데 전부 실패한 것만 배치 실패로 본다.
+            boolean totalFailure = result.targetCount() > 0 && result.successCount() == 0;
+            BatchJobReport report =
+                    totalFailure ? BatchJobReport.failure("all_targets_failed") : BatchJobReport.success();
+            return report.with("target", result.targetCount())
                     .with("success", result.successCount())
                     .with("failed", result.failureCount());
         });
