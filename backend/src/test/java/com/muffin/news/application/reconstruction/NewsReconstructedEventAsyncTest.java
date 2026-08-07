@@ -47,7 +47,6 @@ class NewsReconstructedEventAsyncTest {
         doAnswer(invocation -> {
                     listenerThreadName.compareAndSet(
                             null, Thread.currentThread().getName());
-                    quizListenerThreadName.set(Thread.currentThread().getName());
                     latch.countDown();
                     return null;
                 })
@@ -57,6 +56,7 @@ class NewsReconstructedEventAsyncTest {
         doAnswer(invocation -> {
                     listenerThreadName.compareAndSet(
                             null, Thread.currentThread().getName());
+                    quizListenerThreadName.set(Thread.currentThread().getName());
                     latch.countDown();
                     return null;
                 })
