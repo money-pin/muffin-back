@@ -1,9 +1,11 @@
 package com.muffin.ranking.application;
 
+import com.muffin.ranking.application.projection.Top10RankingProjection;
 import com.muffin.ranking.application.projection.WeeklyInvestmentProjection;
 import com.muffin.ranking.application.projection.WeeklyRankingProjection;
 import com.muffin.ranking.application.projection.WeeklySectorProjection;
 import com.muffin.ranking.presentation.dto.WeeklyRankingResponse;
+import com.muffin.ranking.presentation.dto.WeeklyRankingResponse.CharacterResponse;
 import com.muffin.ranking.presentation.dto.WeeklyRankingResponse.MyRankResponse;
 import com.muffin.ranking.presentation.dto.WeeklyRankingResponse.SectorResponse;
 import com.muffin.ranking.presentation.dto.WeeklyRankingResponse.Top10DetailResponse;
@@ -55,13 +57,13 @@ public class WeeklyRankingQueryService {
                 .map(this::toMyRank)
                 .orElseGet(WeeklyRankingResponse.MyRankResponse::notParticipated);
 
-        List<WeeklyRankingProjection> top10 = weeklyRankingQueryRepository.findTop10(weekStartDate);
+        List<Top10RankingProjection> top10 = weeklyRankingQueryRepository.findTop10(weekStartDate);
         if (top10.isEmpty()) {
             return WeeklyRankingResponse.ready(weekInfo, myRank, List.of());
         }
 
         List<Long> top10UserIds =
-                top10.stream().map(WeeklyRankingProjection::userId).toList();
+                top10.stream().map(Top10RankingProjection::userId).toList();
         Map<Long, Long> investmentByUserId =
                 weeklyRankingQueryRepository.findWeeklyInvestments(top10UserIds, weekStartDate, weekEndDate).stream()
                         .collect(Collectors.toMap(
@@ -85,7 +87,7 @@ public class WeeklyRankingQueryService {
     }
 
     private Top10Response toTop10Response(
-            WeeklyRankingProjection ranking, long totalInvestment, List<WeeklySectorProjection> sectors) {
+            Top10RankingProjection ranking, long totalInvestment, List<WeeklySectorProjection> sectors) {
         List<SectorResponse> sectorResponses = sectors.stream()
                 .map(this::toSectorResponse)
                 .sorted(Comparator.comparing(SectorResponse::profitAmount, Comparator.reverseOrder())
@@ -96,9 +98,18 @@ public class WeeklyRankingQueryService {
         return new Top10Response(
                 ranking.rankingPosition(),
                 ranking.nicknameSnapshot(),
+                toCharacterResponse(ranking),
                 profitAmount,
                 rate(profitAmount, totalInvestment),
                 new Top10DetailResponse(totalInvestment, sectorResponses));
+    }
+
+    private CharacterResponse toCharacterResponse(Top10RankingProjection ranking) {
+        if (ranking.characterId() == null) {
+            return null;
+        }
+        return new CharacterResponse(
+                ranking.characterId(), ranking.characterType(), ranking.characterName(), ranking.characterImageUrl());
     }
 
     private SectorResponse toSectorResponse(WeeklySectorProjection sector) {
