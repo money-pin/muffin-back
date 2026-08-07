@@ -7,8 +7,8 @@ import com.muffin.auth.domain.AccessTokenProvider;
 import com.muffin.auth.domain.PasswordEncoder;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
-import com.muffin.auth.domain.deletedemail.DeletedEmail;
 import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedemail.EmailHasher;
 import com.muffin.auth.domain.exception.AuthException;
 import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.user.domain.User;
@@ -35,6 +35,7 @@ public class SignupCommandService {
     private final PasswordEncoder passwordEncoder;
     private final AccessTokenProvider accessTokenProvider;
     private final RefreshTokenIssuer refreshTokenIssuer;
+    private final EmailHasher emailHasher;
 
     @Transactional
     public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
@@ -42,7 +43,7 @@ public class SignupCommandService {
             throw new AuthException(AuthErrorCode.TERMS_NOT_AGREED);
         }
         LocalDateTime cutoff = LocalDateTime.now(KST).minusDays(DELETED_EMAIL_BLOCK_DAYS);
-        if (deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(DeletedEmail.hash(email), cutoff)) {
+        if (deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(emailHasher.hash(email), cutoff)) {
             throw new AuthException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
         }
         if (authRepository.existsByEmail(email)) {

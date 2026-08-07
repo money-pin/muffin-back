@@ -36,7 +36,7 @@ class GoogleAuthControllerDocsTest {
     @Test
     @DisplayName("구글 로그인/가입 성공 문서화")
     void documentGoogleAuthSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null) {
+        GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null, null) {
             @Override
             public TokenPair authenticate(String idToken) {
                 return new TokenPair("access-token-example", "refresh-token-example");
@@ -61,7 +61,7 @@ class GoogleAuthControllerDocsTest {
     @Test
     @DisplayName("구글 인증 실패(유효하지 않은 ID Token) 문서화")
     void documentGoogleAuthInvalidToken(RestDocumentationContextProvider restDocumentation) throws Exception {
-        GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null) {
+        GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null, null) {
             @Override
             public TokenPair authenticate(String idToken) {
                 throw new AuthException(AuthErrorCode.INVALID_GOOGLE_TOKEN);

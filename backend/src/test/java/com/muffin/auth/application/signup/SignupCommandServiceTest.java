@@ -7,6 +7,7 @@ import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
 import com.muffin.auth.domain.deletedemail.DeletedEmail;
 import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedemail.EmailHasher;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
@@ -40,6 +41,9 @@ class SignupCommandServiceTest {
 
     @Autowired
     private DeletedEmailRepository deletedEmailRepository;
+
+    @Autowired
+    private EmailHasher emailHasher;
 
     @AfterEach
     void cleanUp() {
@@ -107,7 +111,7 @@ class SignupCommandServiceTest {
     @Test
     @DisplayName("30일 이내 탈퇴한 이메일이면 RECENTLY_DELETED_EMAIL(AUTH_409_003)")
     void signupLocal_recentlyDeletedEmail() {
-        deletedEmailRepository.save(DeletedEmail.of(EMAIL));
+        deletedEmailRepository.save(DeletedEmail.of(emailHasher.hash(EMAIL)));
 
         assertThatThrownBy(() -> signupCommandService.signupLocal(EMAIL, PASSWORD, NAME, true))
                 .isInstanceOf(GeneralException.class)

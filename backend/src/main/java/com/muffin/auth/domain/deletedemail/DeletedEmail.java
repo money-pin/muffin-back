@@ -7,13 +7,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.HexFormat;
-import java.util.Locale;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -43,17 +38,8 @@ public class DeletedEmail extends BaseEntity {
         this.deletedAt = LocalDateTime.now(KST);
     }
 
-    public static DeletedEmail of(String rawEmail) {
-        return new DeletedEmail(hash(rawEmail));
-    }
-
-    public static String hash(String rawEmail) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of()
-                    .formatHex(digest.digest(rawEmail.toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 알고리즘을 사용할 수 없습니다.", e);
-        }
+    /** emailHash는 {@link com.muffin.auth.domain.deletedemail.EmailHasher}로 미리 해시한 값을 전달해야 한다. */
+    public static DeletedEmail of(String emailHash) {
+        return new DeletedEmail(emailHash);
     }
 }

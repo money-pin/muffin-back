@@ -36,7 +36,7 @@ class SignupControllerDocsTest {
     @Test
     @DisplayName("회원가입 성공 문서화")
     void documentSignupSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null) {
+        SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null, null) {
             @Override
             public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
                 return new TokenPair("access-token-example", "refresh-token-example");
@@ -67,7 +67,7 @@ class SignupControllerDocsTest {
     @Test
     @DisplayName("회원가입 실패(약관 미동의) 문서화")
     void documentSignupTermsNotAgreed(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null) {
+        SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null, null) {
             @Override
             public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
                 throw new AuthException(AuthErrorCode.TERMS_NOT_AGREED);
@@ -93,7 +93,7 @@ class SignupControllerDocsTest {
     @Test
     @DisplayName("회원가입 실패(이미 사용 중인 이메일) 문서화")
     void documentSignupDuplicateEmail(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null) {
+        SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null, null) {
             @Override
             public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
                 throw new AuthException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
@@ -119,7 +119,7 @@ class SignupControllerDocsTest {
     @Test
     @DisplayName("회원가입 실패(최근 탈퇴한 이메일) 문서화")
     void documentSignupRecentlyDeletedEmail(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null) {
+        SignupCommandService stub = new SignupCommandService(null, null, null, null, null, null, null) {
             @Override
             public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
                 throw new AuthException(AuthErrorCode.RECENTLY_DELETED_EMAIL);

@@ -50,7 +50,7 @@ class WithdrawControllerDocsTest {
     @Test
     @DisplayName("탈퇴 성공 문서화")
     void documentWithdrawSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        WithdrawCommandService stub = new WithdrawCommandService(null, null, null, null) {
+        WithdrawCommandService stub = new WithdrawCommandService(null, null, null, null, null) {
             @Override
             public void withdraw(Long userId) {}
         };

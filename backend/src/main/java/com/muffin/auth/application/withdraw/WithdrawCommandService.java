@@ -4,6 +4,7 @@ import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
 import com.muffin.auth.domain.deletedemail.DeletedEmail;
 import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedemail.EmailHasher;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
@@ -27,6 +28,7 @@ public class WithdrawCommandService {
     private final AuthRepository authRepository;
     private final DeletedEmailRepository deletedEmailRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final EmailHasher emailHasher;
 
     @Transactional
     public void withdraw(Long userId) {
@@ -35,7 +37,7 @@ public class WithdrawCommandService {
                 authRepository.findByUserId(userId).orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
 
         user.withdraw();
-        deletedEmailRepository.save(DeletedEmail.of(auth.getEmail()));
+        deletedEmailRepository.save(DeletedEmail.of(emailHasher.hash(auth.getEmail())));
         auth.anonymizeEmail();
         refreshTokenRepository.deleteByUserId(userId);
     }

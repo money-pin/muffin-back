@@ -8,8 +8,8 @@ import com.muffin.auth.domain.GoogleIdTokenPayload;
 import com.muffin.auth.domain.GoogleIdTokenVerifier;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
-import com.muffin.auth.domain.deletedemail.DeletedEmail;
 import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedemail.EmailHasher;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.exception.AuthException;
 import com.muffin.auth.domain.exception.code.AuthErrorCode;
@@ -46,6 +46,7 @@ public class GoogleAuthCommandService {
     private final AccessTokenProvider accessTokenProvider;
     private final RefreshTokenIssuer refreshTokenIssuer;
     private final EntityManager entityManager;
+    private final EmailHasher emailHasher;
 
     @Transactional
     public TokenPair authenticate(String idToken) {
@@ -74,7 +75,7 @@ public class GoogleAuthCommandService {
 
     private Auth signup(GoogleIdTokenPayload payload) {
         LocalDateTime cutoff = LocalDateTime.now(KST).minusDays(DELETED_EMAIL_BLOCK_DAYS);
-        if (deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(DeletedEmail.hash(payload.email()), cutoff)) {
+        if (deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(emailHasher.hash(payload.email()), cutoff)) {
             throw new AuthException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
         }
 
