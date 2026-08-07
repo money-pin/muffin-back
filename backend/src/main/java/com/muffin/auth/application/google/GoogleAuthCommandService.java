@@ -77,6 +77,10 @@ public class GoogleAuthCommandService {
             throw new GeneralException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
         }
 
+        if (authRepository.existsByEmail(payload.email())) {
+            throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
+        }
+
         User user = User.register(null, UUID.randomUUID().toString(), User.truncateName(payload.name()), null);
         user.agreeToTerms();
         userRepository.save(user);
