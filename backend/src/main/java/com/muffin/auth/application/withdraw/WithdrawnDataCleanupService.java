@@ -6,7 +6,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>투자/퀴즈 각각 "아직 행이 남아있는 탈퇴 유저"만 대상으로 조회하므로, 정리가 끝난 유저는 다음 배치 실행부터 자연히
  * 대상에서 빠진다(User 테이블에 별도 정리 완료 플래그를 둘 필요가 없다).
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WithdrawnDataCleanupService {
@@ -28,8 +26,11 @@ public class WithdrawnDataCleanupService {
     private final QuizSessionRepository quizSessionRepository;
     private final WithdrawnDataCleanupProperties properties;
 
+    /**
+     * @return 투자/퀴즈 기록을 정리한 유저 수. 호출자가 배치 실행 로그에 남긴다.
+     */
     @Transactional
-    public void cleanupWithdrawnUserData() {
+    public WithdrawnDataCleanupResult cleanupWithdrawnUserData() {
         LocalDateTime cutoff = LocalDateTime.now(KST).minusMonths(properties.retentionMonths());
 
         List<Long> investmentUserIds = investmentRepository.findDistinctUserIdsEligibleForCleanup(cutoff);
@@ -44,9 +45,6 @@ public class WithdrawnDataCleanupService {
             quizSessionRepository.deleteAllByUserIdIn(quizUserIds);
         }
 
-        log.info(
-                "[withdrawn-data-cleanup] investmentUsers={}, quizUsers={}",
-                investmentUserIds.size(),
-                quizUserIds.size());
+        return new WithdrawnDataCleanupResult(investmentUserIds.size(), quizUserIds.size());
     }
 }

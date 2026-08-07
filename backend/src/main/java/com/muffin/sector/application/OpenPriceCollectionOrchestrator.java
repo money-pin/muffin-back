@@ -1,6 +1,7 @@
 package com.muffin.sector.application;
 
 import com.muffin.global.event.EtfPricesLoadedEvent;
+import com.muffin.sector.application.OpenPriceCollectionResult.Outcome;
 import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
 import com.muffin.sector.domain.etfprice.EtfPrice;
@@ -32,44 +33,52 @@ public class OpenPriceCollectionOrchestrator {
     private final EtfPriceWriter etfPriceWriter;
     private final ApplicationEventPublisher eventPublisher;
 
-    public void collectOpenPrices(LocalDate priceDate) {
+    /**
+     * 시가를 수집하기만 한다. 이벤트는 발행하지 않는다.
+     *
+     * @return 이번 실행이 무엇을 했는지. 호출자가 배치 실행 로그에 남긴다.
+     */
+    public OpenPriceCollectionResult collectOpenPrices(LocalDate priceDate) {
         boolean tradingDay = tradingCalendarService.getCalendar(priceDate).tradingDay();
         if (!tradingDay) {
-            log.info("[open-price] market closed, record status priceDate={}", priceDate);
             collectSafely("BTC", priceDate, () -> btcPriceCollector.collect(priceDate, false));
             collectSafely("TOSS", priceDate, () -> etfPriceCollector.collectOpen(priceDate, false));
-            return;
+            return OpenPriceCollectionResult.of(Outcome.MARKET_CLOSED, 0);
         }
 
         List<Etf> targets = etfRepository.findAll();
         if (targets.isEmpty()) {
             log.warn("[open-price] no target ETFs priceDate={}", priceDate);
-            return;
+            return OpenPriceCollectionResult.of(Outcome.NO_TARGETS, 0);
         }
 
         collectSafely("BTC", priceDate, () -> btcPriceCollector.collect(priceDate, true));
         collectSafely("TOSS", priceDate, () -> etfPriceCollector.collectOpen(priceDate, true));
+        return OpenPriceCollectionResult.of(Outcome.COLLECTED, targets.size());
     }
 
-    public void collectAndFinalizeOpenPrices(LocalDate priceDate) {
+    /**
+     * 마지막으로 한 번 더 수집한 뒤 끝내 못 받은 종목을 확정하고, 시세가 다 찼으면 정산 트리거 이벤트를 발행한다.
+     *
+     * @return 종결 단계의 결과. 호출자가 배치 실행 로그에 남긴다.
+     */
+    public OpenPriceCollectionResult collectAndFinalizeOpenPrices(LocalDate priceDate) {
         collectOpenPrices(priceDate);
-        finalizeMissingOpenPrices(priceDate);
+        return finalizeMissingOpenPrices(priceDate);
     }
 
-    private void finalizeMissingOpenPrices(LocalDate priceDate) {
+    private OpenPriceCollectionResult finalizeMissingOpenPrices(LocalDate priceDate) {
         if (!tradingCalendarService.getCalendar(priceDate).tradingDay()) {
-            log.info("[open-price] market closed, skip finalization priceDate={}", priceDate);
-            return;
+            return OpenPriceCollectionResult.of(Outcome.MARKET_CLOSED, 0);
         }
 
         List<Etf> targets = etfRepository.findAll();
         if (targets.isEmpty()) {
             log.warn("[open-price] no target ETFs to finalize priceDate={}", priceDate);
-            return;
+            return OpenPriceCollectionResult.of(Outcome.NO_TARGETS, 0);
         }
         Map<Long, EtfPrice> pricesByEtfId = pricesByEtfId(priceDate);
         if (!isCompleted(targets, pricesByEtfId)) {
-
             for (Etf target : targets) {
                 if (isTerminal(pricesByEtfId.get(target.getId()))) {
                     continue;
@@ -85,7 +94,7 @@ public class OpenPriceCollectionOrchestrator {
                 }
             }
         }
-        publishWhenCompleted(targets, priceDate);
+        return publishWhenCompleted(targets, priceDate);
     }
 
     private void collectSafely(String provider, LocalDate priceDate, Runnable collector) {
@@ -96,13 +105,12 @@ public class OpenPriceCollectionOrchestrator {
         }
     }
 
-    private void publishWhenCompleted(List<Etf> targets, LocalDate priceDate) {
+    private OpenPriceCollectionResult publishWhenCompleted(List<Etf> targets, LocalDate priceDate) {
         if (!isCompleted(targets, pricesByEtfId(priceDate))) {
-            log.warn("[open-price] collection incomplete priceDate={}", priceDate);
-            return;
+            return OpenPriceCollectionResult.of(Outcome.INCOMPLETE, targets.size());
         }
         eventPublisher.publishEvent(new EtfPricesLoadedEvent(priceDate));
-        log.info("[open-price] collection completed priceDate={}", priceDate);
+        return OpenPriceCollectionResult.of(Outcome.COMPLETED, targets.size());
     }
 
     private boolean isCompleted(List<Etf> targets, Map<Long, EtfPrice> pricesByEtfId) {
