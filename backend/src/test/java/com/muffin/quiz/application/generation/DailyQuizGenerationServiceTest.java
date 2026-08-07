@@ -8,6 +8,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.muffin.news.domain.explanation.NewsExplanation;
+import com.muffin.news.domain.explanation.NewsExplanationRepository;
+import com.muffin.news.domain.explanation.enums.NewsExplanationStatus;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.news.enums.NewsStatus;
@@ -37,6 +40,7 @@ class DailyQuizGenerationServiceTest {
     private static final LocalDate QUIZ_DATE = LocalDate.of(2026, 7, 19);
 
     private NewsRepository newsRepository;
+    private NewsExplanationRepository newsExplanationRepository;
     private QuizSetRepository quizSetRepository;
     private DailyQuizGenerator dailyQuizGenerator;
     private PlatformTransactionManager transactionManager;
@@ -45,12 +49,20 @@ class DailyQuizGenerationServiceTest {
     @BeforeEach
     void setUp() {
         newsRepository = mock(NewsRepository.class);
+        newsExplanationRepository = mock(NewsExplanationRepository.class);
         quizSetRepository = mock(QuizSetRepository.class);
         dailyQuizGenerator = mock(DailyQuizGenerator.class);
         transactionManager = mock(PlatformTransactionManager.class);
         when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        when(newsExplanationRepository.findTop3ByNewsIdAndStatusOrderByCardOrderAsc(
+                        any(), any(NewsExplanationStatus.class)))
+                .thenReturn(List.of());
         generationService = new DailyQuizGenerationService(
-                newsRepository, quizSetRepository, dailyQuizGenerator, new TransactionTemplate(transactionManager));
+                newsRepository,
+                newsExplanationRepository,
+                quizSetRepository,
+                dailyQuizGenerator,
+                new TransactionTemplate(transactionManager));
     }
 
     @Test
@@ -64,6 +76,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -87,6 +100,36 @@ class DailyQuizGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("일일 퀴즈 생성 요청에는 뉴스별 해설카드 정보가 함께 포함된다")
+    void generate_includesExplanationCardsInRequest() {
+        List<News> newsSources = defaultNewsSources();
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
+        when(newsRepository.findQuizCandidates(
+                        NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
+                        QUIZ_DATE.atStartOfDay(),
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 15)))
+                .thenReturn(newsSources);
+        when(newsExplanationRepository.findTop3ByNewsIdAndStatusOrderByCardOrderAsc(1L, NewsExplanationStatus.DONE))
+                .thenReturn(List.of(explanation(1L, 1, "기준금리란?", "기준금리", "중앙은행이 정하는 대표 금리입니다.")));
+        when(dailyQuizGenerator.generate(any())).thenReturn(generationResult());
+
+        generationService.generate(QUIZ_DATE);
+
+        ArgumentCaptor<DailyQuizGenerationRequest> captor = ArgumentCaptor.forClass(DailyQuizGenerationRequest.class);
+        verify(dailyQuizGenerator).generate(captor.capture());
+        assertThat(captor.getValue().newsSources().getFirst().explanationCards())
+                .singleElement()
+                .satisfies(card -> {
+                    assertThat(card.order()).isEqualTo(1);
+                    assertThat(card.title()).isEqualTo("기준금리란?");
+                    assertThat(card.keyTerm()).isEqualTo("기준금리");
+                    assertThat(card.content()).isEqualTo("중앙은행이 정하는 대표 금리입니다.");
+                });
+    }
+
+    @Test
     @DisplayName("퀴즈 출처 뉴스는 최신순만 보지 않고 카테고리 다양성과 용어 매핑 수를 기준으로 3개를 고른다")
     void generate_selectsSourceNewsByCategoryDiversityAndTermCount() {
         List<News> candidates = List.of(
@@ -99,6 +142,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -124,6 +168,45 @@ class DailyQuizGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("퀴즈 출처 뉴스는 해설카드 핵심어가 겹치지 않도록 우선 선별한다")
+    void generate_selectsSourceNewsByExplanationKeyTermDiversity() {
+        List<News> candidates = List.of(
+                pendingNews(1L, 1L, LocalDateTime.of(2026, 7, 19, 12, 0), "뉴스1 본문", 3),
+                pendingNews(2L, 2L, LocalDateTime.of(2026, 7, 19, 11, 0), "뉴스2 본문", 2),
+                pendingNews(3L, 3L, LocalDateTime.of(2026, 7, 19, 10, 0), "뉴스3 본문", 1),
+                pendingNews(4L, 4L, LocalDateTime.of(2026, 7, 19, 9, 0), "뉴스4 본문", 1));
+
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
+        when(newsRepository.findQuizCandidates(
+                        NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
+                        QUIZ_DATE.atStartOfDay(),
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 15)))
+                .thenReturn(candidates);
+        when(newsExplanationRepository.findTop3ByNewsIdAndStatusOrderByCardOrderAsc(1L, NewsExplanationStatus.DONE))
+                .thenReturn(List.of(explanation(1L, 1, "기준금리란?", "기준금리", "금리 설명")));
+        when(newsExplanationRepository.findTop3ByNewsIdAndStatusOrderByCardOrderAsc(2L, NewsExplanationStatus.DONE))
+                .thenReturn(List.of(explanation(2L, 1, "금리 변화란?", "기준금리", "금리 설명")));
+        when(newsExplanationRepository.findTop3ByNewsIdAndStatusOrderByCardOrderAsc(3L, NewsExplanationStatus.DONE))
+                .thenReturn(List.of(explanation(3L, 1, "코픽스란?", "코픽스", "코픽스 설명")));
+        when(newsExplanationRepository.findTop3ByNewsIdAndStatusOrderByCardOrderAsc(4L, NewsExplanationStatus.DONE))
+                .thenReturn(List.of(explanation(4L, 1, "공모주란?", "공모주", "공모주 설명")));
+        when(dailyQuizGenerator.generate(any()))
+                .thenReturn(new DailyQuizGenerationResult(
+                        List.of(question(1, 1L, "뉴스1 본문"), question(2, 3L, "뉴스3 본문"), question(3, 4L, "뉴스4 본문"))));
+
+        generationService.generate(QUIZ_DATE);
+
+        ArgumentCaptor<DailyQuizGenerationRequest> requestCaptor =
+                ArgumentCaptor.forClass(DailyQuizGenerationRequest.class);
+        verify(dailyQuizGenerator).generate(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().newsSources())
+                .extracting(DailyQuizNewsSource::newsId)
+                .containsExactly(1L, 3L, 4L);
+    }
+
+    @Test
     @DisplayName("이전 실패로 UNAVAILABLE 퀴즈 세트가 있으면 삭제 후 다시 생성한다")
     void generate_retriesWhenUnavailableQuizSetExists() {
         QuizSet unavailableQuizSet = QuizSet.create(QUIZ_DATE);
@@ -133,6 +216,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.of(unavailableQuizSet));
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -176,6 +260,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -203,6 +288,7 @@ class DailyQuizGenerationServiceTest {
                 .thenAnswer(invocation -> reserved.get() ? Optional.of(QuizSet.create(QUIZ_DATE)) : Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -238,6 +324,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -262,6 +349,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -276,6 +364,37 @@ class DailyQuizGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("AI 결과의 근거 문장이 해설카드에 있으면 READY 퀴즈 세트를 저장한다")
+    void generate_savesReadyWhenSourceSentenceExistsInExplanationCard() {
+        List<News> newsSources = List.of(
+                pendingNews(1L, "뉴스1", "본문에는 해설카드 문장이 없습니다."),
+                pendingNews(2L, "뉴스2", "코픽스가 상승했습니다. 주택담보대출 금리가 오를 수 있습니다."),
+                pendingNews(3L, "뉴스3", "금융당국이 토스를 금융복합기업집단으로 지정했습니다."));
+
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
+        when(newsRepository.findQuizCandidates(
+                        NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
+                        QUIZ_DATE.atStartOfDay(),
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 15)))
+                .thenReturn(newsSources);
+        when(newsExplanationRepository.findTop3ByNewsIdAndStatusOrderByCardOrderAsc(1L, NewsExplanationStatus.DONE))
+                .thenReturn(List.of(explanation(1L, 1, "기준금리란?", "기준금리", "기준금리는 중앙은행이 정하는 대표 금리입니다.")));
+        when(dailyQuizGenerator.generate(any()))
+                .thenReturn(new DailyQuizGenerationResult(List.of(
+                        question(1, 1L, "기준금리는 중앙은행이 정하는 대표 금리입니다."),
+                        question(2, 2L, "코픽스가 상승했습니다."),
+                        question(3, 3L, "금융당국이 토스를 금융복합기업집단으로 지정했습니다."))));
+
+        generationService.generate(QUIZ_DATE);
+
+        ArgumentCaptor<QuizSet> captor = ArgumentCaptor.forClass(QuizSet.class);
+        verify(quizSetRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(QuizSetStatus.READY);
+    }
+
+    @Test
     @DisplayName("AI 결과가 3문항이 아니면 UNAVAILABLE 퀴즈 세트를 저장한다")
     void generate_savesUnavailableWhenQuestionCountIsInvalid() {
         List<News> newsSources = defaultNewsSources();
@@ -283,6 +402,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -304,6 +424,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -327,6 +448,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -354,6 +476,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -384,6 +507,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -407,6 +531,7 @@ class DailyQuizGenerationServiceTest {
         when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
         when(newsRepository.findQuizCandidates(
                         NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
                         QUIZ_DATE.atStartOfDay(),
                         QUIZ_DATE.plusDays(1).atStartOfDay(),
                         PageRequest.of(0, 15)))
@@ -458,6 +583,13 @@ class DailyQuizGenerationServiceTest {
         quizSet.addQuiz(3L, "질문3", "해설3", 100L, 3, "근거 문장3", QuizDifficulty.MEDIUM);
         quizSet.ready();
         return quizSet;
+    }
+
+    private static NewsExplanation explanation(
+            Long newsId, int cardOrder, String title, String keyTerm, String content) {
+        NewsExplanation explanation = NewsExplanation.create(newsId, cardOrder, title, content, keyTerm);
+        explanation.complete();
+        return explanation;
     }
 
     private static DailyQuizGenerationResult generationResult() {

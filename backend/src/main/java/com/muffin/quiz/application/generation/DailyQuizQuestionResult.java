@@ -12,9 +12,22 @@ public record DailyQuizQuestionResult(
         int correctOptionOrder,
         String explanation,
         String sourceSentence,
+        String questionTopic,
         QuizDifficulty difficulty) {
 
     public DailyQuizQuestionResult {
         options = List.copyOf(options);
+    }
+
+    public DailyQuizQuestionResult(
+            int order,
+            Long newsId,
+            String questionText,
+            List<DailyQuizOptionResult> options,
+            int correctOptionOrder,
+            String explanation,
+            String sourceSentence,
+            QuizDifficulty difficulty) {
+        this(order, newsId, questionText, options, correctOptionOrder, explanation, sourceSentence, "", difficulty);
     }
 }
