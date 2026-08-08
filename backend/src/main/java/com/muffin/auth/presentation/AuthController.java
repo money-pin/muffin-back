@@ -1,13 +1,14 @@
 package com.muffin.auth.presentation;
 
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.application.google.GoogleAuthCommandService;
 import com.muffin.auth.application.login.LoginCommandService;
 import com.muffin.auth.application.logout.LogoutCommandService;
 import com.muffin.auth.application.refresh.RefreshCommandService;
 import com.muffin.auth.application.signup.SignupCommandService;
 import com.muffin.auth.application.withdraw.WithdrawCommandService;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.auth.presentation.google.dto.GoogleAuthRequest;
 import com.muffin.auth.presentation.google.dto.GoogleAuthResponse;
 import com.muffin.auth.presentation.login.dto.LocalLoginRequest;
@@ -18,7 +19,6 @@ import com.muffin.auth.presentation.signup.dto.SignupResponse;
 import com.muffin.auth.presentation.swagger.AuthApi;
 import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.global.apiPayload.code.GeneralSuccessCode;
-import com.muffin.global.apiPayload.exception.GeneralException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -81,7 +81,7 @@ public class AuthController implements AuthApi {
     public ApiResponse<RefreshResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
         String rawRefreshToken = refreshTokenCookieHelper
                 .extract(request)
-                .orElseThrow(() -> new GeneralException(AuthErrorCode.INVALID_REFRESH_TOKEN));
+                .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 
         TokenPair result = refreshCommandService.refresh(rawRefreshToken);
 

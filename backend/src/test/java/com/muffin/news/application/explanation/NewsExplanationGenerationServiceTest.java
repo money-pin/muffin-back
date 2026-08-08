@@ -3,6 +3,7 @@ package com.muffin.news.application.explanation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.SimpleTransactionStatus;
@@ -30,13 +32,15 @@ class NewsExplanationGenerationServiceTest {
     private final NewsExplanationRepository newsExplanationRepository = mock(NewsExplanationRepository.class);
     private final NewsExplanationGenerator newsExplanationGenerator = mock(NewsExplanationGenerator.class);
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
     private final NewsExplanationGenerationService generationService = new NewsExplanationGenerationService(
             newsRepository,
             termDictionaryRepository,
             newsExplanationRepository,
             newsExplanationGenerator,
-            transactionTemplate);
+            transactionTemplate,
+            eventPublisher);
 
     NewsExplanationGenerationServiceTest() {
         when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
@@ -65,6 +69,7 @@ class NewsExplanationGenerationServiceTest {
         generationService.generate(newsId);
 
         assertSavedExplanation(newsId, 1, "기준금리란?", "기준금리는 중앙은행이 돈의 흐름을 조절하기 위해 정하는 대표 금리입니다.", "기준금리");
+        verify(eventPublisher).publishEvent(new NewsExplanationGeneratedEvent(newsId));
     }
 
     @Test
@@ -90,6 +95,7 @@ class NewsExplanationGenerationServiceTest {
                 "왜 금리 변화가 생활비와 연결될까?",
                 "금리가 바뀌면 대출과 예금의 부담이 함께 움직입니다. 장바구니 가격을 보고 소비를 조절하듯, 사람들은 이자 부담에 따라 지출과 저축을 조정합니다.",
                 "금리 변화");
+        verify(eventPublisher).publishEvent(new NewsExplanationGeneratedEvent(newsId));
     }
 
     @Test
@@ -118,6 +124,7 @@ class NewsExplanationGenerationServiceTest {
             assertThat(explanation.getKeyTerm()).isEqualTo("해설카드");
             assertThat(explanation.getStatus()).isEqualTo(NewsExplanationStatus.FAILED);
         });
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     private static News reconstructedNews(Long newsId) {

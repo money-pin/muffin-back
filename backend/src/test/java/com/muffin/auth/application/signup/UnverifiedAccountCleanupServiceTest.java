@@ -2,10 +2,10 @@ package com.muffin.auth.application.signup;
 
 import static org.assertj.core.api.Assertions.*;
 
-import com.muffin.auth.domain.Auth;
-import com.muffin.auth.domain.AuthRepository;
-import com.muffin.auth.domain.RefreshToken;
-import com.muffin.auth.domain.RefreshTokenRepository;
+import com.muffin.auth.domain.auth.Auth;
+import com.muffin.auth.domain.auth.AuthRepository;
+import com.muffin.auth.domain.refreshtoken.RefreshToken;
+import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import jakarta.persistence.EntityManager;

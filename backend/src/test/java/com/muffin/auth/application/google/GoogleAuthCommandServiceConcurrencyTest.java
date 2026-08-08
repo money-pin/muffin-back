@@ -7,11 +7,12 @@ import static org.mockito.Mockito.*;
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.domain.AccessTokenProvider;
-import com.muffin.auth.domain.Auth;
-import com.muffin.auth.domain.AuthRepository;
-import com.muffin.auth.domain.DeletedEmailRepository;
 import com.muffin.auth.domain.GoogleIdTokenPayload;
 import com.muffin.auth.domain.GoogleIdTokenVerifier;
+import com.muffin.auth.domain.auth.Auth;
+import com.muffin.auth.domain.auth.AuthRepository;
+import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedemail.EmailHasher;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
@@ -59,6 +60,9 @@ class GoogleAuthCommandServiceConcurrencyTest {
     @Mock
     private EntityManager entityManager;
 
+    @Mock
+    private EmailHasher emailHasher;
+
     private GoogleAuthCommandService googleAuthCommandService;
 
     @BeforeEach
@@ -70,7 +74,8 @@ class GoogleAuthCommandServiceConcurrencyTest {
                 deletedEmailRepository,
                 accessTokenProvider,
                 refreshTokenIssuer,
-                entityManager);
+                entityManager,
+                emailHasher);
     }
 
     @Test
@@ -107,7 +112,7 @@ class GoogleAuthCommandServiceConcurrencyTest {
     }
 
     @Test
-    @DisplayName("uk_provider_email 위반(다른 구글 계정이 같은 이메일 사용 중)이면 EMAIL_ALREADY_IN_USE로 실패하고 "
+    @DisplayName("uk_email 위반(다른 계정이 같은 이메일 사용 중, provider 무관)이면 EMAIL_ALREADY_IN_USE로 실패하고 "
             + "자신의 User 행을 따로 지우지 않는다(트랜잭션 롤백에 맡김)")
     void authenticate_differentAccountSameEmail_throwsEmailAlreadyInUse() {
         when(googleIdTokenVerifier.verify(ID_TOKEN)).thenReturn(new GoogleIdTokenPayload(SUB, EMAIL, "레이스"));
@@ -118,8 +123,7 @@ class GoogleAuthCommandServiceConcurrencyTest {
             return user;
         });
 
-        when(authRepository.saveAndFlush(any(Auth.class)))
-                .thenThrow(new DataIntegrityViolationException("uk_provider_email"));
+        when(authRepository.saveAndFlush(any(Auth.class))).thenThrow(new DataIntegrityViolationException("uk_email"));
         when(authRepository.findByProviderAndProviderUserId(AuthProvider.GOOGLE, SUB))
                 .thenReturn(Optional.empty());
 

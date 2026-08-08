@@ -7,8 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.muffin.auth.domain.AccessTokenProvider;
-import com.muffin.character.domain.CharacterProfile;
-import com.muffin.character.domain.CharacterRepository;
+import com.muffin.character.domain.characterprofile.CharacterProfile;
+import com.muffin.character.domain.characterprofile.CharacterRepository;
 import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
 import com.muffin.user.domain.User;

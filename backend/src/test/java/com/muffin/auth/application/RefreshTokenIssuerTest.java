@@ -2,8 +2,8 @@ package com.muffin.auth.application;
 
 import static org.assertj.core.api.Assertions.*;
 
-import com.muffin.auth.domain.RefreshToken;
-import com.muffin.auth.domain.RefreshTokenRepository;
+import com.muffin.auth.domain.refreshtoken.RefreshToken;
+import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import org.junit.jupiter.api.AfterEach;

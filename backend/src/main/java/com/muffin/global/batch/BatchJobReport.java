@@ -25,12 +25,24 @@ public record BatchJobReport(BatchOutcome outcome, String reason, Map<String, Ob
     }
 
     /**
-     * 할 일이 없어 수행하지 않았다(휴장일, 이미 처리됨, 선행 데이터 미적재 등).
+     * 할 일이 없어 수행하지 않았다(휴장일, 이미 처리됨).
+     *
+     * <p>선행 조건이 갖춰지지 않아 <b>못 한</b> 경우에는 {@link #deferred(String)}를 쓴다. 둘을 섞으면 산출물이 안 나오는 상태가 계속돼도 알림이 울리지
+     * 않는다.
      *
      * @param reason 건너뛴 이유. 로그의 {@code reason=} 값이 되므로 값의 종류가 유한한 짧은 토큰으로 적는다.
      */
     public static BatchJobReport skipped(String reason) {
         return new BatchJobReport(BatchOutcome.SKIPPED, reason, Map.of());
+    }
+
+    /**
+     * 할 일은 있으나 선행 조건이 갖춰지지 않아 미뤘다(정산 미완료, 뉴스 부족 등).
+     *
+     * @param reason 미룬 이유. 로그의 {@code reason=} 값이 되므로 값의 종류가 유한한 짧은 토큰으로 적는다.
+     */
+    public static BatchJobReport deferred(String reason) {
+        return new BatchJobReport(BatchOutcome.DEFERRED, reason, Map.of());
     }
 
     /**

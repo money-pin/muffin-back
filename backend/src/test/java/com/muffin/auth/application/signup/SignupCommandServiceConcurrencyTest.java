@@ -6,10 +6,11 @@ import static org.mockito.Mockito.when;
 
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.domain.AccessTokenProvider;
-import com.muffin.auth.domain.Auth;
-import com.muffin.auth.domain.AuthRepository;
-import com.muffin.auth.domain.DeletedEmailRepository;
 import com.muffin.auth.domain.PasswordEncoder;
+import com.muffin.auth.domain.auth.Auth;
+import com.muffin.auth.domain.auth.AuthRepository;
+import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedemail.EmailHasher;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
@@ -51,6 +52,9 @@ class SignupCommandServiceConcurrencyTest {
     @Mock
     private RefreshTokenIssuer refreshTokenIssuer;
 
+    @Mock
+    private EmailHasher emailHasher;
+
     private SignupCommandService signupCommandService;
 
     @BeforeEach
@@ -61,7 +65,8 @@ class SignupCommandServiceConcurrencyTest {
                 deletedEmailRepository,
                 passwordEncoder,
                 accessTokenProvider,
-                refreshTokenIssuer);
+                refreshTokenIssuer,
+                emailHasher);
     }
 
     @Test
@@ -74,8 +79,7 @@ class SignupCommandServiceConcurrencyTest {
             return user;
         });
         when(passwordEncoder.encode(PASSWORD)).thenReturn("encoded");
-        when(authRepository.saveAndFlush(any(Auth.class)))
-                .thenThrow(new DataIntegrityViolationException("uk_provider_email"));
+        when(authRepository.saveAndFlush(any(Auth.class))).thenThrow(new DataIntegrityViolationException("uk_email"));
 
         assertThatThrownBy(() -> signupCommandService.signupLocal(EMAIL, PASSWORD, NAME, true))
                 .isInstanceOf(GeneralException.class)
@@ -84,7 +88,7 @@ class SignupCommandServiceConcurrencyTest {
     }
 
     @Test
-    @DisplayName("uk_provider_email과 무관한 무결성 위반이면 EMAIL_ALREADY_IN_USE로 감추지 않고 그대로 전파한다")
+    @DisplayName("uk_email과 무관한 무결성 위반이면 EMAIL_ALREADY_IN_USE로 감추지 않고 그대로 전파한다")
     void signupLocal_unrelatedDataIntegrityViolation_propagatesAsIs() {
         when(authRepository.existsByEmail(EMAIL)).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {

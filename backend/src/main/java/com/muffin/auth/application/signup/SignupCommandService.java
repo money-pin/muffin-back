@@ -3,14 +3,14 @@ package com.muffin.auth.application.signup;
 import com.muffin.auth.application.ConstraintViolations;
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.domain.AccessTokenProvider;
-import com.muffin.auth.domain.Auth;
-import com.muffin.auth.domain.AuthRepository;
-import com.muffin.auth.domain.DeletedEmail;
-import com.muffin.auth.domain.DeletedEmailRepository;
 import com.muffin.auth.domain.PasswordEncoder;
-import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.auth.domain.auth.Auth;
+import com.muffin.auth.domain.auth.AuthRepository;
+import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedemail.EmailHasher;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import java.time.LocalDateTime;
@@ -35,18 +35,19 @@ public class SignupCommandService {
     private final PasswordEncoder passwordEncoder;
     private final AccessTokenProvider accessTokenProvider;
     private final RefreshTokenIssuer refreshTokenIssuer;
+    private final EmailHasher emailHasher;
 
     @Transactional
     public TokenPair signupLocal(String email, String rawPassword, String name, boolean termsAgreed) {
         if (!termsAgreed) {
-            throw new GeneralException(AuthErrorCode.TERMS_NOT_AGREED);
+            throw new AuthException(AuthErrorCode.TERMS_NOT_AGREED);
         }
         LocalDateTime cutoff = LocalDateTime.now(KST).minusDays(DELETED_EMAIL_BLOCK_DAYS);
-        if (deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(DeletedEmail.hash(email), cutoff)) {
-            throw new GeneralException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
+        if (deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(emailHasher.hash(email), cutoff)) {
+            throw new AuthException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
         }
         if (authRepository.existsByEmail(email)) {
-            throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
+            throw new AuthException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
         }
 
         User user = User.register(null, UUID.randomUUID().toString(), name, null);
@@ -58,12 +59,12 @@ public class SignupCommandService {
         try {
             authRepository.saveAndFlush(auth);
         } catch (DataIntegrityViolationException e) {
-            // existsByEmail 이후 커밋 전 동시 가입 레이스: DB unique 제약(uk_provider_email)이 최종 방어선.
+            // existsByEmail 이후 커밋 전 동시 가입 레이스: DB unique 제약(uk_email, provider 무관 전역 유일)이 최종 방어선.
             // 다른 무결성 위반까지 이메일 중복으로 잘못 번역하지 않도록 실제 위반 제약을 확인한다.
-            if (!ConstraintViolations.isConstraint(e, "uk_provider_email")) {
+            if (!ConstraintViolations.isConstraint(e, "uk_email")) {
                 throw e;
             }
-            throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
+            throw new AuthException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
         }
 
         String accessToken =

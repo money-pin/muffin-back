@@ -3,11 +3,11 @@ package com.muffin.auth.application.withdraw;
 import static org.assertj.core.api.Assertions.*;
 
 import com.muffin.auth.application.RefreshTokenIssuer;
-import com.muffin.auth.domain.Auth;
-import com.muffin.auth.domain.AuthRepository;
-import com.muffin.auth.domain.DeletedEmail;
-import com.muffin.auth.domain.DeletedEmailRepository;
-import com.muffin.auth.domain.RefreshTokenRepository;
+import com.muffin.auth.domain.auth.Auth;
+import com.muffin.auth.domain.auth.AuthRepository;
+import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedemail.EmailHasher;
+import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import com.muffin.user.domain.enums.UserStatus;
@@ -44,6 +44,9 @@ class WithdrawCommandServiceTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private EmailHasher emailHasher;
+
     @AfterEach
     void cleanUp() {
         refreshTokenRepository.deleteAll();
@@ -77,7 +80,7 @@ class WithdrawCommandServiceTest {
         assertThat(updatedAuth.getEmail()).isEqualTo("withdrawn-" + auth.getAuthId() + "@deleted.local");
 
         assertThat(deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(
-                        DeletedEmail.hash(EMAIL), LocalDateTime.now().minusMinutes(1)))
+                        emailHasher.hash(EMAIL), LocalDateTime.now().minusMinutes(1)))
                 .isTrue();
 
         assertThat(refreshTokenRepository.findByUserId(user.getUserId())).isEmpty();

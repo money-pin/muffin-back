@@ -6,7 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.muffin.global.batch.BatchJob;
-import com.muffin.global.batch.BatchJobRunner;
+import com.muffin.global.batch.BatchJobRunners;
 import com.muffin.global.batch.BatchLogCapture;
 import com.muffin.quiz.application.generation.DailyQuizPublicationService;
 import java.time.Clock;
@@ -25,7 +25,7 @@ class DailyQuizPublicationSchedulerTest {
     private final DailyQuizPublicationService dailyQuizPublicationService = mock(DailyQuizPublicationService.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-13T00:00:00Z"), ZoneId.of("Asia/Seoul"));
     private final DailyQuizPublicationScheduler scheduler =
-            new DailyQuizPublicationScheduler(dailyQuizPublicationService, new BatchJobRunner(), clock);
+            new DailyQuizPublicationScheduler(dailyQuizPublicationService, BatchJobRunners.forTest(), clock);
 
     @Test
     @DisplayName("발행 기준일을 스케줄러가 정해 서비스와 배치 로그에 같은 값을 넘긴다")
@@ -41,14 +41,14 @@ class DailyQuizPublicationSchedulerTest {
     }
 
     @Test
-    @DisplayName("발행할 READY 세트가 없으면 실패가 아니라 건너뛴 것으로 남긴다")
-    void publishDailyQuiz_logsSkipWhenNoReadyQuizSet() {
+    @DisplayName("발행할 세트가 없는 것은 사용자에게 퀴즈가 안 나가는 상태라 미룸으로 남긴다")
+    void publishDailyQuiz_logsDeferredWhenNoReadyQuizSet() {
         when(dailyQuizPublicationService.publish(QUIZ_DATE, PUBLISHED_AT)).thenReturn(false);
 
         try (BatchLogCapture capture = BatchLogCapture.on(BatchJob.QUIZ_PUBLICATION)) {
             scheduler.publishDailyQuiz();
 
-            assertThat(capture.line()).contains("outcome=skipped", "reason=no_ready_quiz_set", "date=2026-07-13");
+            assertThat(capture.line()).contains("outcome=deferred", "reason=no_ready_quiz_set", "date=2026-07-13");
         }
     }
 }

@@ -1,11 +1,11 @@
 package com.muffin.user.application.nickname;
 
 import com.muffin.auth.application.ConstraintViolations;
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.NicknameProfanityPolicy;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
-import com.muffin.user.exception.UserErrorCode;
+import com.muffin.user.domain.exception.UserException;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -25,14 +25,13 @@ public class NicknameCommandService {
     public String changeNickname(Long userId, String newNickname) {
         String normalized = User.normalizeAndValidateNickname(newNickname);
         if (profanityPolicy.isProfane(normalized)) {
-            throw new GeneralException(UserErrorCode.NICKNAME_CONTAINS_PROFANITY);
+            throw new UserException(UserErrorCode.NICKNAME_CONTAINS_PROFANITY);
         }
         if (userRepository.existsByNickname(normalized)) {
-            throw new GeneralException(UserErrorCode.NICKNAME_DUPLICATED);
+            throw new UserException(UserErrorCode.NICKNAME_DUPLICATED);
         }
 
-        User user =
-                userRepository.findById(userId).orElseThrow(() -> new GeneralException(UserErrorCode.USER_NOT_FOUND));
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
         user.changeNickname(normalized);
 
         try {
@@ -42,7 +41,7 @@ public class NicknameCommandService {
             if (!ConstraintViolations.isConstraint(e, NICKNAME_UNIQUE_CONSTRAINT)) {
                 throw e;
             }
-            throw new GeneralException(UserErrorCode.NICKNAME_DUPLICATED);
+            throw new UserException(UserErrorCode.NICKNAME_DUPLICATED);
         }
         return user.getNickname();
     }

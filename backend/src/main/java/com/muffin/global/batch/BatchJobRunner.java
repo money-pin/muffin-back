@@ -2,6 +2,7 @@ package com.muffin.global.batch;
 
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>로거를 잡의 도메인 패키지({@link BatchJob#loggerName()})로 잡기 때문에, 러너가 {@code global} 패키지에 있어도 로그의 {@code domain}
  * 필드는 실제 도메인(investment, news 등)으로 남는다.
+ *
+ * <p>같은 지점에서 {@link BatchJobMetrics}로 지표도 발행한다. 로그와 지표의 발행 지점을 하나로 두어 <b>둘이 서로 다른 얘기를 하는 상황을 만들지 않는다.</b>
  */
 @Component
 public class BatchJobRunner {
@@ -33,6 +36,12 @@ public class BatchJobRunner {
 
     /** 이 문자가 하나라도 있으면 값을 따옴표로 감싼다. 필드 경계(공백), 키값 구분자(=), 레코드 경계(개행/탭), 인용 문자(따옴표/역슬래시). */
     private static final String QUOTE_TRIGGERS = " =\"\\\r\n\t";
+
+    private final BatchJobMetrics metrics;
+
+    public BatchJobRunner(BatchJobMetrics metrics) {
+        this.metrics = metrics;
+    }
 
     /** 기준 일자가 없는 잡(주기적 정리 등)을 위한 축약형. */
     public void run(BatchJob job, BatchTrigger trigger, BatchJobCallback callback) {
@@ -43,15 +52,41 @@ public class BatchJobRunner {
         Logger log = LoggerFactory.getLogger(job.loggerName());
         long startedAt = System.nanoTime();
         try {
-            BatchJobReport report = callback.execute();
-            String line = reportedLine(job, trigger, businessDate, elapsedMillis(startedAt), report);
-            if (report.outcome() == BatchOutcome.FAILURE) {
-                log.error(line);
-            } else {
-                log.info(line);
-            }
+            BatchJobReport report = Objects.requireNonNull(callback.execute(), "배치 잡은 실행 결과를 반환해야 한다");
+            observe(log, job, trigger, businessDate, elapsedMillis(startedAt), report, null);
         } catch (Exception exception) {
-            log.error(failureLine(job, trigger, businessDate, elapsedMillis(startedAt), exception), exception);
+            observe(log, job, trigger, businessDate, elapsedMillis(startedAt), null, exception);
+        }
+    }
+
+    /**
+     * 실행 결과를 로그와 지표로 남긴다.
+     *
+     * <p>잡 실행과 분리된 이유는 <b>관측이 관측 대상을 오염시키지 않게 하기 위해서</b>다. 한 블록에 두면 지표 발행이 실패했을 때 성공한 실행이 실패로 기록되고, 실패
+     * 처리 경로에서 다시 실패하면 예외가 스케줄러까지 새어나간다. 지표 발행 실패는 경고로만 남기고 배치 결과 판정은 건드리지 않는다.
+     */
+    private void observe(
+            Logger log,
+            BatchJob job,
+            BatchTrigger trigger,
+            LocalDate businessDate,
+            long durationMillis,
+            BatchJobReport report,
+            Exception exception) {
+        BatchOutcome outcome = (exception != null) ? BatchOutcome.FAILURE : report.outcome();
+
+        if (exception != null) {
+            log.error(failureLine(job, trigger, businessDate, durationMillis, exception), exception);
+        } else if (outcome == BatchOutcome.FAILURE) {
+            log.error(reportedLine(job, trigger, businessDate, durationMillis, report));
+        } else {
+            log.info(reportedLine(job, trigger, businessDate, durationMillis, report));
+        }
+
+        try {
+            metrics.record(job, trigger, outcome, durationMillis);
+        } catch (Exception metricFailure) {
+            log.warn("batch metric record failed job={}", job.code(), metricFailure);
         }
     }
 

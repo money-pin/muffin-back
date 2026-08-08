@@ -4,14 +4,15 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.domain.Auth;
-import com.muffin.auth.domain.AuthRepository;
-import com.muffin.auth.domain.DeletedEmail;
-import com.muffin.auth.domain.DeletedEmailRepository;
 import com.muffin.auth.domain.GoogleIdTokenPayload;
 import com.muffin.auth.domain.GoogleIdTokenVerifier;
-import com.muffin.auth.domain.RefreshTokenRepository;
+import com.muffin.auth.domain.auth.Auth;
+import com.muffin.auth.domain.auth.AuthRepository;
+import com.muffin.auth.domain.deletedemail.DeletedEmail;
+import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedemail.EmailHasher;
 import com.muffin.auth.domain.enums.AuthProvider;
+import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
@@ -44,6 +45,9 @@ class GoogleAuthCommandServiceTest {
 
     @Autowired
     private DeletedEmailRepository deletedEmailRepository;
+
+    @Autowired
+    private EmailHasher emailHasher;
 
     @MockitoBean
     private GoogleIdTokenVerifier googleIdTokenVerifier;
@@ -97,13 +101,34 @@ class GoogleAuthCommandServiceTest {
     @Test
     @DisplayName("30일 이내 탈퇴한 이메일이면 신규 가입 시 RECENTLY_DELETED_EMAIL(AUTH_409_003)")
     void authenticate_newAccount_recentlyDeletedEmail() {
-        deletedEmailRepository.save(DeletedEmail.of("deleted@example.com"));
+        deletedEmailRepository.save(DeletedEmail.of(emailHasher.hash("deleted@example.com")));
         stubPayload("google-sub-4", "deleted@example.com", "홍길동");
 
         assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN))
                 .isInstanceOf(GeneralException.class)
                 .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
                         .isEqualTo("AUTH_409_003"));
+    }
+
+    @Test
+    @DisplayName("이미 로컬로 가입된 이메일과 같은 구글 계정이면 새 계정을 만들지 않고 EMAIL_ALREADY_IN_USE(AUTH_409_001)")
+    void authenticate_newAccount_emailAlreadyUsedByLocalSignup() {
+        User localUser = userRepository.save(
+                User.register(null, java.util.UUID.randomUUID().toString(), "홍길동", null));
+        authRepository.save(Auth.createLocal(localUser.getUserId(), "shared@example.com", "password1", "encoded"));
+
+        stubPayload("google-sub-shared", "shared@example.com", "홍길동");
+
+        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN))
+                .isInstanceOf(GeneralException.class)
+                .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
+                        .isEqualTo("AUTH_409_001"));
+
+        assertThat(authRepository.count()).isEqualTo(1);
+        assertThat(userRepository.count()).isEqualTo(1);
+        assertThat(userRepository.findById(localUser.getUserId())).isPresent();
+        assertThat(authRepository.findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-shared"))
+                .isEmpty();
     }
 
     @Test

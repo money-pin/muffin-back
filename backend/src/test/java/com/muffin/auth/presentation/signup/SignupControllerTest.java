@@ -8,8 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.muffin.auth.domain.AuthRepository;
-import com.muffin.auth.domain.RefreshTokenRepository;
+import com.muffin.auth.domain.auth.AuthRepository;
+import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.user.domain.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;

@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.domain.RefreshTokenRepository;
+import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
