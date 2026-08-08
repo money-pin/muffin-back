@@ -55,7 +55,7 @@ public class OpenPriceCollectionScheduler {
             case COLLECTED, COMPLETED -> BatchJobReport.success().with("targets", result.targetCount());
             case INCOMPLETE -> BatchJobReport.failure("collection_incomplete").with("targets", result.targetCount());
             case MARKET_CLOSED -> BatchJobReport.skipped("market_closed");
-            case NO_TARGETS -> BatchJobReport.skipped("no_targets");
+            case NO_TARGETS -> BatchJobReport.deferred("no_targets");
         };
     }
 }

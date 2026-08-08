@@ -4,7 +4,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 
-import com.muffin.global.batch.BatchJobRunner;
+import com.muffin.global.batch.BatchJobRunners;
 import com.muffin.sector.infrastructure.EtfPriceCollector;
 import com.muffin.sector.infrastructure.EtfPriceCollector.CollectionSummary;
 import java.time.Clock;
@@ -34,7 +34,7 @@ class EtfClosePriceSchedulerTest {
     void setUp() {
         Clock clock =
                 Clock.fixed(OffsetDateTime.parse("2026-07-13T15:35:00+09:00").toInstant(), ZoneId.of("Asia/Seoul"));
-        scheduler = new EtfClosePriceScheduler(collector, new BatchJobRunner(), clock);
+        scheduler = new EtfClosePriceScheduler(collector, BatchJobRunners.forTest(), clock);
     }
 
     @Test

@@ -18,7 +18,7 @@ class BatchJobRunnerTest {
 
     private static final LocalDate BUSINESS_DATE = LocalDate.of(2026, 8, 5);
 
-    private final BatchJobRunner runner = new BatchJobRunner();
+    private final BatchJobRunner runner = BatchJobRunners.forTest();
 
     private Logger settlementLogger;
     private ListAppender<ILoggingEvent> appender;

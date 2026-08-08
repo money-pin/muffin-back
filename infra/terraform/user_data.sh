@@ -60,6 +60,13 @@ server {
     listen 80;
     server_name api.muffin.ai.kr;
 
+    # 관측 지표(/actuator/prometheus)는 온박스 수집기만 읽는다. 프록시가 모든 경로를
+    # 8080으로 넘기므로 여기서 끊지 않으면 443을 통해 외부에 그대로 공개된다.
+    # 403이 아니라 404로 응답해 엔드포인트 존재 자체를 알리지 않는다.
+    location /actuator {
+        return 404;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;

@@ -36,7 +36,7 @@ public class DailyQuizPublicationScheduler {
         batchJobRunner.run(BatchJob.QUIZ_PUBLICATION, BatchTrigger.SCHEDULER, quizDate, () -> {
             boolean published = dailyQuizPublicationService.publish(quizDate, publishedAt);
             // 발행할 세트가 없는 것은 이 잡의 실패가 아니라 선행 단계(퀴즈 생성)의 문제다.
-            return published ? BatchJobReport.success() : BatchJobReport.skipped("no_ready_quiz_set");
+            return published ? BatchJobReport.success() : BatchJobReport.deferred("no_ready_quiz_set");
         });
     }
 }

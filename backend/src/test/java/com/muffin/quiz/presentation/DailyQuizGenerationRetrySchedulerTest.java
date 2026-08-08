@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import com.muffin.global.batch.BatchJob;
-import com.muffin.global.batch.BatchJobRunner;
+import com.muffin.global.batch.BatchJobRunners;
 import com.muffin.global.batch.BatchLogCapture;
 import com.muffin.quiz.application.generation.DailyQuizGenerationService;
 import com.muffin.quiz.application.generation.DailyQuizGenerationSummary;
@@ -26,7 +26,7 @@ class DailyQuizGenerationRetrySchedulerTest {
 
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-12T22:10:00Z"), ZoneId.of("Asia/Seoul"));
     private final DailyQuizGenerationRetryScheduler scheduler =
-            new DailyQuizGenerationRetryScheduler(dailyQuizGenerationService, new BatchJobRunner(), clock);
+            new DailyQuizGenerationRetryScheduler(dailyQuizGenerationService, BatchJobRunners.forTest(), clock);
 
     @Test
     @DisplayName("재시도 스케줄러는 오늘 퀴즈 생성을 호출하고 생성 문항 수를 로그에 남긴다")
@@ -57,15 +57,15 @@ class DailyQuizGenerationRetrySchedulerTest {
     }
 
     @Test
-    @DisplayName("뉴스가 아직 부족하면 실패가 아니라 건너뛴 것으로 남긴다")
-    void retryDailyQuizGeneration_logsSkipWhenNewsIsInsufficient() {
+    @DisplayName("뉴스가 부족해 못 만든 것은 정상 스킵이 아니라 미룸으로 남겨 마지막 성공 시각을 갱신하지 않는다")
+    void retryDailyQuizGeneration_logsDeferredWhenNewsIsInsufficient() {
         when(dailyQuizGenerationService.generate(QUIZ_DATE))
                 .thenReturn(new DailyQuizGenerationSummary(DailyQuizGenerationSummary.Outcome.INSUFFICIENT_NEWS, 0));
 
         try (BatchLogCapture capture = BatchLogCapture.on(BatchJob.QUIZ_GENERATION_RETRY)) {
             scheduler.retryDailyQuizGeneration();
 
-            assertThat(capture.line()).contains("outcome=skipped", "reason=insufficient_news");
+            assertThat(capture.line()).contains("outcome=deferred", "reason=insufficient_news");
         }
     }
 

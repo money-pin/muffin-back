@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import com.muffin.global.batch.BatchJob;
-import com.muffin.global.batch.BatchJobRunner;
+import com.muffin.global.batch.BatchJobRunners;
 import com.muffin.global.batch.BatchLogCapture;
 import com.muffin.sector.application.OpenPriceCollectionOrchestrator;
 import com.muffin.sector.application.OpenPriceCollectionResult;
@@ -36,7 +36,7 @@ class OpenPriceCollectionSchedulerTest {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-07-13T00:00:00Z"), ZoneId.of("Asia/Seoul"));
-        scheduler = new OpenPriceCollectionScheduler(orchestrator, new BatchJobRunner(), clock);
+        scheduler = new OpenPriceCollectionScheduler(orchestrator, BatchJobRunners.forTest(), clock);
     }
 
     @Test
