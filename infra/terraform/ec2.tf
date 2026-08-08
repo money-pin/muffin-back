@@ -138,6 +138,10 @@ resource "aws_iam_role_policy" "ec2_db_bootstrap" {
           "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_USERNAME",
           "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_PASSWORD",
           "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_APP_BOOTSTRAPPED",
+          # 지표 수집 전용 DB 계정 부트스트랩용. 쓰기 권한은 여기 나열한 이름으로만 제한한다.
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_EXPORTER_USERNAME",
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_EXPORTER_PASSWORD",
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_EXPORTER_BOOTSTRAPPED",
         ]
       },
     ]

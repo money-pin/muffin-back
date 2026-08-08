@@ -140,3 +140,9 @@ variable "github_repository" {
   default     = "money-pin/muffin-back"
 }
 
+
+variable "exporter_db_username" {
+  description = "지표 수집 전용 DB 계정 이름 (상태값 조회 권한만 부여)"
+  type        = string
+  default     = "muffin_exporter"
+}
