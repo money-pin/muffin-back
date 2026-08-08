@@ -129,7 +129,6 @@ UPDATE term_dictionary SET content = '외국환거래법은 외국환거래와 �
 UPDATE term_dictionary SET content = '외국환업무취급기관은 외국환업무를 영위하기 위하여 재무건전성, 외환업무시설 및 전문인력을 갖추어 기획재정부장관에게 등록한 금융기관을 말한다. 외국환은행은 외국환업무취급기관 중 은행을 의미한다.' WHERE term = '외국환업무취급기관/외국환은행';
 UPDATE term_dictionary SET content = '자국 통화가치의 안정을 도모하고 투기적인 외화 유출입에 따른 외환시장의 혼란을 방지할 목적으로 정부가 외환시장에 개입하는 데 사용하기 위하여 조성한 기금을 말한다.' WHERE term = '외국환평형기금';
 UPDATE term_dictionary SET content = '외국환포지션은 일정시점에서 외국환은행 및 기업 등이 보유하고 있는 외화표시자산과 부채의 차액으로서 거래주체가 환리스크에 노출된 정도를 나타낸다.' WHERE term = '외국환포지션';
-UPDATE term_dictionary SET content = '어떤 경제주체의 행위가 본인의 의도와는 관계없이 다른 경제주체에게 의도하지 않은 혜택이나 손해를 발생시키지만 그 영향에 대한 보상이 이루어지지 않는 현상을 말한다.' WHERE term = '외부효과';
 UPDATE term_dictionary SET content = '외채(external debt)는 한 나라의 거주자가 비거주자에게 미래 특정 시점에 원금이나 이자 또는 원금 및 이자를 지급해야 하는 현재 확정된 채무의 잔액을 말한다. 대외채권은 반대로 거주자가 비거주자에게 받을 권리가 있는 채권을 의미한다.' WHERE term = '외채/대외채권';
 UPDATE term_dictionary SET content = '특정 상품의 수출액에서 그 상품 제조를 위한 원자재 수입액을 차감한 잔액을 외화가득액이라 하고, 외화가득액의 수출액에 대한 비율을 외화가득률이라고 한다.' WHERE term = '외화가득액/외화가득율';
 UPDATE term_dictionary SET content = '외환결제과정에 내재된 리스크로 국가 간 또는 복수통화 간에 이루어지는 외환결제의 특성상 환율, 시차, 국가 간 상이한 자금이체시스템 및 법률체계 등 여러 요인에 의해 발생한다.' WHERE term = '외환결제리스크';
@@ -178,7 +177,6 @@ UPDATE term_dictionary SET content = '전략적 상황에 처한 경제주체들
 UPDATE term_dictionary SET content = '주가가 실제 기업의 가치에 비해 고평가되어 있는지, 아니면 저평가되어 있는지를 판단할 때 활용하는 대표적인 지표로 주가수익비율(PER; Price Earning Ratio)이 있다.' WHERE term = '주가수익비율(PER)';
 UPDATE term_dictionary SET content = '중앙거래당사자(CCP; Central Counterparty)는 증권거래 계약의 매도자에 대해 매수자 역할을, 매수자에 대해서는 매도자 역할을 수행하는 기관으로서 다자 간 차감에 의한 청산 업무를 수행하여 결제 유동성을 절약하는 한편 결제이행보증 서비스를 제공하여 참가자의 리스크관리 부담을 경감시키는 역할을 수행하고 있다.' WHERE term = '중앙거래당사자';
 UPDATE term_dictionary SET content = '중앙예탁기관(CSD; Central Securities Depository)은 증권예탁 업무를 집중적으로 수행하는 기관으로서, 예탁자 또는 예탁자의 고객으로부터 직간접적으로 증권을 집중 예탁받아 동 예탁증권에 대한 권리를 관리하는 증권예탁제도의 운영기관을 말한다.' WHERE term = '중앙예탁기관';
-UPDATE term_dictionary SET content = '일반적으로 중앙은행은 독점적 발권력을 바탕으로 금융기관에 부족자금을 대출하는 은행의 은행 기능과 정부의 세입 및 세출을 관리하고 필요시 부족자금을 대출하는 정부의 은행 기능을 수행한다.' WHERE term = '중앙은행';
 UPDATE term_dictionary SET content = '증권결제리스크는 매매대상 증권의 인도와 대금지급이 예정대로 이행되지 않아 발생할 수 있는 손실가능성을 말하며 원금리스크, 대체비용리스크, 유동성리스크 등으로 구분된다.' WHERE term = '증권결제리스크';
 UPDATE term_dictionary SET content = '증권대금동시결제(DVP; Delivery versus Payment)는 중앙예탁기관의 증권결제시스템을 대금결제은행의 자금결제시스템과 연계하여 증권거래시 증권의 실물과 대금을 동시에 결제하는 방식이다.' WHERE term = '증권대금동시결제(DVP)';
 UPDATE term_dictionary SET content = '국제결제은행(BIS)의 지급결제 및 시장인프라 위원회는 지급결제제도 감시(oversight of payment systems)를 “기존 시스템 및 운영 예정인 시스템을 모니터링하고 동 시스템에 대해 평가하는 한편, 필요 시 개선을 유도함으로써 동 시스템들의 안전성 및 효율성의 증진을 도모하는 중앙은행의 기능”으로 정의하고 있다.' WHERE term = '지급결제제도 감시';
