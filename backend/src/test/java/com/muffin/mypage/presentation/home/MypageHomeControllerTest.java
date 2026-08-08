@@ -17,6 +17,7 @@ import com.muffin.quiz.domain.quizsession.QuizSession;
 import com.muffin.quiz.domain.quizsession.QuizSessionRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -56,6 +57,9 @@ class MypageHomeControllerTest {
 
     @Autowired
     private ReadHistoryRepository readHistoryRepository;
+
+    @Autowired
+    private Clock clock;
 
     @AfterEach
     void cleanUp() {
@@ -114,7 +118,7 @@ class MypageHomeControllerTest {
     void getHome_success() throws Exception {
         CharacterProfile character = seedCharacter();
         User user = createOnboardedUser(character.getCharacterId(), "길동이");
-        finishQuizSession(user.getUserId(), 1L, LocalDate.now());
+        finishQuizSession(user.getUserId(), 1L, LocalDate.now(clock));
         saveReadNews(user.getUserId(), "뉴스1", "http://origin/1");
         saveReadNews(user.getUserId(), "뉴스2", "http://origin/2");
 
@@ -133,7 +137,7 @@ class MypageHomeControllerTest {
     void getHome_maxStreakAndWeeklyActivity() throws Exception {
         CharacterProfile character = seedCharacter();
         User user = createOnboardedUser(character.getCharacterId());
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         finishQuizSession(user.getUserId(), 1L, today);
         // 이번 주 범위 밖(20일 전)의 4일 연속 기록: currentStreak(1)보다 긴 maxStreak를 만든다.
         finishQuizSession(user.getUserId(), 2L, today.minusDays(20));
@@ -177,7 +181,7 @@ class MypageHomeControllerTest {
         User me = createOnboardedUser(character.getCharacterId(), "나야나");
         User other = createOnboardedUser(character.getCharacterId(), "다른사람");
 
-        finishQuizSession(other.getUserId(), 1L, LocalDate.now());
+        finishQuizSession(other.getUserId(), 1L, LocalDate.now(clock));
         saveReadNews(other.getUserId(), "남의뉴스", "http://origin/other");
 
         mockMvc.perform(get("/api/mypage/home").header("Authorization", bearerTokenFor(me.getUserId())))
