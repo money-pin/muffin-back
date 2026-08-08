@@ -41,14 +41,14 @@ class DailyQuizPublicationSchedulerTest {
     }
 
     @Test
-    @DisplayName("발행할 READY 세트가 없으면 실패가 아니라 건너뛴 것으로 남긴다")
-    void publishDailyQuiz_logsSkipWhenNoReadyQuizSet() {
+    @DisplayName("발행할 세트가 없는 것은 사용자에게 퀴즈가 안 나가는 상태라 미룸으로 남긴다")
+    void publishDailyQuiz_logsDeferredWhenNoReadyQuizSet() {
         when(dailyQuizPublicationService.publish(QUIZ_DATE, PUBLISHED_AT)).thenReturn(false);
 
         try (BatchLogCapture capture = BatchLogCapture.on(BatchJob.QUIZ_PUBLICATION)) {
             scheduler.publishDailyQuiz();
 
-            assertThat(capture.line()).contains("outcome=skipped", "reason=no_ready_quiz_set", "date=2026-07-13");
+            assertThat(capture.line()).contains("outcome=deferred", "reason=no_ready_quiz_set", "date=2026-07-13");
         }
     }
 }

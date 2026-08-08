@@ -44,6 +44,27 @@ class BatchJobMetricsTest {
     }
 
     @Test
+    @DisplayName("선행 조건 미충족으로 미룬 것은 마지막 성공 시각을 갱신하지 않는다")
+    void record_leavesLastSuccessOnDeferral() {
+        metrics.record(BatchJob.WEEKLY_RANKING, BatchTrigger.SCHEDULER, BatchOutcome.DEFERRED, 15);
+
+        assertThat(lastSuccess(BatchJob.WEEKLY_RANKING)).isZero();
+    }
+
+    @Test
+    @DisplayName("미룸이 반복돼도 마지막 성공 시각은 그대로여서 침묵이 쌓인다")
+    void record_doesNotRefreshLastSuccessWhileDeferring() {
+        metrics.record(BatchJob.WEEKLY_RANKING, BatchTrigger.SCHEDULER, BatchOutcome.SUCCESS, 100);
+        double afterSuccess = lastSuccess(BatchJob.WEEKLY_RANKING);
+
+        for (int attempt = 0; attempt < 5; attempt++) {
+            metrics.record(BatchJob.WEEKLY_RANKING, BatchTrigger.SCHEDULER, BatchOutcome.DEFERRED, 15);
+        }
+
+        assertThat(lastSuccess(BatchJob.WEEKLY_RANKING)).isEqualTo(afterSuccess);
+    }
+
+    @Test
     @DisplayName("실패는 마지막 성공 시각을 갱신하지 않아 침묵이 알림으로 이어진다")
     void record_leavesLastSuccessOnFailure() {
         metrics.record(BatchJob.RSS_COLLECTION, BatchTrigger.SCHEDULER, BatchOutcome.FAILURE, 3_011);

@@ -16,7 +16,8 @@ import org.springframework.stereotype.Component;
  * 오설정·컨테이너 다운이 <b>전부</b> 잡힌다. 실패를 세는 방식은 "잡이 아예 안 돌았다"를 못 잡지만, 마지막 성공 시각은 침묵 자체를 신호로 바꾼다.
  *
  * <p>{@link BatchOutcome#SKIPPED}도 성공 시각을 갱신한다. 휴장일이나 이미 처리된 날에 잡이 아무것도 하지 않는 것은 정상 동작이고, 이걸 갱신하지 않으면 연휴마다
- * 알림이 울린다.
+ * 알림이 울린다. 반면 {@link BatchOutcome#DEFERRED}는 갱신하지 않는다. 선행 조건이 안 갖춰져 <b>못 한</b> 것이라, 갱신해 버리면 산출물이 하나도 안
+ * 나오는데도 재시도할 때마다 성공 시각이 새로 찍혀 알림이 영원히 울리지 않는다.
  *
  * <p><b>게이지는 인메모리라 재기동하면 0으로 돌아간다.</b> 0은 "이번 기동 이후 성공 기록 없음"을 뜻하며, 알림 룰이 이 값을 그대로 쓰면 배포 직후 오탐이 난다. DB에서
  * 시드할지 룰에서 다룰지는 대시보드/알림 작업에서 정한다.
@@ -48,7 +49,7 @@ public class BatchJobMetrics {
         registry.timer(DURATION_METRIC, JOB_TAG, job.code(), TRIGGER_TAG, trigger.code(), OUTCOME_TAG, outcome.code())
                 .record(durationMillis, TimeUnit.MILLISECONDS);
 
-        if (outcome != BatchOutcome.FAILURE) {
+        if (outcome == BatchOutcome.SUCCESS || outcome == BatchOutcome.SKIPPED) {
             lastSuccessByJob.get(job).set(clock.instant().getEpochSecond());
         }
     }

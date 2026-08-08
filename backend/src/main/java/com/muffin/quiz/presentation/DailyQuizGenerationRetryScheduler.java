@@ -45,7 +45,7 @@ public class DailyQuizGenerationRetryScheduler {
         return switch (summary.outcome()) {
             case GENERATED -> BatchJobReport.success().with("questions", summary.questionCount());
             case ALREADY_RESERVED -> BatchJobReport.skipped("already_reserved");
-            case INSUFFICIENT_NEWS -> BatchJobReport.skipped("insufficient_news");
+            case INSUFFICIENT_NEWS -> BatchJobReport.deferred("insufficient_news");
             case FAILED -> BatchJobReport.failure("generation_failed");
         };
     }

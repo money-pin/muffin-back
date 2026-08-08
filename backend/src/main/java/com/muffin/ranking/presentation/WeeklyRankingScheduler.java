@@ -52,7 +52,7 @@ public class WeeklyRankingScheduler {
         return switch (result.outcome()) {
             case CREATED -> BatchJobReport.success().with("participants", result.participantCount());
             case ALREADY_CREATED -> BatchJobReport.skipped("already_created");
-            case SETTLEMENT_PENDING -> BatchJobReport.skipped("settlement_pending");
+            case SETTLEMENT_PENDING -> BatchJobReport.deferred("settlement_pending");
             case NO_PARTICIPANTS -> BatchJobReport.skipped("no_participants");
         };
     }

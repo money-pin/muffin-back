@@ -2,6 +2,7 @@ package com.muffin.global.batch;
 
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,19 +52,41 @@ public class BatchJobRunner {
         Logger log = LoggerFactory.getLogger(job.loggerName());
         long startedAt = System.nanoTime();
         try {
-            BatchJobReport report = callback.execute();
-            long durationMillis = elapsedMillis(startedAt);
-            String line = reportedLine(job, trigger, businessDate, durationMillis, report);
-            if (report.outcome() == BatchOutcome.FAILURE) {
-                log.error(line);
-            } else {
-                log.info(line);
-            }
-            metrics.record(job, trigger, report.outcome(), durationMillis);
+            BatchJobReport report = Objects.requireNonNull(callback.execute(), "배치 잡은 실행 결과를 반환해야 한다");
+            observe(log, job, trigger, businessDate, elapsedMillis(startedAt), report, null);
         } catch (Exception exception) {
-            long durationMillis = elapsedMillis(startedAt);
+            observe(log, job, trigger, businessDate, elapsedMillis(startedAt), null, exception);
+        }
+    }
+
+    /**
+     * 실행 결과를 로그와 지표로 남긴다.
+     *
+     * <p>잡 실행과 분리된 이유는 <b>관측이 관측 대상을 오염시키지 않게 하기 위해서</b>다. 한 블록에 두면 지표 발행이 실패했을 때 성공한 실행이 실패로 기록되고, 실패
+     * 처리 경로에서 다시 실패하면 예외가 스케줄러까지 새어나간다. 지표 발행 실패는 경고로만 남기고 배치 결과 판정은 건드리지 않는다.
+     */
+    private void observe(
+            Logger log,
+            BatchJob job,
+            BatchTrigger trigger,
+            LocalDate businessDate,
+            long durationMillis,
+            BatchJobReport report,
+            Exception exception) {
+        BatchOutcome outcome = (exception != null) ? BatchOutcome.FAILURE : report.outcome();
+
+        if (exception != null) {
             log.error(failureLine(job, trigger, businessDate, durationMillis, exception), exception);
-            metrics.record(job, trigger, BatchOutcome.FAILURE, durationMillis);
+        } else if (outcome == BatchOutcome.FAILURE) {
+            log.error(reportedLine(job, trigger, businessDate, durationMillis, report));
+        } else {
+            log.info(reportedLine(job, trigger, businessDate, durationMillis, report));
+        }
+
+        try {
+            metrics.record(job, trigger, outcome, durationMillis);
+        } catch (Exception metricFailure) {
+            log.warn("batch metric record failed job={}", job.code(), metricFailure);
         }
     }
 

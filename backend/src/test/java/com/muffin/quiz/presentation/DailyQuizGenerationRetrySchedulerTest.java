@@ -57,15 +57,15 @@ class DailyQuizGenerationRetrySchedulerTest {
     }
 
     @Test
-    @DisplayName("뉴스가 아직 부족하면 실패가 아니라 건너뛴 것으로 남긴다")
-    void retryDailyQuizGeneration_logsSkipWhenNewsIsInsufficient() {
+    @DisplayName("뉴스가 부족해 못 만든 것은 정상 스킵이 아니라 미룸으로 남겨 마지막 성공 시각을 갱신하지 않는다")
+    void retryDailyQuizGeneration_logsDeferredWhenNewsIsInsufficient() {
         when(dailyQuizGenerationService.generate(QUIZ_DATE))
                 .thenReturn(new DailyQuizGenerationSummary(DailyQuizGenerationSummary.Outcome.INSUFFICIENT_NEWS, 0));
 
         try (BatchLogCapture capture = BatchLogCapture.on(BatchJob.QUIZ_GENERATION_RETRY)) {
             scheduler.retryDailyQuizGeneration();
 
-            assertThat(capture.line()).contains("outcome=skipped", "reason=insufficient_news");
+            assertThat(capture.line()).contains("outcome=deferred", "reason=insufficient_news");
         }
     }
 
