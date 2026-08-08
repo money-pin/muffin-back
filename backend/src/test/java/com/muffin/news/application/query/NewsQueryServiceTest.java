@@ -233,15 +233,23 @@ class NewsQueryServiceTest {
     }
 
     @Test
-    void getTodayNews_returnsEmptyItemsWhenPublishedNewsDoesNotExist() {
+    void getTodayNews_returnsPreviousDayNewsWhenTodayNewsDoesNotExist() {
         LocalDateTime todayStart = LocalDateTime.of(2026, 8, 1, 0, 0);
         when(newsQueryRepository.findTodayPublishedNews(
                         1L, todayStart, todayStart.plusDays(1), List.of("경제", "증권", "세계")))
                 .thenReturn(List.of());
+        when(newsQueryRepository.findTodayPublishedNews(
+                        1L, todayStart.minusDays(1), todayStart, List.of("경제", "증권", "세계")))
+                .thenReturn(List.of(
+                        summaryRow(3L, 3L, "세계", LocalDateTime.of(2026, 7, 31, 11, 0), null, false),
+                        summaryRow(2L, 2L, "증권", LocalDateTime.of(2026, 7, 31, 10, 0), null, false),
+                        summaryRow(1L, 1L, "경제", LocalDateTime.of(2026, 7, 31, 9, 0), null, false)));
 
         NewsTodayResponse response = newsQueryService.getTodayNews(1L);
 
-        assertThat(response.items()).isEmpty();
+        assertThat(response.items())
+                .extracting(NewsTodayResponse.NewsTodayItem::newsId)
+                .containsExactly(1L, 2L, 3L);
     }
 
     /** 목록 썸네일: 원본이 있으면 그 URL을, 없으면 null을 담는다(기본 이미지는 프론트가 처리). */
