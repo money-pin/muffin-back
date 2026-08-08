@@ -1,6 +1,6 @@
 package com.muffin.ranking.infrastructure;
 
-import com.muffin.character.domain.QCharacterProfile;
+import com.muffin.character.domain.characterprofile.QCharacterProfile;
 import com.muffin.investment.domain.investment.QInvestment;
 import com.muffin.investment.domain.investment.QInvestmentSector;
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
