@@ -4,6 +4,7 @@ import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.news.application.exception.NewsErrorCode;
 import com.muffin.news.application.exception.NewsException;
+import com.muffin.news.application.term.TermTextMatcher;
 import com.muffin.news.domain.category.Category;
 import com.muffin.news.domain.category.CategoryRepository;
 import com.muffin.news.domain.news.News;
@@ -229,14 +230,8 @@ public class NewsQueryService {
                 continue;
             }
 
-            int fromIndex = 0;
-            while (fromIndex < content.length()) {
-                int start = content.indexOf(keyword, fromIndex);
-                if (start < 0) {
-                    break;
-                }
-                matches.add(new TermMatch(start, start + keyword.length(), term.getId()));
-                fromIndex = start + keyword.length();
+            for (TermTextMatcher.TermTextMatch match : TermTextMatcher.findMatches(content, keyword)) {
+                matches.add(new TermMatch(match.start(), match.end(), term.getId()));
             }
         }
 
