@@ -1,10 +1,10 @@
 package com.muffin.auth.infrastructure.google;
 
 import com.muffin.auth.application.GoogleProperties;
-import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.domain.GoogleIdTokenPayload;
 import com.muffin.auth.domain.GoogleIdTokenVerifier;
-import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -29,18 +29,18 @@ public class GoogleIdTokenVerifierAdapter implements GoogleIdTokenVerifier {
         try {
             jwt = googleJwtDecoder.decode(idToken);
         } catch (JwtException e) {
-            throw new GeneralException(AuthErrorCode.INVALID_GOOGLE_TOKEN);
+            throw new AuthException(AuthErrorCode.INVALID_GOOGLE_TOKEN);
         }
 
         String issuer = jwt.getClaimAsString("iss");
         if (issuer == null || !VALID_ISSUERS.contains(issuer) || !audienceMatches(jwt.getAudience())) {
-            throw new GeneralException(AuthErrorCode.INVALID_GOOGLE_TOKEN);
+            throw new AuthException(AuthErrorCode.INVALID_GOOGLE_TOKEN);
         }
 
         String sub = jwt.getSubject();
         String email = jwt.getClaimAsString("email");
         if (sub == null || email == null) {
-            throw new GeneralException(AuthErrorCode.INVALID_GOOGLE_TOKEN);
+            throw new AuthException(AuthErrorCode.INVALID_GOOGLE_TOKEN);
         }
 
         return new GoogleIdTokenPayload(sub, email, jwt.getClaimAsString("name"));

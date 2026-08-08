@@ -11,11 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.muffin.auth.application.JwtProperties;
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.application.login.LoginCommandService;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.auth.presentation.AuthController;
 import com.muffin.auth.presentation.RefreshTokenCookieHelper;
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -66,7 +66,7 @@ class LoginControllerDocsTest {
         LoginCommandService stub = new LoginCommandService(null, null, null, null, null, null) {
             @Override
             public TokenPair loginLocal(String email, String rawPassword) {
-                throw new GeneralException(AuthErrorCode.INVALID_CREDENTIALS);
+                throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
@@ -90,7 +90,7 @@ class LoginControllerDocsTest {
         LoginCommandService stub = new LoginCommandService(null, null, null, null, null, null) {
             @Override
             public TokenPair loginLocal(String email, String rawPassword) {
-                throw new GeneralException(AuthErrorCode.WITHDRAWN_ACCOUNT);
+                throw new AuthException(AuthErrorCode.WITHDRAWN_ACCOUNT);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
@@ -114,7 +114,7 @@ class LoginControllerDocsTest {
         LoginCommandService stub = new LoginCommandService(null, null, null, null, null, null) {
             @Override
             public TokenPair loginLocal(String email, String rawPassword) {
-                throw new GeneralException(AuthErrorCode.LOGIN_LOCKED);
+                throw new AuthException(AuthErrorCode.LOGIN_LOCKED);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);

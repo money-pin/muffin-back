@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.NicknameProfanityPolicy;
 import com.muffin.user.domain.UserRepository;
-import com.muffin.user.exception.UserErrorCode;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import java.text.Normalizer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

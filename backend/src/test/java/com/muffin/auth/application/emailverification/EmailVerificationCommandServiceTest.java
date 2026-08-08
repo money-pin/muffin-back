@@ -2,9 +2,9 @@ package com.muffin.auth.application.emailverification;
 
 import static org.assertj.core.api.Assertions.*;
 
-import com.muffin.auth.domain.Auth;
-import com.muffin.auth.domain.AuthRepository;
 import com.muffin.auth.domain.PasswordEncoder;
+import com.muffin.auth.domain.auth.Auth;
+import com.muffin.auth.domain.auth.AuthRepository;
 import com.muffin.auth.domain.emailverification.EmailVerification;
 import com.muffin.auth.domain.emailverification.EmailVerificationRepository;
 import com.muffin.global.apiPayload.exception.GeneralException;

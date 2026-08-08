@@ -1,11 +1,12 @@
 package com.muffin.auth.application.emailverification;
 
-import com.muffin.auth.application.exception.AuthErrorCode;
-import com.muffin.auth.domain.Auth;
-import com.muffin.auth.domain.AuthRepository;
 import com.muffin.auth.domain.PasswordEncoder;
+import com.muffin.auth.domain.auth.Auth;
+import com.muffin.auth.domain.auth.AuthRepository;
 import com.muffin.auth.domain.emailverification.EmailVerification;
 import com.muffin.auth.domain.emailverification.EmailVerificationRepository;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import java.time.LocalDate;
@@ -37,7 +38,7 @@ public class EmailVerificationCommandService {
     public long sendCode(Long userId) {
         Auth auth = getAuth(userId);
         if (auth.isEmailVerified()) {
-            throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
+            throw new AuthException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
         }
         String email = auth.getEmail();
 
@@ -45,13 +46,13 @@ public class EmailVerificationCommandService {
                 .findTopByEmailOrderByCreatedAtDesc(email)
                 .filter(latest -> latest.isWithinCooldown(properties.resendCooldownSeconds()))
                 .ifPresent(latest -> {
-                    throw new GeneralException(AuthErrorCode.EMAIL_VERIFICATION_RESEND_COOLDOWN);
+                    throw new AuthException(AuthErrorCode.EMAIL_VERIFICATION_RESEND_COOLDOWN);
                 });
 
         LocalDateTime startOfToday = LocalDate.now(KST).atStartOfDay();
         long todayCount = emailVerificationRepository.countByEmailAndCreatedAtAfter(email, startOfToday);
         if (todayCount >= properties.maxDailyResendCount()) {
-            throw new GeneralException(AuthErrorCode.EMAIL_VERIFICATION_DAILY_LIMIT_EXCEEDED);
+            throw new AuthException(AuthErrorCode.EMAIL_VERIFICATION_DAILY_LIMIT_EXCEEDED);
         }
 
         String code = emailVerificationWriter.save(email);
@@ -71,23 +72,23 @@ public class EmailVerificationCommandService {
     public void verifyCode(Long userId, String code) {
         Auth auth = getAuth(userId);
         if (auth.isEmailVerified()) {
-            throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
+            throw new AuthException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
         }
         String email = auth.getEmail();
 
         EmailVerification verification = emailVerificationRepository
                 .findTopByEmailOrderByCreatedAtDescForUpdate(email)
-                .orElseThrow(() -> new GeneralException(AuthErrorCode.EMAIL_VERIFICATION_CODE_MISMATCH));
+                .orElseThrow(() -> new AuthException(AuthErrorCode.EMAIL_VERIFICATION_CODE_MISMATCH));
 
         if (verification.isLocked(properties.maxAttempts())) {
-            throw new GeneralException(AuthErrorCode.EMAIL_VERIFICATION_LOCKED);
+            throw new AuthException(AuthErrorCode.EMAIL_VERIFICATION_LOCKED);
         }
         if (verification.isExpired()) {
-            throw new GeneralException(AuthErrorCode.EMAIL_VERIFICATION_EXPIRED);
+            throw new AuthException(AuthErrorCode.EMAIL_VERIFICATION_EXPIRED);
         }
         if (!passwordEncoder.matches(code, verification.getCodeHash())) {
             verification.increaseAttemptCount();
-            throw new GeneralException(AuthErrorCode.EMAIL_VERIFICATION_CODE_MISMATCH);
+            throw new AuthException(AuthErrorCode.EMAIL_VERIFICATION_CODE_MISMATCH);
         }
 
         verification.markVerified();

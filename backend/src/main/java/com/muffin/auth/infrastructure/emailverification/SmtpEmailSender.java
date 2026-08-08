@@ -1,8 +1,8 @@
 package com.muffin.auth.infrastructure.emailverification;
 
 import com.muffin.auth.application.emailverification.EmailSender;
-import com.muffin.auth.application.exception.AuthErrorCode;
-import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +35,7 @@ public class SmtpEmailSender implements EmailSender {
             javaMailSender.send(message);
         } catch (MessagingException | MailException e) {
             log.error("[EmailVerification] mail send failed to={}", to, e);
-            throw new GeneralException(AuthErrorCode.EMAIL_SEND_FAILED);
+            throw new AuthException(AuthErrorCode.EMAIL_SEND_FAILED);
         }
     }
 }
