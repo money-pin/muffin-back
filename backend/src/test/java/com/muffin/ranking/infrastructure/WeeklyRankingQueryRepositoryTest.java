@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.muffin.character.domain.CharacterProfile;
-import com.muffin.character.domain.CharacterRepository;
+import com.muffin.character.domain.characterprofile.CharacterProfile;
+import com.muffin.character.domain.characterprofile.CharacterRepository;
 import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.global.config.JpaAuditingConfig;
 import com.muffin.global.config.QueryDslConfig;

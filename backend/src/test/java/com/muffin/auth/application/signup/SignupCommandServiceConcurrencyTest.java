@@ -79,8 +79,7 @@ class SignupCommandServiceConcurrencyTest {
             return user;
         });
         when(passwordEncoder.encode(PASSWORD)).thenReturn("encoded");
-        when(authRepository.saveAndFlush(any(Auth.class)))
-                .thenThrow(new DataIntegrityViolationException("uk_provider_email"));
+        when(authRepository.saveAndFlush(any(Auth.class))).thenThrow(new DataIntegrityViolationException("uk_email"));
 
         assertThatThrownBy(() -> signupCommandService.signupLocal(EMAIL, PASSWORD, NAME, true))
                 .isInstanceOf(GeneralException.class)
@@ -89,7 +88,7 @@ class SignupCommandServiceConcurrencyTest {
     }
 
     @Test
-    @DisplayName("uk_provider_email과 무관한 무결성 위반이면 EMAIL_ALREADY_IN_USE로 감추지 않고 그대로 전파한다")
+    @DisplayName("uk_email과 무관한 무결성 위반이면 EMAIL_ALREADY_IN_USE로 감추지 않고 그대로 전파한다")
     void signupLocal_unrelatedDataIntegrityViolation_propagatesAsIs() {
         when(authRepository.existsByEmail(EMAIL)).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
