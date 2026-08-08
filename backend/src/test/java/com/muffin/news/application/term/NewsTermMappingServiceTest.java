@@ -56,6 +56,23 @@ class NewsTermMappingServiceTest {
     }
 
     @Test
+    void mapTerms_matchesWhitespaceVariantsAndParenthesisAliases() {
+        Long newsId = 1L;
+        News news = reconstructedNews(newsId, "신재생에너지와 장기 침체, 보통주자본이 함께 언급되었습니다.");
+        TermDictionary renewableEnergy = term(10L, "신 재생에너지");
+        TermDictionary longStagnation = term(20L, "장기침체");
+        TermDictionary commonEquity = term(30L, "보통주자본(Common Equity Tier 1)");
+        when(newsRepository.findById(newsId)).thenReturn(Optional.of(news));
+        when(termDictionaryRepository.findAll()).thenReturn(List.of(renewableEnergy, longStagnation, commonEquity));
+
+        int mappedCount = mappingService.mapTerms(newsId);
+
+        assertThat(mappedCount).isEqualTo(3);
+        assertThat(news.getTerms()).extracting("termId").containsExactlyInAnyOrder(10L, 20L, 30L);
+        verify(newsRepository).save(news);
+    }
+
+    @Test
     void mapTerms_skipsWhenReconstructionResultIsMissing() {
         Long newsId = 1L;
         News news = News.processing(1L, "뉴스", "매일경제", LocalDateTime.of(2026, 7, 18, 9, 0), null, "https://example.com");

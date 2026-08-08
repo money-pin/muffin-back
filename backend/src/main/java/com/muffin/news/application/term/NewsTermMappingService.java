@@ -16,8 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class NewsTermMappingService {
 
-    private static final int MIN_MATCH_TERM_LENGTH = 2;
-
     private final NewsRepository newsRepository;
     private final TermDictionaryRepository termDictionaryRepository;
 
@@ -39,7 +37,7 @@ public class NewsTermMappingService {
                 .sorted(Comparator.comparingInt(
                                 (TermDictionary term) -> term.getTerm().length())
                         .reversed())
-                .filter(term -> news.getContent().contains(term.getTerm()))
+                .filter(term -> TermTextMatcher.containsTerm(news.getContent(), term.getTerm()))
                 .toList();
 
         // 엔티티 상태 변경은 stream 밖에서 명시적으로 수행해 매핑 후보 추출과 저장 대상 추가를 분리한다.
@@ -59,6 +57,6 @@ public class NewsTermMappingService {
     }
 
     private static boolean isMatchable(String term) {
-        return term != null && term.strip().length() >= MIN_MATCH_TERM_LENGTH;
+        return term != null && TermTextMatcher.normalizedLength(term) >= 2;
     }
 }

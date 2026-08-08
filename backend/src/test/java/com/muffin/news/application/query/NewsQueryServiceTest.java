@@ -129,6 +129,36 @@ class NewsQueryServiceTest {
                 .containsExactly(null, 10L, null, 10L, null);
     }
 
+    @Test
+    void getNewsDetail_returnsHighlightedBodySegmentsForWhitespaceVariantsAndParenthesisAliases() {
+        Long userId = 1L;
+        Long newsId = 10L;
+        News news = publishedNews(newsId, "신재생에너지와 장기 침체, 보통주자본이 중요합니다.");
+        news.addTerm(10L);
+        news.addTerm(20L);
+        news.addTerm(30L);
+
+        TermDictionary renewableEnergy = term(10L, "신 재생에너지");
+        TermDictionary longStagnation = term(20L, "장기침체");
+        TermDictionary commonEquity = term(30L, "보통주자본(Common Equity Tier 1)");
+
+        when(newsRepository.findById(newsId)).thenReturn(Optional.of(news));
+        when(readHistoryRepository.findByUserIdAndNewsId(userId, newsId)).thenReturn(Optional.empty());
+        when(scrapRepository.existsByUserIdAndNewsId(userId, newsId)).thenReturn(false);
+        when(categoryRepository.findById(news.getCategoryId())).thenReturn(Optional.empty());
+        when(termDictionaryRepository.findAllById(List.of(10L, 20L, 30L)))
+                .thenReturn(List.of(renewableEnergy, longStagnation, commonEquity));
+
+        NewsDetailResponse response = newsQueryService.getNewsDetail(userId, newsId);
+
+        assertThat(response.bodySegments())
+                .extracting(NewsDetailResponse.BodySegment::text)
+                .containsExactly("신재생에너지", "와 ", "장기 침체", ", ", "보통주자본", "이 중요합니다.");
+        assertThat(response.bodySegments())
+                .extracting(NewsDetailResponse.BodySegment::termId)
+                .containsExactly(10L, null, 20L, null, 30L, null);
+    }
+
     private News publishedNews(Long newsId) {
         return publishedNews(newsId, "본문");
     }
