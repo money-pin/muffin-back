@@ -1,4 +1,4 @@
-package com.muffin.quiz.presentation.dto.request;
+package com.muffin.quiz.presentation.dto;
 
 import jakarta.validation.constraints.NotNull;
 

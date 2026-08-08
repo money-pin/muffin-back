@@ -1,4 +1,4 @@
-package com.muffin.news.presentation.dto.response;
+package com.muffin.news.presentation.dto;
 
 import java.time.LocalDateTime;
 import java.util.List;

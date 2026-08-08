@@ -1,4 +1,4 @@
-package com.muffin.quiz.presentation.dto.response;
+package com.muffin.quiz.presentation.dto;
 
 import java.util.List;
 

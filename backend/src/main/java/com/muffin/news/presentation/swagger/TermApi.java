@@ -1,9 +1,9 @@
 package com.muffin.news.presentation.swagger;
 
 import com.muffin.global.apiPayload.ApiResponse;
-import com.muffin.news.presentation.dto.response.SavedTermListResponse;
-import com.muffin.news.presentation.dto.response.TermResponse;
-import com.muffin.news.presentation.dto.response.TermSaveResponse;
+import com.muffin.news.presentation.dto.SavedTermListResponse;
+import com.muffin.news.presentation.dto.TermResponse;
+import com.muffin.news.presentation.dto.TermSaveResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;

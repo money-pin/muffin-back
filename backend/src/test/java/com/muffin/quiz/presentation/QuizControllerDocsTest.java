@@ -21,22 +21,22 @@ import com.muffin.quiz.application.QuizQueryService;
 import com.muffin.quiz.domain.quizsession.enums.QuizSessionStatus;
 import com.muffin.quiz.domain.quizset.enums.QuizSetStatus;
 import com.muffin.quiz.exception.QuizErrorCode;
-import com.muffin.quiz.presentation.dto.request.QuizAttemptRequest;
-import com.muffin.quiz.presentation.dto.response.QuizAttemptProgressResponse;
-import com.muffin.quiz.presentation.dto.response.QuizAttemptResponse;
-import com.muffin.quiz.presentation.dto.response.QuizHistoryDetailResponse;
-import com.muffin.quiz.presentation.dto.response.QuizHistoryDetailSummaryResponse;
-import com.muffin.quiz.presentation.dto.response.QuizHistoryListResponse;
-import com.muffin.quiz.presentation.dto.response.QuizHistoryOptionResponse;
-import com.muffin.quiz.presentation.dto.response.QuizHistoryQuestionResponse;
-import com.muffin.quiz.presentation.dto.response.QuizHistorySummaryResponse;
-import com.muffin.quiz.presentation.dto.response.QuizOptionResponse;
-import com.muffin.quiz.presentation.dto.response.QuizProgressResponse;
-import com.muffin.quiz.presentation.dto.response.QuizQuestionResponse;
-import com.muffin.quiz.presentation.dto.response.QuizResultProgressResponse;
-import com.muffin.quiz.presentation.dto.response.QuizResultResponse;
-import com.muffin.quiz.presentation.dto.response.QuizRewardResponse;
-import com.muffin.quiz.presentation.dto.response.TodayQuizResponse;
+import com.muffin.quiz.presentation.dto.QuizAttemptProgressResponse;
+import com.muffin.quiz.presentation.dto.QuizAttemptRequest;
+import com.muffin.quiz.presentation.dto.QuizAttemptResponse;
+import com.muffin.quiz.presentation.dto.QuizHistoryDetailResponse;
+import com.muffin.quiz.presentation.dto.QuizHistoryDetailSummaryResponse;
+import com.muffin.quiz.presentation.dto.QuizHistoryListResponse;
+import com.muffin.quiz.presentation.dto.QuizHistoryOptionResponse;
+import com.muffin.quiz.presentation.dto.QuizHistoryQuestionResponse;
+import com.muffin.quiz.presentation.dto.QuizHistorySummaryResponse;
+import com.muffin.quiz.presentation.dto.QuizOptionResponse;
+import com.muffin.quiz.presentation.dto.QuizProgressResponse;
+import com.muffin.quiz.presentation.dto.QuizQuestionResponse;
+import com.muffin.quiz.presentation.dto.QuizResultProgressResponse;
+import com.muffin.quiz.presentation.dto.QuizResultResponse;
+import com.muffin.quiz.presentation.dto.QuizRewardResponse;
+import com.muffin.quiz.presentation.dto.TodayQuizResponse;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -84,7 +84,7 @@ class QuizControllerDocsTest {
                 List.of(new QuizQuestionResponse(
                         101L,
                         1,
-                        "오늘 뉴스에 나온 ETF는 무엇의 약자일까요?",
+                        "ETF는 무엇의 약자일까요?",
                         List.of(
                                 new QuizOptionResponse(1001L, 1, "상장지수펀드 (Exchange Traded Fund)"),
                                 new QuizOptionResponse(1002L, 2, "개인종합자산관리계좌 (ISA)"),
@@ -135,7 +135,7 @@ class QuizControllerDocsTest {
                         new QuizQuestionResponse(
                                 101L,
                                 1,
-                                "오늘 뉴스에 나온 ETF는 무엇의 약자일까요?",
+                                "ETF는 무엇의 약자일까요?",
                                 List.of(
                                         new QuizOptionResponse(1001L, 1, "상장지수펀드 (Exchange Traded Fund)"),
                                         new QuizOptionResponse(1002L, 2, "개인종합자산관리계좌 (ISA)"),
@@ -143,11 +143,11 @@ class QuizControllerDocsTest {
                         new QuizQuestionResponse(
                                 102L,
                                 2,
-                                "반도체 수출 실적이 좋아졌다면 어떤 섹터가 유리할까요?",
+                                "반도체 산업에서 파운드리란 무엇을 의미하나요?",
                                 List.of(
-                                        new QuizOptionResponse(1004L, 1, "원자재(금/은) 섹터"),
-                                        new QuizOptionResponse(1005L, 2, "반도체/IT 섹터"),
-                                        new QuizOptionResponse(1006L, 3, "방산 섹터")))));
+                                        new QuizOptionResponse(1004L, 1, "반도체 설계 전문 회사"),
+                                        new QuizOptionResponse(1005L, 2, "반도체 생산 전문 회사"),
+                                        new QuizOptionResponse(1006L, 3, "반도체 유통 회사")))));
         MockMvc mockMvc = mockMvcOf(queryStub(response, null), commandStub(null), restDocumentation);
 
         mockMvc.perform(get("/api/quizzes/today").header("Authorization", AUTHORIZATION))

@@ -12,8 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.news.application.term.TermQueryService;
-import com.muffin.news.presentation.dto.response.SavedTermListResponse;
-import com.muffin.news.presentation.dto.response.SavedTermListResponse.SavedTermItem;
+import com.muffin.news.presentation.dto.SavedTermListResponse;
+import com.muffin.news.presentation.dto.SavedTermListResponse.SavedTermItem;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;

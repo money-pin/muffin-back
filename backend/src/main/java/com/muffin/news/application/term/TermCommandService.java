@@ -8,7 +8,7 @@ import com.muffin.news.domain.term.TermDictionary;
 import com.muffin.news.domain.term.TermDictionaryRepository;
 import com.muffin.news.domain.term.UserSavedTerm;
 import com.muffin.news.domain.term.UserSavedTermRepository;
-import com.muffin.news.presentation.dto.response.TermSaveResponse;
+import com.muffin.news.presentation.dto.TermSaveResponse;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
