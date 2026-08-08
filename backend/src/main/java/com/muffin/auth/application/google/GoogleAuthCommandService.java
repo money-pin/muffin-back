@@ -80,7 +80,7 @@ public class GoogleAuthCommandService {
         }
 
         if (authRepository.existsByEmail(payload.email())) {
-            throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
+            throw new AuthException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
         }
 
         User user = User.register(null, UUID.randomUUID().toString(), User.truncateName(payload.name()), null);
