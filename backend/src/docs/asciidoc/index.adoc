@@ -1113,7 +1113,8 @@ include::{snippets}/news-list-invalid/response-fields.adoc[]
 [[news-today]]
 === 오늘의 뉴스 조회 (CONTENT-01-2)
 
-KST 기준 당일 수집된 공개 뉴스 중 최신 3건을 반환한다.
+KST 기준 당일 수집된 공개 뉴스 중 경제·증권·세계 카테고리별 최신 뉴스 1건을 경제 → 증권 → 세계 순서로 반환한다.
+당일 뉴스가 없는 카테고리는 응답에서 제외한다.
 
 NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다.
 

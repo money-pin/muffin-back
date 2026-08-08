@@ -129,17 +129,40 @@ class NewsControllerDocsTest {
     @Test
     @DisplayName("오늘의 뉴스 조회 문서화")
     void documentTodayNews(RestDocumentationContextProvider restDocumentation) throws Exception {
-        NewsTodayResponse response = new NewsTodayResponse(List.of(new NewsTodayItem(
-                102L,
-                2L,
-                "증권",
-                "오늘의 증시 주요 뉴스",
-                "국내 증시의 주요 흐름을 정리했습니다.",
-                "매일경제",
-                PUBLISHED_AT,
-                "https://cdn.example.com/news/102.jpg",
-                980L,
-                false)));
+        NewsTodayResponse response = new NewsTodayResponse(List.of(
+                new NewsTodayItem(
+                        101L,
+                        1L,
+                        "경제",
+                        "오늘의 경제 주요 뉴스",
+                        "국내 경제의 주요 흐름을 정리했습니다.",
+                        "한국경제",
+                        PUBLISHED_AT,
+                        "https://cdn.example.com/news/101.jpg",
+                        1_120L,
+                        true),
+                new NewsTodayItem(
+                        102L,
+                        2L,
+                        "증권",
+                        "오늘의 증시 주요 뉴스",
+                        "국내 증시의 주요 흐름을 정리했습니다.",
+                        "매일경제",
+                        PUBLISHED_AT.minusHours(1),
+                        "https://cdn.example.com/news/102.jpg",
+                        980L,
+                        false),
+                new NewsTodayItem(
+                        103L,
+                        3L,
+                        "세계",
+                        "오늘의 세계 주요 뉴스",
+                        "세계 경제의 주요 흐름을 정리했습니다.",
+                        "연합뉴스",
+                        PUBLISHED_AT.minusHours(2),
+                        "https://cdn.example.com/news/103.jpg",
+                        860L,
+                        false)));
         MockMvc mockMvc = mockMvcWith(stubTodayNews(response), restDocumentation);
 
         mockMvc.perform(get("/api/news/today").header("Authorization", AUTHORIZATION))
@@ -151,6 +174,9 @@ class NewsControllerDocsTest {
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드"),
                                 fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.items")
+                                        .description(
+                                                "경제·증권·세계 카테고리별 당일 최신 뉴스 목록. 경제 → 증권 → 세계 순서이며, 당일 뉴스가 없는 카테고리는 제외"),
                                 fieldWithPath("result.items[].newsId").description("뉴스 ID"),
                                 fieldWithPath("result.items[].categoryId").description("카테고리 ID"),
                                 fieldWithPath("result.items[].categoryName").description("카테고리 표시명"),
