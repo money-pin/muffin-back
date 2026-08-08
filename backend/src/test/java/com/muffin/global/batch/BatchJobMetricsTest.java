@@ -7,6 +7,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
@@ -52,16 +53,24 @@ class BatchJobMetricsTest {
     }
 
     @Test
-    @DisplayName("미룸이 반복돼도 마지막 성공 시각은 그대로여서 침묵이 쌓인다")
+    @DisplayName("미룸이 하루 넘게 반복돼도 마지막 성공 시각은 그대로여서 침묵이 쌓인다")
     void record_doesNotRefreshLastSuccessWhileDeferring() {
+        // 게이지는 이름+태그로 식별되므로 같은 레지스트리에 두 번 등록하면 먼저 등록된 것이 유지된다.
+        // 다른 시계를 쓰려면 레지스트리도 분리해야 한다.
+        MeterRegistry isolated = new SimpleMeterRegistry();
+        MutableClock clock = new MutableClock(NOW);
+        BatchJobMetrics metrics = new BatchJobMetrics(isolated, clock);
+
         metrics.record(BatchJob.WEEKLY_RANKING, BatchTrigger.SCHEDULER, BatchOutcome.SUCCESS, 100);
-        double afterSuccess = lastSuccess(BatchJob.WEEKLY_RANKING);
+        double afterSuccess = lastSuccess(isolated, BatchJob.WEEKLY_RANKING);
 
         for (int attempt = 0; attempt < 5; attempt++) {
+            clock.advance(Duration.ofHours(6));
             metrics.record(BatchJob.WEEKLY_RANKING, BatchTrigger.SCHEDULER, BatchOutcome.DEFERRED, 15);
         }
 
-        assertThat(lastSuccess(BatchJob.WEEKLY_RANKING)).isEqualTo(afterSuccess);
+        assertThat(afterSuccess).isEqualTo(NOW.getEpochSecond());
+        assertThat(lastSuccess(isolated, BatchJob.WEEKLY_RANKING)).isEqualTo(afterSuccess);
     }
 
     @Test
@@ -92,10 +101,45 @@ class BatchJobMetricsTest {
     }
 
     private double lastSuccess(BatchJob job) {
+        return lastSuccess(registry, job);
+    }
+
+    private static double lastSuccess(MeterRegistry registry, BatchJob job) {
         Gauge gauge = registry.find(BatchJobMetrics.LAST_SUCCESS_METRIC)
                 .tag("job", job.code())
                 .gauge();
         assertThat(gauge).isNotNull();
         return gauge.value();
+    }
+
+    /**
+     * 시간이 실제로 흐르는 시계. 고정 시계로는 "갱신하지 않았다"를 검증할 수 없다. 구현이 잘못 갱신해도 같은 값이 들어가 테스트가 통과해 버리기 때문이다.
+     */
+    private static final class MutableClock extends Clock {
+
+        private Instant instant;
+
+        private MutableClock(Instant instant) {
+            this.instant = instant;
+        }
+
+        private void advance(Duration amount) {
+            instant = instant.plus(amount);
+        }
+
+        @Override
+        public Instant instant() {
+            return instant;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneId.of("Asia/Seoul");
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
     }
 }
