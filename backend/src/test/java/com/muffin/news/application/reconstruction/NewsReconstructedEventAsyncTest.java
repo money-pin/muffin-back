@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 
+import com.muffin.news.application.explanation.NewsExplanationGeneratedEvent;
 import com.muffin.news.application.explanation.NewsExplanationGenerationService;
 import com.muffin.news.application.term.NewsTermMappingService;
 import com.muffin.quiz.application.generation.DailyQuizGenerationService;
@@ -40,6 +41,7 @@ class NewsReconstructedEventAsyncTest {
         Long newsId = 1L;
         String publisherThreadName = Thread.currentThread().getName();
         AtomicReference<String> listenerThreadName = new AtomicReference<>();
+        AtomicReference<String> quizListenerThreadName = new AtomicReference<>();
         CountDownLatch latch = new CountDownLatch(3);
 
         doAnswer(invocation -> {
@@ -63,6 +65,7 @@ class NewsReconstructedEventAsyncTest {
         doAnswer(invocation -> {
                     listenerThreadName.compareAndSet(
                             null, Thread.currentThread().getName());
+                    quizListenerThreadName.set(Thread.currentThread().getName());
                     latch.countDown();
                     return null;
                 })
@@ -70,9 +73,11 @@ class NewsReconstructedEventAsyncTest {
                 .generateToday();
 
         eventPublisher.publishEvent(new NewsReconstructedEvent(newsId));
+        eventPublisher.publishEvent(new NewsExplanationGeneratedEvent(newsId));
 
         assertThat(latch.await(2, TimeUnit.SECONDS)).isTrue();
         assertThat(listenerThreadName.get()).isNotEqualTo(publisherThreadName);
+        assertThat(quizListenerThreadName.get()).isNotNull().isNotEqualTo(publisherThreadName);
         verify(newsTermMappingService).mapTerms(newsId);
         verify(newsExplanationGenerationService).generate(newsId);
         verify(dailyQuizGenerationService).generateToday();

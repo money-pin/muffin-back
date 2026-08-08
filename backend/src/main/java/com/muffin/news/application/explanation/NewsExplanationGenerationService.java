@@ -13,6 +13,7 @@ import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -27,6 +28,7 @@ public class NewsExplanationGenerationService {
     private final NewsExplanationRepository newsExplanationRepository;
     private final NewsExplanationGenerator newsExplanationGenerator;
     private final TransactionTemplate transactionTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** 재구성이 끝난 뉴스와 매핑된 용어를 바탕으로 경제 상식 해설카드를 생성해 저장한다. */
     public void generate(Long newsId) {
@@ -41,6 +43,9 @@ public class NewsExplanationGenerationService {
             NewsExplanationGenerationResult result = newsExplanationGenerator.generate(request.get());
             Integer savedCount = transactionTemplate.execute(
                     status -> saveGeneratedCards(request.get().newsId(), result));
+            if (savedCount != null && savedCount > 0) {
+                eventPublisher.publishEvent(new NewsExplanationGeneratedEvent(newsId));
+            }
 
             log.info("News explanation generation completed: newsId={}, cards={}", newsId, savedCount);
         } catch (Exception exception) {
