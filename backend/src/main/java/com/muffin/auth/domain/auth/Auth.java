@@ -18,8 +18,8 @@ import lombok.NoArgsConstructor;
                     name = "uk_provider_user",
                     columnNames = {"provider", "provider_user_id"}),
             @UniqueConstraint(
-                    name = "uk_provider_email",
-                    columnNames = {"provider", "email"})
+                    name = "uk_email",
+                    columnNames = {"email"})
         })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
@@ -113,7 +113,7 @@ public class Auth extends BaseEntity {
         this.emailVerified = true;
     }
 
-    /** 탈퇴 처리: 원본 이메일을 복구 불가능한 값으로 대체한다(uk_provider_email 유지, 재가입 시 원본과 충돌하지 않음). */
+    /** 탈퇴 처리: 원본 이메일을 복구 불가능한 값으로 대체한다(uk_email 유지, 재가입 시 원본과 충돌하지 않음). */
     public void anonymizeEmail() {
         this.email = "withdrawn-" + authId + "@deleted.local";
     }

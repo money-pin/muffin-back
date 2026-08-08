@@ -112,7 +112,7 @@ class GoogleAuthCommandServiceConcurrencyTest {
     }
 
     @Test
-    @DisplayName("uk_provider_email 위반(다른 구글 계정이 같은 이메일 사용 중)이면 EMAIL_ALREADY_IN_USE로 실패하고 "
+    @DisplayName("uk_email 위반(다른 계정이 같은 이메일 사용 중, provider 무관)이면 EMAIL_ALREADY_IN_USE로 실패하고 "
             + "자신의 User 행을 따로 지우지 않는다(트랜잭션 롤백에 맡김)")
     void authenticate_differentAccountSameEmail_throwsEmailAlreadyInUse() {
         when(googleIdTokenVerifier.verify(ID_TOKEN)).thenReturn(new GoogleIdTokenPayload(SUB, EMAIL, "레이스"));
@@ -123,8 +123,7 @@ class GoogleAuthCommandServiceConcurrencyTest {
             return user;
         });
 
-        when(authRepository.saveAndFlush(any(Auth.class)))
-                .thenThrow(new DataIntegrityViolationException("uk_provider_email"));
+        when(authRepository.saveAndFlush(any(Auth.class))).thenThrow(new DataIntegrityViolationException("uk_email"));
         when(authRepository.findByProviderAndProviderUserId(AuthProvider.GOOGLE, SUB))
                 .thenReturn(Optional.empty());
 

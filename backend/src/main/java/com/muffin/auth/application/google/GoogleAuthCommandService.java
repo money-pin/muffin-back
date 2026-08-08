@@ -104,8 +104,9 @@ public class GoogleAuthCommandService {
                         .findByProviderAndProviderUserId(AuthProvider.GOOGLE, payload.sub())
                         .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_GOOGLE_TOKEN));
             }
-            if (ConstraintViolations.isConstraint(e, "uk_provider_email")) {
-                // 다른 구글 계정(sub)이 이미 같은 이메일을 쓰고 있음: 이건 진짜 충돌이라 그대로 실패시킨다.
+            if (ConstraintViolations.isConstraint(e, "uk_email")) {
+                // 다른 계정(다른 구글 sub이거나 LOCAL 등 다른 provider)이 이미 같은 이메일을 쓰고 있음: 실패시킴
+                // uk_email이 provider와 무관하게 이메일을 전역으로 유일하게 강제한다.
                 throw new AuthException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
             }
             throw e;
