@@ -4,6 +4,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.muffin.news.application.explanation.NewsExplanationGeneratedEvent;
 import com.muffin.news.application.explanation.NewsExplanationGenerationService;
 import com.muffin.news.application.term.NewsTermMappingService;
 import com.muffin.quiz.application.generation.DailyQuizGenerationEventListener;
@@ -46,7 +47,7 @@ class NewsReconstructedEventListenersTest {
     void handle_generatesDailyQuiz() {
         Long newsId = 1L;
 
-        quizGenerationListener.handle(new NewsReconstructedEvent(newsId));
+        quizGenerationListener.handle(new NewsExplanationGeneratedEvent(newsId));
 
         verify(dailyQuizGenerationService).generateToday();
     }
@@ -82,7 +83,7 @@ class NewsReconstructedEventListenersTest {
                 .when(dailyQuizGenerationService)
                 .generateToday();
 
-        quizGenerationListener.handle(new NewsReconstructedEvent(newsId));
+        quizGenerationListener.handle(new NewsExplanationGeneratedEvent(newsId));
 
         verify(dailyQuizGenerationService).generateToday();
     }

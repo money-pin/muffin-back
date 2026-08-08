@@ -1,10 +1,12 @@
 package com.muffin.ranking.infrastructure;
 
+import com.muffin.character.domain.QCharacterProfile;
 import com.muffin.investment.domain.investment.QInvestment;
 import com.muffin.investment.domain.investment.QInvestmentSector;
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
 import com.muffin.investment.domain.investment.enums.SettlementStatus;
 import com.muffin.ranking.application.WeeklyRankingQueryRepository;
+import com.muffin.ranking.application.projection.Top10RankingProjection;
 import com.muffin.ranking.application.projection.WeeklyInvestmentProjection;
 import com.muffin.ranking.application.projection.WeeklyRankingProjection;
 import com.muffin.ranking.application.projection.WeeklySectorProjection;
@@ -73,11 +75,28 @@ public class WeeklyRankingQueryRepositoryImpl implements WeeklyRankingQueryRepos
     }
 
     @Override
-    public List<WeeklyRankingProjection> findTop10(LocalDate weekStartDate) {
+    public List<Top10RankingProjection> findTop10(LocalDate weekStartDate) {
         QWeeklyRanking weeklyRanking = QWeeklyRanking.weeklyRanking;
+        QUser user = QUser.user;
+        QCharacterProfile character = QCharacterProfile.characterProfile;
         return queryFactory
-                .select(rankingProjection(weeklyRanking))
+                .select(Projections.constructor(
+                        Top10RankingProjection.class,
+                        weeklyRanking.userId,
+                        weeklyRanking.nicknameSnapshot,
+                        weeklyRanking.rankingPosition,
+                        weeklyRanking.weeklyProfit,
+                        weeklyRanking.weeklyProfitRate,
+                        weeklyRanking.percentile,
+                        character.characterId,
+                        character.muffinType,
+                        character.name,
+                        character.imageUrl))
                 .from(weeklyRanking)
+                .leftJoin(user)
+                .on(user.userId.eq(weeklyRanking.userId))
+                .leftJoin(character)
+                .on(character.characterId.eq(user.characterId))
                 .where(weeklyRanking.weekStartDate.eq(weekStartDate), weeklyRanking.rankingPosition.loe(TOP_10_LIMIT))
                 .orderBy(weeklyRanking.rankingPosition.asc())
                 .limit(TOP_10_LIMIT)

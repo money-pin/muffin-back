@@ -2,14 +2,19 @@ package com.muffin.ranking.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.muffin.character.domain.CharacterProfile;
+import com.muffin.character.domain.CharacterRepository;
+import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.global.config.JpaAuditingConfig;
 import com.muffin.global.config.QueryDslConfig;
 import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.InvestmentRepository;
 import com.muffin.investment.domain.investment.enums.PriceDataSource;
 import com.muffin.ranking.application.WeeklyRankingQueryRepository;
+import com.muffin.ranking.application.projection.Top10RankingProjection;
 import com.muffin.ranking.application.projection.WeeklyInvestmentProjection;
 import com.muffin.ranking.application.projection.WeeklyRankingProjection;
 import com.muffin.ranking.application.projection.WeeklySectorProjection;
@@ -55,26 +60,35 @@ class WeeklyRankingQueryRepositoryTest {
     private UserRepository userRepository;
 
     @Autowired
+    private CharacterRepository characterRepository;
+
+    @Autowired
     private SectorRepository sectorRepository;
 
     @Test
     @DisplayName("지난주 스냅샷에서 TOP 10과 TOP 10 밖 사용자의 내 순위를 각각 조회한다")
     void findTop10AndMyRank_readsSnapshotByWeek() {
-        User first = saveUser("first", "1111-2222-3333-4444");
-        User second = saveUser("second", "2222-2222-3333-4444");
+        CharacterProfile character = characterRepository.saveAndFlush(
+                CharacterProfile.create(MuffinType.PLAIN, "플레인 머핀", "설명", "plain.png"));
+        User first = saveUser(character.getCharacterId(), "first", "1111-2222-3333-4444");
+        User second = saveUser(null, "second", "2222-2222-3333-4444");
         User outsideTop10 = saveUser("outer", "3333-2222-3333-4444");
         saveRanking(first, 1, 1_000L, 1);
         saveRanking(second, 2, 500L, 2);
         saveRanking(outsideTop10, 11, 100L, 11);
 
-        List<WeeklyRankingProjection> top10 = weeklyRankingQueryRepository.findTop10(WEEK_START_DATE);
+        List<Top10RankingProjection> top10 = weeklyRankingQueryRepository.findTop10(WEEK_START_DATE);
         WeeklyRankingProjection myRank = weeklyRankingQueryRepository
                 .findMyRank(outsideTop10.getUserId(), WEEK_START_DATE)
                 .orElseThrow();
 
         assertEquals(
                 List.of(1, 2),
-                top10.stream().map(WeeklyRankingProjection::rankingPosition).toList());
+                top10.stream().map(Top10RankingProjection::rankingPosition).toList());
+        assertEquals(character.getCharacterId(), top10.getFirst().characterId());
+        assertEquals(MuffinType.PLAIN, top10.getFirst().characterType());
+        assertEquals("plain.png", top10.getFirst().characterImageUrl());
+        assertNull(top10.get(1).characterId());
         assertEquals(11, myRank.rankingPosition());
         assertTrue(weeklyRankingQueryRepository.existsSnapshot(WEEK_START_DATE));
     }
@@ -144,7 +158,11 @@ class WeeklyRankingQueryRepositoryTest {
     }
 
     private User saveUser(String nickname, String uuid) {
-        return userRepository.saveAndFlush(User.register(1L, uuid, "name", nickname));
+        return saveUser(null, nickname, uuid);
+    }
+
+    private User saveUser(Long characterId, String nickname, String uuid) {
+        return userRepository.saveAndFlush(User.register(characterId, uuid, "name", nickname));
     }
 
     private Long saveSector(String sectorCode, String name) {

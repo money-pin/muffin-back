@@ -1,8 +1,8 @@
 package com.muffin.notification.application;
 
 import com.muffin.notification.domain.NotificationSettings;
-import com.muffin.notification.presentation.dto.MyPageSettingsResponse;
 import com.muffin.notification.presentation.dto.NotificationSettingsItem;
+import com.muffin.notification.presentation.dto.NotificationSettingsResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,10 +15,10 @@ public class NotificationSettingsQueryService {
 
     private final NotificationSettingsFinder notificationSettingsFinder;
 
-    public MyPageSettingsResponse getSettings(Long userId) {
+    public NotificationSettingsResponse getSettings(Long userId) {
         NotificationSettings settings = notificationSettingsFinder.findOrCreate(userId);
 
-        return new MyPageSettingsResponse(new NotificationSettingsItem(
+        return new NotificationSettingsResponse(new NotificationSettingsItem(
                 settings.isNewsUpdatePushEnabled(),
                 settings.isQuizPushEnabled(),
                 settings.isInvestmentResultPushEnabled(),

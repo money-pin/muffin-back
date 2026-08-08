@@ -11,11 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.muffin.auth.application.JwtProperties;
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.application.google.GoogleAuthCommandService;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.auth.presentation.AuthController;
 import com.muffin.auth.presentation.RefreshTokenCookieHelper;
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,7 +36,7 @@ class GoogleAuthControllerDocsTest {
     @Test
     @DisplayName("구글 로그인/가입 성공 문서화")
     void documentGoogleAuthSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null) {
+        GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null, null) {
             @Override
             public TokenPair authenticate(String idToken) {
                 return new TokenPair("access-token-example", "refresh-token-example");
@@ -61,10 +61,10 @@ class GoogleAuthControllerDocsTest {
     @Test
     @DisplayName("구글 인증 실패(유효하지 않은 ID Token) 문서화")
     void documentGoogleAuthInvalidToken(RestDocumentationContextProvider restDocumentation) throws Exception {
-        GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null) {
+        GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null, null) {
             @Override
             public TokenPair authenticate(String idToken) {
-                throw new GeneralException(AuthErrorCode.INVALID_GOOGLE_TOKEN);
+                throw new AuthException(AuthErrorCode.INVALID_GOOGLE_TOKEN);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);

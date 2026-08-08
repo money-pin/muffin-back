@@ -3,15 +3,16 @@ package com.muffin.auth.application.google;
 import com.muffin.auth.application.ConstraintViolations;
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.domain.AccessTokenProvider;
-import com.muffin.auth.domain.Auth;
-import com.muffin.auth.domain.AuthRepository;
-import com.muffin.auth.domain.DeletedEmail;
-import com.muffin.auth.domain.DeletedEmailRepository;
 import com.muffin.auth.domain.GoogleIdTokenPayload;
 import com.muffin.auth.domain.GoogleIdTokenVerifier;
+import com.muffin.auth.domain.auth.Auth;
+import com.muffin.auth.domain.auth.AuthRepository;
+import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedemail.EmailHasher;
 import com.muffin.auth.domain.enums.AuthProvider;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
@@ -45,6 +46,7 @@ public class GoogleAuthCommandService {
     private final AccessTokenProvider accessTokenProvider;
     private final RefreshTokenIssuer refreshTokenIssuer;
     private final EntityManager entityManager;
+    private final EmailHasher emailHasher;
 
     @Transactional
     public TokenPair authenticate(String idToken) {
@@ -59,10 +61,10 @@ public class GoogleAuthCommandService {
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
 
         if (user.getStatus() == UserStatus.WITHDRAWN) {
-            throw new GeneralException(AuthErrorCode.WITHDRAWN_ACCOUNT);
+            throw new AuthException(AuthErrorCode.WITHDRAWN_ACCOUNT);
         }
         if (user.getStatus() == UserStatus.SUSPENDED) {
-            throw new GeneralException(AuthErrorCode.SUSPENDED_ACCOUNT);
+            throw new AuthException(AuthErrorCode.SUSPENDED_ACCOUNT);
         }
 
         String accessToken =
@@ -73,8 +75,8 @@ public class GoogleAuthCommandService {
 
     private Auth signup(GoogleIdTokenPayload payload) {
         LocalDateTime cutoff = LocalDateTime.now(KST).minusDays(DELETED_EMAIL_BLOCK_DAYS);
-        if (deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(DeletedEmail.hash(payload.email()), cutoff)) {
-            throw new GeneralException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
+        if (deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(emailHasher.hash(payload.email()), cutoff)) {
+            throw new AuthException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
         }
 
         if (authRepository.existsByEmail(payload.email())) {
@@ -100,11 +102,11 @@ public class GoogleAuthCommandService {
                 userRepository.deleteById(user.getUserId());
                 return authRepository
                         .findByProviderAndProviderUserId(AuthProvider.GOOGLE, payload.sub())
-                        .orElseThrow(() -> new GeneralException(AuthErrorCode.INVALID_GOOGLE_TOKEN));
+                        .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_GOOGLE_TOKEN));
             }
             if (ConstraintViolations.isConstraint(e, "uk_provider_email")) {
                 // 다른 구글 계정(sub)이 이미 같은 이메일을 쓰고 있음: 이건 진짜 충돌이라 그대로 실패시킨다.
-                throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
+                throw new AuthException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
             }
             throw e;
         }

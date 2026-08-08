@@ -33,5 +33,12 @@ muffin:
       client-id: ${GOOGLE_CLIENT_ID}
 
 logging:
+  # 운영 로그는 JSON 한 줄로 남긴다. Grafana(Loki)에서 level/domain 같은 필드 단위로 걸러 보려면
+  # 사람이 읽는 평문이 아니라 구조화 포맷이어야 한다. 로컬은 기본 콘솔 포맷을 그대로 쓴다.
+  structured:
+    format:
+      console: logstash
+    json:
+      customizer: com.muffin.global.logging.DomainJsonMembersCustomizer
   level:
     root: info

@@ -3,7 +3,7 @@ package com.muffin.auth.application.logout;
 import static org.assertj.core.api.Assertions.*;
 
 import com.muffin.auth.application.RefreshTokenIssuer;
-import com.muffin.auth.domain.RefreshTokenRepository;
+import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

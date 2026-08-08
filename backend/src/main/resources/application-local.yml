@@ -38,6 +38,10 @@ muffin:
     google:
       client-id: ${GOOGLE_CLIENT_ID:}
 
+    deleted-email:
+      # 로컬 개발 전용 더미 시크릿
+      hash-secret: ${DELETED_EMAIL_HASH_SECRET:local-dev-only-deleted-email-hash-secret-please-change}
+
 coingecko:
   api:
     api-key: ${COINGECKO_API_KEY:}

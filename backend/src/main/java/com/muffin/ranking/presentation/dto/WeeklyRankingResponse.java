@@ -1,6 +1,7 @@
 package com.muffin.ranking.presentation.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.muffin.character.domain.enums.MuffinType;
 import com.muffin.ranking.domain.RankingStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -64,7 +65,15 @@ public record WeeklyRankingResponse(
     }
 
     public record Top10Response(
-            int rank, String nickname, long profitAmount, BigDecimal profitRate, Top10DetailResponse detail) {}
+            int rank,
+            String nickname,
+            @JsonInclude(JsonInclude.Include.ALWAYS) CharacterResponse character,
+            long profitAmount,
+            BigDecimal profitRate,
+            Top10DetailResponse detail) {}
+
+    public record CharacterResponse(
+            Long characterId, MuffinType characterType, String characterName, String characterImageUrl) {}
 
     public record Top10DetailResponse(long totalInvestment, List<SectorResponse> sectors) {}
 

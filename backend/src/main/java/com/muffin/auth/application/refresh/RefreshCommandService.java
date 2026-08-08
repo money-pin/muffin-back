@@ -2,9 +2,10 @@ package com.muffin.auth.application.refresh;
 
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.application.exception.AuthErrorCode;
 import com.muffin.auth.domain.AccessTokenProvider;
-import com.muffin.auth.domain.RefreshToken;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
+import com.muffin.auth.domain.refreshtoken.RefreshToken;
 import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
@@ -27,17 +28,17 @@ public class RefreshCommandService {
     public TokenPair refresh(String rawRefreshToken) {
         RefreshToken refreshToken = refreshTokenIssuer
                 .findValid(rawRefreshToken)
-                .orElseThrow(() -> new GeneralException(AuthErrorCode.INVALID_REFRESH_TOKEN));
+                .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 
         User user = userRepository
                 .findById(refreshToken.getUserId())
                 .orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
 
         if (user.getStatus() == UserStatus.WITHDRAWN) {
-            throw new GeneralException(AuthErrorCode.WITHDRAWN_ACCOUNT);
+            throw new AuthException(AuthErrorCode.WITHDRAWN_ACCOUNT);
         }
         if (user.getStatus() == UserStatus.SUSPENDED) {
-            throw new GeneralException(AuthErrorCode.SUSPENDED_ACCOUNT);
+            throw new AuthException(AuthErrorCode.SUSPENDED_ACCOUNT);
         }
 
         String accessToken =

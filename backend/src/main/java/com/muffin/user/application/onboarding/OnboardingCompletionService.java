@@ -1,12 +1,12 @@
 package com.muffin.user.application.onboarding;
 
 import com.muffin.auth.application.ConstraintViolations;
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
-import com.muffin.user.exception.UserErrorCode;
+import com.muffin.user.domain.exception.UserException;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import com.muffin.user.presentation.onboarding.dto.OnboardingCompleteResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -27,10 +27,9 @@ public class OnboardingCompletionService {
     private final InitialAssetGranter initialAssetGranter;
 
     public OnboardingCompleteResponse complete(Long userId) {
-        User user =
-                userRepository.findById(userId).orElseThrow(() -> new GeneralException(UserErrorCode.USER_NOT_FOUND));
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
         if (!user.isOnboardingCompleted()) {
-            throw new GeneralException(UserErrorCode.ONBOARDING_NOT_COMPLETED);
+            throw new UserException(UserErrorCode.ONBOARDING_NOT_COMPLETED);
         }
 
         UserAsset asset = ensureInitialAssetGranted(userId);

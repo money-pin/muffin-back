@@ -1,8 +1,12 @@
 package com.muffin.quiz.application.generation;
 
+import com.muffin.news.domain.explanation.NewsExplanation;
+import com.muffin.news.domain.explanation.NewsExplanationRepository;
+import com.muffin.news.domain.explanation.enums.NewsExplanationStatus;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.news.enums.NewsStatus;
+import com.muffin.quiz.application.generation.DailyQuizGenerationSummary.Outcome;
 import com.muffin.quiz.domain.quizset.Quiz;
 import com.muffin.quiz.domain.quizset.QuizQuestionPolicy;
 import com.muffin.quiz.domain.quizset.QuizSet;
@@ -13,6 +17,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,44 +45,43 @@ public class DailyQuizGenerationService {
     private static final long REWARD_MONEY = 100000L;
 
     private final NewsRepository newsRepository;
+    private final NewsExplanationRepository newsExplanationRepository;
     private final QuizSetRepository quizSetRepository;
     private final DailyQuizGenerator dailyQuizGenerator;
     private final TransactionTemplate transactionTemplate;
 
-    /** 오늘 날짜 기준으로 발행 대기 뉴스 3개를 골라 하루치 퀴즈를 생성한다. */
-    public void generateToday() {
-        generate(LocalDate.now(KST));
+    /** 오늘 날짜 기준으로 해설카드까지 생성된 발행 대기 뉴스 3개를 골라 하루치 퀴즈를 생성한다. */
+    public DailyQuizGenerationSummary generateToday() {
+        return generate(LocalDate.now(KST));
     }
 
     /**
      * 지정한 날짜의 퀴즈 세트를 생성한다.
      *
-     * <p>뉴스는 사용자 공개 전이라도 재구성까지 완료된 PENDING 상태를 사용한다. 이벤트 기반으로 여러 번 호출될 수 있으므로 뉴스가 3개
-     * 미만이면 아직 생성 시점이 아니라고 보고 건너뛴다. 뉴스 3개가 모인 뒤 생성에 실패하면 조회 API가 UNAVAILABLE로 응답할 수 있도록
-     * 빈 퀴즈 세트를 이용 불가 상태로 저장한다.
+     * <p>뉴스는 사용자 공개 전이라도 재구성과 해설카드 생성까지 완료된 PENDING 상태를 사용한다. 이벤트 기반으로 여러 번 호출될 수 있으므로
+     * 뉴스가 3개 미만이면 아직 생성 시점이 아니라고 보고 건너뛴다. 뉴스 3개가 모인 뒤 생성에 실패하면 조회 API가 UNAVAILABLE로 응답할 수
+     * 있도록 빈 퀴즈 세트를 이용 불가 상태로 저장한다.
      */
-    public void generate(LocalDate quizDate) {
+    public DailyQuizGenerationSummary generate(LocalDate quizDate) {
         Optional<QuizSet> reservation = reserveGeneration(quizDate);
         if (reservation.isEmpty()) {
-            return;
+            return DailyQuizGenerationSummary.of(Outcome.ALREADY_RESERVED);
         }
         QuizSet quizSet = reservation.get();
 
-        List<News> newsSources = transactionTemplate.execute(status -> findQuizSourceNews(quizDate));
-        if (newsSources.size() < DAILY_QUIZ_COUNT) {
-            releaseGenerationReservation(quizSet);
-            log.info("Daily quiz generation skipped: quizDate={} sourceNewsCount={}", quizDate, newsSources.size());
-            return;
-        }
-
         try {
             // 외부 API 대기 중 DB 커넥션을 오래 잡지 않도록 OpenAI 호출은 트랜잭션 밖에서 실행한다.
-            DailyQuizGenerationResult result = dailyQuizGenerator.generate(toRequest(quizDate, newsSources));
+            List<News> newsSources = transactionTemplate.execute(status -> findQuizSourceNews(quizDate));
+            if (newsSources.size() < DAILY_QUIZ_COUNT) {
+                releaseGenerationReservation(quizSet);
+                return DailyQuizGenerationSummary.of(Outcome.INSUFFICIENT_NEWS);
+            }
+
+            DailyQuizGenerationRequest request =
+                    transactionTemplate.execute(status -> toRequest(quizDate, newsSources));
+            DailyQuizGenerationResult result = dailyQuizGenerator.generate(request);
             completeQuizSet(quizSet, newsSources, result);
-            log.info(
-                    "Daily quiz generation completed: quizDate={} questionCount={}",
-                    quizDate,
-                    result.questions().size());
+            return DailyQuizGenerationSummary.generated(result.questions().size());
         } catch (DailyQuizGenerationException exception) {
             saveUnavailableQuizSetSafely(quizSet);
             log.error(
@@ -85,9 +89,11 @@ public class DailyQuizGenerationService {
                     quizDate,
                     exception.getReason(),
                     exception);
+            return DailyQuizGenerationSummary.of(Outcome.FAILED);
         } catch (RuntimeException exception) {
             saveUnavailableQuizSetSafely(quizSet);
             log.error("Daily quiz generation failed: quizDate={}", quizDate, exception);
+            return DailyQuizGenerationSummary.of(Outcome.FAILED);
         }
     }
 
@@ -136,21 +142,25 @@ public class DailyQuizGenerationService {
         });
     }
 
-    /** 사용자 공개 전이라도 재구성 결과가 있는 발행 대기 뉴스 후보 중 퀴즈에 적합한 3개를 고른다. */
+    /** 사용자 공개 전이라도 재구성 결과와 DONE 해설카드가 있는 발행 대기 뉴스 후보 중 퀴즈에 적합한 3개를 고른다. */
     private List<News> findQuizSourceNews(LocalDate quizDate) {
         LocalDateTime startInclusive = quizDate.atStartOfDay();
         LocalDateTime endExclusive = quizDate.plusDays(1).atStartOfDay();
 
         List<News> candidates = newsRepository.findQuizCandidates(
-                NewsStatus.PENDING, startInclusive, endExclusive, PageRequest.of(0, QUIZ_SOURCE_CANDIDATE_COUNT));
+                NewsStatus.PENDING,
+                NewsExplanationStatus.DONE,
+                startInclusive,
+                endExclusive,
+                PageRequest.of(0, QUIZ_SOURCE_CANDIDATE_COUNT));
 
         return selectQuizSourceNews(candidates);
     }
 
     /**
-     * 최신 뉴스만 3개 고르면 같은 주제에 치우칠 수 있어, 카테고리 다양성과 용어 매핑 수를 우선해 선별한다.
+     * 최신 뉴스만 3개 고르면 같은 주제에 치우칠 수 있어, 해설카드 핵심어와 카테고리 다양성을 우선해 선별한다.
      *
-     * <p>1차로 서로 다른 카테고리에서 용어가 많은 뉴스를 고르고, 부족한 경우 남은 후보 중 용어 수와 최신순 기준으로 채운다.
+     * <p>1차로 서로 다른 해설카드 핵심어를 가진 뉴스를 고르고, 부족한 경우 카테고리 다양성과 용어 수, 최신순 기준으로 채운다.
      */
     private List<News> selectQuizSourceNews(List<News> candidates) {
         List<News> rankedCandidates = candidates.stream()
@@ -160,13 +170,25 @@ public class DailyQuizGenerationService {
                 .toList();
 
         List<News> selectedNews = new ArrayList<>();
-        Set<Long> selectedCategoryIds = new java.util.HashSet<>();
+        Set<String> selectedExplanationKeyTerms = new HashSet<>();
 
         for (News news : rankedCandidates) {
             if (selectedNews.size() == DAILY_QUIZ_COUNT) {
                 break;
             }
-            if (selectedCategoryIds.add(news.getCategoryId())) {
+            String keyTerm = primaryExplanationKeyTerm(news.getId());
+            if (!keyTerm.isBlank() && selectedExplanationKeyTerms.add(keyTerm)) {
+                selectedNews.add(news);
+            }
+        }
+
+        Set<Long> selectedCategoryIds =
+                selectedNews.stream().map(News::getCategoryId).collect(Collectors.toSet());
+        for (News news : rankedCandidates) {
+            if (selectedNews.size() == DAILY_QUIZ_COUNT) {
+                break;
+            }
+            if (!selectedNews.contains(news) && selectedCategoryIds.add(news.getCategoryId())) {
                 selectedNews.add(news);
             }
         }
@@ -183,15 +205,38 @@ public class DailyQuizGenerationService {
         return selectedNews;
     }
 
+    private String primaryExplanationKeyTerm(Long newsId) {
+        return toExplanationCardSources(newsId).stream()
+                .map(DailyQuizExplanationCardSource::keyTerm)
+                .filter(keyTerm -> keyTerm != null && !keyTerm.isBlank())
+                .findFirst()
+                .map(DailyQuizGenerationService::normalizeForPhraseCheck)
+                .orElse("");
+    }
+
     private static int termCount(News news) {
         return news.getTerms().size();
     }
 
     private DailyQuizGenerationRequest toRequest(LocalDate quizDate, List<News> newsSources) {
         List<DailyQuizNewsSource> sources = newsSources.stream()
-                .map(news -> new DailyQuizNewsSource(news.getId(), news.getTitle(), news.getContent()))
+                .map(news -> new DailyQuizNewsSource(
+                        news.getId(), news.getTitle(), news.getContent(), toExplanationCardSources(news.getId())))
                 .toList();
         return new DailyQuizGenerationRequest(quizDate, sources);
+    }
+
+    private List<DailyQuizExplanationCardSource> toExplanationCardSources(Long newsId) {
+        return newsExplanationRepository
+                .findTop3ByNewsIdAndStatusOrderByCardOrderAsc(newsId, NewsExplanationStatus.DONE)
+                .stream()
+                .map(DailyQuizGenerationService::toExplanationCardSource)
+                .toList();
+    }
+
+    private static DailyQuizExplanationCardSource toExplanationCardSource(NewsExplanation explanation) {
+        return new DailyQuizExplanationCardSource(
+                explanation.getCardOrder(), explanation.getTitle(), explanation.getKeyTerm(), explanation.getContent());
     }
 
     /** AI 응답을 검증한 뒤 예약해 둔 QuizSet 애그리거트 루트에 문제와 선택지를 구성한다. */
@@ -264,9 +309,10 @@ public class DailyQuizGenerationService {
             throw generationException(
                     DailyQuizGenerationFailureReason.CORRECT_OPTION_NOT_FOUND, "정답 선택지 번호에 해당하는 선택지가 없습니다.");
         }
-        if (!normalizeText(news.getContent()).contains(normalizeText(question.sourceSentence()))) {
+        if (!containsEvidenceSentence(news, question.sourceSentence())) {
             throw generationException(
-                    DailyQuizGenerationFailureReason.SOURCE_SENTENCE_NOT_FOUND, "sourceSentence는 뉴스 본문에 존재해야 합니다.");
+                    DailyQuizGenerationFailureReason.SOURCE_SENTENCE_NOT_FOUND,
+                    "sourceSentence는 뉴스 본문 또는 해설카드에 존재해야 합니다.");
         }
     }
 
@@ -289,6 +335,18 @@ public class DailyQuizGenerationService {
         return QuizQuestionPolicy.NUMERIC_RECALL_QUESTION_PHRASES.stream()
                 .map(DailyQuizGenerationService::normalizeForPhraseCheck)
                 .anyMatch(normalizedQuestion::contains);
+    }
+
+    private boolean containsEvidenceSentence(News news, String sourceSentence) {
+        String normalizedSourceSentence = normalizeForPhraseCheck(sourceSentence);
+        if (normalizedSourceSentence.isEmpty()) {
+            return false;
+        }
+        return normalizeForPhraseCheck(news.getContent()).contains(normalizedSourceSentence)
+                || toExplanationCardSources(news.getId()).stream()
+                        .map(DailyQuizExplanationCardSource::content)
+                        .map(DailyQuizGenerationService::normalizeForPhraseCheck)
+                        .anyMatch(content -> content.contains(normalizedSourceSentence));
     }
 
     private static String normalizeText(String value) {

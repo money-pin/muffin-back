@@ -69,14 +69,12 @@ public class SettlementCommandService {
 
         // 휴장/미적재 스킵: 활성 ETF 시가가 전부 MARKET_CLOSED이거나 한 행도 없으면 정산하지 않는다.
         if (!hasTradingSignal(sectors, openPrices)) {
-            log.info("[settlement] market closed or open prices not loaded for {}, skip settlement", settlementDate);
             return SettlementBatchResult.skipped(settlementDate);
         }
 
         List<Investment> targets = investmentRepository.findByStatusInAndSettlementStatusInAndInvestDateLessThan(
                 TARGET_STATUSES, REPROCESSABLE, settlementDate);
         if (targets.isEmpty()) {
-            log.info("[settlement] no targets for {}", settlementDate);
             return new SettlementBatchResult(settlementDate, true, 0, 0, 0);
         }
 
@@ -118,7 +116,6 @@ public class SettlementCommandService {
         }
 
         SettlementBatchResult result = new SettlementBatchResult(settlementDate, true, targets.size(), success, failed);
-        log.info("[settlement] done {}", result);
         return result;
     }
 

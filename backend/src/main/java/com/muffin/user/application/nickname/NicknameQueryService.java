@@ -1,10 +1,10 @@
 package com.muffin.user.application.nickname;
 
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.NicknameProfanityPolicy;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
-import com.muffin.user.exception.UserErrorCode;
+import com.muffin.user.domain.exception.UserException;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +21,7 @@ public class NicknameQueryService {
     public boolean isAvailable(String nickname) {
         String normalized = User.normalizeAndValidateNickname(nickname);
         if (profanityPolicy.isProfane(normalized)) {
-            throw new GeneralException(UserErrorCode.NICKNAME_CONTAINS_PROFANITY);
+            throw new UserException(UserErrorCode.NICKNAME_CONTAINS_PROFANITY);
         }
         return !userRepository.existsByNickname(normalized);
     }

@@ -1,5 +1,6 @@
 package com.muffin.news.domain.news;
 
+import com.muffin.news.domain.explanation.enums.NewsExplanationStatus;
 import com.muffin.news.domain.news.enums.NewsStatus;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
@@ -32,10 +33,17 @@ public interface NewsRepository extends JpaRepository<News, Long> {
               AND n.deletedAt IS NULL
               AND n.summary IS NOT NULL
               AND n.content IS NOT NULL
+              AND EXISTS (
+                  SELECT e.id
+                  FROM NewsExplanation e
+                  WHERE e.newsId = n.id
+                    AND e.status = :explanationStatus
+              )
             ORDER BY n.publishedAt DESC
             """)
     List<News> findQuizCandidates(
             @Param("status") NewsStatus status,
+            @Param("explanationStatus") NewsExplanationStatus explanationStatus,
             @Param("startInclusive") LocalDateTime startInclusive,
             @Param("endExclusive") LocalDateTime endExclusive,
             Pageable pageable);

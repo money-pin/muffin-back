@@ -10,8 +10,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.muffin.auth.application.emailverification.EmailVerificationCommandService;
-import com.muffin.auth.application.exception.AuthErrorCode;
-import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -73,7 +73,7 @@ class EmailVerificationControllerDocsTest {
         EmailVerificationCommandService stub = new EmailVerificationCommandService(null, null, null, null, null, null) {
             @Override
             public long sendCode(Long userId) {
-                throw new GeneralException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
+                throw new AuthException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
@@ -117,7 +117,7 @@ class EmailVerificationControllerDocsTest {
         EmailVerificationCommandService stub = new EmailVerificationCommandService(null, null, null, null, null, null) {
             @Override
             public void verifyCode(Long userId, String code) {
-                throw new GeneralException(AuthErrorCode.EMAIL_VERIFICATION_CODE_MISMATCH);
+                throw new AuthException(AuthErrorCode.EMAIL_VERIFICATION_CODE_MISMATCH);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);

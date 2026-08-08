@@ -7,11 +7,12 @@ import static org.mockito.Mockito.*;
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.domain.AccessTokenProvider;
-import com.muffin.auth.domain.Auth;
-import com.muffin.auth.domain.AuthRepository;
-import com.muffin.auth.domain.DeletedEmailRepository;
 import com.muffin.auth.domain.GoogleIdTokenPayload;
 import com.muffin.auth.domain.GoogleIdTokenVerifier;
+import com.muffin.auth.domain.auth.Auth;
+import com.muffin.auth.domain.auth.AuthRepository;
+import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedemail.EmailHasher;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
@@ -59,6 +60,9 @@ class GoogleAuthCommandServiceConcurrencyTest {
     @Mock
     private EntityManager entityManager;
 
+    @Mock
+    private EmailHasher emailHasher;
+
     private GoogleAuthCommandService googleAuthCommandService;
 
     @BeforeEach
@@ -70,7 +74,8 @@ class GoogleAuthCommandServiceConcurrencyTest {
                 deletedEmailRepository,
                 accessTokenProvider,
                 refreshTokenIssuer,
-                entityManager);
+                entityManager,
+                emailHasher);
     }
 
     @Test
