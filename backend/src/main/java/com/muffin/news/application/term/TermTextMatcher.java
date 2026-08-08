@@ -1,0 +1,111 @@
+package com.muffin.news.application.term;
+
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+public final class TermTextMatcher {
+
+    private static final int MIN_MATCH_KEYWORD_LENGTH = 2;
+
+    private TermTextMatcher() {}
+
+    public static boolean containsTerm(String content, String term) {
+        return findMatches(content, term).stream().findAny().isPresent();
+    }
+
+    public static List<TermTextMatch> findMatches(String content, String term) {
+        if (content == null || content.isBlank()) {
+            return List.of();
+        }
+
+        NormalizedText normalizedContent = normalizeContent(content);
+        if (normalizedContent.text().isBlank()) {
+            return List.of();
+        }
+
+        List<TermTextMatch> matches = new ArrayList<>();
+        for (String keyword : keywords(term)) {
+            String normalizedKeyword = normalizeKeyword(keyword);
+            if (normalizedKeyword.length() < MIN_MATCH_KEYWORD_LENGTH) {
+                continue;
+            }
+
+            int fromIndex = 0;
+            while (fromIndex < normalizedContent.text().length()) {
+                int start = normalizedContent.text().indexOf(normalizedKeyword, fromIndex);
+                if (start < 0) {
+                    break;
+                }
+
+                int end = start + normalizedKeyword.length() - 1;
+                matches.add(new TermTextMatch(
+                        normalizedContent.originalIndexes().get(start),
+                        normalizedContent.originalIndexes().get(end) + 1));
+                fromIndex = start + normalizedKeyword.length();
+            }
+        }
+        return matches;
+    }
+
+    public static Set<String> keywords(String term) {
+        if (term == null || term.isBlank()) {
+            return Set.of();
+        }
+
+        Set<String> keywords = new LinkedHashSet<>();
+        String stripped = term.strip();
+        keywords.add(stripped);
+
+        int openIndex = stripped.indexOf('(');
+        int closeIndex = stripped.lastIndexOf(')');
+        if (openIndex > 0 && closeIndex > openIndex) {
+            keywords.add(stripped.substring(0, openIndex).strip());
+            keywords.add(stripped.substring(openIndex + 1, closeIndex).strip());
+        }
+
+        return keywords;
+    }
+
+    public static int normalizedLength(String value) {
+        return normalizeKeyword(value).length();
+    }
+
+    private static NormalizedText normalizeContent(String content) {
+        StringBuilder builder = new StringBuilder();
+        List<Integer> originalIndexes = new ArrayList<>();
+        for (int i = 0; i < content.length(); i++) {
+            char ch = content.charAt(i);
+            if (Character.isWhitespace(ch)) {
+                continue;
+            }
+            builder.append(ch);
+            originalIndexes.add(i);
+        }
+        return new NormalizedText(builder.toString(), originalIndexes);
+    }
+
+    private static String normalizeKeyword(String keyword) {
+        if (keyword == null) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < keyword.length(); i++) {
+            char ch = keyword.charAt(i);
+            if (!Character.isWhitespace(ch)) {
+                builder.append(ch);
+            }
+        }
+        return builder.toString();
+    }
+
+    private record NormalizedText(String text, List<Integer> originalIndexes) {}
+
+    public record TermTextMatch(int start, int end) {
+
+        public int length() {
+            return end - start;
+        }
+    }
+}
