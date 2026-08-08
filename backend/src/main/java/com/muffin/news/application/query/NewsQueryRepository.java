@@ -3,7 +3,6 @@ package com.muffin.news.application.query;
 import com.muffin.news.application.sectorimpact.SectorRow;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 /** 뉴스 조회 읽기 전용 인터페이스. 공개(PUBLISHED)·미삭제 뉴스만 대상으로 한다. */
 public interface NewsQueryRepository {
@@ -18,11 +17,9 @@ public interface NewsQueryRepository {
      */
     List<NewsSummaryRow> findPublishedNewsPage(Long userId, NewsCursor cursor, Long categoryId, int limit);
 
-    /** 지정 구간에 수집(createdAt)된 공개 뉴스를 최신 발행순으로 조회한다(오늘의 뉴스). */
+    /** 지정 구간에 수집(createdAt)된 카테고리별 공개 뉴스를 최신 발행순으로 조회한다(오늘의 뉴스). */
     List<NewsSummaryRow> findTodayPublishedNews(
-            Long userId, LocalDateTime startInclusive, LocalDateTime endExclusive, int limit);
-
-    Optional<LocalDateTime> findLatestPublishedCreatedAtBefore(LocalDateTime endExclusive);
+            Long userId, LocalDateTime startInclusive, LocalDateTime endExclusive, List<String> categoryNames);
 
     /** 활성 섹터를 그룹·섹터 표시 순서(groupOrder, sectorOrder)대로 조회한다(섹터 영향도 응답의 고정 목록). */
     List<SectorRow> findActiveSectorsInDisplayOrder();

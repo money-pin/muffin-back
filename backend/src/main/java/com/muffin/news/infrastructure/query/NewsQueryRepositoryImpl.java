@@ -17,7 +17,6 @@ import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -58,13 +57,14 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
 
     @Override
     public List<NewsSummaryRow> findTodayPublishedNews(
-            Long userId, LocalDateTime startInclusive, LocalDateTime endExclusive, int limit) {
+            Long userId, LocalDateTime startInclusive, LocalDateTime endExclusive, List<String> categoryNames) {
         QNews news = QNews.news;
         QCategory category = QCategory.category;
         QScrap scrap = QScrap.scrap;
 
         BooleanBuilder where = publishedNewsPredicate(news);
         where.and(news.createdAt.goe(startInclusive)).and(news.createdAt.lt(endExclusive));
+        where.and(category.name.in(categoryNames));
 
         return queryFactory
                 .select(summaryProjection(news, category, scrap))
@@ -75,23 +75,7 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
                 .on(scrap.newsId.eq(news.id).and(scrap.userId.eq(userId)))
                 .where(where)
                 .orderBy(news.publishedAt.desc(), news.id.desc())
-                .limit(limit)
                 .fetch();
-    }
-
-    @Override
-    public Optional<LocalDateTime> findLatestPublishedCreatedAtBefore(LocalDateTime endExclusive) {
-        QNews news = QNews.news;
-
-        BooleanBuilder where = publishedNewsPredicate(news);
-        where.and(news.createdAt.lt(endExclusive));
-
-        return Optional.ofNullable(queryFactory
-                .select(news.createdAt)
-                .from(news)
-                .where(where)
-                .orderBy(news.createdAt.desc())
-                .fetchFirst());
     }
 
     @Override

@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -151,8 +150,10 @@ class NewsQueryServiceTest {
     /** 오늘의 뉴스 썸네일: 원본이 있으면 그 URL을, 없으면 null을 담는다(기본 이미지는 프론트가 처리). */
     @Test
     void getTodayNews_returnsOriginalThumbnailOrNull() {
-        when(newsQueryRepository.findTodayPublishedNews(anyLong(), any(), any(), anyInt()))
-                .thenReturn(List.of(summaryRow(1L, null, true), summaryRow(2L, "https://origin/2.jpg", false)));
+        when(newsQueryRepository.findTodayPublishedNews(anyLong(), any(), any(), any()))
+                .thenReturn(List.of(
+                        summaryRow(1L, 1L, "경제", LocalDateTime.of(2026, 8, 1, 11, 0), null, true),
+                        summaryRow(2L, 2L, "증권", LocalDateTime.of(2026, 8, 1, 10, 0), "https://origin/2.jpg", false)));
 
         NewsTodayResponse response = newsQueryService.getTodayNews(1L);
 
@@ -165,44 +166,48 @@ class NewsQueryServiceTest {
     }
 
     @Test
-    void getTodayNews_returnsTodayNewsWithoutFallbackWhenTodayNewsExists() {
+    void getTodayNews_returnsLatestNewsFromEachCategoryInFixedOrder() {
         LocalDateTime todayStart = LocalDateTime.of(2026, 8, 1, 0, 0);
-        when(newsQueryRepository.findTodayPublishedNews(1L, todayStart, todayStart.plusDays(1), 3))
-                .thenReturn(List.of(summaryRow(1L, null, false)));
+        when(newsQueryRepository.findTodayPublishedNews(
+                        1L, todayStart, todayStart.plusDays(1), List.of("경제", "증권", "세계")))
+                .thenReturn(List.of(
+                        summaryRow(12L, 2L, "증권", LocalDateTime.of(2026, 8, 1, 12, 0), null, false),
+                        summaryRow(11L, 1L, "경제", LocalDateTime.of(2026, 8, 1, 11, 0), null, false),
+                        summaryRow(10L, 1L, "경제", LocalDateTime.of(2026, 8, 1, 10, 0), null, false),
+                        summaryRow(9L, 3L, "세계", LocalDateTime.of(2026, 8, 1, 9, 0), null, false)));
 
         NewsTodayResponse response = newsQueryService.getTodayNews(1L);
 
         assertThat(response.items())
                 .extracting(NewsTodayResponse.NewsTodayItem::newsId)
-                .containsExactly(1L);
-        verify(newsQueryRepository, never()).findLatestPublishedCreatedAtBefore(todayStart);
+                .containsExactly(11L, 12L, 9L);
+        assertThat(response.items())
+                .extracting(NewsTodayResponse.NewsTodayItem::categoryName)
+                .containsExactly("경제", "증권", "세계");
     }
 
     @Test
-    void getTodayNews_returnsOnlyLatestPublishedDateNewsWhenTodayNewsIsEmpty() {
+    void getTodayNews_omitsCategoryWithoutTodayNews() {
         LocalDateTime todayStart = LocalDateTime.of(2026, 8, 1, 0, 0);
-        LocalDateTime latestPublishedCreatedAt = LocalDateTime.of(2026, 7, 29, 15, 30);
-        LocalDateTime fallbackStart = LocalDateTime.of(2026, 7, 29, 0, 0);
-        when(newsQueryRepository.findTodayPublishedNews(1L, todayStart, todayStart.plusDays(1), 3))
-                .thenReturn(List.of());
-        when(newsQueryRepository.findLatestPublishedCreatedAtBefore(todayStart))
-                .thenReturn(Optional.of(latestPublishedCreatedAt));
-        when(newsQueryRepository.findTodayPublishedNews(1L, fallbackStart, fallbackStart.plusDays(1), 3))
-                .thenReturn(List.of(summaryRow(2L, null, false), summaryRow(1L, null, false)));
+        when(newsQueryRepository.findTodayPublishedNews(
+                        1L, todayStart, todayStart.plusDays(1), List.of("경제", "증권", "세계")))
+                .thenReturn(List.of(
+                        summaryRow(2L, 3L, "세계", LocalDateTime.of(2026, 8, 1, 11, 0), null, false),
+                        summaryRow(1L, 1L, "경제", LocalDateTime.of(2026, 8, 1, 10, 0), null, false)));
 
         NewsTodayResponse response = newsQueryService.getTodayNews(1L);
 
         assertThat(response.items())
                 .extracting(NewsTodayResponse.NewsTodayItem::newsId)
-                .containsExactly(2L, 1L);
+                .containsExactly(1L, 2L);
     }
 
     @Test
     void getTodayNews_returnsEmptyItemsWhenPublishedNewsDoesNotExist() {
         LocalDateTime todayStart = LocalDateTime.of(2026, 8, 1, 0, 0);
-        when(newsQueryRepository.findTodayPublishedNews(1L, todayStart, todayStart.plusDays(1), 3))
+        when(newsQueryRepository.findTodayPublishedNews(
+                        1L, todayStart, todayStart.plusDays(1), List.of("경제", "증권", "세계")))
                 .thenReturn(List.of());
-        when(newsQueryRepository.findLatestPublishedCreatedAtBefore(todayStart)).thenReturn(Optional.empty());
 
         NewsTodayResponse response = newsQueryService.getTodayNews(1L);
 
@@ -241,14 +246,24 @@ class NewsQueryServiceTest {
     }
 
     private static NewsSummaryRow summaryRow(Long newsId, String thumbnailUrl, boolean isScrapped) {
+        return summaryRow(newsId, 1L, "경제", LocalDateTime.of(2026, 7, 18, 9, 0), thumbnailUrl, isScrapped);
+    }
+
+    private static NewsSummaryRow summaryRow(
+            Long newsId,
+            Long categoryId,
+            String categoryName,
+            LocalDateTime publishedAt,
+            String thumbnailUrl,
+            boolean isScrapped) {
         return new NewsSummaryRow(
                 newsId,
-                1L,
-                "경제",
+                categoryId,
+                categoryName,
                 "제목 " + newsId,
                 "요약",
                 "매일경제",
-                LocalDateTime.of(2026, 7, 18, 9, 0),
+                publishedAt,
                 thumbnailUrl,
                 0L,
                 isScrapped);
