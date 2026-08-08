@@ -57,7 +57,8 @@ class MypageRecentNewsControllerDocsTest {
                         "https://.../thumb.jpg",
                         3120L,
                         OffsetDateTime.parse("2026-05-07T09:00:00+09:00"),
-                        OffsetDateTime.parse("2026-05-08T20:15:00+09:00"))),
+                        OffsetDateTime.parse("2026-05-08T20:15:00+09:00"),
+                        true)),
                 "eyJ0IjoiMjAyNi0wNS0wOFQyMDoxNTowMCIsImlkIjoxMDI0fQ",
                 true);
         MockMvc mockMvc = mockMvcWith(stubReturning(response), restDocumentation);
@@ -80,6 +81,7 @@ class MypageRecentNewsControllerDocsTest {
                                 fieldWithPath("result.items[].viewCount").description("조회수"),
                                 fieldWithPath("result.items[].publishedAt").description("발행 시각(KST)"),
                                 fieldWithPath("result.items[].viewedAt").description("열람 시각(KST, 정렬 기준)"),
+                                fieldWithPath("result.items[].isScrapped").description("현재 사용자의 스크랩 여부"),
                                 fieldWithPath("result.nextCursor").description("다음 페이지 커서. 다음 페이지가 없으면 null"),
                                 fieldWithPath("result.hasNext").description("다음 페이지 존재 여부"))));
     }

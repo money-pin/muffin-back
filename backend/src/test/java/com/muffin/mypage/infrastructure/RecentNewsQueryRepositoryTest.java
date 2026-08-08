@@ -13,6 +13,8 @@ import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.readhistory.ReadHistory;
 import com.muffin.news.domain.readhistory.ReadHistoryRepository;
+import com.muffin.scrap.domain.Scrap;
+import com.muffin.scrap.domain.ScrapRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +48,9 @@ class RecentNewsQueryRepositoryTest {
 
     @Autowired
     private ReadHistoryRepository readHistoryRepository;
+
+    @Autowired
+    private ScrapRepository scrapRepository;
 
     private Long categoryId;
     private Long newsAId;
@@ -118,7 +123,10 @@ class RecentNewsQueryRepositoryTest {
     @Test
     @DisplayName("조인한 뉴스/카테고리 필드를 projection으로 채운다")
     void findRecentNewsPage_projectsJoinedFields() {
-        List<RecentNewsProjection> projections = recentNewsQueryRepository.findRecentNewsPage(USER_ID, null, 1);
+        scrapRepository.save(Scrap.create(USER_ID, newsBId));
+        scrapRepository.save(Scrap.create(OTHER_USER_ID, newsAId));
+
+        List<RecentNewsProjection> projections = recentNewsQueryRepository.findRecentNewsPage(USER_ID, null, 10);
 
         RecentNewsProjection projection = projections.getFirst();
         assertThat(projection.newsId()).isEqualTo(newsBId);
@@ -127,6 +135,7 @@ class RecentNewsQueryRepositoryTest {
         assertThat(projection.viewCount()).isEqualTo(30L);
         assertThat(projection.publishedAt()).isEqualTo(LocalDateTime.of(2026, 5, 6, 9, 0));
         assertThat(projection.viewedAt()).isEqualTo(LocalDateTime.of(2026, 5, 8, 22, 0));
+        assertThat(projections).extracting(RecentNewsProjection::isScrapped).containsExactly(true, false, false);
         assertThat(projection.readHistoryId()).isNotNull();
     }
 

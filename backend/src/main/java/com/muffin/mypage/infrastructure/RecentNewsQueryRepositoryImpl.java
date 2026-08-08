@@ -6,6 +6,7 @@ import com.muffin.mypage.application.projection.RecentNewsProjection;
 import com.muffin.news.domain.category.QCategory;
 import com.muffin.news.domain.news.QNews;
 import com.muffin.news.domain.readhistory.QReadHistory;
+import com.muffin.scrap.domain.QScrap;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -24,6 +25,7 @@ public class RecentNewsQueryRepositoryImpl implements RecentNewsQueryRepository 
         QReadHistory readHistory = QReadHistory.readHistory;
         QNews news = QNews.news;
         QCategory category = QCategory.category;
+        QScrap scrap = QScrap.scrap;
 
         BooleanBuilder where =
                 new BooleanBuilder().and(readHistory.userId.eq(userId)).and(news.deletedAt.isNull());
@@ -39,12 +41,15 @@ public class RecentNewsQueryRepositoryImpl implements RecentNewsQueryRepository 
                         news.viewCount,
                         news.publishedAt,
                         readHistory.readAt,
+                        scrap.id.isNotNull(),
                         readHistory.id))
                 .from(readHistory)
                 .join(news)
                 .on(news.id.eq(readHistory.newsId))
                 .join(category)
                 .on(category.id.eq(news.categoryId))
+                .leftJoin(scrap)
+                .on(scrap.newsId.eq(news.id).and(scrap.userId.eq(userId)))
                 .where(where)
                 .orderBy(readHistory.readAt.desc(), readHistory.id.desc())
                 .limit(limit)

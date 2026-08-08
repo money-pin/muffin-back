@@ -58,7 +58,7 @@ public interface MypageApi {
     @Operation(
             summary = "최근 읽은 뉴스 목록 조회 (MYPAGE-04-2)",
             description = "마이페이지에서 최근 읽은 뉴스를 열람 시각(read_at) 최신순으로 커서 페이지네이션 조회한다. "
-                    + "size 미지정 시 10. nextCursor는 다음 페이지가 있을 때만 내려간다.")
+                    + "각 뉴스의 현재 사용자 스크랩 여부를 함께 반환한다. size 미지정 시 10. nextCursor는 다음 페이지가 있을 때만 내려간다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "200",

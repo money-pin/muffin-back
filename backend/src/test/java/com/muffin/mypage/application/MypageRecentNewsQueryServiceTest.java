@@ -115,6 +115,19 @@ class MypageRecentNewsQueryServiceTest {
     }
 
     @Test
+    @DisplayName("최근 읽은 뉴스에 현재 사용자의 스크랩 여부를 반환한다")
+    void getRecentNews_returnsScrapStatus() {
+        when(userRepository.existsById(USER_ID)).thenReturn(true);
+        when(recentNewsQueryRepository.findRecentNewsPage(USER_ID, null, 3))
+                .thenReturn(List.of(new RecentNewsProjection(
+                        10L, "제목10", "반도체", "https://thumb/10", 100L, PUBLISHED_AT, VIEWED_AT, true, 100L)));
+
+        RecentNewsResponse response = service.getRecentNews(USER_ID, null, 2);
+
+        assertThat(response.items().getFirst().isScrapped()).isTrue();
+    }
+
+    @Test
     @DisplayName("커서가 있으면 디코딩해 그대로 저장소 조회에 전달한다")
     void getRecentNews_decodesCursorAndPassesToRepository() {
         RecentNewsCursor cursor = new RecentNewsCursor(VIEWED_AT, 100L);
@@ -160,8 +173,8 @@ class MypageRecentNewsQueryServiceTest {
     void getRecentNews_normalizesBlankThumbnailToNull() {
         when(userRepository.existsById(USER_ID)).thenReturn(true);
         when(recentNewsQueryRepository.findRecentNewsPage(USER_ID, null, 3))
-                .thenReturn(
-                        List.of(new RecentNewsProjection(10L, "제목10", "반도체", "", 100L, PUBLISHED_AT, VIEWED_AT, 100L)));
+                .thenReturn(List.of(
+                        new RecentNewsProjection(10L, "제목10", "반도체", "", 100L, PUBLISHED_AT, VIEWED_AT, false, 100L)));
 
         RecentNewsResponse response = service.getRecentNews(USER_ID, null, 2);
 
@@ -170,6 +183,14 @@ class MypageRecentNewsQueryServiceTest {
 
     private RecentNewsProjection projection(Long newsId, Long readHistoryId) {
         return new RecentNewsProjection(
-                newsId, "제목" + newsId, "반도체", "https://thumb/" + newsId, 100L, PUBLISHED_AT, VIEWED_AT, readHistoryId);
+                newsId,
+                "제목" + newsId,
+                "반도체",
+                "https://thumb/" + newsId,
+                100L,
+                PUBLISHED_AT,
+                VIEWED_AT,
+                false,
+                readHistoryId);
     }
 }
