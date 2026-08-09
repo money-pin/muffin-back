@@ -1,12 +1,12 @@
 package com.muffin.quiz.presentation.swagger;
 
 import com.muffin.global.apiPayload.ApiResponse;
-import com.muffin.quiz.presentation.dto.request.QuizAttemptRequest;
-import com.muffin.quiz.presentation.dto.response.QuizAttemptResponse;
-import com.muffin.quiz.presentation.dto.response.QuizHistoryDetailResponse;
-import com.muffin.quiz.presentation.dto.response.QuizHistoryListResponse;
-import com.muffin.quiz.presentation.dto.response.QuizResultResponse;
-import com.muffin.quiz.presentation.dto.response.TodayQuizResponse;
+import com.muffin.quiz.presentation.dto.QuizAttemptRequest;
+import com.muffin.quiz.presentation.dto.QuizAttemptResponse;
+import com.muffin.quiz.presentation.dto.QuizHistoryDetailResponse;
+import com.muffin.quiz.presentation.dto.QuizHistoryListResponse;
+import com.muffin.quiz.presentation.dto.QuizResultResponse;
+import com.muffin.quiz.presentation.dto.TodayQuizResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;

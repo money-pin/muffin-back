@@ -13,7 +13,7 @@ import com.muffin.news.domain.explanation.NewsExplanation;
 import com.muffin.news.domain.explanation.NewsExplanationRepository;
 import com.muffin.news.domain.explanation.enums.NewsExplanationStatus;
 import com.muffin.news.domain.news.NewsRepository;
-import com.muffin.news.presentation.dto.response.NewsExplanationCardsResponse;
+import com.muffin.news.presentation.dto.NewsExplanationCardsResponse;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
 import com.muffin.news.application.term.TermQueryService;
-import com.muffin.news.presentation.dto.response.SavedTermListResponse;
+import com.muffin.news.presentation.dto.SavedTermListResponse;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

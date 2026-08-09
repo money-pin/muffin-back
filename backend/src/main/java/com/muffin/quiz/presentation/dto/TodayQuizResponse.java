@@ -1,4 +1,4 @@
-package com.muffin.quiz.presentation.dto.response;
+package com.muffin.quiz.presentation.dto;
 
 import com.muffin.quiz.domain.quizsession.enums.QuizSessionStatus;
 import com.muffin.quiz.domain.quizset.enums.QuizSetStatus;

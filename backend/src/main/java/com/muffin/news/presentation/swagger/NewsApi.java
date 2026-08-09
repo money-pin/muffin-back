@@ -2,11 +2,11 @@ package com.muffin.news.presentation.swagger;
 
 import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.news.presentation.dto.NewsDetailResponse;
+import com.muffin.news.presentation.dto.NewsExplanationCardsResponse;
 import com.muffin.news.presentation.dto.NewsListResponse;
 import com.muffin.news.presentation.dto.NewsReadResponse;
 import com.muffin.news.presentation.dto.NewsSectorImpactResponse;
 import com.muffin.news.presentation.dto.NewsTodayResponse;
-import com.muffin.news.presentation.dto.response.NewsExplanationCardsResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
