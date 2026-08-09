@@ -109,11 +109,26 @@ public class Investment extends BaseEntity {
         recalculateTotalAmount();
     }
 
-    /** 투자 수정 시 전달된 최종 구성으로 섹터를 전부 교체한다. 매수가는 자정 마감 전까지 비워 둔다. */
+    /**
+     * 투자 수정 시 전달된 최종 구성으로 섹터를 맞춘다. 매수가는 자정 마감 전까지 비워 둔다.
+     *
+     * <p>전부 지우고 새로 담지 않고 병합한다. 유지되는 섹터를 지웠다 다시 넣으면 하이버네이트가 orphan removal(DELETE)보다 INSERT를 먼저 flush해서 같은
+     * {@code (investment_id, sector_id)}가 순간적으로 겹치고, {@code uk_investment_sector_investment_sector}에 걸린다. 수량만 바꾸는 수정이
+     * 가장 흔한 경로라 실제로 터진다. allocations는 섹터별로 이미 합산되어 들어온다.
+     */
     public void replaceSectors(List<SectorAllocation> allocations) {
-        sectors.clear();
-        allocations.forEach(allocation -> sectors.add(
-                new InvestmentSector(allocation.sectorId(), allocation.quantity(), allocation.amount(), null)));
+        List<Long> keepSectorIds =
+                allocations.stream().map(SectorAllocation::sectorId).toList();
+        sectors.removeIf(sector -> !keepSectorIds.contains(sector.getSectorId()));
+        for (SectorAllocation allocation : allocations) {
+            sectors.stream()
+                    .filter(sector -> sector.getSectorId().equals(allocation.sectorId()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            sector -> sector.changeAllocation(allocation.quantity(), allocation.amount()),
+                            () -> sectors.add(new InvestmentSector(
+                                    allocation.sectorId(), allocation.quantity(), allocation.amount(), null)));
+        }
         recalculateTotalAmount();
     }
 

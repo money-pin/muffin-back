@@ -71,6 +71,13 @@ public class InvestmentSector extends BaseEntity {
         this.buyPrice = buyPrice;
     }
 
+    // 투자 수정(Investment.replaceSectors)에서 유지되는 섹터의 배분만 갱신한다.
+    // 이 경로는 자정 마감 전에만 열리므로 매수가·정산 결과 컬럼은 아직 비어 있고 손대지 않는다.
+    void changeAllocation(int quantity, Long amount) {
+        this.quantity = quantity;
+        this.amount = amount;
+    }
+
     // 정산 결과 반영은 루트(Investment.applySectorResult)를 통해서만 호출된다.
     void applyResult(
             BigDecimal sellPrice, Long profitLoss, BigDecimal profitLossRate, PriceDataSource priceDataSource) {

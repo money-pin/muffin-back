@@ -1,7 +1,9 @@
 package com.muffin.investment.domain.investment;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
@@ -198,6 +200,37 @@ class InvestmentTest {
                 investment.getSectors().stream()
                         .map(InvestmentSector::getSectorId)
                         .toList());
+    }
+
+    @Test
+    @DisplayName("투자 수정 시 유지되는 섹터는 같은 행을 갱신하고 빠진 섹터만 제거한다")
+    void replaceSectors_mergesKeptSectorsInsteadOfRecreating() {
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
+        investment.addSector(100L, 1, 100_000L, null);
+        investment.addSector(200L, 2, 200_000L, null);
+        InvestmentSector kept = investment.getSectors().stream()
+                .filter(sector -> sector.getSectorId().equals(100L))
+                .findFirst()
+                .orElseThrow();
+
+        // 100번은 수량만 변경, 200번은 제외, 300번은 신규
+        investment.replaceSectors(List.of(
+                new Investment.SectorAllocation(100L, 4, 400_000L),
+                new Investment.SectorAllocation(300L, 3, 300_000L)));
+
+        assertEquals(2, investment.getSectors().size());
+        assertEquals(700_000L, investment.getTotalAmount());
+        // 유지된 섹터는 새로 만들지 않고 같은 인스턴스를 갱신한다(DELETE 후 INSERT가 아니어야 유니크 제약에 안 걸린다).
+        assertSame(
+                kept,
+                investment.getSectors().stream()
+                        .filter(sector -> sector.getSectorId().equals(100L))
+                        .findFirst()
+                        .orElseThrow());
+        assertEquals(4, kept.getQuantity());
+        assertEquals(400_000L, kept.getAmount());
+        assertFalse(investment.getSectors().stream()
+                .anyMatch(sector -> sector.getSectorId().equals(200L)));
     }
 
     @Test

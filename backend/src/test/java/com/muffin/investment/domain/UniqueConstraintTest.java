@@ -1,5 +1,6 @@
 package com.muffin.investment.domain;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.muffin.global.config.JpaAuditingConfig;
@@ -7,7 +8,9 @@ import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.InvestmentRepository;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
+import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +37,9 @@ class UniqueConstraintTest {
     @Autowired
     private UserAssetRepository userAssetRepository;
 
+    @Autowired
+    private EntityManager entityManager;
+
     @Test
     @DisplayName("같은 사용자-투자일자로 투자를 두 번 저장하면 유니크 제약 위반이 발생한다")
     void investment_duplicateUserAndInvestDate_violatesUnique() {
@@ -53,6 +59,27 @@ class UniqueConstraintTest {
         investment.addSector(100L, 5, 150_000L, null);
 
         assertThrows(DataIntegrityViolationException.class, () -> investmentRepository.saveAndFlush(investment));
+    }
+
+    @Test
+    @DisplayName("같은 섹터를 유지한 채 수량만 바꿔 교체해도 유니크 제약에 걸리지 않는다")
+    void investmentSector_replaceKeepingSameSector_doesNotViolateUnique() {
+        // updateToday()의 실제 경로. replaceSectors()가 기존 자식을 지우고 같은 sector_id로 다시 넣기 때문에
+        // orphan removal(DELETE)이 INSERT보다 먼저 flush되지 않으면 uk_investment_sector_investment_sector에 걸린다.
+        Investment investment = Investment.confirm(3L, DATE);
+        investment.addSector(100L, 10, 300_000L, null);
+        investmentRepository.saveAndFlush(investment);
+
+        investment.replaceSectors(List.of(new Investment.SectorAllocation(100L, 5, 150_000L)));
+        investmentRepository.saveAndFlush(investment);
+
+        entityManager.clear();
+        Investment reloaded =
+                investmentRepository.findWithSectorsById(investment.getId()).orElseThrow();
+        assertEquals(1, reloaded.getSectors().size());
+        assertEquals(5, reloaded.getSectors().get(0).getQuantity());
+        assertEquals(150_000L, reloaded.getSectors().get(0).getAmount());
+        assertEquals(150_000L, reloaded.getTotalAmount());
     }
 
     @Test
