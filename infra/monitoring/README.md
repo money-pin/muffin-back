@@ -65,9 +65,11 @@ curl -s localhost:9104/metrics | grep '^mysql_up'
 ```promql
 muffin_batch_job_last_success_timestamp_seconds   # 앱
 node_memory_MemAvailable_bytes                    # 호스트 (컨테이너가 아닌 2GB 기준 값이어야 함)
-node_filesystem_avail_bytes{mountpoint="/rootfs"} # 호스트 디스크
+node_filesystem_avail_bytes{mountpoint="/"}       # 호스트 디스크
 mysql_up                                          # RDS
 ```
+
+디스크 지표의 `mountpoint`는 `/rootfs`가 아니라 `/`다. `rootfs_path` 설정이 컨테이너가 읽은 경로에서 그 접두사를 떼어내 호스트 기준으로 정규화한다.
 
 로그는 `{service="muffin"}` 으로 조회한다. `level`, `domain` 라벨로 걸러진다.
 

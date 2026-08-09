@@ -20,19 +20,36 @@ umask 077
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-{
-  echo "GRAFANA_PROM_URL=$(need GRAFANA_PROM_URL)"
-  echo "GRAFANA_PROM_USER=$(need GRAFANA_PROM_USER)"
-  echo "GRAFANA_LOKI_URL=$(need GRAFANA_LOKI_URL)"
-  echo "GRAFANA_LOKI_USER=$(need GRAFANA_LOKI_USER)"
-  echo "GRAFANA_TOKEN=$(need GRAFANA_TOKEN)"
-  echo "DB_EXPORTER_USERNAME=$(need DB_EXPORTER_USERNAME)"
-  echo "MYSQLD_EXPORTER_PASSWORD=$(need DB_EXPORTER_PASSWORD)"
+# 값을 먼저 전부 대입해 둔다. echo "KEY=$(need ...)" 로 바로 쓰면 need가 실패해도
+# echo는 성공해서, 빈 값이 든 .env를 만들어 놓고 스크립트가 0으로 끝난다.
+# 그러면 수집기는 인증 실패로 조용히 아무것도 못 보내는데 실행 로그만 정상으로 보인다.
+# 대입은 set -e가 잡으므로 파라미터가 하나라도 없으면 여기서 멈춘다.
+grafana_prom_url="$(need GRAFANA_PROM_URL)"
+grafana_prom_user="$(need GRAFANA_PROM_USER)"
+grafana_loki_url="$(need GRAFANA_LOKI_URL)"
+grafana_loki_user="$(need GRAFANA_LOKI_USER)"
+grafana_token="$(need GRAFANA_TOKEN)"
+exporter_username="$(need DB_EXPORTER_USERNAME)"
+exporter_password="$(need DB_EXPORTER_PASSWORD)"
 
-  # RDS 엔드포인트는 별도 파라미터가 없고 JDBC URL 안에 들어 있다.
-  # jdbc:mysql://호스트:3306/스키마?... 에서 호스트만 떼어낸다.
-  db_url="$(need DB_URL)"
-  echo "DB_HOST=$(printf '%s' "$db_url" | sed -E 's|^jdbc:mysql://([^:/?]+).*|\1|')"
+# RDS 엔드포인트는 별도 파라미터가 없고 JDBC URL 안에 들어 있다.
+# jdbc:mysql://호스트:3306/스키마?... 에서 호스트만 떼어낸다.
+db_url="$(need DB_URL)"
+db_host="$(printf '%s' "$db_url" | sed -E 's|^jdbc:mysql://([^:/?]+).*|\1|')"
+if [ -z "$db_host" ] || [ "$db_host" = "$db_url" ]; then
+  echo "ERROR: DB_URL에서 호스트를 뽑지 못했습니다. jdbc:mysql://호스트:포트/... 형식이어야 합니다." >&2
+  exit 1
+fi
+
+{
+  echo "GRAFANA_PROM_URL=$grafana_prom_url"
+  echo "GRAFANA_PROM_USER=$grafana_prom_user"
+  echo "GRAFANA_LOKI_URL=$grafana_loki_url"
+  echo "GRAFANA_LOKI_USER=$grafana_loki_user"
+  echo "GRAFANA_TOKEN=$grafana_token"
+  echo "DB_EXPORTER_USERNAME=$exporter_username"
+  echo "MYSQLD_EXPORTER_PASSWORD=$exporter_password"
+  echo "DB_HOST=$db_host"
 } > "$tmp"
 
 mv "$tmp" "$OUT"

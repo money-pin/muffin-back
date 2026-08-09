@@ -16,7 +16,15 @@ services:
     # (2) 호스트 네트워크 지표를 실제 값으로 읽기 위해서다. 어차피 호스트
     # CPU/메모리/디스크를 보려고 /를 마운트하므로 격리 이점이 크지 않다.
     network_mode: host
-    pid: host
+
+    # pid: host는 쓰지 않는다. 호스트 지표는 마운트한 /rootfs/proc에서 읽으므로
+    # (config.alloy의 procfs_path) PID 네임스페이스를 공유할 이유가 없고, 공유하면
+    # 수집기가 뚫렸을 때 호스트 프로세스가 통째로 보인다.
+    #
+    # node_exporter 공식 도커 안내는 --pid=host를 함께 권해서 박스에서 확인했다.
+    # 메모리(node_memory_*)와 디스크(node_filesystem_*, 마운트 4개) 모두 정상 수집된다.
+    # filesystem 컬렉터가 /proc/1/mounts를 읽는데, / 를 통째로 마운트해 둔 덕에
+    # PID 네임스페이스와 무관하게 호스트 목록이 그대로 보인다.
 
     # 만에 하나 수집기가 메모리를 튀겨도 도커가 앱이 아니라 이쪽을 죽이게 한다.
     # 이게 없으면 OOM killer가 RSS가 가장 큰 앱 컨테이너를 고른다.
