@@ -15,6 +15,8 @@ import com.muffin.news.domain.readhistory.ReadHistory;
 import com.muffin.news.domain.readhistory.ReadHistoryRepository;
 import com.muffin.quiz.domain.quizsession.QuizSession;
 import com.muffin.quiz.domain.quizsession.QuizSessionRepository;
+import com.muffin.scrap.domain.Scrap;
+import com.muffin.scrap.domain.ScrapRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import java.time.Clock;
@@ -59,10 +61,14 @@ class MypageHomeControllerTest {
     private ReadHistoryRepository readHistoryRepository;
 
     @Autowired
+    private ScrapRepository scrapRepository;
+
+    @Autowired
     private Clock clock;
 
     @AfterEach
     void cleanUp() {
+        scrapRepository.deleteAll();
         readHistoryRepository.deleteAll();
         newsRepository.deleteAll();
         quizSessionRepository.deleteAll();
@@ -103,10 +109,11 @@ class MypageHomeControllerTest {
         quizSessionRepository.save(session);
     }
 
-    private void saveReadNews(Long userId, String title, String originalUrl) {
+    private News saveReadNews(Long userId, String title, String originalUrl) {
         News news = newsRepository.save(
                 News.processing(1L, title, "테스트뉴스", LocalDateTime.now(), "http://thumb", originalUrl));
         readHistoryRepository.save(ReadHistory.create(userId, news.getId()));
+        return news;
     }
 
     private String bearerTokenFor(Long userId) {
@@ -120,7 +127,8 @@ class MypageHomeControllerTest {
         User user = createOnboardedUser(character.getCharacterId(), "길동이");
         finishQuizSession(user.getUserId(), 1L, LocalDate.now(clock));
         saveReadNews(user.getUserId(), "뉴스1", "http://origin/1");
-        saveReadNews(user.getUserId(), "뉴스2", "http://origin/2");
+        News scrappedNews = saveReadNews(user.getUserId(), "뉴스2", "http://origin/2");
+        scrapRepository.save(Scrap.create(user.getUserId(), scrappedNews.getId()));
 
         mockMvc.perform(get("/api/mypage/home").header("Authorization", bearerTokenFor(user.getUserId())))
                 .andExpect(status().isOk())
@@ -129,7 +137,9 @@ class MypageHomeControllerTest {
                 .andExpect(jsonPath("$.result.character.characterName", is("플레인 머핀")))
                 .andExpect(jsonPath("$.result.streak.currentStreak", is(1)))
                 .andExpect(jsonPath("$.result.recentNews.length()", is(2)))
-                .andExpect(jsonPath("$.result.recentNews[0].title", is("뉴스2")));
+                .andExpect(jsonPath("$.result.recentNews[0].title", is("뉴스2")))
+                .andExpect(jsonPath("$.result.recentNews[0].isScrapped", is(true)))
+                .andExpect(jsonPath("$.result.recentNews[1].isScrapped", is(false)));
     }
 
     @Test

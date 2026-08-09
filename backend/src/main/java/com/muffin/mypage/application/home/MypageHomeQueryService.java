@@ -64,7 +64,8 @@ public class MypageHomeQueryService {
                         character.getImageUrl()),
                 toStreakSummary(streak),
                 recentNewsRows.stream()
-                        .map(row -> new RecentNewsItem(row.newsId(), row.title(), row.thumbnailUrl(), row.readAt()))
+                        .map(row -> new RecentNewsItem(
+                                row.newsId(), row.title(), row.thumbnailUrl(), row.readAt(), row.isScrapped()))
                         .toList());
     }
 

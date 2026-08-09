@@ -97,13 +97,21 @@ public class NewsQueryRepositoryImpl implements NewsQueryRepository {
     public List<RecentReadNewsRow> findRecentReadNews(Long userId, int limit) {
         QReadHistory readHistory = QReadHistory.readHistory;
         QNews news = QNews.news;
+        QScrap scrap = QScrap.scrap;
 
         return queryFactory
                 .select(Projections.constructor(
-                        RecentReadNewsRow.class, news.id, news.title, news.thumbnailUrl, readHistory.readAt))
+                        RecentReadNewsRow.class,
+                        news.id,
+                        news.title,
+                        news.thumbnailUrl,
+                        readHistory.readAt,
+                        scrap.id.isNotNull()))
                 .from(readHistory)
                 .join(news)
                 .on(news.id.eq(readHistory.newsId))
+                .leftJoin(scrap)
+                .on(scrap.newsId.eq(news.id).and(scrap.userId.eq(userId)))
                 .where(readHistory.userId.eq(userId))
                 .orderBy(readHistory.readAt.desc(), readHistory.id.desc())
                 .limit(limit)
