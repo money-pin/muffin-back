@@ -152,4 +152,12 @@ variable "exporter_db_username" {
   description = "지표 수집 전용 DB 계정 이름 (상태값 조회 권한만 부여)"
   type        = string
   default     = "muffin_exporter"
+
+  # 이 값은 db_exporter_user_bootstrap.sh.tftpl의 CREATE USER/GRANT 문에 그대로 삽입된다.
+  # 따옴표가 든 값이면 SQL을 끊고 master 권한으로 임의 구문을 실행할 수 있어서,
+  # app_db_username과 같은 허용 목록으로 막는다.
+  validation {
+    condition     = can(regex("^[A-Za-z][A-Za-z0-9_]{2,31}$", var.exporter_db_username))
+    error_message = "exporter_db_username은 영문자로 시작하는 3~32자 영문/숫자/_ 조합이어야 합니다."
+  }
 }

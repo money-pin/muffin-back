@@ -61,10 +61,16 @@ command_id="$(aws ssm send-command \
   --output text)"
 
 echo "전송 명령 ID: $command_id"
-aws ssm wait command-executed --command-id "$command_id" --instance-id "$INSTANCE_ID" --region "$REGION" || true
+
+# waiter 실패를 그냥 삼키면(|| true) 뒤이은 get-command-invocation이 성공하면서
+# 전송이 실패해도 스크립트가 0으로 끝난다. 실패 원인은 출력에 있으니 조회는 그대로 하되,
+# 상태는 따로 들고 있다가 마지막에 그대로 반환한다.
+wait_status=0
+aws ssm wait command-executed --command-id "$command_id" --instance-id "$INSTANCE_ID" --region "$REGION" || wait_status=$?
 aws ssm get-command-invocation \
   --command-id "$command_id" \
   --instance-id "$INSTANCE_ID" \
   --region "$REGION" \
   --query "{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}" \
   --output json
+exit "$wait_status"

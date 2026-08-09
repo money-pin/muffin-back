@@ -18,8 +18,10 @@ RDS 인스턴스 자체의 CPU/메모리/IOPS는 exporter가 볼 수 없다. Clo
 ## 사전 조건
 
 - 앱에 `/actuator/prometheus`가 배포돼 있을 것
-- SSM `/muffin/dev`에 파라미터가 있을 것: `GRAFANA_PROM_URL`, `GRAFANA_PROM_USER`, `GRAFANA_LOKI_URL`, `GRAFANA_LOKI_USER`, `GRAFANA_TOKEN`
-- `terraform apply`로 exporter DB 계정이 생성돼 있을 것 (`DB_EXPORTER_USERNAME` / `DB_EXPORTER_PASSWORD`)
+- SSM `/muffin/dev`에 파라미터가 있을 것 (하나라도 없으면 `env-from-ssm.sh`가 중단된다)
+  - 직접 넣는 값: `GRAFANA_PROM_URL`, `GRAFANA_PROM_USER`, `GRAFANA_LOKI_URL`, `GRAFANA_LOKI_USER`, `GRAFANA_TOKEN`
+  - `terraform apply`가 넣는 값: `DB_EXPORTER_USERNAME`, `DB_EXPORTER_PASSWORD`
+  - 앱 배포가 이미 쓰고 있는 값: `DB_URL` (RDS 호스트를 여기서 뽑아낸다)
 
 ## 실행
 
@@ -49,15 +51,22 @@ sudo docker compose up -d
 ## 확인
 
 ```bash
-docker compose ps                       # 두 컨테이너가 Up
-docker compose logs alloy | tail -30    # remote_write 에러가 없어야 함
-curl -s localhost:9104/metrics | head   # mysqld-exporter 응답
+cd /opt/muffin/monitoring
+sudo docker compose ps                        # 두 컨테이너가 Up
+sudo docker compose logs alloy | tail -30     # remote_write 에러가 없어야 함
+
+# mysqld-exporter는 RDS 연결이 끊겨도 HTTP 200을 준다(자기 자신의 go_ 지표는 계속 나온다).
+# 연결 성공 여부는 mysql_up으로만 알 수 있다. 1이어야 한다.
+curl -s localhost:9104/metrics | grep '^mysql_up'
 ```
 
-Grafana Cloud의 Explore에서 아래가 나오면 연결된 것이다.
+호스트 지표는 박스에서 확인할 수 없다. Alloy가 수집 즉시 Grafana Cloud로 보내고, 관리 UI(`12345`)에는 Alloy 자신의 내부 지표만 있다. Grafana Cloud의 Explore에서 아래가 다 나오면 세 갈래가 전부 붙은 것이다.
 
 ```promql
-muffin_batch_job_last_success_timestamp_seconds
+muffin_batch_job_last_success_timestamp_seconds   # 앱
+node_memory_MemAvailable_bytes                    # 호스트 (컨테이너가 아닌 2GB 기준 값이어야 함)
+node_filesystem_avail_bytes{mountpoint="/rootfs"} # 호스트 디스크
+mysql_up                                          # RDS
 ```
 
 로그는 `{service="muffin"}` 으로 조회한다. `level`, `domain` 라벨로 걸러진다.
