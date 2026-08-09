@@ -74,12 +74,14 @@ class MypageHomeControllerDocsTest {
                                         1L,
                                         "한국은행, 기준금리 동결 결정",
                                         "https://example.com/images/news/1.jpg",
-                                        LocalDateTime.now()),
+                                        LocalDateTime.now(),
+                                        true),
                                 new RecentNewsItem(
                                         2L,
                                         "미국 기술주 상승세 지속",
                                         "https://example.com/images/news/2.jpg",
-                                        LocalDateTime.now())));
+                                        LocalDateTime.now(),
+                                        false)));
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
@@ -109,7 +111,8 @@ class MypageHomeControllerDocsTest {
                                 fieldWithPath("result.recentNews[].title").description("뉴스 제목"),
                                 fieldWithPath("result.recentNews[].thumbnailUrl")
                                         .description("썸네일 URL"),
-                                fieldWithPath("result.recentNews[].readAt").description("열람 시각"))));
+                                fieldWithPath("result.recentNews[].readAt").description("열람 시각"),
+                                fieldWithPath("result.recentNews[].isScrapped").description("현재 사용자의 스크랩 여부"))));
     }
 
     private MockMvc mockMvcOf(MypageHomeQueryService stub, RestDocumentationContextProvider restDocumentation) {

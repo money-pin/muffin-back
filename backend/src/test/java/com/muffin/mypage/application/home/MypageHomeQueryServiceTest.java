@@ -74,7 +74,7 @@ class MypageHomeQueryServiceTest {
         when(quizSessionRepository.findDatesByUserIdAndStatus(USER_ID, QuizSessionStatus.FINISHED))
                 .thenReturn(List.of(LocalDate.of(2026, 7, 23)));
         when(newsQueryRepository.findRecentReadNews(any(), anyInt()))
-                .thenReturn(List.of(new RecentReadNewsRow(10L, "제목", "http://thumb", LocalDateTime.now())));
+                .thenReturn(List.of(new RecentReadNewsRow(10L, "제목", "http://thumb", LocalDateTime.now(), true)));
 
         MypageHomeResponse response = myPageHomeQueryService.getHome(USER_ID);
 
@@ -84,6 +84,7 @@ class MypageHomeQueryServiceTest {
         assertThat(response.streak().currentStreak()).isEqualTo(1);
         assertThat(response.recentNews()).hasSize(1);
         assertThat(response.recentNews().get(0).newsId()).isEqualTo(10L);
+        assertThat(response.recentNews().get(0).isScrapped()).isTrue();
     }
 
     @Test
