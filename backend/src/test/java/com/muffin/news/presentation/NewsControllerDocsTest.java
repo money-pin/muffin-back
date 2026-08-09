@@ -176,7 +176,7 @@ class NewsControllerDocsTest {
                                 fieldWithPath("message").description("응답 메시지"),
                                 fieldWithPath("result.items")
                                         .description(
-                                                "당일 수집된 공개 뉴스 중 경제·증권·세계 카테고리별 발행 시각이 가장 최신인 뉴스 각 1건. 경제 → 증권 → 세계 순서이며, 당일 수집된 뉴스가 없는 카테고리는 제외"),
+                                                "당일 수집된 공개 뉴스 중 경제·증권·세계 카테고리별 발행 시각이 가장 최신인 뉴스 각 1건. 당일 공개 뉴스가 한 건도 없으면 전날 수집 뉴스로 대체하며, 선택된 날짜에 뉴스가 없는 카테고리는 제외"),
                                 fieldWithPath("result.items[].newsId").description("뉴스 ID"),
                                 fieldWithPath("result.items[].categoryId").description("카테고리 ID"),
                                 fieldWithPath("result.items[].categoryName").description("카테고리 표시명"),

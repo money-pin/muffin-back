@@ -94,7 +94,7 @@ public class NewsQueryService {
         return new NewsListResponse(items, nextCursor, hasNext);
     }
 
-    /** 한국 시간 기준 당일 수집된 공개 뉴스 중 경제·증권·세계 카테고리별 최신 1건을 조회한다. */
+    /** 한국 시간 기준 당일 수집된 카테고리별 최신 공개 뉴스를 조회하고, 당일 뉴스가 없으면 전날 뉴스로 대체한다. */
     @Transactional(readOnly = true)
     public NewsTodayResponse getTodayNews(Long userId) {
         LocalDate today = LocalDate.now(clock);
@@ -103,6 +103,10 @@ public class NewsQueryService {
 
         List<NewsSummaryRow> candidates =
                 newsQueryRepository.findTodayPublishedNews(userId, startOfDay, startOfNextDay, TODAY_NEWS_CATEGORIES);
+        if (candidates.isEmpty()) {
+            candidates = newsQueryRepository.findTodayPublishedNews(
+                    userId, startOfDay.minusDays(1), startOfDay, TODAY_NEWS_CATEGORIES);
+        }
         Map<String, NewsSummaryRow> latestByCategory = new HashMap<>();
         for (NewsSummaryRow candidate : candidates) {
             latestByCategory.putIfAbsent(candidate.categoryName(), candidate);

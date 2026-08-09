@@ -234,6 +234,22 @@ class NewsQueryApiIntegrationTest {
     }
 
     @Test
+    @DisplayName("오늘 공개 뉴스가 없으면 전날 수집된 최신 뉴스를 반환한다")
+    void getTodayNews_returnsPreviousDayNewsWhenTodayNewsDoesNotExist() throws Exception {
+        LocalDate today = LocalDate.now(clock);
+        updateCreatedAt(news1Id, today.minusDays(1).atTime(9, 0));
+        updateCreatedAt(news2Id, today.minusDays(1).atTime(10, 0));
+        updateCreatedAt(news3Id, today.minusDays(1).atTime(11, 0));
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/news/today").header("Authorization", bearerToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.items.length()").value(1))
+                .andExpect(jsonPath("$.result.items[0].categoryName").value("경제"))
+                .andExpect(jsonPath("$.result.items[0].title").value("뉴스3"));
+    }
+
+    @Test
     @DisplayName("오늘 공개 뉴스가 없는 카테고리는 과거 뉴스로 채우지 않는다")
     void getTodayNews_doesNotFillMissingCategoryWithPastNews() throws Exception {
         LocalDate today = LocalDate.now(clock);

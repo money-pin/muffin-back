@@ -35,7 +35,7 @@ public interface NewsApi {
     @Operation(
             summary = "오늘의 뉴스 조회 (CONTENT-01-2)",
             description =
-                    "한국 시간(Asia/Seoul) 기준 당일 수집된 공개 뉴스 중 경제·증권·세계 카테고리별 최신 뉴스 1건과 현재 사용자의 스크랩 여부를 경제·증권·세계 순서로 조회한다. 당일 뉴스가 없는 카테고리는 응답에서 제외한다.")
+                    "한국 시간(Asia/Seoul) 기준 당일 수집된 공개 뉴스 중 경제·증권·세계 카테고리별 최신 뉴스 각 1건과 현재 사용자의 스크랩 여부를 경제·증권·세계 순서로 조회한다. 당일 공개 뉴스가 한 건도 없으면 전날 수집된 공개 뉴스를 같은 기준으로 반환한다. 선택된 날짜에 뉴스가 없는 카테고리는 응답에서 제외한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다.")
