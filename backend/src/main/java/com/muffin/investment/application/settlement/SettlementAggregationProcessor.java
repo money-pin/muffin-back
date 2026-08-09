@@ -120,8 +120,7 @@ public class SettlementAggregationProcessor {
 
     private UserAsset loadUserAsset(Investment investment) {
         return userAssetRepository
-                .findById(investment.getUserAssetId())
-                .orElseThrow(
-                        () -> new IllegalStateException("사용자 자산이 없습니다: userAssetId=" + investment.getUserAssetId()));
+                .findByUserId(investment.getUserId())
+                .orElseThrow(() -> new IllegalStateException("사용자 자산이 없습니다: userId=" + investment.getUserId()));
     }
 }

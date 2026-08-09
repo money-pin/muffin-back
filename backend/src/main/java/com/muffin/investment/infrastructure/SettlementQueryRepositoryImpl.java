@@ -33,7 +33,7 @@ public class SettlementQueryRepositoryImpl implements SettlementQueryRepository 
                         userAsset.totalAsset))
                 .from(investment)
                 .join(userAsset)
-                .on(userAsset.id.eq(investment.userAssetId))
+                .on(userAsset.userId.eq(investment.userId))
                 .where(investment.userId.eq(userId).and(investment.investDate.lt(today)))
                 .orderBy(investment.investDate.desc())
                 .limit(1)

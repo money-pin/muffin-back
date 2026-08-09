@@ -1,7 +1,9 @@
 package com.muffin.investment.domain.investment;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
@@ -17,13 +19,12 @@ import org.junit.jupiter.api.Test;
 class InvestmentTest {
 
     private static final Long USER_ID = 1L;
-    private static final Long USER_ASSET_ID = 10L;
     private static final LocalDate INVEST_DATE = LocalDate.of(2026, 5, 7);
 
     @Test
     @DisplayName("섹터를 추가하면 총투자금은 섹터 금액의 합이 된다")
     void addSector_totalAmountEqualsSumOfSectorAmounts() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
 
         investment.addSector(100L, 10, 300_000L, BigDecimal.valueOf(30_000));
         investment.addSector(200L, 5, 200_000L, BigDecimal.valueOf(40_000));
@@ -35,7 +36,7 @@ class InvestmentTest {
     @Test
     @DisplayName("스냅샷을 찍고 정산하면 섹터 손익이 계산되고 총손익이 합산되며 상태가 SETTLED가 된다")
     void settle_computesFromSnapshotAndAggregates() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 10, 300_000L, null);
         investment.addSector(200L, 5, 200_000L, null);
 
@@ -62,7 +63,7 @@ class InvestmentTest {
     @Test
     @DisplayName("하락 스냅샷은 음수 손익으로 정산된다")
     void settle_negativeProfitWhenSellBelowBuy() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 10, 300_000L, null);
 
         // buy=30,000 / sell=28,500 → -5% → 300,000×-5% = -15,000
@@ -77,7 +78,7 @@ class InvestmentTest {
     @Test
     @DisplayName("FALLBACK_ZERO 스냅샷은 손익 0/손익률 0으로 정산된다")
     void settle_fallbackSectorYieldsZero() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 10, 300_000L, null);
 
         investment.stampSectorFallback(100L, BigDecimal.valueOf(30_000));
@@ -94,7 +95,7 @@ class InvestmentTest {
     @Test
     @DisplayName("정상 섹터와 폴백 섹터가 섞이면 정상분만 손익에 반영된다")
     void settle_mixedNormalAndFallback() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 10, 300_000L, null);
         investment.addSector(200L, 5, 200_000L, null);
 
@@ -109,7 +110,7 @@ class InvestmentTest {
     @Test
     @DisplayName("정상 스냅샷을 매수가 없이 찍으려 하면 예외가 발생한다")
     void stampSectorNormal_throwsWhenBuyPriceMissing() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 10, 300_000L, null);
 
         assertThrows(
@@ -120,7 +121,7 @@ class InvestmentTest {
     @Test
     @DisplayName("스냅샷이 채워지지 않은 섹터로 정산하면 예외가 발생한다")
     void settle_throwsWhenSnapshotMissing() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 10, 300_000L, null); // 스냅샷 미기록
 
         assertThrows(IllegalStateException.class, () -> investment.settle(LocalDateTime.of(2026, 5, 8, 9, 0)));
@@ -129,7 +130,7 @@ class InvestmentTest {
     @Test
     @DisplayName("존재하지 않는 섹터에 스냅샷을 반영하면 예외가 발생한다")
     void stampSectorNormal_throwsWhenSectorNotFound() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 10, 300_000L, BigDecimal.valueOf(30_000));
 
         assertThrows(
@@ -140,7 +141,7 @@ class InvestmentTest {
     @Test
     @DisplayName("투자하지 않은 경우 상태는 NO_INVEST, 정산 상태는 PENDING, 총투자금은 0 이다")
     void noInvest_hasNoInvestStatusAndZeroTotalAmount() {
-        Investment investment = Investment.noInvest(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.noInvest(USER_ID, INVEST_DATE);
 
         assertEquals(InvestmentStatus.NO_INVEST, investment.getStatus());
         assertEquals(SettlementStatus.PENDING, investment.getSettlementStatus());
@@ -150,7 +151,7 @@ class InvestmentTest {
     @Test
     @DisplayName("정산에 실패하면 상태가 FAILED 가 된다")
     void failSettlement_setsFailedStatus() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
 
         investment.failSettlement();
 
@@ -160,7 +161,7 @@ class InvestmentTest {
     @Test
     @DisplayName("정산 창을 놓친 확정 투자를 취소하면 손익 0/상태 CANCELLED가 된다")
     void cancelSettlement_zeroProfitAndCancelledStatus() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 10, 300_000L, null);
         LocalDateTime cancelledAt = LocalDateTime.of(2026, 5, 10, 9, 30);
 
@@ -174,7 +175,7 @@ class InvestmentTest {
     @Test
     @DisplayName("getSectors 로 얻은 컬렉션은 외부에서 직접 수정할 수 없다")
     void getSectors_returnsUnmodifiableView() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 10, 300_000L, BigDecimal.valueOf(30_000));
 
         List<InvestmentSector> sectors = investment.getSectors();
@@ -185,7 +186,7 @@ class InvestmentTest {
     @Test
     @DisplayName("투자 수정은 기존 섹터를 전부 교체하고 총투자금을 다시 계산한다")
     void replaceSectors_replacesAllAndRecalculatesTotal() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 1, 100_000L, null);
 
         investment.replaceSectors(List.of(
@@ -202,9 +203,40 @@ class InvestmentTest {
     }
 
     @Test
+    @DisplayName("투자 수정 시 유지되는 섹터는 같은 행을 갱신하고 빠진 섹터만 제거한다")
+    void replaceSectors_mergesKeptSectorsInsteadOfRecreating() {
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
+        investment.addSector(100L, 1, 100_000L, null);
+        investment.addSector(200L, 2, 200_000L, null);
+        InvestmentSector kept = investment.getSectors().stream()
+                .filter(sector -> sector.getSectorId().equals(100L))
+                .findFirst()
+                .orElseThrow();
+
+        // 100번은 수량만 변경, 200번은 제외, 300번은 신규
+        investment.replaceSectors(List.of(
+                new Investment.SectorAllocation(100L, 4, 400_000L),
+                new Investment.SectorAllocation(300L, 3, 300_000L)));
+
+        assertEquals(2, investment.getSectors().size());
+        assertEquals(700_000L, investment.getTotalAmount());
+        // 유지된 섹터는 새로 만들지 않고 같은 인스턴스를 갱신한다(DELETE 후 INSERT가 아니어야 유니크 제약에 안 걸린다).
+        assertSame(
+                kept,
+                investment.getSectors().stream()
+                        .filter(sector -> sector.getSectorId().equals(100L))
+                        .findFirst()
+                        .orElseThrow());
+        assertEquals(4, kept.getQuantity());
+        assertEquals(400_000L, kept.getAmount());
+        assertFalse(investment.getSectors().stream()
+                .anyMatch(sector -> sector.getSectorId().equals(200L)));
+    }
+
+    @Test
     @DisplayName("자정 마감은 finalizedAt만 기록하고 가격은 건드리지 않는다(멱등)")
     void finalizeInvestment_freezesOnly() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 1, 100_000L, null);
         LocalDateTime finalizedAt = INVEST_DATE.plusDays(1).atStartOfDay();
 
@@ -222,7 +254,7 @@ class InvestmentTest {
     @Test
     @DisplayName("미투자 레코드 마감은 finalizedAt만 기록한다")
     void finalizeNoInvest_recordsFinalizedAt() {
-        Investment investment = Investment.noInvest(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.noInvest(USER_ID, INVEST_DATE);
         LocalDateTime finalizedAt = INVEST_DATE.plusDays(1).atStartOfDay();
 
         investment.finalizeNoInvest(finalizedAt);

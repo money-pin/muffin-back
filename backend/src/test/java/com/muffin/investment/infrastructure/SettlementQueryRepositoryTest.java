@@ -45,8 +45,8 @@ class SettlementQueryRepositoryTest {
     void findRecentDueSettlement_returnsLatestDueInvestment() {
         UserAsset asset = userAssetRepository.save(UserAsset.create(1L, 1_045_000L));
         LocalDate today = LocalDate.now();
-        persistSettledInvestment(1L, asset.getId(), today.minusDays(1));
-        persistConfirmedInvestment(1L, asset.getId(), today); // 오늘 확정(아직 정산 대상 아님) → 제외
+        persistSettledInvestment(1L, today.minusDays(1));
+        persistConfirmedInvestment(1L, today); // 오늘 확정(아직 정산 대상 아님) → 제외
 
         Optional<SettlementResultProjection> result = settlementQueryRepository.findRecentDueSettlement(1L, today);
 
@@ -64,15 +64,15 @@ class SettlementQueryRepositoryTest {
     void findRecentDueSettlement_emptyWhenOnlyTodayInvestment() {
         UserAsset asset = userAssetRepository.save(UserAsset.create(2L, 1_000_000L));
         LocalDate today = LocalDate.now();
-        persistConfirmedInvestment(2L, asset.getId(), today);
+        persistConfirmedInvestment(2L, today);
 
         Optional<SettlementResultProjection> result = settlementQueryRepository.findRecentDueSettlement(2L, today);
 
         assertTrue(result.isEmpty());
     }
 
-    private void persistSettledInvestment(long userId, Long userAssetId, LocalDate investDate) {
-        Investment investment = Investment.confirm(userId, userAssetId, investDate);
+    private void persistSettledInvestment(long userId, LocalDate investDate) {
+        Investment investment = Investment.confirm(userId, investDate);
         investment.addSector(100L, 10, 1_000_000L, null);
         // 매수가 20,000 / 매도가 20,900 → +4.5% → +45,000
         investment.stampSectorNormal(100L, BigDecimal.valueOf(20_000), BigDecimal.valueOf(20_900));
@@ -81,8 +81,8 @@ class SettlementQueryRepositoryTest {
         investmentRepository.save(investment);
     }
 
-    private void persistConfirmedInvestment(long userId, Long userAssetId, LocalDate investDate) {
-        Investment investment = Investment.confirm(userId, userAssetId, investDate);
+    private void persistConfirmedInvestment(long userId, LocalDate investDate) {
+        Investment investment = Investment.confirm(userId, investDate);
         investment.addSector(100L, 10, 500_000L, BigDecimal.valueOf(10_000));
         investmentRepository.save(investment);
     }

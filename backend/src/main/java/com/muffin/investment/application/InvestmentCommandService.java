@@ -70,7 +70,7 @@ public class InvestmentCommandService {
         requireInvestmentWindow(userId, now);
         requireWithinBudget(normalized.totalAmount(), asset.getTotalAsset());
 
-        Investment investment = Investment.confirm(userId, asset.getId(), today);
+        Investment investment = Investment.confirm(userId, today);
         investment.replaceSectors(normalized.allocations());
         investmentRepository.save(investment);
         return new InvestmentCommandResult(toResponse(investment, asset.getTotalAsset(), normalized.sectors()), true);

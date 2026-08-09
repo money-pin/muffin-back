@@ -92,7 +92,7 @@ class InvestmentQueryServiceTest {
         service = serviceAt("2026-07-13T08:00:00+09:00");
         UserAsset asset = UserAsset.create(USER_ID, 1_000_000L);
         asset.applySettlement(45_000L, new BigDecimal("4.5000"), LocalDateTime.of(2026, 7, 10, 9, 5));
-        Investment pending = Investment.confirm(USER_ID, 10L, PREVIOUS_TRADING_DAY);
+        Investment pending = Investment.confirm(USER_ID, PREVIOUS_TRADING_DAY);
         when(userAssetRepository.findByUserId(USER_ID)).thenReturn(Optional.of(asset));
         mockTradingMonday();
         when(investmentRepository.findByUserIdAndSettlementStatusInAndInvestDateLessThan(
@@ -174,7 +174,7 @@ class InvestmentQueryServiceTest {
     void getToday_throwsDataIntegrityExceptionWhenSectorReferenceIsMissing() {
         service = serviceAt("2026-07-13T08:00:00+09:00");
         mockTradingMonday();
-        Investment investment = Investment.confirm(USER_ID, 10L, PREVIOUS_TRADING_DAY);
+        Investment investment = Investment.confirm(USER_ID, PREVIOUS_TRADING_DAY);
         investment.addSector(1L, 2, 200_000L, null);
         when(investmentRepository.findWithSectorsByUserIdAndInvestDateAndStatus(
                         USER_ID, PREVIOUS_TRADING_DAY, InvestmentStatus.CONFIRMED))
@@ -217,7 +217,7 @@ class InvestmentQueryServiceTest {
     @DisplayName("10시 이후 직전 거래일의 미정산 투자가 있으면 SETTLEMENT_DELAYED이다")
     void getToday_returnsSettlementDelayedForPendingInvestment() {
         mockTradingMonday();
-        Investment pending = Investment.confirm(USER_ID, 10L, PREVIOUS_TRADING_DAY);
+        Investment pending = Investment.confirm(USER_ID, PREVIOUS_TRADING_DAY);
         when(investmentRepository.findByUserIdAndSettlementStatusInAndInvestDateLessThan(
                         USER_ID, REPROCESSABLE, MONDAY))
                 .thenReturn(List.of(pending));
@@ -231,7 +231,7 @@ class InvestmentQueryServiceTest {
     @DisplayName("직전 거래일보다 오래된 확정 투자는 취소 대상이므로 정산 지연을 만들지 않는다")
     void getToday_excludesStaleConfirmedInvestmentFromPending() {
         mockTradingMonday();
-        Investment stale = Investment.confirm(USER_ID, 10L, PREVIOUS_TRADING_DAY.minusDays(1));
+        Investment stale = Investment.confirm(USER_ID, PREVIOUS_TRADING_DAY.minusDays(1));
         when(investmentRepository.findByUserIdAndSettlementStatusInAndInvestDateLessThan(
                         USER_ID, REPROCESSABLE, MONDAY))
                 .thenReturn(List.of(stale));
@@ -257,7 +257,7 @@ class InvestmentQueryServiceTest {
 
         Sector gold = sector(1L, "GOLD", "금", 2);
         Sector semiconductor = sector(2L, "SEMICONDUCTOR", "반도체", 1);
-        Investment investment = Investment.confirm(USER_ID, 10L, MONDAY);
+        Investment investment = Investment.confirm(USER_ID, MONDAY);
         investment.addSector(gold.getId(), 1, 100_000L, null);
         investment.addSector(semiconductor.getId(), 6, 600_000L, null);
         when(investmentRepository.findWithSectorsByUserIdAndInvestDateAndStatus(
@@ -297,7 +297,7 @@ class InvestmentQueryServiceTest {
 
     private void mockPreviousFridayInvestment() {
         Sector gold = sector(1L, "GOLD", "금", 1);
-        Investment investment = Investment.confirm(USER_ID, 10L, PREVIOUS_TRADING_DAY);
+        Investment investment = Investment.confirm(USER_ID, PREVIOUS_TRADING_DAY);
         investment.addSector(gold.getId(), 2, 200_000L, null);
         when(investmentRepository.findWithSectorsByUserIdAndInvestDateAndStatus(
                         USER_ID, PREVIOUS_TRADING_DAY, InvestmentStatus.CONFIRMED))

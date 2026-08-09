@@ -102,7 +102,7 @@ class InvestmentCommandServiceTest {
     void confirm_sameRequestReturnsExistingResult() {
         when(userAssetRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(asset));
         when(sectorRepository.findBySectorCode("SEMICONDUCTOR")).thenReturn(Optional.of(semiconductor));
-        Investment existing = Investment.confirm(USER_ID, asset.getId(), TODAY);
+        Investment existing = Investment.confirm(USER_ID, TODAY);
         existing.addSector(semiconductor.getId(), 5, 500_000L, null);
         when(investmentRepository.findWithSectorsByUserIdAndInvestDate(USER_ID, TODAY))
                 .thenReturn(Optional.of(existing));
@@ -124,7 +124,7 @@ class InvestmentCommandServiceTest {
     void confirm_differentRequestThrowsConflict() {
         when(userAssetRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(asset));
         when(sectorRepository.findBySectorCode("SEMICONDUCTOR")).thenReturn(Optional.of(semiconductor));
-        Investment existing = Investment.confirm(USER_ID, asset.getId(), TODAY);
+        Investment existing = Investment.confirm(USER_ID, TODAY);
         existing.addSector(semiconductor.getId(), 1, 100_000L, null);
         when(investmentRepository.findWithSectorsByUserIdAndInvestDate(USER_ID, TODAY))
                 .thenReturn(Optional.of(existing));
@@ -155,7 +155,7 @@ class InvestmentCommandServiceTest {
     @DisplayName("PATCH는 기존 섹터 구성을 정규화된 요청으로 전체 교체한다")
     void updateToday_replacesAllSectors() {
         mockAssetAndAvailableWindow();
-        Investment existing = Investment.confirm(USER_ID, asset.getId(), TODAY);
+        Investment existing = Investment.confirm(USER_ID, TODAY);
         existing.addSector(999L, 1, 100_000L, null);
         when(investmentRepository.findWithSectorsForUpdate(USER_ID, TODAY)).thenReturn(Optional.of(existing));
         when(sectorRepository.findBySectorCode("SEMICONDUCTOR")).thenReturn(Optional.of(semiconductor));

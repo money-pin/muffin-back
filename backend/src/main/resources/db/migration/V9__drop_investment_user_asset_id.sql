@@ -1,0 +1,17 @@
+-- investment.user_asset_id 제거
+--
+-- user_asset은 회원당 1행(uk_user_asset_user)이라 user_asset_id는 user_id로 결정되는 값이었다.
+-- 같은 사실을 두 컬럼에 나눠 담은 이행적 종속이라 제거한다.
+-- 이 컬럼을 읽던 곳은 두 군데(정산 결과 팝업 조회, 정산 자산 반영)이고, 둘 다 user_id 조회로 바꿨다.
+-- uk_investment_user_invest_date와 idx_investment_weekly_ranking은 user_id만 쓰므로 영향이 없다.
+--
+-- 적용 전 운영 데이터에서 확인함:
+--   - investment JOIN user_asset 시 user_id 불일치 0건
+--   - user_asset_id가 가리키는 행이 없는 고아 0건
+-- 즉 이 컬럼을 지워도 잃는 정보가 없다.
+--
+-- 되돌릴 수 없는 DDL이다. 배포(cd.yml)는 이전 컨테이너를 멈춘 뒤 새 컨테이너를 띄우므로
+-- 구버전과 신버전이 동시에 이 스키마를 보는 구간은 없다. 다만 새 컨테이너가 readiness에 실패해
+-- 롤백되면 구버전이 이미 삭제된 컬럼을 참조하게 되므로, 그때는 투자 확정 경로가 막힌다.
+-- 컬럼을 복구(ALTER TABLE investment ADD COLUMN user_asset_id bigint NULL)하거나 재배포로 해소한다.
+ALTER TABLE investment DROP COLUMN user_asset_id;

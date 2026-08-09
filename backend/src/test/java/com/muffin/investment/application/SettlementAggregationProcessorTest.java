@@ -27,7 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class SettlementAggregationProcessorTest {
 
     private static final Long INVESTMENT_ID = 1L;
-    private static final Long USER_ASSET_ID = 10L;
+    private static final Long USER_ID = 1L;
     private static final LocalDate INVEST_DATE = LocalDate.of(2026, 5, 7);
 
     @Mock
@@ -50,7 +50,7 @@ class SettlementAggregationProcessorTest {
     @Test
     @DisplayName("자산 반영 후 증가분이 총손익과 다르면(정합성 위반) 예외를 던져 롤백/FAILED로 넘긴다")
     void settle_throwsWhenAssetDeltaMismatch() {
-        Investment investment = Investment.confirm(1L, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 10, 300_000L, null);
         investment.stampSectorNormal(100L, BigDecimal.valueOf(30_000), BigDecimal.valueOf(31_800)); // 총손익 +18,000
         when(investmentRepository.findWithSectorsById(INVESTMENT_ID)).thenReturn(Optional.of(investment));
@@ -58,7 +58,7 @@ class SettlementAggregationProcessorTest {
         // applySettlement이 총자산을 바꾸지 않는(버그를 흉내낸) 자산 → 델타 0 ≠ 18,000
         UserAsset asset = mock(UserAsset.class);
         when(asset.getTotalAsset()).thenReturn(1_000_000L);
-        when(userAssetRepository.findById(USER_ASSET_ID)).thenReturn(Optional.of(asset));
+        when(userAssetRepository.findByUserId(USER_ID)).thenReturn(Optional.of(asset));
 
         assertThrows(IllegalStateException.class, () -> processor.settle(INVESTMENT_ID));
     }
