@@ -36,21 +36,27 @@ here="$(cd "$(dirname "$0")" && pwd)"
 
 b64() { base64 < "$1" | tr -d '\n'; }
 
-read -r -d '' SCRIPT <<EOF || true
-set -euo pipefail
-mkdir -p "$REMOTE_DIR/alloy"
-echo '$(b64 "$here/compose.yml")'      | base64 -d > "$REMOTE_DIR/compose.yml"
-echo '$(b64 "$here/alloy/config.alloy")' | base64 -d > "$REMOTE_DIR/alloy/config.alloy"
-echo '$(b64 "$here/env-from-ssm.sh")'  | base64 -d > "$REMOTE_DIR/env-from-ssm.sh"
-chmod +x "$REMOTE_DIR/env-from-ssm.sh"
-ls -l "$REMOTE_DIR" "$REMOTE_DIR/alloy"
-EOF
+# SSM 문서의 commands는 "줄 배열"이다. 한 문자열에 개행을 담아 --parameters 축약
+# 문법(commands=...)으로 넘기면 CLI가 이스케이프를 해석하지 않아 개행이 사라지고
+# 모든 명령이 한 줄로 붙어버린다. cd.yml과 같이 JSON 파일로 넘긴다.
+params="$(mktemp)"
+trap 'rm -f "$params"' EXIT
+
+{
+  echo "set -euo pipefail"
+  echo "mkdir -p '$REMOTE_DIR/alloy'"
+  echo "echo '$(b64 "$here/compose.yml")' | base64 -d > '$REMOTE_DIR/compose.yml'"
+  echo "echo '$(b64 "$here/alloy/config.alloy")' | base64 -d > '$REMOTE_DIR/alloy/config.alloy'"
+  echo "echo '$(b64 "$here/env-from-ssm.sh")' | base64 -d > '$REMOTE_DIR/env-from-ssm.sh'"
+  echo "chmod +x '$REMOTE_DIR/env-from-ssm.sh'"
+  echo "ls -l '$REMOTE_DIR' '$REMOTE_DIR/alloy'"
+} | jq -Rn '{commands: [inputs]}' > "$params"
 
 command_id="$(aws ssm send-command \
   --instance-ids "$INSTANCE_ID" \
   --document-name "AWS-RunShellScript" \
   --region "$REGION" \
-  --parameters commands="$(printf '%s' "$SCRIPT" | jq -Rs .)" \
+  --parameters "file://$params" \
   --query "Command.CommandId" \
   --output text)"
 
