@@ -61,7 +61,8 @@ public class MypageRecentNewsQueryService {
                 originalThumbnail(projection.thumbnailUrl()),
                 projection.viewCount(),
                 toKst(projection.publishedAt()),
-                toKst(projection.viewedAt()));
+                toKst(projection.viewedAt()),
+                projection.isScrapped());
     }
 
     /** 원본 썸네일이 있으면 그대로, 없으면(빈 문자열 포함) null을 반환한다. */

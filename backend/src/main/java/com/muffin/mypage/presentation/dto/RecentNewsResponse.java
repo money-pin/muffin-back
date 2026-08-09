@@ -13,6 +13,7 @@ public record RecentNewsResponse(List<RecentNewsItem> items, String nextCursor, 
     /**
      * @param publishedAt 발행 시각(KST)
      * @param viewedAt 열람 시각(KST). read_history.readAt, 정렬/커서 기준
+     * @param isScrapped 현재 사용자의 스크랩 여부
      */
     public record RecentNewsItem(
             Long newsId,
@@ -21,5 +22,6 @@ public record RecentNewsResponse(List<RecentNewsItem> items, String nextCursor, 
             String thumbnailUrl,
             Long viewCount,
             OffsetDateTime publishedAt,
-            OffsetDateTime viewedAt) {}
+            OffsetDateTime viewedAt,
+            boolean isScrapped) {}
 }
