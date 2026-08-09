@@ -37,11 +37,22 @@ class UniqueConstraintTest {
     @Test
     @DisplayName("같은 사용자-투자일자로 투자를 두 번 저장하면 유니크 제약 위반이 발생한다")
     void investment_duplicateUserAndInvestDate_violatesUnique() {
-        investmentRepository.saveAndFlush(Investment.confirm(1L, 10L, DATE));
+        investmentRepository.saveAndFlush(Investment.confirm(1L, DATE));
 
         assertThrows(
                 DataIntegrityViolationException.class,
-                () -> investmentRepository.saveAndFlush(Investment.confirm(1L, 11L, DATE)));
+                () -> investmentRepository.saveAndFlush(Investment.confirm(1L, DATE)));
+    }
+
+    @Test
+    @DisplayName("한 투자에 같은 섹터를 두 번 담으면 유니크 제약 위반이 발생한다")
+    void investmentSector_duplicateSectorInSameInvestment_violatesUnique() {
+        // 루트의 전체 교체 로직은 중복을 만들지 않지만, 저장 경로가 늘어나도 DB가 막는지 확인한다.
+        Investment investment = Investment.confirm(2L, DATE);
+        investment.addSector(100L, 10, 300_000L, null);
+        investment.addSector(100L, 5, 150_000L, null);
+
+        assertThrows(DataIntegrityViolationException.class, () -> investmentRepository.saveAndFlush(investment));
     }
 
     @Test

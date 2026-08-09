@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import lombok.AccessLevel;
@@ -19,7 +20,15 @@ import lombok.NoArgsConstructor;
 /** 섹터별 투자 상세. Investment 애그리거트의 내부 엔티티로, 루트(Investment)를 통해서만 생성/수정된다. */
 @Entity
 @Getter
-@Table(name = "investment_sector")
+@Table(
+        name = "investment_sector",
+        // 한 투자에 같은 섹터가 두 번 들어가면 총 투자금 합계와 섹터별 손익이 모두 어긋난다.
+        // 루트의 전체 교체 로직이 이미 막고 있지만, 애플리케이션 경로가 하나 늘어날 때 조용히 깨지는 종류의
+        // 불변식이라 DB에도 못을 박아 둔다.
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_investment_sector_investment_sector",
+                        columnNames = {"investment_id", "sector_id"}))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class InvestmentSector extends BaseEntity {
 

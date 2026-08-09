@@ -41,7 +41,7 @@ class PendingInvestmentCheckerTest {
     @Test
     @DisplayName("직전 거래일의 확정 투자는 처리 대기로 판정한다")
     void hasPendingInvestment_returnsTrueForPreviousTradingDay() {
-        Investment pending = Investment.confirm(USER_ID, 10L, PREVIOUS_TRADING_DAY);
+        Investment pending = Investment.confirm(USER_ID, PREVIOUS_TRADING_DAY);
         mockInvestments(List.of(pending));
 
         assertTrue(checker.hasPendingInvestment(USER_ID, CALENDAR));
@@ -50,7 +50,7 @@ class PendingInvestmentCheckerTest {
     @Test
     @DisplayName("직전 거래일보다 오래된 확정 투자는 취소 대상이므로 처리 대기에서 제외한다")
     void hasPendingInvestment_excludesStaleConfirmedInvestment() {
-        Investment stale = Investment.confirm(USER_ID, 10L, PREVIOUS_TRADING_DAY.minusDays(1));
+        Investment stale = Investment.confirm(USER_ID, PREVIOUS_TRADING_DAY.minusDays(1));
         mockInvestments(List.of(stale));
 
         assertFalse(checker.hasPendingInvestment(USER_ID, CALENDAR));
@@ -59,7 +59,7 @@ class PendingInvestmentCheckerTest {
     @Test
     @DisplayName("오래된 NO_INVEST는 정산 종료가 필요하므로 처리 대기로 판정한다")
     void hasPendingInvestment_keepsStaleNoInvestPending() {
-        Investment noInvest = Investment.noInvest(USER_ID, 10L, PREVIOUS_TRADING_DAY.minusDays(1));
+        Investment noInvest = Investment.noInvest(USER_ID, PREVIOUS_TRADING_DAY.minusDays(1));
         mockInvestments(List.of(noInvest));
 
         assertTrue(checker.hasPendingInvestment(USER_ID, CALENDAR));

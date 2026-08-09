@@ -47,7 +47,7 @@ class SettlementSnapshotProcessorTest {
     }
 
     private Investment confirmedWithSector(Long sectorId) {
-        Investment investment = Investment.confirm(1L, 10L, LocalDate.of(2026, 5, 7));
+        Investment investment = Investment.confirm(1L, LocalDate.of(2026, 5, 7));
         investment.addSector(sectorId, 10, 300_000L, null);
         return investment;
     }
@@ -128,7 +128,7 @@ class SettlementSnapshotProcessorTest {
     @Test
     @DisplayName("한 투자 안에서도 정상 섹터는 NORMAL, 미확보 섹터는 FALLBACK으로 각각 스탬프한다")
     void stamp_perSectorMix() {
-        Investment investment = Investment.confirm(1L, 10L, LocalDate.of(2026, 5, 7));
+        Investment investment = Investment.confirm(1L, LocalDate.of(2026, 5, 7));
         investment.addSector(100L, 10, 300_000L, null); // etf 7 정상
         investment.addSector(200L, 5, 200_000L, null); // etf 8 미확보
         when(investmentRepository.findWithSectorsById(INVESTMENT_ID)).thenReturn(Optional.of(investment));

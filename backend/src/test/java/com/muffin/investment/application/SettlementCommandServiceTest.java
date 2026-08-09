@@ -83,7 +83,7 @@ class SettlementCommandServiceTest {
         etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 30_000L, 30_000L)); // 전일 종가 30,000 = 매수가
         etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 31_800L, 32_000L)); // 당일 시가 31,800 = 매도가
         UserAsset asset = userAssetRepository.save(UserAsset.create(1L, 1_000_000L));
-        Long investmentId = saveConfirmed(1L, asset.getId(), sector.getId(), 300_000L);
+        Long investmentId = saveConfirmed(1L, sector.getId(), 300_000L);
 
         settlementCommandService.settle(SETTLE_DATE);
 
@@ -109,7 +109,7 @@ class SettlementCommandServiceTest {
         etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 30_000L, 30_000L));
         etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 31_800L, 32_000L));
         UserAsset asset = userAssetRepository.save(UserAsset.create(1L, 1_000_000L));
-        saveConfirmed(1L, asset.getId(), sector.getId(), 300_000L);
+        saveConfirmed(1L, sector.getId(), 300_000L);
 
         settlementCommandService.settle(SETTLE_DATE);
         SettlementBatchResult rerun = settlementCommandService.settle(SETTLE_DATE);
@@ -128,9 +128,9 @@ class SettlementCommandServiceTest {
         etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 30_000L, 30_000L));
         etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 31_800L, 32_000L));
         UserAsset assetA = userAssetRepository.save(UserAsset.create(1L, 1_000_000L));
-        Long okId = saveConfirmed(1L, assetA.getId(), sector.getId(), 300_000L);
-        // user_asset_id 가 존재하지 않아 phase 2에서 예외 → 해당 건만 실패
-        Long failId = saveConfirmed(2L, 999_999L, sector.getId(), 300_000L);
+        Long okId = saveConfirmed(1L, sector.getId(), 300_000L);
+        // userId=2 는 user_asset 행이 없어 phase 2에서 예외 → 해당 건만 실패
+        Long failId = saveConfirmed(2L, sector.getId(), 300_000L);
 
         SettlementBatchResult result = settlementCommandService.settle(SETTLE_DATE);
 
@@ -155,7 +155,7 @@ class SettlementCommandServiceTest {
         missingOpen.markOpenFinalMissing();
         etfPriceRepository.save(missingOpen);
         UserAsset asset = userAssetRepository.save(UserAsset.create(3L, 1_000_000L));
-        Long investmentId = saveConfirmed(3L, asset.getId(), sector.getId(), 300_000L);
+        Long investmentId = saveConfirmed(3L, sector.getId(), 300_000L);
 
         settlementCommandService.settle(SETTLE_DATE);
 
@@ -184,7 +184,7 @@ class SettlementCommandServiceTest {
         bioOpen.markOpenFinalMissing(); // 폴백
         etfPriceRepository.save(bioOpen);
         UserAsset asset = userAssetRepository.save(UserAsset.create(1L, 1_000_000L));
-        Investment investment = Investment.confirm(1L, asset.getId(), INVEST_DATE);
+        Investment investment = Investment.confirm(1L, INVEST_DATE);
         investment.addSector(tech.getId(), 10, 300_000L, null); // +18,000
         investment.addSector(bio.getId(), 5, 200_000L, null); // 0 (폴백)
         Long investmentId = investmentRepository.save(investment).getId();
@@ -205,7 +205,7 @@ class SettlementCommandServiceTest {
         etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 31_800L, 32_000L)); // 당일 시가만 있고
         // 전일 종가(EtfPrice[INVEST_DATE])는 적재되지 않음 → 매수가 결손 → 그 섹터 0% 폴백
         UserAsset asset = userAssetRepository.save(UserAsset.create(1L, 1_000_000L));
-        Long investmentId = saveConfirmed(1L, asset.getId(), sector.getId(), 300_000L);
+        Long investmentId = saveConfirmed(1L, sector.getId(), 300_000L);
 
         settlementCommandService.settle(SETTLE_DATE);
 
@@ -224,7 +224,7 @@ class SettlementCommandServiceTest {
     @DisplayName("ETF 시세가 아직 적재되지 않았으면(시가 행 없음) 정산을 건너뛰고 상태는 PENDING 을 유지한다")
     void settle_skipsWhenPricesNotLoaded() {
         UserAsset asset = userAssetRepository.save(UserAsset.create(4L, 1_000_000L));
-        Long investmentId = saveConfirmed(4L, asset.getId(), createSector(), 300_000L);
+        Long investmentId = saveConfirmed(4L, createSector(), 300_000L);
 
         SettlementBatchResult result = settlementCommandService.settle(SETTLE_DATE);
 
@@ -243,7 +243,7 @@ class SettlementCommandServiceTest {
         marketClosed.markOpenMarketClosed();
         etfPriceRepository.save(marketClosed);
         UserAsset asset = userAssetRepository.save(UserAsset.create(4L, 1_000_000L));
-        Long investmentId = saveConfirmed(4L, asset.getId(), sector.getId(), 300_000L);
+        Long investmentId = saveConfirmed(4L, sector.getId(), 300_000L);
 
         SettlementBatchResult result = settlementCommandService.settle(SETTLE_DATE);
 
@@ -263,7 +263,7 @@ class SettlementCommandServiceTest {
         noData.markOpenNoData();
         etfPriceRepository.save(noData);
         UserAsset asset = userAssetRepository.save(UserAsset.create(4L, 1_000_000L));
-        Long investmentId = saveConfirmed(4L, asset.getId(), sector.getId(), 300_000L);
+        Long investmentId = saveConfirmed(4L, sector.getId(), 300_000L);
 
         settlementCommandService.settle(SETTLE_DATE);
 
@@ -281,9 +281,8 @@ class SettlementCommandServiceTest {
         sectorRepository.save(Sector.create(1L, 7L, "테크", "d", "TECH", 1)); // 적재 가드용 활성 섹터
         etfPriceRepository.save(EtfPrice.create(7L, SETTLE_DATE, 100L, 100L)); // 적재 가드 통과용
         UserAsset asset = userAssetRepository.save(UserAsset.create(5L, 1_000_000L));
-        Long investmentId = investmentRepository
-                .save(Investment.noInvest(5L, asset.getId(), INVEST_DATE))
-                .getId();
+        Long investmentId =
+                investmentRepository.save(Investment.noInvest(5L, INVEST_DATE)).getId();
 
         settlementCommandService.settle(SETTLE_DATE);
 
@@ -304,7 +303,7 @@ class SettlementCommandServiceTest {
         etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 100L, 100L)); // 05-07 = 직전 거래일
         UserAsset asset = userAssetRepository.save(UserAsset.create(6L, 1_000_000L));
         LocalDate staleDate = INVEST_DATE.minusDays(2); // 05-05, 직전 거래일(05-07)보다 이름 → 정산 창 놓침
-        Investment stale = Investment.confirm(6L, asset.getId(), staleDate);
+        Investment stale = Investment.confirm(6L, staleDate);
         stale.addSector(sector.getId(), 10, 300_000L, null);
         Long investmentId = investmentRepository.save(stale).getId();
 
@@ -323,8 +322,8 @@ class SettlementCommandServiceTest {
         return sectorRepository.save(Sector.create(1L, 9L, "금융", "d", "FIN", 1)).getId();
     }
 
-    private Long saveConfirmed(Long userId, Long userAssetId, Long sectorId, long amount) {
-        Investment investment = Investment.confirm(userId, userAssetId, INVEST_DATE);
+    private Long saveConfirmed(Long userId, Long sectorId, long amount) {
+        Investment investment = Investment.confirm(userId, INVEST_DATE);
         investment.addSector(sectorId, 10, amount, null); // 매수가는 정산 phase 1이 EtfPrice 종가로 스탬프
         return investmentRepository.save(investment).getId();
     }

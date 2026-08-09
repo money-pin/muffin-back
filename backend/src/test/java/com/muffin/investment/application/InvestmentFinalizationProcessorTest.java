@@ -52,7 +52,7 @@ class InvestmentFinalizationProcessorTest {
     @Test
     @DisplayName("확정 투자를 동결하고 가격은 건드리지 않는다")
     void finalizeUser_freezesConfirmed() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 2, 200_000L, null);
         when(investmentRepository.findWithSectorsForUpdate(USER_ID, INVEST_DATE))
                 .thenReturn(Optional.of(investment));
@@ -83,7 +83,7 @@ class InvestmentFinalizationProcessorTest {
     @Test
     @DisplayName("이미 동결된 투자는 재실행해도 finalizedAt을 바꾸지 않는다")
     void finalizeUser_skipsAlreadyFrozen() {
-        Investment investment = Investment.confirm(USER_ID, USER_ASSET_ID, INVEST_DATE);
+        Investment investment = Investment.confirm(USER_ID, INVEST_DATE);
         investment.addSector(100L, 2, 200_000L, null);
         investment.finalizeInvestment(FINALIZED_AT);
         when(investmentRepository.findWithSectorsForUpdate(USER_ID, INVEST_DATE))

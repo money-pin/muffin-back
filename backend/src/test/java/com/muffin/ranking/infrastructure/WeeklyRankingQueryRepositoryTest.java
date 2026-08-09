@@ -184,7 +184,7 @@ class WeeklyRankingQueryRepositoryTest {
     }
 
     private void persistSettledInvestment(User user, LocalDate investDate, Map<Long, SectorAmount> sectors) {
-        Investment investment = Investment.confirm(user.getUserId(), 1L, investDate);
+        Investment investment = Investment.confirm(user.getUserId(), investDate);
         sectors.forEach((sectorId, amount) ->
                 investment.addSector(sectorId, 1, amount.totalInvestment(), BigDecimal.valueOf(100)));
         sectors.forEach((sectorId, amount) -> investment.applySectorResult(
@@ -194,7 +194,7 @@ class WeeklyRankingQueryRepositoryTest {
     }
 
     private void persistPendingInvestment(User user, LocalDate investDate, Long sectorId) {
-        Investment investment = Investment.confirm(user.getUserId(), 1L, investDate);
+        Investment investment = Investment.confirm(user.getUserId(), investDate);
         investment.addSector(sectorId, 1, 100_000L, BigDecimal.valueOf(100));
         investmentRepository.saveAndFlush(investment);
     }

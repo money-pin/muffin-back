@@ -229,7 +229,7 @@ class StatsSummaryQueryRepositoryTest {
     }
 
     private Investment persistSettledInvestment(LocalDate investDate, Map<Long, SectorSpec> sectors) {
-        Investment investment = Investment.confirm(USER_ID, DUMMY_ASSET_ID, investDate);
+        Investment investment = Investment.confirm(USER_ID, investDate);
         sectors.forEach((sectorId, spec) -> investment.addSector(sectorId, 1, spec.amount(), BigDecimal.valueOf(100)));
         sectors.forEach((sectorId, spec) -> investment.applySectorResult(
                 sectorId, BigDecimal.valueOf(110), spec.profitLoss(), BigDecimal.ZERO, spec.source()));
@@ -238,7 +238,7 @@ class StatsSummaryQueryRepositoryTest {
     }
 
     private void persistPendingInvestment(LocalDate investDate, Long sectorId) {
-        Investment investment = Investment.confirm(USER_ID, DUMMY_ASSET_ID, investDate);
+        Investment investment = Investment.confirm(USER_ID, investDate);
         investment.addSector(sectorId, 1, 100_000L, BigDecimal.valueOf(100));
         investmentRepository.save(investment);
     }

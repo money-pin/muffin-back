@@ -45,9 +45,6 @@ public class Investment extends BaseEntity {
     private Long id;
 
     // 다른 애그리거트(UserAsset)는 ID로만 참조한다.
-    @Column(name = "user_asset_id", nullable = false)
-    private Long userAssetId;
-
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
@@ -86,9 +83,8 @@ public class Investment extends BaseEntity {
     @JoinColumn(name = "investment_id", nullable = false)
     private final List<InvestmentSector> sectors = new ArrayList<>();
 
-    private Investment(Long userId, Long userAssetId, LocalDate investDate, InvestmentStatus status) {
+    private Investment(Long userId, LocalDate investDate, InvestmentStatus status) {
         this.userId = userId;
-        this.userAssetId = userAssetId;
         this.investDate = investDate;
         this.status = status;
         this.settlementStatus = SettlementStatus.PENDING;
@@ -98,13 +94,13 @@ public class Investment extends BaseEntity {
     }
 
     /** 투자 확정 레코드 생성. 섹터는 addSector로 추가한다. */
-    public static Investment confirm(Long userId, Long userAssetId, LocalDate investDate) {
-        return new Investment(userId, userAssetId, investDate, InvestmentStatus.CONFIRMED);
+    public static Investment confirm(Long userId, LocalDate investDate) {
+        return new Investment(userId, investDate, InvestmentStatus.CONFIRMED);
     }
 
     /** 해당 일자에 투자하지 않은 경우의 레코드 생성. */
-    public static Investment noInvest(Long userId, Long userAssetId, LocalDate investDate) {
-        return new Investment(userId, userAssetId, investDate, InvestmentStatus.NO_INVEST);
+    public static Investment noInvest(Long userId, LocalDate investDate) {
+        return new Investment(userId, investDate, InvestmentStatus.NO_INVEST);
     }
 
     /** 섹터 추가: 항상 이 메서드를 통해서만 추가해 "총 투자금 = 섹터 금액 합" 불변식을 유지한다. */

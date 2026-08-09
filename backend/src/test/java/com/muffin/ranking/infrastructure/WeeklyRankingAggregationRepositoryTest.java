@@ -73,7 +73,7 @@ class WeeklyRankingAggregationRepositoryTest {
     @DisplayName("확정 투자 중 PENDING 또는 FAILED가 있으면 랭킹 집계를 보류하고, 스냅샷 존재 여부를 조회한다")
     void hasUnsettledConfirmedInvestment_andExistsByWeekStartDate() {
         User user = saveUser("ranker", "33333333-4444-4555-8666-777777777777");
-        Investment pending = Investment.confirm(user.getUserId(), 1L, WEEK_START_DATE);
+        Investment pending = Investment.confirm(user.getUserId(), WEEK_START_DATE);
         pending.addSector(1L, 1, 100_000L, BigDecimal.valueOf(100));
         investmentRepository.saveAndFlush(pending);
 
@@ -91,7 +91,7 @@ class WeeklyRankingAggregationRepositoryTest {
     }
 
     private void persistSettledInvestment(User user, LocalDate investDate, long totalAmount, long totalProfitLoss) {
-        Investment investment = Investment.confirm(user.getUserId(), 1L, investDate);
+        Investment investment = Investment.confirm(user.getUserId(), investDate);
         investment.addSector(1L, 1, totalAmount, BigDecimal.valueOf(100));
         investment.applySectorResult(
                 1L, BigDecimal.valueOf(110), totalProfitLoss, BigDecimal.ZERO, PriceDataSource.NORMAL);

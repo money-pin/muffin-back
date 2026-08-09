@@ -41,7 +41,7 @@ public class InvestmentFinalizationProcessor {
     }
 
     private Investment createNoInvest(UserAsset asset, LocalDate investDate) {
-        Investment noInvest = Investment.noInvest(asset.getUserId(), asset.getId(), investDate);
+        Investment noInvest = Investment.noInvest(asset.getUserId(), investDate);
         return investmentRepository.save(noInvest);
     }
 }

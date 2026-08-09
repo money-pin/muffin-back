@@ -66,7 +66,7 @@ class WithdrawnDataCleanupServiceTest {
     }
 
     private Investment createInvestment(Long userId) {
-        Investment investment = Investment.confirm(userId, 1L, LocalDate.now());
+        Investment investment = Investment.confirm(userId, LocalDate.now());
         investment.addSector(1L, 1, 10_000L, BigDecimal.TEN);
         return investmentRepository.save(investment);
     }

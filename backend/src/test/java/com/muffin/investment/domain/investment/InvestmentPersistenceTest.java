@@ -27,7 +27,7 @@ class InvestmentPersistenceTest {
     @Test
     @DisplayName("섹터를 포함한 투자를 저장하면 자식 섹터까지 함께 영속화된다")
     void saveInvestmentWithSectors_persistsChildren() {
-        Investment investment = Investment.confirm(1L, 10L, LocalDate.of(2026, 5, 7));
+        Investment investment = Investment.confirm(1L, LocalDate.of(2026, 5, 7));
         investment.addSector(100L, 10, 300_000L, BigDecimal.valueOf(30_000));
         investment.addSector(200L, 5, 200_000L, BigDecimal.valueOf(40_000));
 
