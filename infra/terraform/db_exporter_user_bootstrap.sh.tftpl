@@ -1,0 +1,83 @@
+#!/bin/bash
+set -euo pipefail
+
+MARKER_NAME="${ssm_path}/DB_EXPORTER_BOOTSTRAPPED"
+
+# 재적용 때마다 비밀번호를 바꾸지 않도록 최초 성공 이후에는 종료한다.
+if [ "$(aws ssm get-parameter \
+  --name "$MARKER_NAME" \
+  --region "${aws_region}" \
+  --query "Parameter.Value" \
+  --output text 2>/dev/null || true)" = "true" ]; then
+  exit 0
+fi
+
+dnf install -y mariadb105
+
+# 앱 계정과 같은 방식이다. master 비밀번호는 RDS 관리형 secret에서 읽어
+# 이 프로세스 메모리에서만 쓰고, exporter 비밀번호는 새로 생성한다.
+MASTER_JSON=""
+for _ in $(seq 1 30); do
+  MASTER_SECRET_ARN="$(aws rds describe-db-instances \
+    --db-instance-identifier "${db_identifier}" \
+    --region "${aws_region}" \
+    --query "DBInstances[0].MasterUserSecret.SecretArn" \
+    --output text 2>/dev/null || true)"
+  if [ -n "$MASTER_SECRET_ARN" ] && [ "$MASTER_SECRET_ARN" != "None" ]; then
+    MASTER_JSON="$(aws secretsmanager get-secret-value \
+      --secret-id "$MASTER_SECRET_ARN" \
+      --region "${aws_region}" \
+      --query "SecretString" \
+      --output text 2>/dev/null || true)"
+  fi
+  [ -n "$MASTER_JSON" ] && [ "$MASTER_JSON" != "None" ] && break
+  sleep 10
+done
+if [ -z "$MASTER_JSON" ] || [ "$MASTER_JSON" = "None" ]; then
+  echo "ERROR: RDS 관리형 master secret을 5분 내 조회하지 못했습니다." >&2
+  exit 1
+fi
+
+MASTER_USERNAME="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["username"])' <<<"$MASTER_JSON")"
+MASTER_PASSWORD="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["password"])' <<<"$MASTER_JSON")"
+unset MASTER_JSON
+
+EXPORTER_PASSWORD="$(aws secretsmanager get-random-password \
+  --password-length 40 \
+  --exclude-punctuation \
+  --region "${aws_region}" \
+  --query "RandomPassword" \
+  --output text)"
+
+# 상태값 조회 권한만 준다. 이 계정으로는 어떤 테이블 데이터도 읽을 수 없다.
+# MAX_USER_CONNECTIONS는 exporter가 폭주해도 앱이 쓸 커넥션을 못 뺏게 하는 안전장치다.
+MYSQL_PWD="$MASTER_PASSWORD" mysql \
+  --host="${db_endpoint}" \
+  --user="$MASTER_USERNAME" \
+  --ssl <<SQL
+CREATE USER IF NOT EXISTS '${exporter_db_username}'@'%' IDENTIFIED BY '$EXPORTER_PASSWORD';
+ALTER USER '${exporter_db_username}'@'%' IDENTIFIED BY '$EXPORTER_PASSWORD';
+GRANT PROCESS, REPLICATION CLIENT ON *.* TO '${exporter_db_username}'@'%';
+ALTER USER '${exporter_db_username}'@'%' WITH MAX_USER_CONNECTIONS 3;
+SQL
+unset MASTER_PASSWORD
+
+aws ssm put-parameter \
+  --name "${ssm_path}/DB_EXPORTER_USERNAME" \
+  --type String \
+  --value "${exporter_db_username}" \
+  --overwrite \
+  --region "${aws_region}" >/dev/null
+aws ssm put-parameter \
+  --name "${ssm_path}/DB_EXPORTER_PASSWORD" \
+  --type SecureString \
+  --value "$EXPORTER_PASSWORD" \
+  --overwrite \
+  --region "${aws_region}" >/dev/null
+unset EXPORTER_PASSWORD
+aws ssm put-parameter \
+  --name "$MARKER_NAME" \
+  --type String \
+  --value true \
+  --overwrite \
+  --region "${aws_region}" >/dev/null

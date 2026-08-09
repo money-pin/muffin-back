@@ -138,6 +138,10 @@ resource "aws_iam_role_policy" "ec2_db_bootstrap" {
           "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_USERNAME",
           "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_PASSWORD",
           "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_APP_BOOTSTRAPPED",
+          # 지표 수집 전용 DB 계정 부트스트랩용. 쓰기 권한은 여기 나열한 이름으로만 제한한다.
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_EXPORTER_USERNAME",
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_EXPORTER_PASSWORD",
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/DB_EXPORTER_BOOTSTRAPPED",
         ]
       },
     ]
@@ -185,8 +189,16 @@ resource "aws_instance" "muffin" {
 
   # most_recent AMI가 나중에 갱신돼도 인스턴스를 교체하지 않도록 ami 변경을 무시한다.
   # (의도적으로 AMI를 바꾸려면 var.ec2_ami_id로 명시 후 이 항목을 잠시 조정)
+  #
+  # user_data도 같이 무시한다. 이 스크립트는 최초 부팅에만 실행되므로 파일을 고쳐도
+  # 살아있는 인스턴스에는 아무 효과가 없고(실제 반영은 박스에서 수동으로 한다),
+  # 그런데도 apply 때마다 인스턴스를 통째로 교체해 버린다. 교체 비용은 앱 재배포와
+  # HTTPS 인증서 수동 재발급이라 얻는 것에 비해 크다.
+  #
+  # 의도적으로 박스를 재구축할 때는 명시적으로 지시한다:
+  #   terraform apply -replace=aws_instance.muffin
   lifecycle {
-    ignore_changes = [ami]
+    ignore_changes = [ami, user_data]
   }
 
   tags = {

@@ -1,0 +1,66 @@
+# 온박스 관측 수집기. 앱 배포(cd.yml의 docker run)와 생명주기를 분리해 두어
+# 앱을 재배포해도 수집이 끊기지 않고, 수집기를 손봐도 앱 배포에 영향이 없다.
+#
+# 저장·대시보드·알림은 전부 Grafana Cloud(박스 밖)에 있다. 같은 호스트에 두면
+# 그 호스트가 죽는 순간 관측 주체도 같이 죽어서, 정작 1순위 장애를 못 본다.
+#
+# 실행: ./env-from-ssm.sh && docker compose up -d
+
+services:
+  alloy:
+    image: grafana/alloy:v1.11.0 # latest 금지: 어느 날 갑자기 설정 문법이 깨질 수 있다
+    container_name: muffin-alloy
+    restart: unless-stopped
+
+    # 호스트 네트워크를 쓰는 이유: (1) 앱을 127.0.0.1:8080으로 바로 긁고
+    # (2) 호스트 네트워크 지표를 실제 값으로 읽기 위해서다. 어차피 호스트
+    # CPU/메모리/디스크를 보려고 /를 마운트하므로 격리 이점이 크지 않다.
+    network_mode: host
+
+    # pid: host는 쓰지 않는다. 호스트 지표는 마운트한 /rootfs/proc에서 읽으므로
+    # (config.alloy의 procfs_path) PID 네임스페이스를 공유할 이유가 없고, 공유하면
+    # 수집기가 뚫렸을 때 호스트 프로세스가 통째로 보인다.
+    #
+    # node_exporter 공식 도커 안내는 --pid=host를 함께 권해서 박스에서 확인했다.
+    # 메모리(node_memory_*)와 디스크(node_filesystem_*, 마운트 4개) 모두 정상 수집된다.
+    # filesystem 컬렉터가 /proc/1/mounts를 읽는데, / 를 통째로 마운트해 둔 덕에
+    # PID 네임스페이스와 무관하게 호스트 목록이 그대로 보인다.
+
+    # 만에 하나 수집기가 메모리를 튀겨도 도커가 앱이 아니라 이쪽을 죽이게 한다.
+    # 이게 없으면 OOM killer가 RSS가 가장 큰 앱 컨테이너를 고른다.
+    mem_limit: 256m
+
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/rootfs:ro # 호스트 지표(디스크 사용량 등)를 컨테이너 기준이 아닌 호스트 기준으로 읽기 위해
+      - alloy-data:/var/lib/alloy # 전송 실패분을 버티는 WAL
+
+    env_file:
+      - .env
+
+    command:
+      - run
+      - --storage.path=/var/lib/alloy
+      # 관리 UI는 루프백에만 연다. 호스트 네트워크라 0.0.0.0으로 열면 외부에 노출된다.
+      - --server.http.listen-addr=127.0.0.1:12345
+      - /etc/alloy/config.alloy
+
+  # RDS는 박스 밖이라 리눅스 지표를 읽을 수 없다. 이 exporter는 MySQL이 스스로
+  # 들고 있는 상태값(커넥션 수, InnoDB 버퍼풀 히트율, 커밋/롤백)을 가져온다.
+  # 인스턴스 CPU/메모리/IOPS는 CloudWatch가 담당한다.
+  mysqld-exporter:
+    image: prom/mysqld-exporter:v0.17.2
+    container_name: muffin-mysqld-exporter
+    restart: unless-stopped
+    network_mode: host
+    mem_limit: 64m
+    env_file:
+      - .env
+    command:
+      - --mysqld.address=${DB_HOST}:3306
+      - --mysqld.username=${DB_EXPORTER_USERNAME}
+      - --web.listen-address=127.0.0.1:9104
+
+volumes:
+  alloy-data:

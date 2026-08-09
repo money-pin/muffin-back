@@ -1,0 +1,136 @@
+// 온박스 수집 설정. 지표와 로그를 모아 Grafana Cloud로 보낸다.
+// 자격증명은 .env로 주입한다(env-from-ssm.sh가 SSM에서 생성).
+
+// ---------------------------------------------------------------------------
+// 전송 (박스 밖)
+// ---------------------------------------------------------------------------
+
+prometheus.remote_write "grafana_cloud" {
+	endpoint {
+		url = sys.env("GRAFANA_PROM_URL")
+
+		basic_auth {
+			username = sys.env("GRAFANA_PROM_USER")
+			password = sys.env("GRAFANA_TOKEN")
+		}
+	}
+}
+
+loki.write "grafana_cloud" {
+	endpoint {
+		url = sys.env("GRAFANA_LOKI_URL")
+
+		// Loki는 Prometheus와 user ID가 다르다. 토큰은 같은 것을 쓴다.
+		basic_auth {
+			username = sys.env("GRAFANA_LOKI_USER")
+			password = sys.env("GRAFANA_TOKEN")
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 지표
+// ---------------------------------------------------------------------------
+
+// 앱. 배포 중에는 잠깐 스크레이프가 실패하는데(이전 컨테이너를 멈추고 새로 띄우므로)
+// 대시보드에 짧은 공백으로 보이는 게 정상이다.
+prometheus.scrape "app" {
+	targets = [{
+		__address__ = "127.0.0.1:8080",
+		job         = "muffin-backend",
+		instance    = "muffin-ec2",
+	}]
+
+	metrics_path    = "/actuator/prometheus"
+	scrape_interval = "15s"
+	forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+// 호스트. t3.small 2GB에서 앱이 굶는지 보려면 필요하다.
+// 컨테이너 안에서 /proc을 읽으면 컨테이너 기준 값이 나오므로 마운트한 호스트 루트를 가리킨다.
+prometheus.exporter.unix "host" {
+	rootfs_path = "/rootfs"
+	procfs_path = "/rootfs/proc"
+	sysfs_path  = "/rootfs/sys"
+}
+
+prometheus.scrape "host" {
+	targets         = prometheus.exporter.unix.host.targets
+	scrape_interval = "30s"
+	forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+// RDS(MySQL 내부 상태). 인스턴스 CPU/메모리/IOPS는 CloudWatch가 따로 답한다.
+prometheus.scrape "mysql" {
+	targets = [{
+		__address__ = "127.0.0.1:9104",
+		job         = "muffin-rds",
+		instance    = "muffin-db",
+	}]
+
+	scrape_interval = "30s"
+	forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// 로그
+// ---------------------------------------------------------------------------
+
+discovery.docker "containers" {
+	host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+	targets = discovery.docker.containers.targets
+
+	// 도커가 주는 이름은 "/muffin" 형태라 앞의 슬래시를 떼어낸다.
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container"
+		replacement   = "$1"
+	}
+
+	// 배포 중에는 이전 컨테이너가 잠시 "muffin-prev"로 남는다. 이름을 그대로 라벨로 쓰면
+	// 배포할 때마다 같은 앱의 로그가 두 갈래로 갈라져 "앱 로그만 보기"가 반쪽이 된다.
+	// 접미사를 벗겨 service 라벨 하나로 모은다.
+	rule {
+		source_labels = ["container"]
+		regex         = "(.*?)(-prev)?"
+		target_label  = "service"
+		replacement   = "$1"
+	}
+
+	// 수집기 자신의 로그는 앱 로그를 덮는 노이즈다. 필요하면 docker logs로 직접 본다.
+	rule {
+		source_labels = ["service"]
+		regex         = "muffin-alloy|muffin-mysqld-exporter"
+		action        = "drop"
+	}
+}
+
+loki.source.docker "containers" {
+	host       = "unix:///var/run/docker.sock"
+	targets    = discovery.relabel.containers.output
+	forward_to = [loki.process.app.receiver]
+}
+
+// 운영 로그는 JSON 한 줄이라(관측 0단계에서 구조화) level과 domain을 필드로 뽑을 수 있다.
+// 라벨은 값의 종류가 유한한 것만 올린다. 고유값을 라벨에 넣으면 시계열이 무한히 늘어난다.
+loki.process "app" {
+	stage.json {
+		expressions = {
+			level  = "level",
+			domain = "domain",
+		}
+	}
+
+	stage.labels {
+		values = {
+			level  = "",
+			domain = "",
+		}
+	}
+
+	forward_to = [loki.write.grafana_cloud.receiver]
+}
