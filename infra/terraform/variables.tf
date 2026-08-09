@@ -103,11 +103,18 @@ variable "db_allocated_storage" {
 }
 
 variable "db_backup_retention_period" {
-  # PITR 복구 범위를 확보하기 위한 운영 기본값. RDS는 1~35일을 지원하며,
-  # 무료 제공량을 초과한 백업 스토리지에는 별도 비용이 발생할 수 있다.
-  description = "RDS 자동 백업 보관 기간(일). 운영 환경은 7일 이상 권장."
+  # 운영 관점에서는 7일 이상이 바람직하지만, 현재 계정이 AWS 프리 플랜이라
+  # 그 이상을 요청하면 ModifyDBInstance가 FreeTierRestrictionError로 거부된다.
+  # 실제 인스턴스도 1일로 운영돼 왔어서, 설정을 현실에 맞춘다.
+  #
+  # ⚠️ PITR 복구 범위가 1일뿐이다. 데이터를 지우거나 스키마를 바꾸는 작업 전에는
+  #    수동 스냅샷을 먼저 찍을 것:
+  #      aws rds create-db-snapshot --db-instance-identifier muffin-db \
+  #        --db-snapshot-identifier muffin-db-before-<작업명>-<날짜>
+  #    계정 플랜을 올리면 7 이상으로 되돌린다.
+  description = "RDS 자동 백업 보관 기간(일). 프리 플랜 제약으로 현재 1일."
   type        = number
-  default     = 7
+  default     = 1
 
   validation {
     condition     = var.db_backup_retention_period >= 1 && var.db_backup_retention_period <= 35

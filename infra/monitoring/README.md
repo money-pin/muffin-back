@@ -23,16 +23,28 @@ RDS 인스턴스 자체의 CPU/메모리/IOPS는 exporter가 볼 수 없다. Clo
 
 ## 실행
 
-```bash
-# EC2 접속
-export AWS_PROFILE=muffin
-aws ssm start-session --target <인스턴스ID> --region ap-northeast-2
+박스에는 레포가 없고 SSH도 열려 있지 않다. 배포와 같은 경로(SSM)로 파일을 올린다.
 
-# 이 디렉터리를 서버로 가져간 뒤
-cd infra/monitoring
-./env-from-ssm.sh          # SSM에서 .env 생성 (값은 화면에 찍지 않는다)
-docker compose up -d
+인스턴스 ID는 적어두지 않는다. `user_data` 변경 등으로 인스턴스가 교체되면 ID가 바뀌어, 적어둔 값은 사라진 박스를 가리키게 된다. 태그로 찾는다.
+
+```bash
+export AWS_PROFILE=muffin
+
+# 1) 노트북에서: 설정 파일을 /opt/muffin/monitoring 으로 전송 (대상은 태그로 자동 조회)
+./push-to-box.sh
+
+# 2) 박스에서: 시크릿을 받아 기동
+INSTANCE_ID="$(aws ec2 describe-instances \
+  --filters "Name=tag:Name,Values=muffin-backend" "Name=instance-state-name,Values=running" \
+  --region ap-northeast-2 --query "Reservations[].Instances[].InstanceId" --output text)"
+aws ssm start-session --target "$INSTANCE_ID" --region ap-northeast-2
+
+cd /opt/muffin/monitoring
+sudo ./env-from-ssm.sh     # SSM에서 .env 생성 (값은 화면에 찍지 않는다)
+sudo docker compose up -d
 ```
+
+인스턴스가 교체되면 이 절차를 그대로 다시 실행한다(박스 위의 설정과 `.env`는 함께 사라진다).
 
 ## 확인
 
