@@ -62,7 +62,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
         2. 기사 사건 암기보다 경제·금융 개념 이해를 묻는다.
         3. 문제와 보기만으로 풀 수 있는 자기완결형 문항으로 작성한다.
         4. 해설카드의 key_term, title, content를 우선 근거로 사용하되, key_term이 재사용 가능한 경제·금융 용어/지표/제도/개념일 때만 정답 선택지로 사용한다.
-        5. key_term이 특정 기사 상황을 요약한 표현이면 정답으로 쓰지 말고, content 안의 더 일반적인 용어·지표·개념을 찾아 정의형 문항으로 만든다.
+        5. key_term이 특정 기사 상황을 요약한 표현이면 정답으로 쓰지 말고, 같은 source_sentence에 직접 나오거나 정의된 더 일반적인 용어·지표·개념이 있을 때만 정의형 문항으로 만든다.
         6. 해설카드에 용어의 뜻·특징·역할 설명이 있으면 반드시 설명을 문제 단서로 바꾸고, 그 설명에 해당하는 용어·지표·개념을 맞히는 정의형 문항을 우선한다.
         7. 정답과 explanation은 source_sentence 한 문장에서 직접 도출되어야 하며, source_sentence는 해설카드 content 또는 뉴스 본문 문장 그대로 쓴다.
         8. 본문 밖 수치·날짜·기업명·기관명은 만들지 않는다.
@@ -118,8 +118,9 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
 
         for (int attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
             try {
-                String responseBody = requestWithRetry(request, retryInstruction(attempt), isFallbackAttempt(attempt));
-                return parseResponse(request, responseBody);
+                boolean fallbackAttempt = isFallbackAttempt(attempt);
+                String responseBody = requestWithRetry(request, retryInstruction(attempt), fallbackAttempt);
+                return parseResponse(request, responseBody, fallbackAttempt);
             } catch (InvalidDailyQuizResponseException exception) {
                 lastInvalidResponseException = exception;
             }
@@ -227,8 +228,10 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 - 해설카드의 key_term, title, content를 먼저 참고해 학습 가치가 높은 개념을 고른다.
                 - 해설카드의 key_term은 경제·금융 용어, 지표, 제도, 산업 개념처럼 다른 뉴스에서도 다시 쓸 수 있는 학습 개념일 때만 정답 선택지로 사용한다.
                 - key_term이 "장비 수입 증가", "수출 감소", "기업 자금난", "금리 인상 결정"처럼 특정 기사 상황을 요약한 표현이면 정답으로 쓰지 않는다.
-                - key_term이 기사 상황 요약어라면 content 안에서 더 일반적인 학습 개념을 고른다. 예: "국산화", "코픽스", "어음부도율", "공모주", "공급망 의존도"
-                - "반도체 장비 수입"처럼 기사에서만 쓰이는 현상명은 정답으로 만들지 말고, 그 현상을 설명하는 일반 개념을 정답으로 고른다. 예: "국산화", "수입 의존도", "공급망 의존도"
+                - key_term이 기사 상황 요약어라면 같은 source_sentence에 직접 나오거나 정의된 더 일반적인 학습 개념이 있을 때만 그 개념을 고른다. 예: "국산화", "코픽스", "어음부도율"
+                - "반도체 장비 수입"처럼 기사에서만 쓰이는 현상명은 정답으로 만들지 않는다. 단, 같은 source_sentence가 "국산화는 필요한 기술이나 장비를 국내에서 만들 수 있는 능력"처럼 일반 개념의 의미를 분명히 설명하면 그 개념을 정답으로 고른다.
+                - 같은 source_sentence가 관련 사실만 말하고 일반 개념의 의미를 설명하지 않으면, "수입 의존도", "공급망 의존도"처럼 추론이 필요한 개념을 정답으로 만들지 않는다.
+                - 일반 개념 근거가 부족하면 다른 해설카드의 개념을 고르거나 source_sentence에 명시된 구체적인 경제 영향 표현을 정답으로 삼는다.
                 - question_text에는 key_term이나 정답 선택지 문구를 그대로 쓰지 않는다.
                 - 각 문항의 핵심 주제를 question_topic에 짧은 명사형으로 작성한다. 예: "코픽스", "공모주", "금융 시장 불확실성"
                 - 세 문항의 question_topic은 서로 달라야 한다. 같은 용어 또는 같은 개념을 반복 출제하지 않는다.
@@ -242,7 +245,6 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 - 좋은 예: "은행들이 돈을 빌려오는 평균 비용을 보여주는 지표는 무엇일까요?" (정답: 코픽스)
                 - 좋은 예: "기업이 어음을 제때 갚지 못한 비율을 무엇이라고 할까요?" (정답: 어음부도율)
                 - 좋은 예: "필요한 장비를 해외가 아닌 국내에서 만드는 능력을 무엇이라고 할까요?" (정답: 국산화)
-                - 좋은 예: "기업이 처음으로 일반 투자자에게 주식을 판매하는 절차는 무엇인가요?" (정답: 공모주)
                 - 좋은 예: "주식처럼 거래소에서 사고팔 수 있는 펀드는 무엇인가요?" (정답: ETF)
                 - 좋은 예: "반도체 생산만 전문으로 맡는 회사를 무엇이라고 하나요?" (정답: 파운드리)
                 - 정책·군사·국제 사건은 "왜 했나요?", "주목적은 무엇인가요?"처럼 사건 목적을 묻지 말고, 물가·금리·전력비·운임·불확실성 등 경제 영향으로 바꿔 묻는다.
@@ -253,11 +255,12 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 - 정의형 근거가 없을 때만 영향형 문항을 작성한다. 이 경우에도 정답은 "부정적인 영향" 같은 추상어가 아니라 "전기요금 인상", "시장 불확실성 증가"처럼 구체적인 경제 표현이어야 한다.
                 - 출처 전제 표현("오늘 뉴스에 나온", "기사에 따르면", "본문에 따르면" 등), 부정형("아닌 것은?"), 투자 판단, 가격 전망은 금지한다.
                 - 숫자 자체를 맞히는 문제와 숫자만 바꾼 선택지는 금지한다.
-                - 선택지는 정답과 같은 범주의 짧은 명사형/구 형태로 쓴다. 예: "자금 조달 비용 지표", "위험 확산 방지"
-                - 정답 선택지는 source_sentence에서 직접 확인 가능한 구체 명사형으로 작성한다.
-                - 정답 선택지는 source_sentence의 핵심 표현을 그대로 쓰거나, 의미가 바뀌지 않는 짧은 명사형으로만 바꾼다.
-                - 정답 선택지를 너무 일반적인 표현으로 만들지 말고, 무엇이 어떻게 되는지 드러나게 작성한다. 예: "전기요금 인상", "자금 조달 비용 지표", "시장 불확실성 증가"
-                - 오답도 정답과 같은 범주의 구체적인 명사형으로 작성한다.
+                - 선택지는 정답과 같은 범주의 짧은 명사형/구 형태로 쓴다.
+                - 정답 선택지는 source_sentence에서 직접 확인 가능한 용어명, 지표명, 제도명, 장소명, 기관명 또는 개념명으로 작성한다.
+                - 정답이 source_sentence의 설명 대상이라면, 정답은 설명 문구가 아니라 그 대상의 이름이어야 한다.
+                - 정답은 다른 뉴스에서도 다시 학습할 수 있는 경제·금융 개념명이어야 하며, 단순 상태 변화 표현은 정답으로 쓰지 않는다.
+                - 정답을 설명하는 문구, 기사 상황 요약어, 지나치게 일반적인 표현은 정답으로 쓰지 않는다.
+                - 오답은 source_sentence에 없어도 되지만, 정답과 같은 범주의 구체적인 명사형으로 작성한다.
                 - "긍정적인 영향", "부정적인 영향", "경제적 변화", "시장 변화", "위험 증가", "부담 증가"처럼 범위가 넓고 추상적인 표현은 정답/오답 보기로 쓰지 않는다.
                 - source_sentence는 해설카드 content 또는 뉴스 본문 문장 그대로 쓰고, 정답과 explanation은 그 한 문장에서 확인 가능해야 한다.
                 - explanation은 source_sentence를 그대로 반복하지 말고, 정답이 왜 맞는지 초보자가 이해할 수 있게 1~2문장으로 풀어쓴다.
@@ -308,8 +311,11 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                     출처 전제 표현, 부정형, 투자 판단, 숫자 암기형, 숫자만 바꾼 선택지는 금지한다.
                     세 문항의 question_topic은 서로 다르게 작성하고, 같은 용어 또는 같은 개념을 반복하지 마라.
                     question_text에는 정답 선택지 문구를 그대로 쓰지 말고, 뜻·역할·특징을 단서로 제시하라.
-                    오답은 정답과 같은 범주로, 선택지는 짧은 명사형/구 형태로 작성하라.
-                    정답/오답 선택지는 source_sentence에서 직접 확인 가능한 구체 명사형으로 작성하고, "부정적인 영향", "시장 변화" 같은 추상 표현은 쓰지 마라.
+                    정답은 source_sentence에서 직접 확인 가능한 용어명, 지표명, 제도명, 장소명, 기관명 또는 개념명으로 작성하라.
+                    정답이 source_sentence의 설명 대상이라면, 정답은 설명 문구가 아니라 그 대상의 이름이어야 한다.
+                    정답은 다른 뉴스에서도 다시 학습할 수 있는 경제·금융 개념명이어야 하며, 단순 상태 변화 표현은 정답으로 쓰지 마라.
+                    오답은 source_sentence에 없어도 되지만, 정답과 같은 범주의 구체적인 명사형/구 형태로 작성하라.
+                    "부정적인 영향", "시장 변화" 같은 추상 표현은 정답/오답 보기로 쓰지 마라.
                     explanation은 source_sentence를 그대로 반복하지 말고, 정답이 왜 맞는지 쉬운 말로 풀어써라.
                     """;
         }
@@ -324,8 +330,11 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 정책·군사·국제 사건의 목적 확인형은 만들지 말고, 물가·금리·비용·운임·불확실성 같은 경제 영향형으로 바꿔라.
                 출처 전제 표현, 부정형, 투자 판단, 숫자 암기형, 숫자만 바꾼 선택지는 금지한다.
                 세 문항의 question_topic은 서로 다르게 작성하고, 같은 용어 또는 같은 개념을 반복하지 마라.
-                오답은 정답과 같은 범주로, 선택지는 짧은 명사형/구 형태로 작성하라.
-                정답/오답 선택지는 source_sentence에서 직접 확인 가능한 구체 명사형으로 작성하고, "부정적인 영향", "시장 변화" 같은 추상 표현은 쓰지 마라.
+                정답은 source_sentence에서 직접 확인 가능한 용어명, 지표명, 제도명, 장소명, 기관명 또는 개념명으로 작성하라.
+                정답이 source_sentence의 설명 대상이라면, 정답은 설명 문구가 아니라 그 대상의 이름이어야 한다.
+                정답은 다른 뉴스에서도 다시 학습할 수 있는 경제·금융 개념명이어야 하며, 단순 상태 변화 표현은 정답으로 쓰지 마라.
+                오답은 source_sentence에 없어도 되지만, 정답과 같은 범주의 구체적인 명사형/구 형태로 작성하라.
+                "부정적인 영향", "시장 변화" 같은 추상 표현은 정답/오답 보기로 쓰지 마라.
                 source_sentence는 해설카드 content 또는 본문 문장 그대로 쓰고, 정답과 해설은 그 한 문장에서 확인 가능해야 한다.
                 explanation은 source_sentence를 그대로 반복하지 말고, 정답이 왜 맞는지 쉬운 말로 풀어써라.
                 """;
@@ -414,7 +423,8 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
         return schema;
     }
 
-    private DailyQuizGenerationResult parseResponse(DailyQuizGenerationRequest request, String responseBody) {
+    private DailyQuizGenerationResult parseResponse(
+            DailyQuizGenerationRequest request, String responseBody, boolean fallbackAttempt) {
         try {
             if (responseBody == null || responseBody.isBlank()) {
                 throw new IllegalStateException("OpenAI returned an empty response");
@@ -424,7 +434,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
             for (JsonNode output : response.path("output")) {
                 for (JsonNode content : output.path("content")) {
                     if ("output_text".equals(content.path("type").asText())) {
-                        return parseOutputText(request, content.path("text").asText());
+                        return parseOutputText(request, content.path("text").asText(), fallbackAttempt);
                     }
                 }
             }
@@ -434,8 +444,8 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
         }
     }
 
-    private DailyQuizGenerationResult parseOutputText(DailyQuizGenerationRequest request, String outputText)
-            throws JacksonException {
+    private DailyQuizGenerationResult parseOutputText(
+            DailyQuizGenerationRequest request, String outputText, boolean fallbackAttempt) throws JacksonException {
         Map<String, DailyQuizNewsSource> sourceByTitle = request.newsSources().stream()
                 .collect(Collectors.toMap(source -> normalizeText(source.title()), Function.identity()));
 
@@ -446,7 +456,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 .map(question -> toQuestionResult(sourceByTitle, question))
                 .toList();
 
-        validateQuestions(questions, sourceByTitle);
+        validateQuestions(questions, sourceByTitle, fallbackAttempt);
 
         return new DailyQuizGenerationResult(questions);
     }
@@ -480,7 +490,9 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
     }
 
     private void validateQuestions(
-            List<DailyQuizQuestionResult> questions, Map<String, DailyQuizNewsSource> sourceByTitle) {
+            List<DailyQuizQuestionResult> questions,
+            Map<String, DailyQuizNewsSource> sourceByTitle,
+            boolean fallbackAttempt) {
         if (questions.size() != QUESTION_COUNT || hasDuplicatedQuestionOrder(questions)) {
             throw new IllegalStateException("OpenAI returned invalid question count or duplicated order");
         }
@@ -497,11 +509,12 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
         }
 
         for (DailyQuizQuestionResult question : questions) {
-            validateQuestion(question, sourceById.get(question.newsId()));
+            validateQuestion(question, sourceById.get(question.newsId()), fallbackAttempt);
         }
     }
 
-    private void validateQuestion(DailyQuizQuestionResult question, DailyQuizNewsSource source) {
+    private void validateQuestion(
+            DailyQuizQuestionResult question, DailyQuizNewsSource source, boolean fallbackAttempt) {
         if (isBlank(question.questionText())
                 || isBlank(question.explanation())
                 || isBlank(question.sourceSentence())
@@ -509,7 +522,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 || containsForbiddenQuestionPhrase(question.questionText())) {
             throw new IllegalStateException("OpenAI returned invalid quiz question");
         }
-        if (!containsEvidenceSentence(source, question.sourceSentence())) {
+        if (!containsEvidenceSentence(source, question.sourceSentence(), fallbackAttempt)) {
             throw new IllegalStateException("OpenAI returned source_sentence that is not in quiz evidence");
         }
         if (question.options().size() != OPTION_COUNT || hasDuplicatedOptionOrder(question.options())) {
@@ -560,10 +573,17 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                         || normalizedExplanation.contains(normalizedSource));
     }
 
-    private static boolean containsEvidenceSentence(DailyQuizNewsSource source, String sourceSentence) {
+    private static boolean containsEvidenceSentence(
+            DailyQuizNewsSource source, String sourceSentence, boolean fallbackAttempt) {
         String normalizedSourceSentence = normalizeForPhraseCheck(sourceSentence);
-        return normalizeForPhraseCheck(source.rewrittenBody()).contains(normalizedSourceSentence)
-                || source.explanationCards().stream()
+        if (normalizedSourceSentence.isBlank()) {
+            return false;
+        }
+        if (normalizeForPhraseCheck(source.rewrittenBody()).contains(normalizedSourceSentence)) {
+            return true;
+        }
+        return !fallbackAttempt
+                && source.explanationCards().stream()
                         .map(card -> normalizeForPhraseCheck(card.content()))
                         .anyMatch(content -> content.contains(normalizedSourceSentence));
     }
