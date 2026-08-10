@@ -12,25 +12,25 @@
 <br/>
 
 <a href="https://muffin.ai.kr/">
-<img src="https://img.shields.io/badge/🌐_서비스_바로가기-muffin.ai.kr-FFB74D?style=for-the-badge&logoColor=white&labelColor=2b2b2b" height="36" alt="서비스 바로가기" />
+<img src="https://img.shields.io/badge/🌐_서비스_바로가기-muffin.ai.kr-FFB74D?style=for-the-badge&logoColor=white&labelColor=2b2b2b" alt="서비스 바로가기" width="300" />
 </a>
 
 <br/><br/>
 
 <a href="https://api.muffin.ai.kr/docs/index.html">
-<img src="https://img.shields.io/badge/📘_API_문서-6DB33F?style=for-the-badge&labelColor=2b2b2b" height="30" alt="API 문서" />
+<img src="https://img.shields.io/badge/📘_API_문서-6DB33F?style=for-the-badge&labelColor=2b2b2b" alt="API 문서" width="100" />
 </a>
 <a href="https://youtube.com/playlist?list=PLYG1U37V1liU&si=UsV1ClLLreJ2shlQ">
-<img src="https://img.shields.io/badge/🎬_시연_영상-FF0000?style=for-the-badge&labelColor=2b2b2b" height="30" alt="API 시연 영상" />
+<img src="https://img.shields.io/badge/🎬_시연_영상-FF0000?style=for-the-badge&labelColor=2b2b2b" alt="API 시연 영상" width="100" />
 </a>
 
 <br/><br/>
 
-<img src="https://img.shields.io/github/stars/money-pin/muffin-back?style=for-the-badge&logo=github&color=FFB74D&labelColor=2b2b2b" height="26" alt="Stars" />
-<img src="https://hits.sh/github.com/money-pin/muffin-back.svg?style=for-the-badge&label=Views&color=4DB6AC&labelColor=2b2b2b" height="26" alt="Views" />
+<img src="https://img.shields.io/github/stars/money-pin/muffin-back?style=for-the-badge&logo=github&color=FFB74D&labelColor=2b2b2b" alt="Stars" width="108" />
+<img src="https://hits.sh/github.com/money-pin/muffin-back.svg?style=for-the-badge&label=Views&color=4DB6AC&labelColor=2b2b2b" alt="Views" width="105" />
 
-<img src="https://img.shields.io/github/issues-pr-closed/money-pin/muffin-back?style=for-the-badge&logo=github&color=8E7CC3&labelColor=2b2b2b" height="26" alt="Closed PRs" />
-<img src="https://img.shields.io/github/commit-activity/t/money-pin/muffin-back?style=for-the-badge&logo=github&color=4FC3F7&labelColor=2b2b2b" height="26" alt="Commits" />
+<img src="https://img.shields.io/github/issues-pr-closed/money-pin/muffin-back?style=for-the-badge&logo=github&color=8E7CC3&labelColor=2b2b2b" alt="Closed PRs" width="230" />
+<img src="https://img.shields.io/github/commit-activity/t/money-pin/muffin-back?style=for-the-badge&logo=github&color=4FC3F7&labelColor=2b2b2b" alt="Commits" width="145" />
 
 </div>
 
@@ -38,9 +38,10 @@
 
 ## ✨ 주요 기능
 
+<div align="center">
 <table>
 <tr>
-<td width="50%" valign="top">
+<td width="430" valign="top">
 
 ### 📰 오늘의 뉴스
 
@@ -50,7 +51,7 @@
 - 스크랩 · 최근 읽은 뉴스 · 용어 저장
 
 </td>
-<td width="50%" valign="top">
+<td width="430" valign="top">
 
 ### 🧠 오늘의 한입 퀴즈
 
@@ -61,8 +62,13 @@
 
 </td>
 </tr>
+</table>
+</div>
+
+<div align="center">
+<table>
 <tr>
-<td width="50%" valign="top">
+<td width="430" valign="top">
 
 ### 📈 섹터 모의투자
 
@@ -72,7 +78,7 @@
 - 자정 마감 전까지 자유롭게 수정
 
 </td>
-<td width="50%" valign="top">
+<td width="430" valign="top">
 
 ### 📊 성과 & 랭킹
 
@@ -84,6 +90,7 @@
 </td>
 </tr>
 </table>
+</div>
 
 <br/>
 
@@ -110,14 +117,14 @@
 
 ![OpenAI](https://img.shields.io/badge/OpenAI_API-412991?style=flat-square&logo=openai&logoColor=white)
 ![RSS](https://img.shields.io/badge/RSS_수집-FFA500?style=flat-square&logo=rss&logoColor=white)
-![Jsoup](https://img.shields.io/badge/Jsoup_%28본문_추출%29-43853D?style=flat-square&logo=html5&logoColor=white)
+![Jsoup](https://img.shields.io/badge/Jsoup-43853D?style=flat-square&logo=html5&logoColor=white)
 
 **Infra · CI/CD**
 
 ![AWS EC2](https://img.shields.io/badge/EC2-FF9900?style=flat-square&logo=amazonec2&logoColor=white)
 ![AWS RDS](https://img.shields.io/badge/RDS-527FFF?style=flat-square&logo=amazonrds&logoColor=white)
 ![ECR](https://img.shields.io/badge/ECR-FF9900?style=flat-square&logo=amazonaws&logoColor=white)
-![SSM](https://img.shields.io/badge/SSM_%28설정·배포%29-FF9900?style=flat-square&logo=amazonaws&logoColor=white)
+![SSM](https://img.shields.io/badge/SSM-FF9900?style=flat-square&logo=amazonaws&logoColor=white)
 ![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat-square&logo=terraform&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
@@ -148,12 +155,18 @@
 
 **DDD 기반**: 도메인으로 먼저 나누고 그 안에서 레이어를 나눕니다. 비즈니스 규칙은 서비스가 아니라 **엔티티 안에** 둡니다.
 
+
 ```
-presentation  →  application  →  domain  ←  infrastructure
-     진입점         트랜잭션·조립       규칙 본체        외부 연동
+// 의존 방향
+presentation  →  application  →  domain
+   진입점          트랜잭션·조립      규칙 본체
+                                    ↑
+                              infrastructure
+                                  외부 연동
 ```
 
 ```
+// 패키지 레이어 구조
 com/muffin/investment/            ← 도메인 (news · quiz · sector · stats · ranking · auth ...)
 ├── presentation/                 컨트롤러 · 스케줄러 · DTO · Swagger
 ├── application/                  CommandService(쓰기) · QueryService(읽기)
@@ -186,7 +199,7 @@ com/muffin/investment/            ← 도메인 (news · quiz · sector · stats
 <div align="center">
 <table>
 <tr>
-<td align="center" width="20%">
+<td align="center" width="172">
 <a href="https://github.com/yeonthusiast">
 <img src="https://avatars.githubusercontent.com/u/180145486?v=4" width="90" /><br/>
 <b>@yeonthusiast</b>
@@ -195,7 +208,7 @@ com/muffin/investment/            ← 도메인 (news · quiz · sector · stats
 📈 모의투자 · 정산<br/>
 📊 통계
 </td>
-<td align="center" width="20%">
+<td align="center" width="172">
 <a href="https://github.com/skays1212">
 <img src="https://avatars.githubusercontent.com/u/140334484?v=4" width="90" /><br/>
 <b>@skays1212</b>
@@ -204,7 +217,7 @@ com/muffin/investment/            ← 도메인 (news · quiz · sector · stats
 📰 AI · 뉴스<br/>
 ☁️ 인프라
 </td>
-<td align="center" width="20%">
+<td align="center" width="172">
 <a href="https://github.com/sekong11">
 <img src="https://avatars.githubusercontent.com/u/216727010?v=4" width="90" /><br/>
 <b>@sekong11</b>
@@ -213,7 +226,7 @@ com/muffin/investment/            ← 도메인 (news · quiz · sector · stats
 🧠 AI · 퀴즈<br/>
 📰 뉴스
 </td>
-<td align="center" width="20%">
+<td align="center" width="172">
 <a href="https://github.com/LeeJeongHeon02">
 <img src="https://avatars.githubusercontent.com/u/145251769?v=4" width="90" /><br/>
 <b>@LeeJeongHeon02</b>
@@ -222,7 +235,7 @@ com/muffin/investment/            ← 도메인 (news · quiz · sector · stats
 🏷️ 섹터 · ETF 시세<br/>
 🏆 랭킹
 </td>
-<td align="center" width="20%">
+<td align="center" width="172">
 <a href="https://github.com/Eugene-Shin">
 <img src="https://avatars.githubusercontent.com/u/97740420?v=4" width="90" /><br/>
 <b>@Eugene-Shin</b>
