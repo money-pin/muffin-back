@@ -1,0 +1,1039 @@
+{
+  "uid": "muffin-db",
+  "title": "Muffin / DB",
+  "description": "커넥션 풀은 앱이 보는 관점, MySQL 상태값은 DB가 보는 관점, RDS 지표는 그 DB가 올라탄 인스턴스의 관점이다. 셋을 같이 봐야 '느린 이유'가 좁혀진다.",
+  "tags": [
+    "muffin",
+    "db"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "prom",
+        "label": "지표",
+        "query": "prometheus",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "DB 연결",
+      "description": "0이면 exporter가 RDS에 붙지 못한 것이다. exporter는 DB가 끊겨도 자기 지표로 HTTP 200을 주므로, 이 값 말고는 끊김을 알 방법이 없다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "끊김",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "정상",
+                  "color": "green"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "text": {
+          "titleSize": 12,
+          "valueSize": 22
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "mysql_up",
+          "legendFormat": "mysql_up",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "버퍼풀 히트율",
+      "description": "InnoDB가 디스크 대신 메모리에서 답한 비율. db.t3.micro(1GB)라 이 값이 떨어지면 곧바로 쿼리가 느려진다. performance_schema를 켜지 않는 이유이기도 하다: 버퍼풀을 갉아먹으면 모니터링 때문에 DB가 느려진다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 4,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 4,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.98
+              },
+              {
+                "color": "green",
+                "value": 0.995
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "text": {
+          "titleSize": 12,
+          "valueSize": 22
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "1 - (rate(mysql_global_status_innodb_buffer_pool_reads[$__rate_interval]) / clamp_min(rate(mysql_global_status_innodb_buffer_pool_read_requests[$__rate_interval]), 1))",
+          "legendFormat": "히트율"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "RDS 여유 메모리",
+      "description": "300MB 이상 여유가 유지되면 performance_schema(느린 쿼리 순위표) 활성화를 검토할 수 있다. TODOLOG 2026-08-05 보류 항목의 판단 근거가 이 값이다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 9,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 209715200
+              },
+              {
+                "color": "green",
+                "value": 314572800
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "text": {
+          "titleSize": 12,
+          "valueSize": 22
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "aws_rds_freeable_memory_average",
+          "legendFormat": "여유 메모리"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "RDS CPU",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 14,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 60
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "text": {
+          "titleSize": 12,
+          "valueSize": 22
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "aws_rds_cpuutilization_average",
+          "legendFormat": "CPU"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "버스트 잔량",
+      "description": "t3 계열은 이게 바닥나면 IO가 급격히 느려진다. 코드를 아무리 봐도 원인이 안 보이는 종류의 지연이라 지표로 남긴다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 19,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 30
+              },
+              {
+                "color": "green",
+                "value": 60
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "text": {
+          "titleSize": 12,
+          "valueSize": 22
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "aws_rds_burst_balance_average",
+          "legendFormat": "버스트"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "커넥션 풀 (앱 관점)",
+      "description": "pending이 0보다 크면 요청이 커넥션을 기다리고 있다는 뜻이다. 그때 active가 max에 붙어 있으면 풀이 작은 것이고, 아니면 커넥션을 오래 쥐는 쿼리가 있는 것이다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "대기 중"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "hikaricp_connections_active{application=\"muffin\"}",
+          "legendFormat": "사용 중"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "hikaricp_connections_idle{application=\"muffin\"}",
+          "legendFormat": "유휴"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "hikaricp_connections_pending{application=\"muffin\"}",
+          "legendFormat": "대기 중"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "hikaricp_connections_max{application=\"muffin\"}",
+          "legendFormat": "최대"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "커넥션 수 (DB 관점)",
+      "description": "앱 풀 크기와 어긋나면 앱 말고 다른 접속자가 있다는 뜻이다(지표 수집 계정은 최대 3, DataGrip 터널 등).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "mysql_global_status_threads_connected",
+          "legendFormat": "접속 스레드"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "mysql_global_status_threads_running",
+          "legendFormat": "실행 중 스레드"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "aws_rds_database_connections_maximum",
+          "legendFormat": "RDS 집계(5분 최대)"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "커밋 / 롤백",
+      "description": "롤백이 튀면 트랜잭션이 예외로 끝나고 있다는 뜻이다. 정산처럼 유저별 REQUIRES_NEW로 도는 배치가 실패하면 여기 먼저 나타난다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rollback"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "rate(mysql_global_status_commands_total{command=~\"commit|rollback\"}[$__rate_interval])",
+          "legendFormat": "{{command}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "RDS IOPS",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "iops",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "aws_rds_read_iops_average",
+          "legendFormat": "읽기"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "aws_rds_write_iops_average",
+          "legendFormat": "쓰기"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "bargauge",
+      "title": "느린 리포지토리 메서드 Top 10 (24시간 평균)",
+      "description": "performance_schema를 켜지 않아 포기했던 '어떤 쿼리가 느린가' 순위표를, 앱 관점에서 대신 채운다. Spring Data 리포지토리 메서드 하나가 한 줄이고 값은 24시간 평균 소요시간이다. DB 관점이 아니라 앱 관점이라 네이티브 쿼리나 JPA를 거치지 않는 접근은 잡히지 않지만, 메모리를 전혀 쓰지 않고 이미 나오고 있는 값이다. 24시간 창을 쓰는 이유는 하루 한 번 도는 배치 메서드까지 포함하기 위해서다(짧은 창이면 자주 불리는 메서드만 남는다).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 0,
+        "y": 21
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "displayName": "${__field.labels.repository}.${__field.labels.method}"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "namePlacement": "left",
+        "showUnfilled": true,
+        "minVizWidth": 8,
+        "minVizHeight": 12,
+        "sizing": "auto",
+        "text": {
+          "titleSize": 11,
+          "valueSize": 13
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{repository}}.{{method}}",
+          "expr": "topk(10, sum by (repository, method) (increase(spring_data_repository_invocations_seconds_sum{application=\"muffin\"}[24h])) / sum by (repository, method) (increase(spring_data_repository_invocations_seconds_count{application=\"muffin\"}[24h])))",
+          "format": "time_series"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "bargauge",
+      "title": "호출 많은 리포지토리 메서드 Top 10 (24시간)",
+      "description": "실행 횟수 순위. 왼쪽의 '느린 메서드'와 함께 보면 '느린데 자주 불리는 것'이 먼저 고칠 대상이다. 한 번 느린 것보다 훨씬 비싸다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 8,
+        "y": 21
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "displayName": "${__field.labels.repository}.${__field.labels.method}",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "namePlacement": "left",
+        "showUnfilled": true,
+        "minVizWidth": 8,
+        "minVizHeight": 12,
+        "sizing": "auto",
+        "text": {
+          "titleSize": 11,
+          "valueSize": 13
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "expr": "topk(10, sum by (repository, method) (increase(spring_data_repository_invocations_seconds_count{application=\"muffin\"}[24h])))"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "커넥션 획득 대기 시간",
+      "description": "요청이 풀에서 커넥션을 받기까지 기다린 시간. 풀이 마르기 시작하면 pending 카운트가 오르기 전에 여기가 먼저 튄다. 평상시 1~2ms 수준이고, 수십 ms로 올라가면 커넥션을 오래 쥐는 쿼리가 생긴 것이다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 21
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "legendFormat": "획득 대기(평균)",
+          "expr": "rate(hikaricp_connections_acquire_seconds_sum{application=\"muffin\"}[$__rate_interval]) / clamp_min(rate(hikaricp_connections_acquire_seconds_count{application=\"muffin\"}[$__rate_interval]), 1)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "legendFormat": "점유 시간(평균)",
+          "expr": "rate(hikaricp_connections_usage_seconds_sum{application=\"muffin\"}[$__rate_interval]) / clamp_min(rate(hikaricp_connections_usage_seconds_count{application=\"muffin\"}[$__rate_interval]), 1)"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "DB 처리량 · 활성 커넥션 · 커넥션 점유 시간",
+      "description": "같은 Little's Law를 DB 쪽에서 본 것이다. 활성 커넥션 / 커넥션 점유 시간이 곧 풀이 낼 수 있는 처리량이고, 그 값이 실제 QPS와 비슷하면 병목이 DB 밖에 있다는 뜻이다. 활성 커넥션이 최대치에 붙었는데 QPS가 더 안 오르면 그 지점이 커넥션 풀의 포화점이다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "커넥션 점유 시간(평균)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "legendFormat": "DB QPS (실측)",
+          "expr": "rate(mysql_global_status_questions[$__rate_interval])"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "legendFormat": "활성 커넥션",
+          "expr": "hikaricp_connections_active{application=\"muffin\"}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "legendFormat": "커넥션 점유 시간(평균)",
+          "expr": "rate(hikaricp_connections_usage_seconds_sum{application=\"muffin\"}[$__rate_interval]) / clamp_min(rate(hikaricp_connections_usage_seconds_count{application=\"muffin\"}[$__rate_interval]), 0.0001)"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "legendFormat": "풀 처리 한계 (활성 / 점유시간)",
+          "expr": "hikaricp_connections_active{application=\"muffin\"} / clamp_min(rate(hikaricp_connections_usage_seconds_sum{application=\"muffin\"}[$__rate_interval]) / clamp_min(rate(hikaricp_connections_usage_seconds_count{application=\"muffin\"}[$__rate_interval]), 0.0001), 0.0001)"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "text",
+      "title": "느린 쿼리는 어디서 보나",
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "느린 쿼리(1초 초과)는 RDS 슬로우 쿼리 로그로 나가며, **이 대시보드가 아니라 CloudWatch Logs**에 있다. Alloy가 긁는 것은 지표뿐이라 로그는 Loki로 오지 않는다.\n\n- 로그 그룹: `/aws/rds/instance/muffin-db/slowquery`\n- CloudWatch Logs Insights 예시:\n\n```\nfields @timestamp, @message\n| filter @message like /Query_time/\n| sort @timestamp desc\n| limit 50\n```\n\n호출 횟수·평균 실행시간 **순위표**는 `performance_schema`가 있어야 만들 수 있는데, db.t3.micro(1GB)에서 버퍼풀을 갉아먹어 켜지 않았다. 위쪽 `RDS 여유 메모리`가 300MB 이상으로 유지되는 것이 확인되면 그때 재검토한다."
+      }
+    }
+  ],
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Muffin 대시보드",
+      "tags": [
+        "muffin"
+      ],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "external link",
+      "tooltip": "",
+      "url": ""
+    }
+  ]
+}
