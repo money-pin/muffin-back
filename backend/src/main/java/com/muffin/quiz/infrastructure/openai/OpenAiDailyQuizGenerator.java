@@ -219,9 +219,17 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
 
     private String prompt(String input, String retryInstruction, boolean fallbackAttempt) {
         String sourceDescription = fallbackAttempt ? "뉴스 본문" : "뉴스 본문과 해설카드";
+        String sourceReferenceRule = fallbackAttempt
+                ? "rewritten_body만 참고해 학습 가치가 높은 경제·금융 개념을 고른다."
+                : "해설카드의 key_term, title, content를 우선 참고하되, key_term을 무조건 정답으로 쓰지 않는다.";
         String sourceSentenceRule = fallbackAttempt
                 ? "source_sentence는 rewritten_body 안에 실제로 존재하는 문장 그대로 작성한다."
                 : "source_sentence는 explanation_cards.content 또는 rewritten_body 안에 실제로 존재하는 문장 그대로 작성한다.";
+        String answerDerivationRule = fallbackAttempt
+                ? "정답은 source_sentence 한 문장에 문구 그대로 들어있지 않아도 되지만, rewritten_body 전체 맥락에서 자연스럽게 도출 가능해야 한다."
+                : "정답은 source_sentence 한 문장에 문구 그대로 들어있지 않아도 되지만, 입력으로 제공된 해설카드 content 또는 뉴스 본문 전체 맥락에서 자연스럽게 도출 가능해야 한다.";
+        String sourceSentenceDescription =
+                fallbackAttempt ? "본문에서 정답의 근거가 된 문장 원문 그대로" : "해설카드 또는 본문에서 정답의 근거가 된 문장 원문 그대로";
         return """
                 다음 3개의 %s를 바탕으로 퀴즈 3문항을 출제해 주세요.
 
@@ -237,7 +245,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 - 정답은 경제·금융 학습에 의미 있는 용어명, 지표명, 제도명 또는 개념명이어야 한다.
                 - 정답은 특정 기사 상황을 요약한 표현, 단순 상태 변화 표현, 정답을 풀어쓴 설명구, 지나치게 넓은 추상어가 아니어야 한다.
                 - 정책·제도 관련 문항에서 정답은 정책 방향이나 혜택 내용을 요약한 문구가 아니라, 정책명·제도명·경제 개념명이어야 한다.
-                - 해설카드의 key_term, title, content를 우선 참고하되, key_term을 무조건 정답으로 쓰지 않는다.
+                - %s
                 - question_text에는 정답 선택지 문구를 그대로 쓰지 않는다.
                 - question_text에는 "이 제도", "이 펀드", "이번 정책", "해당 상품"처럼 앞선 기사 맥락을 가리키는 지시어를 쓰지 말고, 필요한 설명을 문제 안에 직접 포함한다.
                 - question_topic에는 문항의 핵심 개념을 짧은 명사형으로 작성하고, 세 문항의 question_topic은 서로 달라야 한다.
@@ -245,7 +253,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 - 오답에는 다른 문항의 정답 후보나 question_topic을 재사용하지 않는다.
                 - source_sentence는 문항의 출처가 되는 근거 문장으로 사용한다.
                 - %s
-                - 정답은 source_sentence 한 문장에 문구 그대로 들어있지 않아도 되지만, 입력으로 제공된 해설카드 content 또는 뉴스 본문 전체 맥락에서 자연스럽게 도출 가능해야 한다.
+                - %s
                 - source_sentence가 단순히 용어를 언급만 하더라도, 입력 전체 맥락에서 그 용어의 의미·역할·영향이 충분히 설명되어 있으면 정답으로 사용할 수 있다.
                 - explanation은 source_sentence를 그대로 반복하지 말고, 입력 맥락을 바탕으로 정답이 왜 맞는지 초보자가 이해할 수 있게 1~2문장으로 풀어쓴다.
                 - 출처 전제 표현("오늘 뉴스에 나온", "기사에 따르면", "본문에 따르면" 등), 부정형("아닌 것은?"), 투자 판단, 가격 전망, 섹터 선택은 금지한다.
@@ -270,13 +278,20 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                       ],
                       "correct_option_order": 1,
                       "explanation": "해설 텍스트",
-                      "source_sentence": "해설카드 또는 본문에서 정답의 근거가 된 문장 원문 그대로",
+                      "source_sentence": "%s",
                       "difficulty": "EASY"
                     }
                   ]
                 }
                 """
-                .formatted(sourceDescription, input, sourceSentenceRule, retryInstruction);
+                .formatted(
+                        sourceDescription,
+                        input,
+                        sourceReferenceRule,
+                        sourceSentenceRule,
+                        answerDerivationRule,
+                        retryInstruction,
+                        sourceSentenceDescription);
     }
 
     private String retryInstruction(int attempt) {
@@ -296,7 +311,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                     세 문항의 question_topic은 서로 다르게 작성하고, 같은 용어 또는 같은 개념을 반복하지 마라.
                     question_text에는 정답 선택지 문구를 그대로 쓰지 마라.
                     question_text에는 앞선 기사 맥락을 가리키는 지시어를 쓰지 말고, 필요한 설명을 문제 안에 직접 포함하라.
-                    정답은 source_sentence에서 직접 확인 가능한 용어명, 지표명, 제도명 또는 개념명으로 작성하라.
+                    정답은 rewritten_body 전체 맥락에서 도출 가능한 용어명, 지표명, 제도명 또는 개념명으로 작성하라.
                     정답은 특정 기사 상황 요약어, 단순 상태 변화 표현, 정답을 풀어쓴 설명구, 지나치게 넓은 추상어가 아니어야 한다.
                     정책·제도 관련 문항에서 정답은 정책 방향이나 혜택 내용을 요약한 문구가 아니라, 정책명·제도명·경제 개념명이어야 한다.
                     오답은 source_sentence에 없어도 되지만, 정답과 같은 세부 유형의 구체적인 명사형/구 형태로 작성하라.
@@ -315,7 +330,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 정책·군사·국제 사건의 목적 확인형은 만들지 말고, 경제·금융 개념이나 시장 영향으로 연결해 묻는다.
                 출처 전제 표현, 부정형, 투자 판단, 숫자 암기형, 숫자만 바꾼 선택지는 금지한다.
                 세 문항의 question_topic은 서로 다르게 작성하고, 같은 용어 또는 같은 개념을 반복하지 마라.
-                정답은 source_sentence에서 직접 확인 가능한 용어명, 지표명, 제도명 또는 개념명으로 작성하라.
+                정답은 입력 전체 맥락에서 도출 가능한 용어명, 지표명, 제도명 또는 개념명으로 작성하라.
                 정답은 source_sentence 한 문장에 문구 그대로 들어있지 않아도 되지만, 입력 전체 맥락에서 자연스럽게 도출 가능해야 한다.
                 정답은 특정 기사 상황 요약어, 단순 상태 변화 표현, 정답을 풀어쓴 설명구, 지나치게 넓은 추상어가 아니어야 한다.
                 정책·제도 관련 문항에서 정답은 정책 방향이나 혜택 내용을 요약한 문구가 아니라, 정책명·제도명·경제 개념명이어야 한다.
