@@ -50,7 +50,7 @@ public class DailyQuizGenerationService {
     private final DailyQuizGenerator dailyQuizGenerator;
     private final TransactionTemplate transactionTemplate;
 
-    /** 오늘 날짜 기준으로 해설카드까지 생성된 발행 대기 뉴스 3개를 골라 하루치 퀴즈를 생성한다. */
+    /** 오늘 날짜 기준으로 해설카드가 있는 뉴스를 우선 고르고, 부족하면 재구성 완료 뉴스로 보충해 하루치 퀴즈를 생성한다. */
     public DailyQuizGenerationSummary generateToday() {
         return generate(LocalDate.now(KST));
     }
@@ -58,9 +58,10 @@ public class DailyQuizGenerationService {
     /**
      * 지정한 날짜의 퀴즈 세트를 생성한다.
      *
-     * <p>뉴스는 사용자 공개 전이라도 재구성과 해설카드 생성까지 완료된 PENDING 상태를 사용한다. 이벤트 기반으로 여러 번 호출될 수 있으므로
-     * 뉴스가 3개 미만이면 아직 생성 시점이 아니라고 보고 건너뛴다. 뉴스 3개가 모인 뒤 생성에 실패하면 조회 API가 UNAVAILABLE로 응답할 수
-     * 있도록 빈 퀴즈 세트를 이용 불가 상태로 저장한다.
+     * <p>뉴스는 사용자 공개 전이라도 재구성이 완료된 PENDING 상태를 사용한다. DONE 해설카드가 있는 뉴스를 우선 사용하되, 해설카드가
+     * 3개 미만이면 재구성 본문만 있는 뉴스로 부족분을 채운다. 이벤트 기반으로 여러 번 호출될 수 있으므로 뉴스가 3개 미만이면 아직 생성
+     * 시점이 아니라고 보고 건너뛴다. 뉴스 3개가 모인 뒤 생성에 실패하면 조회 API가 UNAVAILABLE로 응답할 수 있도록 빈 퀴즈 세트를 이용
+     * 불가 상태로 저장한다.
      */
     public DailyQuizGenerationSummary generate(LocalDate quizDate) {
         Optional<QuizSet> reservation = reserveGeneration(quizDate);
@@ -142,19 +143,27 @@ public class DailyQuizGenerationService {
         });
     }
 
-    /** 사용자 공개 전이라도 재구성 결과와 DONE 해설카드가 있는 발행 대기 뉴스 후보 중 퀴즈에 적합한 3개를 고른다. */
+    /** 사용자 공개 전이라도 재구성 결과가 있는 발행 대기 뉴스 후보 중 퀴즈에 적합한 3개를 고른다. */
     private List<News> findQuizSourceNews(LocalDate quizDate) {
         LocalDateTime startInclusive = quizDate.atStartOfDay();
         LocalDateTime endExclusive = quizDate.plusDays(1).atStartOfDay();
 
-        List<News> candidates = newsRepository.findQuizCandidates(
+        List<News> explanationCandidates = newsRepository.findQuizCandidates(
                 NewsStatus.PENDING,
                 NewsExplanationStatus.DONE,
                 startInclusive,
                 endExclusive,
                 PageRequest.of(0, QUIZ_SOURCE_CANDIDATE_COUNT));
 
-        return selectQuizSourceNews(candidates);
+        List<News> selectedNews = selectQuizSourceNews(explanationCandidates);
+        if (selectedNews.size() == DAILY_QUIZ_COUNT) {
+            return selectedNews;
+        }
+
+        List<News> reconstructedCandidates = newsRepository.findReconstructedQuizCandidates(
+                NewsStatus.PENDING, startInclusive, endExclusive, PageRequest.of(0, QUIZ_SOURCE_CANDIDATE_COUNT));
+
+        return supplementQuizSourceNews(selectedNews, reconstructedCandidates);
     }
 
     /**
@@ -163,11 +172,7 @@ public class DailyQuizGenerationService {
      * <p>1차로 서로 다른 해설카드 핵심어를 가진 뉴스를 고르고, 부족한 경우 카테고리 다양성과 용어 수, 최신순 기준으로 채운다.
      */
     private List<News> selectQuizSourceNews(List<News> candidates) {
-        List<News> rankedCandidates = candidates.stream()
-                .sorted(Comparator.comparingInt(DailyQuizGenerationService::termCount)
-                        .reversed()
-                        .thenComparing(News::getPublishedAt, Comparator.reverseOrder()))
-                .toList();
+        List<News> rankedCandidates = rankQuizCandidates(candidates);
 
         List<News> selectedNews = new ArrayList<>();
         Set<String> selectedExplanationKeyTerms = new HashSet<>();
@@ -203,6 +208,46 @@ public class DailyQuizGenerationService {
         }
 
         return selectedNews;
+    }
+
+    private List<News> supplementQuizSourceNews(List<News> selectedNews, List<News> candidates) {
+        List<News> supplementedNews = new ArrayList<>(selectedNews);
+        Set<Long> selectedIds = supplementedNews.stream().map(News::getId).collect(Collectors.toSet());
+        Set<Long> selectedCategoryIds =
+                supplementedNews.stream().map(News::getCategoryId).collect(Collectors.toSet());
+
+        List<News> remainingCandidates = rankQuizCandidates(candidates).stream()
+                .filter(news -> !selectedIds.contains(news.getId()))
+                .toList();
+
+        for (News news : remainingCandidates) {
+            if (supplementedNews.size() == DAILY_QUIZ_COUNT) {
+                break;
+            }
+            if (selectedCategoryIds.add(news.getCategoryId())) {
+                supplementedNews.add(news);
+                selectedIds.add(news.getId());
+            }
+        }
+
+        for (News news : remainingCandidates) {
+            if (supplementedNews.size() == DAILY_QUIZ_COUNT) {
+                break;
+            }
+            if (selectedIds.add(news.getId())) {
+                supplementedNews.add(news);
+            }
+        }
+
+        return supplementedNews;
+    }
+
+    private static List<News> rankQuizCandidates(List<News> candidates) {
+        return candidates.stream()
+                .sorted(Comparator.comparingInt(DailyQuizGenerationService::termCount)
+                        .reversed()
+                        .thenComparing(News::getPublishedAt, Comparator.reverseOrder()))
+                .toList();
     }
 
     private String primaryExplanationKeyTerm(Long newsId) {
