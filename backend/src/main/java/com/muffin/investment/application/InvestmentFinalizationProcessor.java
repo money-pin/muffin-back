@@ -5,6 +5,9 @@ import com.muffin.investment.domain.investment.InvestmentRepository;
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
+import com.muffin.user.domain.User;
+import com.muffin.user.domain.UserRepository;
+import com.muffin.user.domain.enums.UserStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -21,11 +24,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class InvestmentFinalizationProcessor {
 
     private final UserAssetRepository userAssetRepository;
+    private final UserRepository userRepository;
     private final InvestmentRepository investmentRepository;
 
     @Transactional
     public void finalizeUser(Long userAssetId, LocalDate investDate, LocalDateTime finalizedAt) {
         UserAsset asset = userAssetRepository.findByIdForUpdate(userAssetId).orElseThrow();
+        User user = userRepository.findByIdForUpdate(asset.getUserId()).orElseThrow();
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            return;
+        }
         Investment investment = investmentRepository
                 .findWithSectorsForUpdate(asset.getUserId(), investDate)
                 .orElseGet(() -> createNoInvest(asset, investDate));

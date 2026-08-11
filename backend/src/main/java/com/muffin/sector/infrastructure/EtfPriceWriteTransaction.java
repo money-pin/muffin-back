@@ -20,9 +20,11 @@ class EtfPriceWriteTransaction {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void insertOrUpdate(Long etfId, LocalDate priceDate, Consumer<EtfPrice> update, Supplier<EtfPrice> create) {
-        Optional<EtfPrice> existing = etfPriceRepository.findByEtfIdAndPriceDateForUpdate(etfId, priceDate);
-        if (existing.isPresent()) {
-            update.accept(existing.get());
+        if (etfPriceRepository.existsByEtfIdAndPriceDate(etfId, priceDate)) {
+            EtfPrice locked = etfPriceRepository
+                    .findByEtfIdAndPriceDateForUpdate(etfId, priceDate)
+                    .orElseThrow();
+            update.accept(locked);
             return;
         }
         etfPriceRepository.saveAndFlush(create.get());

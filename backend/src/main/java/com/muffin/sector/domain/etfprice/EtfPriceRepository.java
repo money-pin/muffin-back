@@ -21,6 +21,8 @@ public interface EtfPriceRepository extends JpaRepository<EtfPrice, Long> {
 
     Optional<EtfPrice> findByEtfIdAndPriceDate(Long etfId, LocalDate priceDate);
 
+    boolean existsByEtfIdAndPriceDate(Long etfId, LocalDate priceDate);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from EtfPrice e where e.etfId = :etfId and e.priceDate = :priceDate")
     Optional<EtfPrice> findByEtfIdAndPriceDateForUpdate(

@@ -136,7 +136,7 @@ public class EtfPriceWriter {
                 () -> marked(etfId, priceDate, EtfPrice::markCloseMarketClosed));
     }
 
-    private void upsert(Long etfId, LocalDate priceDate, Consumer<EtfPrice> update, Supplier<EtfPrice> create) {
+    void upsert(Long etfId, LocalDate priceDate, Consumer<EtfPrice> update, Supplier<EtfPrice> create) {
         try {
             writeTransaction.insertOrUpdate(etfId, priceDate, update, create);
         } catch (DataIntegrityViolationException exception) {

@@ -7,6 +7,7 @@ import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import com.muffin.user.domain.enums.UserStatus;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -43,15 +44,18 @@ class UserAssetRepositoryTest {
         suspended.suspend();
         userRepository.flush();
 
-        userAssetRepository.saveAllAndFlush(Set.of(
+        List<UserAsset> savedAssets = userAssetRepository.saveAllAndFlush(List.of(
                 UserAsset.create(active.getUserId(), 1_000_000L),
                 UserAsset.create(withdrawn.getUserId(), 1_000_000L),
                 UserAsset.create(suspended.getUserId(), 1_000_000L)));
+        LocalDateTime cutoff = savedAssets.stream()
+                .map(UserAsset::getCreatedAt)
+                .max(LocalDateTime::compareTo)
+                .orElseThrow()
+                .plusSeconds(1);
 
         Slice<UserAsset> result = userAssetRepository.findByCreatedAtBeforeAndUserStatus(
-                LocalDateTime.now().plusMinutes(1),
-                UserStatus.ACTIVE,
-                PageRequest.of(0, 500, Sort.by("id").ascending()));
+                cutoff, UserStatus.ACTIVE, PageRequest.of(0, 500, Sort.by("id").ascending()));
 
         Set<Long> userIds =
                 result.getContent().stream().map(UserAsset::getUserId).collect(Collectors.toSet());
