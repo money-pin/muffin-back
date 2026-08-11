@@ -47,4 +47,22 @@ public interface NewsRepository extends JpaRepository<News, Long> {
             @Param("startInclusive") LocalDateTime startInclusive,
             @Param("endExclusive") LocalDateTime endExclusive,
             Pageable pageable);
+
+    @Query(
+            """
+            SELECT n
+            FROM News n
+            WHERE n.status = :status
+              AND n.publishedAt >= :startInclusive
+              AND n.publishedAt < :endExclusive
+              AND n.deletedAt IS NULL
+              AND n.summary IS NOT NULL
+              AND n.content IS NOT NULL
+            ORDER BY n.publishedAt DESC
+            """)
+    List<News> findReconstructedQuizCandidates(
+            @Param("status") NewsStatus status,
+            @Param("startInclusive") LocalDateTime startInclusive,
+            @Param("endExclusive") LocalDateTime endExclusive,
+            Pageable pageable);
 }

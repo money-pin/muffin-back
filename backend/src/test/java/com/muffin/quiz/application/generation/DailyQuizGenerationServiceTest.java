@@ -130,6 +130,46 @@ class DailyQuizGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("해설카드가 있는 뉴스가 3개 미만이면 재구성 완료 뉴스로 부족한 후보를 보충한다")
+    void generate_supplementsSourceNewsWithReconstructedNewsWhenExplanationCardsAreNotEnough() {
+        List<News> explanationCandidates = List.of(
+                pendingNews(1L, 1L, LocalDateTime.of(2026, 7, 19, 12, 0), "뉴스1 본문", 3),
+                pendingNews(2L, 2L, LocalDateTime.of(2026, 7, 19, 11, 0), "뉴스2 본문", 2));
+        List<News> reconstructedCandidates = List.of(
+                explanationCandidates.get(0),
+                explanationCandidates.get(1),
+                pendingNews(3L, 3L, LocalDateTime.of(2026, 7, 19, 10, 0), "뉴스3 본문", 1),
+                pendingNews(4L, 1L, LocalDateTime.of(2026, 7, 19, 9, 0), "뉴스4 본문", 1));
+
+        when(quizSetRepository.findByQuizDate(QUIZ_DATE)).thenReturn(Optional.empty());
+        when(newsRepository.findQuizCandidates(
+                        NewsStatus.PENDING,
+                        NewsExplanationStatus.DONE,
+                        QUIZ_DATE.atStartOfDay(),
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 15)))
+                .thenReturn(explanationCandidates);
+        when(newsRepository.findReconstructedQuizCandidates(
+                        NewsStatus.PENDING,
+                        QUIZ_DATE.atStartOfDay(),
+                        QUIZ_DATE.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, 15)))
+                .thenReturn(reconstructedCandidates);
+        when(dailyQuizGenerator.generate(any()))
+                .thenReturn(new DailyQuizGenerationResult(
+                        List.of(question(1, 1L, "뉴스1 본문"), question(2, 2L, "뉴스2 본문"), question(3, 3L, "뉴스3 본문"))));
+
+        generationService.generate(QUIZ_DATE);
+
+        ArgumentCaptor<DailyQuizGenerationRequest> requestCaptor =
+                ArgumentCaptor.forClass(DailyQuizGenerationRequest.class);
+        verify(dailyQuizGenerator).generate(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().newsSources())
+                .extracting(DailyQuizNewsSource::newsId)
+                .containsExactly(1L, 2L, 3L);
+    }
+
+    @Test
     @DisplayName("퀴즈 출처 뉴스는 최신순만 보지 않고 카테고리 다양성과 용어 매핑 수를 기준으로 3개를 고른다")
     void generate_selectsSourceNewsByCategoryDiversityAndTermCount() {
         List<News> candidates = List.of(
