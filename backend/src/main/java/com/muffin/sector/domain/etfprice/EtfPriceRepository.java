@@ -1,9 +1,11 @@
 package com.muffin.sector.domain.etfprice;
 
+import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,4 +20,9 @@ public interface EtfPriceRepository extends JpaRepository<EtfPrice, Long> {
     LocalDate findLatestPriceDateBefore(@Param("date") LocalDate date);
 
     Optional<EtfPrice> findByEtfIdAndPriceDate(Long etfId, LocalDate priceDate);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from EtfPrice e where e.etfId = :etfId and e.priceDate = :priceDate")
+    Optional<EtfPrice> findByEtfIdAndPriceDateForUpdate(
+            @Param("etfId") Long etfId, @Param("priceDate") LocalDate priceDate);
 }
