@@ -88,14 +88,14 @@ class BatchJobMetricsTest {
         metrics.record(BatchJob.SETTLEMENT, BatchTrigger.SCHEDULER, BatchOutcome.SKIPPED, 12);
 
         Timer eventTimer = registry.find(BatchJobMetrics.DURATION_METRIC)
-                .tags("job", "settlement", "trigger", "event", "outcome", "success")
+                .tags("batch_job", "settlement", "trigger", "event", "outcome", "success")
                 .timer();
         assertThat(eventTimer).isNotNull();
         assertThat(eventTimer.count()).isEqualTo(1);
         assertThat(eventTimer.totalTime(TimeUnit.MILLISECONDS)).isEqualTo(1_240);
 
         assertThat(registry.find(BatchJobMetrics.DURATION_METRIC)
-                        .tags("job", "settlement", "trigger", "scheduler", "outcome", "skipped")
+                        .tags("batch_job", "settlement", "trigger", "scheduler", "outcome", "skipped")
                         .timer())
                 .isNotNull();
     }
@@ -106,7 +106,7 @@ class BatchJobMetricsTest {
 
     private static double lastSuccess(MeterRegistry registry, BatchJob job) {
         Gauge gauge = registry.find(BatchJobMetrics.LAST_SUCCESS_METRIC)
-                .tag("job", job.code())
+                .tag("batch_job", job.code())
                 .gauge();
         assertThat(gauge).isNotNull();
         return gauge.value();

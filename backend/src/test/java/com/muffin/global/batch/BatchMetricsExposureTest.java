@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,8 +41,30 @@ class BatchMetricsExposureTest {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body())
                 .contains("muffin_batch_job_last_success_timestamp_seconds")
-                .contains("job=\"settlement\"")
+                .contains("batch_job=\"settlement\"")
                 .contains("muffin_batch_job_duration_seconds_count");
+    }
+
+    /**
+     * 잡 이름 라벨이 {@code job}으로 되돌아가면 수집기가 붙이는 {@code job="muffin-backend"}와 충돌해, 프로메테우스가 앱 쪽 값을
+     * {@code exported_job}으로 밀어낸다. 대시보드와 알림 룰의 라벨 셀렉터가 통째로 빗나가는데 앱은 멀쩡히 200을 주므로, 렌더링된 본문에서 직접 막는다.
+     */
+    @Test
+    @DisplayName("배치 지표는 예약 라벨인 job 대신 batch_job으로 잡 이름을 내보낸다")
+    void prometheusEndpoint_doesNotEmitReservedJobLabel() throws Exception {
+        metrics.record(BatchJob.SETTLEMENT, BatchTrigger.SCHEDULER, BatchOutcome.SUCCESS, 1_240);
+
+        List<String> batchSamples = get("/actuator/prometheus")
+                .body()
+                .lines()
+                .filter(line -> line.startsWith("muffin_batch_"))
+                .toList();
+
+        assertThat(batchSamples).isNotEmpty();
+        assertThat(batchSamples).allSatisfy(line -> assertThat(line)
+                .as("잡 이름은 batch_job으로만 나가야 한다")
+                .contains("batch_job=\"")
+                .doesNotContainPattern("[{,]job=\""));
     }
 
     @Test
