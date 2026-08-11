@@ -273,7 +273,7 @@
       "id": 4,
       "type": "timeseries",
       "title": "결과별 실행 추이",
-      "description": "failure가 보이면 로그 패널에서 같은 시각을 본다. deferred는 '할 일이 있는데 선행 조건이 안 갖춰져 못 한 것'이라 성공 시각을 갱신하지 않는다. 계속 쌓이면 결국 위쪽 경과시간이 빨개진다.",
+      "description": "failure가 보이면 로그 패널에서 같은 시각을 본다. deferred는 '할 일이 있는데 선행 조건이 안 갖춰져 못 한 것'이라 성공 시각을 갱신하지 않는다. 계속 쌓이면 결국 위쪽 경과시간이 빨개진다. increase()는 창 경계를 외삽하므로 실행 1회를 1.2처럼 낸다. 실행 횟수로 읽는 패널이라 소수점을 감춘다(값 자체는 근사치다).",
       "datasource": {
         "type": "prometheus",
         "uid": "${prom}"
@@ -295,7 +295,8 @@
               "mode": "normal",
               "group": "A"
             }
-          }
+          },
+          "decimals": 0
         },
         "overrides": [
           {

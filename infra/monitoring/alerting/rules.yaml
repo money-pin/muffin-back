@@ -2,8 +2,13 @@
 #
 # 자동 반영되지 않는다. Grafana에 직접 올려야 알림이 된다.
 #
-#   Alerting → Alert rules → Import alert rules → "Prometheus YAML file"
-#   → 이 파일 업로드 → 대상 폴더 Muffin (대문자 M) → Import
+#   1) Alerting → Contact points → Add contact point (Discord, 웹훅 URL) → Test로 도달 확인
+#   2) Alerting → Notification policies → Default policy의 컨택트 포인트를 그것으로 지정
+#   3) Alerting → Alert rules → Import alert rules → "Prometheus YAML file"
+#      → 이 파일 업로드 → 대상 폴더 Muffin (대문자 M) → Import
+#
+# 1~2번을 건너뛰면 룰은 정상으로 발화하는데 알림은 아무 데도 가지 않는다. 이 파일에는
+# severity 라벨만 있고 그것을 디스코드로 보내는 연결은 Grafana 계정 안에만 있다.
 #
 # 올린 뒤 반드시 한 곳을 손본다. importer가 모든 룰의 "데이터 없음" 상태를
 # Normal로 넣는데, "앱을 긁을 수 없음"만 Alerting이어야 한다.
@@ -134,6 +139,39 @@ groups:
             앱도 못 붙는 상태인지 서비스로 확인하세요. 수집 계정만 막힌 것이라면
             MAX_USER_CONNECTIONS(3) 소진이나 계정 문제입니다.
 
+      # 위 "앱을 긁을 수 없음"은 앱 타깃 하나만 본다. Alloy는 그 외에 mysqld-exporter,
+      # 호스트, CloudWatch exporter를 더 긁는다. 그중 하나가 죽으면 그 타깃을 쓰는 룰이
+      # 통째로 침묵한다(지표가 0이 되는 게 아니라 시계열이 사라지고, 데이터 없음은 Normal이다).
+      # 예를 들어 mysqld-exporter 컨테이너가 죽으면 "DB에 연결할 수 없음"이 조용해진다.
+      #
+      # 15분인 이유: CloudWatch 스크레이프 간격이 5분이라 짧게 잡으면 한 번 밀린 것으로도 뜬다.
+      - alert: 보조 수집 타깃을 긁을 수 없음
+        expr: up{job!="muffin-backend"} < 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.job }} 수집이 15분 넘게 끊겼습니다'
+          description: >-
+            이 타깃을 쓰는 룰이 침묵 상태입니다.
+            박스에서 sudo docker compose ps 로 컨테이너 상태를 먼저 확인하세요.
+
+      # 위 룰이 못 잡는 다른 실패 모드. CloudWatch exporter는 IAM 권한이 없거나 태그가
+      # 안 맞으면 오류 없이 빈 결과를 반환한다. 스크레이프는 성공이라 up은 계속 1인데
+      # 지표만 없다. 그러면 RDS 관련 룰 둘이 조용히 무감시가 된다.
+      # absent()는 지표가 통째로 없을 때만 1이므로 이 상황을 정확히 짚는다.
+      - alert: RDS 인스턴스 지표가 오지 않음
+        expr: absent(aws_rds_freeable_memory_average)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: RDS CloudWatch 지표가 30분 넘게 들어오지 않았습니다
+          description: >-
+            RDS 여유 메모리·스토리지 룰이 무감시 상태입니다.
+            EC2 역할의 cloudwatch:GetMetricData 권한과 RDS의 Project=muffin 태그를 확인하세요.
+            박스에서 sudo docker logs muffin-alloy --tail 50 | grep -i cloudwatch 로 오류를 봅니다.
+
   # ---------------------------------------------------------------------------
   # 자원: 지금 당장은 아니지만 두면 반드시 터지는 것들. 서서히 줄어드는 자원만 넣는다.
   # ---------------------------------------------------------------------------
@@ -155,6 +193,20 @@ groups:
 
       # db.t3.micro는 1GB뿐이다. 여유가 줄면 버퍼풀 히트율이 떨어지고 모든 쿼리가
       # 느려진다. 앱이 아니라 DB가 원인인 지연을 여기서 먼저 안다. 150MB(157286400).
+      # 할당량 20GB. 다 차면 RDS가 쓰기를 거부하고 그 시점에는 손쓸 시간이 없다(스토리지
+      # 확장은 즉시 끝나지 않는다). 4GB(20%)에서 미리 알린다. 지표는 이미 수집하고 있었는데
+      # 쓰는 곳이 없어 코드 리뷰에서 잡혔다.
+      - alert: RDS 스토리지 여유 부족
+        expr: aws_rds_free_storage_space_average < 4294967296
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: RDS 여유 스토리지가 4GB 아래로 내려갔습니다
+          description: >-
+            쌓이기만 하는 테이블(뉴스 본문, 로그성 데이터)의 보존 기간부터 확인하세요.
+            할당량은 20GB이고 확장은 즉시 끝나지 않으므로 다 차기 전에 움직여야 합니다.
+
       - alert: RDS 여유 메모리 부족
         expr: aws_rds_freeable_memory_average < 157286400
         for: 15m

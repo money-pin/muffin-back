@@ -708,7 +708,7 @@
     {
       "id": 105,
       "type": "row",
-      "title": "처리량 · 포화점",
+      "title": "처리량",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -729,7 +729,7 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 25
       },
@@ -848,84 +848,6 @@
           "editorMode": "code",
           "legendFormat": "TPS x 평균응답시간 (법칙 유도)",
           "expr": "sum(rate(http_server_requests_seconds_sum{application=\"muffin\"}[$__rate_interval]))"
-        }
-      ]
-    },
-    {
-      "id": 19,
-      "type": "xychart",
-      "title": "TPS 곡선 (동시 처리 수 대비 처리량)",
-      "description": "가로축이 동시 처리 수, 세로축이 TPS다. 점이 왼쪽 아래에서 우상향하다가 평평해지는 지점이 포화점(Saturation Point)이다.\n\n주의: 운영 트래픽만으로는 이 곡선이 안 그려진다. 부하가 포화 근처까지 올라가야 곡선이 되는데, 지금 운영 RPS는 0에 가까워 점이 원점 부근에만 뭉친다. 이 패널이 값을 하는 시점은 부하테스트다(k6 등으로 동시 사용자를 단계적으로 올리며 관측). 그때까지는 '아직 한계 근처에 가본 적이 없다'는 사실을 보여주는 패널이다.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${prom}"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 25
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "show": "points",
-            "pointSize": {
-              "fixed": 5
-            }
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "mapping": "manual",
-        "seriesMapping": "manual",
-        "series": [
-          {
-            "name": "TPS 곡선",
-            "x": "동시 처리 수",
-            "y": "TPS"
-          }
-        ],
-        "tooltip": {
-          "mode": "single"
-        },
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        }
-      },
-      "transformations": [
-        {
-          "id": "joinByField",
-          "options": {
-            "byField": "Time",
-            "mode": "outer"
-          }
-        }
-      ],
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${prom}"
-          },
-          "editorMode": "code",
-          "legendFormat": "동시 처리 수",
-          "expr": "sum(http_server_requests_active_seconds_gcount{application=\"muffin\"})"
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${prom}"
-          },
-          "editorMode": "code",
-          "legendFormat": "TPS",
-          "expr": "sum(rate(http_server_requests_seconds_count{application=\"muffin\"}[$__rate_interval]))"
         }
       ]
     },

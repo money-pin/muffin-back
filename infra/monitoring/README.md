@@ -81,7 +81,7 @@ aws_rds_freeable_memory_average                   # RDS (인스턴스 지표, 5�
 | 디렉터리 | 내용 |
 | --- | --- |
 | `dashboards/` | Grafana 대시보드 정의 3개(배치 / API·앱 / DB). Grafana가 대시보드를 저장하는 JSON 형식 그대로다 |
-| `alerting/` | 알림 룰 6개(배치 침묵, 앱 다운, DB 끊김, 디스크·메모리 여유). Prometheus 규칙 파일 형식이라 Grafana UI에서 그대로 import된다 |
+| `alerting/` | 알림 룰 9개(배치 침묵, 앱·수집기 다운, DB 끊김, 디스크·메모리·스토리지 여유). Prometheus 규칙 파일 형식이라 Grafana UI에서 그대로 import된다 |
 
 **이 파일들은 설계도지 동작하는 물건이 아니다.** Grafana Cloud에 올려야 실제 화면과 알림이 된다. **레포와 Grafana Cloud 사이에 자동 연결은 없다**(CD는 앱 이미지만 배포한다). 올리고 고치는 일은 관측 담당자가 한다.
 

@@ -169,7 +169,7 @@
             "uid": "${prom}"
           },
           "editorMode": "code",
-          "expr": "1 - (rate(mysql_global_status_innodb_buffer_pool_reads[$__rate_interval]) / clamp_min(rate(mysql_global_status_innodb_buffer_pool_read_requests[$__rate_interval]), 1))",
+          "expr": "1 - (rate(mysql_global_status_innodb_buffer_pool_reads[$__rate_interval]) / clamp_min(rate(mysql_global_status_innodb_buffer_pool_read_requests[$__rate_interval]), 0.0001))",
           "legendFormat": "히트율"
         }
       ]
@@ -882,7 +882,7 @@
           },
           "editorMode": "code",
           "legendFormat": "획득 대기(평균)",
-          "expr": "rate(hikaricp_connections_acquire_seconds_sum{application=\"muffin\"}[$__rate_interval]) / clamp_min(rate(hikaricp_connections_acquire_seconds_count{application=\"muffin\"}[$__rate_interval]), 1)"
+          "expr": "rate(hikaricp_connections_acquire_seconds_sum{application=\"muffin\"}[$__rate_interval]) / clamp_min(rate(hikaricp_connections_acquire_seconds_count{application=\"muffin\"}[$__rate_interval]), 0.0001)"
         },
         {
           "refId": "B",
@@ -892,7 +892,7 @@
           },
           "editorMode": "code",
           "legendFormat": "점유 시간(평균)",
-          "expr": "rate(hikaricp_connections_usage_seconds_sum{application=\"muffin\"}[$__rate_interval]) / clamp_min(rate(hikaricp_connections_usage_seconds_count{application=\"muffin\"}[$__rate_interval]), 1)"
+          "expr": "rate(hikaricp_connections_usage_seconds_sum{application=\"muffin\"}[$__rate_interval]) / clamp_min(rate(hikaricp_connections_usage_seconds_count{application=\"muffin\"}[$__rate_interval]), 0.0001)"
         }
       ]
     },
