@@ -66,8 +66,8 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
         6. 정답은 경제·금융 학습에 의미 있는 용어명, 지표명, 제도명, 상품명, 개념명 또는 뉴스의 경제적 의미를 담은 구체 표현이어야 한다.
         7. 정답은 지나치게 넓은 추상어, 정답을 풀어쓴 설명구, 단순 상태 변화 표현이 아니어야 한다.
         8. 해설카드의 key_term, title, content를 우선 참고하되, 뉴스 본문과 함께 판단한다.
-        9. source_sentence는 문항의 근거가 되는 해설카드 content 또는 뉴스 본문 문장 그대로 쓴다.
-        10. 정답과 explanation은 해설카드 content 또는 뉴스 본문 전체 맥락에서 자연스럽게 도출되어야 한다.
+        9. source_sentence는 related_news_title에 해당하는 뉴스의 해설카드 content 또는 뉴스 본문 문장 그대로 쓴다.
+        10. 정답과 explanation은 related_news_title에 해당하는 뉴스의 해설카드 content 또는 뉴스 본문 전체 맥락에서 자연스럽게 도출되어야 한다.
         11. question_text에는 정답 선택지 문구를 그대로 쓰지 않는다.
         12. "오늘 뉴스에 나온", "본문에 따르면"처럼 본문을 읽었다는 전제 표현은 쓰지 않는다.
         13. explanation은 source_sentence를 반복하지 말고, 정답의 의미와 뉴스 맥락을 3~4문장으로 설명한다.
@@ -85,7 +85,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
         3. 단순 기사 사실 암기보다 뉴스 속 개념, 원인·결과, 영향, 위험, 제도·지표의 역할을 묻는다.
         4. 날짜·기간·금액·비율 같은 숫자 자체를 맞히게 하지 않는다.
         5. 투자 판단, 의견, 예측, 섹터 선택, 부정형("아닌 것은?") 문항은 금지한다.
-        6. 정답은 rewritten_body 전체 맥락에서 자연스럽게 도출되는 용어명, 지표명, 제도명, 상품명, 개념명 또는 뉴스의 경제적 의미를 담은 구체 표현이어야 한다.
+        6. 정답은 related_news_title에 해당하는 뉴스의 rewritten_body 전체 맥락에서 자연스럽게 도출되는 용어명, 지표명, 제도명, 상품명, 개념명 또는 뉴스의 경제적 의미를 담은 구체 표현이어야 한다.
         7. 정답은 지나치게 넓은 추상어, 정답을 풀어쓴 설명구, 단순 상태 변화 표현이 아니어야 한다.
         8. source_sentence는 뉴스 본문 문장 그대로 쓴다.
         9. question_text에는 정답 선택지 문구를 그대로 쓰지 않는다.
@@ -224,8 +224,8 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 ? "source_sentence는 rewritten_body 안에 실제로 존재하는 문장 그대로 작성한다."
                 : "source_sentence는 explanation_cards.content 또는 rewritten_body 안에 실제로 존재하는 문장 그대로 작성한다.";
         String answerDerivationRule = fallbackAttempt
-                ? "정답과 explanation은 source_sentence 한 문장에만 갇히지 않고, rewritten_body 전체 맥락에서 자연스럽게 도출 가능해야 한다."
-                : "정답과 explanation은 source_sentence 한 문장에만 갇히지 않고, 해설카드 content 또는 뉴스 본문 전체 맥락에서 자연스럽게 도출 가능해야 한다.";
+                ? "정답과 explanation은 source_sentence 한 문장에만 갇히지 않고, related_news_title에 해당하는 뉴스의 rewritten_body 전체 맥락에서 자연스럽게 도출 가능해야 한다."
+                : "정답과 explanation은 source_sentence 한 문장에만 갇히지 않고, related_news_title에 해당하는 뉴스의 해설카드 content 또는 뉴스 본문 전체 맥락에서 자연스럽게 도출 가능해야 한다.";
         String sourceSentenceDescription =
                 fallbackAttempt ? "본문에서 정답의 근거가 된 문장 원문 그대로" : "해설카드 또는 본문에서 정답의 근거가 된 문장 원문 그대로";
         return """
@@ -302,7 +302,7 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                     rewritten_body를 읽고 학습한 사용자가 경제·금융 의미를 이해했는지 확인하는 문항으로 작성하라.
                     날짜·기간·금액·비율 같은 숫자 자체를 맞히게 하지 말고, 그 변화의 의미, 원인·결과, 영향, 위험, 제도·지표의 역할을 묻는다.
                     source_sentence는 반드시 rewritten_body 안에 실제로 존재하는 문장 그대로 써라.
-                    정답과 explanation은 source_sentence 한 문장에만 갇히지 않고, rewritten_body 전체 맥락에서 자연스럽게 도출 가능해야 한다.
+                    정답과 explanation은 source_sentence 한 문장에만 갇히지 않고, related_news_title에 해당하는 뉴스의 rewritten_body 전체 맥락에서 자연스럽게 도출 가능해야 한다.
                     출처 전제 표현, 부정형, 투자 판단, 숫자 암기형, 숫자만 바꾼 선택지는 금지한다.
                     세 문항의 question_topic은 서로 다르게 작성하고, 같은 용어 또는 같은 개념을 반복하지 마라.
                     question_text에는 정답 선택지 문구를 그대로 쓰지 마라.
@@ -329,10 +329,10 @@ public class OpenAiDailyQuizGenerator implements DailyQuizGenerator {
                 정책·제도·국제 이슈 문항은 단순 목적 확인보다 경제적 의미나 시장 영향으로 연결해 묻는다.
                 출처 전제 표현, 부정형, 투자 판단, 숫자 암기형, 숫자만 바꾼 선택지는 금지한다.
                 세 문항의 question_topic은 서로 다르게 작성하고, 같은 용어 또는 같은 개념을 반복하지 마라.
-                정답과 explanation은 source_sentence 한 문장에만 갇히지 않고, 입력 전체 맥락에서 자연스럽게 도출 가능해야 한다.
+                정답과 explanation은 source_sentence 한 문장에만 갇히지 않고, related_news_title에 해당하는 뉴스의 입력 맥락에서 자연스럽게 도출 가능해야 한다.
                 오답은 source_sentence에 없어도 되지만, 정답과 같은 세부 유형의 그럴듯한 용어·지표·제도·개념으로 작성하라.
                 오답에는 다른 문항의 정답 후보나 question_topic을 재사용하지 마라.
-                source_sentence는 해설카드 content 또는 본문 문장 그대로 쓴다.
+                source_sentence는 related_news_title에 해당하는 뉴스의 해설카드 content 또는 본문 문장 그대로 쓴다.
                 explanation은 source_sentence를 그대로 반복하지 말고, 정답의 의미와 뉴스 맥락을 3~4문장으로 풀어써라.
                 """;
     }
