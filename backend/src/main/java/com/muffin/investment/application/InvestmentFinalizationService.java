@@ -3,6 +3,7 @@ package com.muffin.investment.application;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
 import com.muffin.sector.application.TradingCalendarService;
+import com.muffin.user.domain.enums.UserStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,7 @@ public class InvestmentFinalizationService {
                 PageRequest.of(0, FINALIZATION_CHUNK_SIZE, Sort.by("id").ascending());
         Slice<UserAsset> targets;
         do {
-            targets = userAssetRepository.findByCreatedAtBefore(cutoff, pageable);
+            targets = userAssetRepository.findByCreatedAtBeforeAndUserStatus(cutoff, UserStatus.ACTIVE, pageable);
             targetCount += targets.getNumberOfElements();
             for (UserAsset target : targets.getContent()) {
                 try {
