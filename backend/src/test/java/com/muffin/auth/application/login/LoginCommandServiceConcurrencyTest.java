@@ -85,18 +85,22 @@ class LoginCommandServiceConcurrencyTest {
                 })
                 .toList();
 
-        List<Future<Void>> futures = new ArrayList<>();
-        for (Callable<Void> task : tasks) {
-            futures.add(executor.submit(task));
-        }
+        try {
+            List<Future<Void>> futures = new ArrayList<>();
+            for (Callable<Void> task : tasks) {
+                futures.add(executor.submit(task));
+            }
 
-        ready.await();
-        start.countDown();
+            ready.await();
+            start.countDown();
 
-        for (Future<Void> future : futures) {
-            future.get(10, TimeUnit.SECONDS);
+            for (Future<Void> future : futures) {
+                future.get(10, TimeUnit.SECONDS);
+            }
+        } finally {
+            executor.shutdownNow();
+            executor.awaitTermination(10, TimeUnit.SECONDS);
         }
-        executor.shutdown();
 
         Auth reloaded =
                 authRepository.findByProviderAndEmail(AuthProvider.LOCAL, EMAIL).orElseThrow();
