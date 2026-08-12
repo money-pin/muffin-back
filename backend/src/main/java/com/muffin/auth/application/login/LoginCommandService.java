@@ -39,7 +39,7 @@ public class LoginCommandService {
     public TokenPair loginLocal(String email, String rawPassword) {
         // 가입되지 않은 이메일과 비밀번호 불일치를 같은 메시지로 응답해 계정 존재 여부가 노출되지 않게 한다.
         Auth auth = authRepository
-                .findByProviderAndEmail(AuthProvider.LOCAL, email)
+                .findByProviderAndEmailForUpdate(AuthProvider.LOCAL, email)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
         if (auth.isLoginLocked()) {
