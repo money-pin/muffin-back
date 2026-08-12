@@ -9,6 +9,7 @@ import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
 import com.muffin.sector.application.TradingCalendarService;
 import com.muffin.sector.application.TradingCalendarService.TradingCalendar;
+import com.muffin.user.domain.enums.UserStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -56,7 +57,10 @@ class InvestmentFinalizationServiceTest {
 
         assertEquals(false, result.tradingDay());
         verify(userAssetRepository, never())
-                .findByCreatedAtBefore(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+                .findByCreatedAtBeforeAndUserStatus(
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.eq(UserStatus.ACTIVE),
+                        org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -67,7 +71,8 @@ class InvestmentFinalizationServiceTest {
         UserAsset asset = UserAsset.create(1L, 1_000_000L);
         ReflectionTestUtils.setField(asset, "id", 10L);
         var pageRequest = PageRequest.of(0, 500, Sort.by("id").ascending());
-        when(userAssetRepository.findByCreatedAtBefore(INVEST_DATE.plusDays(1).atStartOfDay(), pageRequest))
+        when(userAssetRepository.findByCreatedAtBeforeAndUserStatus(
+                        INVEST_DATE.plusDays(1).atStartOfDay(), UserStatus.ACTIVE, pageRequest))
                 .thenReturn(new SliceImpl<>(List.of(asset), pageRequest, false));
 
         InvestmentFinalizationResult result = service.finalizeInvestments(INVEST_DATE, FINALIZED_AT);
@@ -88,9 +93,11 @@ class InvestmentFinalizationServiceTest {
         ReflectionTestUtils.setField(second, "id", 20L);
         var firstPage = PageRequest.of(0, 500, Sort.by("id").ascending());
         var secondPage = firstPage.next();
-        when(userAssetRepository.findByCreatedAtBefore(INVEST_DATE.plusDays(1).atStartOfDay(), firstPage))
+        when(userAssetRepository.findByCreatedAtBeforeAndUserStatus(
+                        INVEST_DATE.plusDays(1).atStartOfDay(), UserStatus.ACTIVE, firstPage))
                 .thenReturn(new SliceImpl<>(List.of(first), firstPage, true));
-        when(userAssetRepository.findByCreatedAtBefore(INVEST_DATE.plusDays(1).atStartOfDay(), secondPage))
+        when(userAssetRepository.findByCreatedAtBeforeAndUserStatus(
+                        INVEST_DATE.plusDays(1).atStartOfDay(), UserStatus.ACTIVE, secondPage))
                 .thenReturn(new SliceImpl<>(List.of(second), secondPage, false));
 
         InvestmentFinalizationResult result = service.finalizeInvestments(INVEST_DATE, FINALIZED_AT);

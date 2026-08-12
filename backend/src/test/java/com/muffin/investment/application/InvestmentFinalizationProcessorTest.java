@@ -12,6 +12,8 @@ import com.muffin.investment.domain.investment.enums.InvestmentStatus;
 import com.muffin.investment.domain.investment.enums.SettlementStatus;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
+import com.muffin.user.domain.User;
+import com.muffin.user.domain.UserRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -36,17 +38,24 @@ class InvestmentFinalizationProcessorTest {
     private UserAssetRepository userAssetRepository;
 
     @Mock
+    private UserRepository userRepository;
+
+    @Mock
     private InvestmentRepository investmentRepository;
 
     private InvestmentFinalizationProcessor processor;
     private UserAsset asset;
+    private User user;
 
     @BeforeEach
     void setUp() {
-        processor = new InvestmentFinalizationProcessor(userAssetRepository, investmentRepository);
+        processor = new InvestmentFinalizationProcessor(userAssetRepository, userRepository, investmentRepository);
         asset = UserAsset.create(USER_ID, 1_000_000L);
         ReflectionTestUtils.setField(asset, "id", USER_ASSET_ID);
+        user = User.register(null, "finalization-user", "name", null);
+        ReflectionTestUtils.setField(user, "userId", USER_ID);
         when(userAssetRepository.findByIdForUpdate(USER_ASSET_ID)).thenReturn(Optional.of(asset));
+        when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
     }
 
     @Test
@@ -93,5 +102,17 @@ class InvestmentFinalizationProcessorTest {
 
         assertEquals(FINALIZED_AT, investment.getFinalizedAt());
         verify(investmentRepository, never()).save(investment);
+    }
+
+    @Test
+    @DisplayName("처리 전에 탈퇴한 사용자는 NO_INVEST를 생성하지 않는다")
+    void finalizeUser_skipsWithdrawnUser() {
+        user.withdraw();
+
+        processor.finalizeUser(USER_ASSET_ID, INVEST_DATE, FINALIZED_AT);
+
+        verify(investmentRepository, never())
+                .findWithSectorsForUpdate(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any());
+        verify(investmentRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 }

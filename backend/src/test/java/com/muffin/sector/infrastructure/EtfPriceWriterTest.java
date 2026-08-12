@@ -7,6 +7,7 @@ import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.EtfPriceRepository;
 import com.muffin.sector.domain.etfprice.PriceCollectionStatus;
 import java.time.LocalDate;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,11 +15,14 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @DataJpaTest
 @ActiveProfiles("test")
-@Import(EtfPriceWriter.class)
+@Import({EtfPriceWriter.class, EtfPriceWriteTransaction.class})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 class EtfPriceWriterTest {
 
     private static final Long ETF_ID = 1L;
@@ -29,6 +33,11 @@ class EtfPriceWriterTest {
 
     @Autowired
     private EtfPriceRepository etfPriceRepository;
+
+    @AfterEach
+    void tearDown() {
+        etfPriceRepository.deleteAll();
+    }
 
     @Test
     @DisplayName("기존 레코드가 없으면 시가만 있는 레코드를 새로 만든다")

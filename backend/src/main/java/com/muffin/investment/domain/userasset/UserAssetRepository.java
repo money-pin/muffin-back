@@ -1,5 +1,6 @@
 package com.muffin.investment.domain.userasset;
 
+import com.muffin.user.domain.enums.UserStatus;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -19,7 +20,12 @@ public interface UserAssetRepository extends JpaRepository<UserAsset, Long> {
     @Query("select ua from UserAsset ua where ua.userId = :userId")
     Optional<UserAsset> findByUserIdForUpdate(@Param("userId") Long userId);
 
-    Slice<UserAsset> findByCreatedAtBefore(LocalDateTime cutoff, Pageable pageable);
+    @Query("select ua from UserAsset ua "
+            + "where ua.createdAt < :cutoff "
+            + "and exists (select u.userId from User u "
+            + "where u.userId = ua.userId and u.status = :status)")
+    Slice<UserAsset> findByCreatedAtBeforeAndUserStatus(
+            @Param("cutoff") LocalDateTime cutoff, @Param("status") UserStatus status, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select ua from UserAsset ua where ua.id = :id")

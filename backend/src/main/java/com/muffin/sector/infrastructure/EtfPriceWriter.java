@@ -1,30 +1,26 @@
 package com.muffin.sector.infrastructure;
 
 import com.muffin.sector.domain.etfprice.EtfPrice;
-import com.muffin.sector.domain.etfprice.EtfPriceRepository;
 import com.muffin.sector.domain.etfprice.PriceCollectionStatus;
 import java.time.LocalDate;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * ETF 시세를 저장한다. 같은 (etfId, priceDate) 레코드가 있으면 갱신하고, 없으면 새로 만든다.
  *
- * <p>조회 후 저장하는 구조라 같은 (etfId, priceDate)에 대한 동시 호출은 경쟁할 수 있다. 새로 만들다가
- * {@code uk_etf_price_etf_price_date} 위반이 발생하면, 먼저 커밋된 행을 다시 조회해 그 위에 갱신한다.
+ * <p>같은 (etfId, priceDate)에 대한 변경은 행 잠금이 적용된 독립 트랜잭션에서 수행한다. 신규 행 생성이 경합해
+ * {@code uk_etf_price_etf_price_date} 위반이 발생하면 실패한 트랜잭션이 끝난 뒤 새 트랜잭션에서 먼저 커밋된 행을 갱신한다.
  */
 @Component
 @RequiredArgsConstructor
 public class EtfPriceWriter {
 
-    private final EtfPriceRepository etfPriceRepository;
+    private final EtfPriceWriteTransaction writeTransaction;
 
-    @Transactional
     public void writeOpen(Long etfId, LocalDate priceDate, Long startPrice) {
         upsert(
                 etfId,
@@ -33,7 +29,6 @@ public class EtfPriceWriter {
                 () -> EtfPrice.open(etfId, priceDate, startPrice));
     }
 
-    @Transactional
     public void writeClose(Long etfId, LocalDate priceDate, Long endPrice) {
         upsert(
                 etfId,
@@ -51,7 +46,6 @@ public class EtfPriceWriter {
      * `simple/price`는 호출 시점의 실시간가라 같은 날 다시 호출하면 다른 값이 온다. 09:00 기준가가 이후 재실행(다중
      * 인스턴스 동시 트리거 등)으로 바뀌는 것을 막기 위해, `FAILED` 등 미확정 상태일 때만 갱신을 허용한다.
      */
-    @Transactional
     public void writeBasePrice(Long etfId, LocalDate priceDate, Long price) {
         upsert(
                 etfId,
@@ -68,7 +62,6 @@ public class EtfPriceWriter {
         existing.recordClose(price);
     }
 
-    @Transactional
     public void markBaseFailed(Long etfId, LocalDate priceDate) {
         upsert(
                 etfId,
@@ -77,7 +70,6 @@ public class EtfPriceWriter {
                 () -> marked(etfId, priceDate, EtfPriceWriter::markBothFailed));
     }
 
-    @Transactional
     public void markBaseMarketClosed(Long etfId, LocalDate priceDate) {
         upsert(
                 etfId,
@@ -96,17 +88,14 @@ public class EtfPriceWriter {
         price.markCloseMarketClosed();
     }
 
-    @Transactional
     public void markOpenNoData(Long etfId, LocalDate priceDate) {
         upsert(etfId, priceDate, EtfPrice::markOpenNoData, () -> marked(etfId, priceDate, EtfPrice::markOpenNoData));
     }
 
-    @Transactional
     public void markOpenFailed(Long etfId, LocalDate priceDate) {
         upsert(etfId, priceDate, EtfPrice::markOpenFailed, () -> marked(etfId, priceDate, EtfPrice::markOpenFailed));
     }
 
-    @Transactional
     public void markOpenFinalMissing(Long etfId, LocalDate priceDate) {
         upsert(
                 etfId,
@@ -115,7 +104,6 @@ public class EtfPriceWriter {
                 () -> marked(etfId, priceDate, EtfPrice::markOpenFinalMissing));
     }
 
-    @Transactional
     public void markOpenMarketClosed(Long etfId, LocalDate priceDate) {
         upsert(
                 etfId,
@@ -124,17 +112,14 @@ public class EtfPriceWriter {
                 () -> marked(etfId, priceDate, EtfPrice::markOpenMarketClosed));
     }
 
-    @Transactional
     public void markCloseNoData(Long etfId, LocalDate priceDate) {
         upsert(etfId, priceDate, EtfPrice::markCloseNoData, () -> marked(etfId, priceDate, EtfPrice::markCloseNoData));
     }
 
-    @Transactional
     public void markCloseFailed(Long etfId, LocalDate priceDate) {
         upsert(etfId, priceDate, EtfPrice::markCloseFailed, () -> marked(etfId, priceDate, EtfPrice::markCloseFailed));
     }
 
-    @Transactional
     public void markCloseFinalMissing(Long etfId, LocalDate priceDate) {
         upsert(
                 etfId,
@@ -143,7 +128,6 @@ public class EtfPriceWriter {
                 () -> marked(etfId, priceDate, EtfPrice::markCloseFinalMissing));
     }
 
-    @Transactional
     public void markCloseMarketClosed(Long etfId, LocalDate priceDate) {
         upsert(
                 etfId,
@@ -152,19 +136,13 @@ public class EtfPriceWriter {
                 () -> marked(etfId, priceDate, EtfPrice::markCloseMarketClosed));
     }
 
-    private void upsert(Long etfId, LocalDate priceDate, Consumer<EtfPrice> update, Supplier<EtfPrice> create) {
-        Optional<EtfPrice> existing = etfPriceRepository.findByEtfIdAndPriceDate(etfId, priceDate);
-        if (existing.isPresent()) {
-            update.accept(existing.get());
-            return;
-        }
-
+    void upsert(Long etfId, LocalDate priceDate, Consumer<EtfPrice> update, Supplier<EtfPrice> create) {
         try {
-            etfPriceRepository.saveAndFlush(create.get());
-        } catch (DataIntegrityViolationException e) {
-            EtfPrice raceWinner =
-                    etfPriceRepository.findByEtfIdAndPriceDate(etfId, priceDate).orElseThrow(() -> e);
-            update.accept(raceWinner);
+            writeTransaction.insertOrUpdate(etfId, priceDate, update, create);
+        } catch (DataIntegrityViolationException exception) {
+            if (!writeTransaction.updateExisting(etfId, priceDate, update)) {
+                throw exception;
+            }
         }
     }
 

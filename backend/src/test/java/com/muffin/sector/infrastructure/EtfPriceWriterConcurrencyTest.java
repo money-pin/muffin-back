@@ -1,68 +1,135 @@
 package com.muffin.sector.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.muffin.sector.domain.etfprice.EtfPrice;
 import com.muffin.sector.domain.etfprice.EtfPriceRepository;
+import com.muffin.sector.domain.etfprice.PriceCollectionStatus;
 import java.time.LocalDate;
-import java.util.Optional;
-import org.junit.jupiter.api.BeforeEach;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
-/** {@code EtfPriceWriter}가 동시 저장 경쟁(유니크 제약 위반) 상황에서 복구하는지 리포지토리를 목킹해 검증한다. */
-@ExtendWith(MockitoExtension.class)
+@DataJpaTest
+@ActiveProfiles("test")
+@Import({EtfPriceWriter.class, EtfPriceWriteTransaction.class})
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 class EtfPriceWriterConcurrencyTest {
 
     private static final Long ETF_ID = 1L;
     private static final LocalDate PRICE_DATE = LocalDate.of(2026, 7, 10);
 
-    @Mock
-    private EtfPriceRepository etfPriceRepository;
-
+    @Autowired
     private EtfPriceWriter etfPriceWriter;
 
-    @BeforeEach
-    void setUp() {
-        etfPriceWriter = new EtfPriceWriter(etfPriceRepository);
+    @Autowired
+    private EtfPriceRepository etfPriceRepository;
+
+    @AfterEach
+    void tearDown() {
+        etfPriceRepository.deleteAll();
     }
 
     @Test
-    @DisplayName("새로 저장하려는 사이 다른 트랜잭션이 먼저 커밋되면, 예외 대신 그 레코드를 다시 조회해 갱신한다")
-    void writeOpen_recoversFromRaceCondition() {
-        EtfPrice raceWinner = EtfPrice.open(ETF_ID, PRICE_DATE, 9_000L);
-        when(etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE))
-                .thenReturn(Optional.empty())
-                .thenReturn(Optional.of(raceWinner));
-        when(etfPriceRepository.saveAndFlush(any(EtfPrice.class)))
-                .thenThrow(new DataIntegrityViolationException("uk_etf_price_etf_price_date"));
+    @DisplayName("두 작업이 없는 행을 함께 확인해도 유니크 키 경합을 복구한다")
+    void recoversUniqueKeyRace_afterBothTransactionsObserveMissingRow() throws Exception {
+        CountDownLatch readyToInsert = new CountDownLatch(2);
+        CountDownLatch insert = new CountDownLatch(1);
 
-        etfPriceWriter.writeOpen(ETF_ID, PRICE_DATE, 10_000L);
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            Future<?> open = executor.submit(() -> etfPriceWriter.upsert(
+                    ETF_ID,
+                    PRICE_DATE,
+                    existing -> existing.recordOpen(10_000L),
+                    () -> createAfterBothRead(
+                            readyToInsert, insert, () -> EtfPrice.open(ETF_ID, PRICE_DATE, 10_000L))));
+            Future<?> close = executor.submit(() -> etfPriceWriter.upsert(
+                    ETF_ID,
+                    PRICE_DATE,
+                    existing -> existing.recordClose(10_500L),
+                    () -> createAfterBothRead(
+                            readyToInsert, insert, () -> EtfPrice.create(ETF_ID, PRICE_DATE, null, 10_500L))));
 
-        assertEquals(10_000L, raceWinner.getStartPrice());
-        verify(etfPriceRepository, times(2)).findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE);
+            boolean bothObservedMissingRow = readyToInsert.await(3, TimeUnit.SECONDS);
+            insert.countDown();
+            assertTrue(bothObservedMissingRow);
+            open.get(5, TimeUnit.SECONDS);
+            close.get(5, TimeUnit.SECONDS);
+        }
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertEquals(1, etfPriceRepository.count());
+        assertEquals(10_000L, saved.getStartPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getStartPriceStatus());
+        assertEquals(10_500L, saved.getEndPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getEndPriceStatus());
     }
 
     @Test
-    @DisplayName("경쟁에서 진 뒤 재조회해도 레코드가 없으면 원래 예외를 다시 던진다")
-    void writeOpen_rethrowsOriginalException_whenRecoveryFindsNothing() {
-        when(etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE)).thenReturn(Optional.empty());
-        DataIntegrityViolationException original = new DataIntegrityViolationException("uk_etf_price_etf_price_date");
-        when(etfPriceRepository.saveAndFlush(any(EtfPrice.class))).thenThrow(original);
+    @DisplayName("기존 행의 시가와 종가를 동시에 갱신해도 두 값을 모두 보존한다")
+    void preservesBothValues_whenExistingRowIsUpdatedConcurrently() throws Exception {
+        etfPriceRepository.saveAndFlush(EtfPrice.pending(ETF_ID, PRICE_DATE));
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
 
-        DataIntegrityViolationException thrown = assertThrows(
-                DataIntegrityViolationException.class, () -> etfPriceWriter.writeOpen(ETF_ID, PRICE_DATE, 10_000L));
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            Future<?> open = executor.submit(
+                    () -> runTogether(ready, start, () -> etfPriceWriter.writeOpen(ETF_ID, PRICE_DATE, 10_000L)));
+            Future<?> close = executor.submit(
+                    () -> runTogether(ready, start, () -> etfPriceWriter.writeClose(ETF_ID, PRICE_DATE, 10_500L)));
 
-        assertSame(original, thrown);
+            boolean bothReady = ready.await(3, TimeUnit.SECONDS);
+            start.countDown();
+            assertTrue(bothReady);
+            open.get(5, TimeUnit.SECONDS);
+            close.get(5, TimeUnit.SECONDS);
+        }
+
+        EtfPrice saved =
+                etfPriceRepository.findByEtfIdAndPriceDate(ETF_ID, PRICE_DATE).orElseThrow();
+        assertEquals(1, etfPriceRepository.count());
+        assertEquals(10_000L, saved.getStartPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getStartPriceStatus());
+        assertEquals(10_500L, saved.getEndPrice());
+        assertEquals(PriceCollectionStatus.SUCCESS, saved.getEndPriceStatus());
+    }
+
+    private EtfPrice createAfterBothRead(
+            CountDownLatch readyToInsert, CountDownLatch insert, Supplier<EtfPrice> create) {
+        readyToInsert.countDown();
+        try {
+            insert.await();
+            return create.get();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("시세 insert 경합 대기 중 인터럽트가 발생했습니다.", exception);
+        }
+    }
+
+    private void runTogether(CountDownLatch ready, CountDownLatch start, Runnable action) {
+        ready.countDown();
+        try {
+            start.await();
+            action.run();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("동시성 테스트 대기 중 인터럽트가 발생했습니다.", exception);
+        }
     }
 }
