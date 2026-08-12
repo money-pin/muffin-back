@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ResponseEntity;
 
 @Tag(name = "Quiz", description = "오늘의 한입 퀴즈 API")
 public interface QuizApi {
@@ -39,7 +40,7 @@ public interface QuizApi {
             summary = "퀴즈 답안 제출 (QUIZ-02)",
             description = "사용자가 선택한 답안을 제출하고 정답 여부, 정답 선택지, 해설, 진행 상태를 반환한다. " + "이미 제출한 문항은 기존 제출 결과를 그대로 반환한다.")
     @ApiResponses({
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "답안 제출 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "답안 제출 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "400",
                 description = "해당 퀴즈 문항의 선택지가 아닙니다. (QUIZ_400_001)"),
@@ -56,7 +57,7 @@ public interface QuizApi {
                 responseCode = "409",
                 description = "온보딩을 먼저 완료해야 합니다. (USER_409_001)")
     })
-    ApiResponse<QuizAttemptResponse> submitAnswer(
+    ResponseEntity<ApiResponse<QuizAttemptResponse>> submitAnswer(
             @Parameter(hidden = true) Long userId,
             @Parameter(description = "답안을 제출할 퀴즈 문항 ID") Long quizId,
             QuizAttemptRequest request);

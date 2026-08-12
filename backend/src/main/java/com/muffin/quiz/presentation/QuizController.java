@@ -13,6 +13,8 @@ import com.muffin.quiz.presentation.dto.TodayQuizResponse;
 import com.muffin.quiz.presentation.swagger.QuizApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,11 +39,13 @@ public class QuizController implements QuizApi {
 
     @Override
     @PostMapping("/{quizId}/attempts")
-    public ApiResponse<QuizAttemptResponse> submitAnswer(
+    public ResponseEntity<ApiResponse<QuizAttemptResponse>> submitAnswer(
             @AuthenticationPrincipal Long userId,
             @PathVariable Long quizId,
             @Valid @RequestBody QuizAttemptRequest request) {
-        return ApiResponse.onSuccess(GeneralSuccessCode.OK, quizCommandService.submitAnswer(userId, quizId, request));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.onSuccess(
+                        GeneralSuccessCode.CREATED, quizCommandService.submitAnswer(userId, quizId, request)));
     }
 
     @Override

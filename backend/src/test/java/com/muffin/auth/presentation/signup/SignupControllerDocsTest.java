@@ -49,7 +49,7 @@ class SignupControllerDocsTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         "{\"email\":\"user@example.com\",\"password\":\"password1\",\"name\":\"홍길동\",\"termsAgreed\":true}"))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andDo(document(
                         "signup-local-success",
                         requestFields(
