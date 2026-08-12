@@ -30,7 +30,7 @@ public class NicknameController implements NicknameApi {
     private final NicknameCommandService nicknameCommandService;
 
     @Override
-    @GetMapping("/nickname/check")
+    @GetMapping("/nicknames/availability")
     public ApiResponse<NicknameCheckResponse> checkNickname(
             @AuthenticationPrincipal Long userId, @RequestParam @NotBlank String nickname) {
         boolean available = nicknameQueryService.isAvailable(nickname);
