@@ -40,9 +40,11 @@ public final class TermTextMatcher {
                 }
 
                 int end = start + normalizedKeyword.length() - 1;
-                matches.add(new TermTextMatch(
-                        normalizedContent.originalIndexes().get(start),
-                        normalizedContent.originalIndexes().get(end) + 1));
+                if (hasValidBoundary(normalizedContent.text(), normalizedKeyword, start, end)) {
+                    matches.add(new TermTextMatch(
+                            normalizedContent.originalIndexes().get(start),
+                            normalizedContent.originalIndexes().get(end) + 1));
+                }
                 fromIndex = start + normalizedKeyword.length();
             }
         }
@@ -98,6 +100,32 @@ public final class TermTextMatcher {
             }
         }
         return builder.toString();
+    }
+
+    private static boolean hasValidBoundary(String normalizedContent, String normalizedKeyword, int start, int end) {
+        if (!isAsciiAlphaNumericKeyword(normalizedKeyword)) {
+            return true;
+        }
+
+        return !isAsciiAlphaNumericAt(normalizedContent, start - 1)
+                && !isAsciiAlphaNumericAt(normalizedContent, end + 1);
+    }
+
+    private static boolean isAsciiAlphaNumericKeyword(String keyword) {
+        for (int i = 0; i < keyword.length(); i++) {
+            if (!isAsciiAlphaNumeric(keyword.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isAsciiAlphaNumericAt(String value, int index) {
+        return index >= 0 && index < value.length() && isAsciiAlphaNumeric(value.charAt(index));
+    }
+
+    private static boolean isAsciiAlphaNumeric(char ch) {
+        return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9');
     }
 
     private record NormalizedText(String text, List<Integer> originalIndexes) {}
