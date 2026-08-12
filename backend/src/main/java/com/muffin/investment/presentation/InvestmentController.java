@@ -63,7 +63,7 @@ public class InvestmentController implements InvestmentApi {
     }
 
     @Override
-    @GetMapping("/settlement/result")
+    @GetMapping("/settlements/latest")
     public ApiResponse<SettlementResultResponse> getSettlementResult(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, settlementQueryService.getRecentSettlementResult(userId));

@@ -43,7 +43,7 @@ class InvestmentSecurityIntegrationTest {
     @Test
     @DisplayName("정산 결과 API는 JWT 인증이 없으면 401을 반환한다")
     void settlementResult_requiresAuthentication() throws Exception {
-        mockMvc.perform(get("/api/investments/settlement/result")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/investments/settlements/latest")).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -51,7 +51,7 @@ class InvestmentSecurityIntegrationTest {
     void settlementResult_usesAuthenticatedUser() throws Exception {
         String bearer = "Bearer " + accessTokenProvider.issue(1L, "USER");
 
-        mockMvc.perform(get("/api/investments/settlement/result").header("Authorization", bearer))
+        mockMvc.perform(get("/api/investments/settlements/latest").header("Authorization", bearer))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.reason").value("NO_INVESTMENT"));
     }
