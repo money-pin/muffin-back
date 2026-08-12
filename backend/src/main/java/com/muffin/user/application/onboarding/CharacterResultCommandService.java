@@ -44,7 +44,7 @@ public class CharacterResultCommandService {
         user.assignCharacter(character.getCharacterId());
         user.completeOnboarding(request.firstQuestion(), request.secondQuestion(), request.thirdQuestion());
         // 온보딩 완료 직후 바로 홈으로 진입하므로 이 시점에 초기 자산을 지급한다. 여기서 실패해도
-        // /api/onboarding/complete(초기 자산 API)가 없는 경우에만 보정 지급한다(멱등).
+        // /api/onboarding/completion(초기 자산 API)가 없는 경우에만 보정 지급한다(멱등).
         onboardingCompletionService.ensureInitialAssetGranted(userId);
 
         return new CharacterResultResponse(

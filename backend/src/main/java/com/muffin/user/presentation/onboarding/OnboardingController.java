@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,7 +34,7 @@ public class OnboardingController implements OnboardingApi {
     }
 
     @Override
-    @PostMapping("/complete")
+    @PutMapping("/completion")
     public ApiResponse<OnboardingCompleteResponse> completeOnboarding(@AuthenticationPrincipal Long userId) {
         OnboardingCompleteResponse response = onboardingCompletionService.complete(userId);
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, response);

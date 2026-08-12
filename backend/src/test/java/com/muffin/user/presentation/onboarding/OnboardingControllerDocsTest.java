@@ -7,6 +7,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWit
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.muffin.global.apiPayload.handler.GeneralExceptionAdvice;
@@ -154,7 +155,7 @@ class OnboardingControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(stubCharacterResultService(), stub, restDocumentation);
 
-        mockMvc.perform(post("/api/onboarding/complete"))
+        mockMvc.perform(put("/api/onboarding/completion"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "onboarding-complete-success",
@@ -176,7 +177,7 @@ class OnboardingControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(stubCharacterResultService(), stub, restDocumentation);
 
-        mockMvc.perform(post("/api/onboarding/complete"))
+        mockMvc.perform(put("/api/onboarding/completion"))
                 .andExpect(status().isConflict())
                 .andDo(document(
                         "onboarding-complete-not-completed",

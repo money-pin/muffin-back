@@ -3,6 +3,7 @@ package com.muffin.user.presentation.onboarding;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -111,7 +112,7 @@ class OnboardingControllerTest {
     void complete_notCompleted_returns409() throws Exception {
         User user = createUser();
 
-        mockMvc.perform(post("/api/onboarding/complete").header("Authorization", bearerTokenFor(user.getUserId())))
+        mockMvc.perform(put("/api/onboarding/completion").header("Authorization", bearerTokenFor(user.getUserId())))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code", is("USER_409_001")));
     }
@@ -128,11 +129,11 @@ class OnboardingControllerTest {
                         .content("{\"muffin\":\"plain\",\"firstQuestion\":1,\"secondQuestion\":2,\"thirdQuestion\":3}"))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/api/onboarding/complete").header("Authorization", bearer))
+        mockMvc.perform(put("/api/onboarding/completion").header("Authorization", bearer))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.totalAsset", is(1_000_000)));
 
-        mockMvc.perform(post("/api/onboarding/complete").header("Authorization", bearer))
+        mockMvc.perform(put("/api/onboarding/completion").header("Authorization", bearer))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.totalAsset", is(1_000_000)));
 
