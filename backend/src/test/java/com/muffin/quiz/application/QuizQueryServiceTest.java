@@ -24,6 +24,7 @@ import com.muffin.quiz.presentation.dto.QuizResultResponse;
 import com.muffin.quiz.presentation.dto.TodayQuizResponse;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
+import com.muffin.user.domain.exception.UserException;
 import com.muffin.user.domain.exception.code.UserErrorCode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -166,7 +167,7 @@ class QuizQueryServiceTest {
         User user = registeredUser("세현");
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
 
-        GeneralException exception = assertThrows(GeneralException.class, () -> quizQueryService.getTodayQuiz(USER_ID));
+        UserException exception = assertThrows(UserException.class, () -> quizQueryService.getTodayQuiz(USER_ID));
 
         assertEquals(UserErrorCode.ONBOARDING_NOT_COMPLETED, exception.getErrorCode());
     }
