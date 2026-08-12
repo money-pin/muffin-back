@@ -58,7 +58,11 @@ public class TossApiClient {
             throw new TossRateLimitExceededException(
                     requestIdOf(error), codeOf(error), e.getStatusCode(), e.getMessage(), retryAfter(e));
         }
-        log.warn("토스증권 API 레이트리밋 초과, 재시도합니다. requestId={}, code={}", requestIdOf(error), codeOf(error));
+        log.warn(
+                "토스증권 API 레이트리밋 초과, 재시도합니다. requestId={}, code={}, status={}",
+                requestIdOf(error),
+                codeOf(error),
+                e.getStatusCode());
         sleep(withJitter(retryAfter(e)));
     }
 
@@ -80,7 +84,11 @@ public class TossApiClient {
 
     private TossApiException toApiException(RestClientResponseException e) {
         TossErrorResponse.TossError error = readError(e);
-        log.warn("토스증권 API 호출 실패. requestId={}, code={}", requestIdOf(error), codeOf(error));
+        log.warn(
+                "토스증권 API 호출 실패. requestId={}, code={}, status={}",
+                requestIdOf(error),
+                codeOf(error),
+                e.getStatusCode());
         return new TossApiException(requestIdOf(error), codeOf(error), e.getStatusCode(), e.getMessage());
     }
 
@@ -123,7 +131,7 @@ public class TossApiClient {
             Thread.sleep(duration.toMillis());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("재시도 대기 중 인터럽트가 발생했습니다.", e);
+            throw TossApiException.interrupted("토스증권 API 재시도 대기가 중단되었습니다.", e);
         }
     }
 }

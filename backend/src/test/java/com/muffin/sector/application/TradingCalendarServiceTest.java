@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 
 @ExtendWith(MockitoExtension.class)
 class TradingCalendarServiceTest {
@@ -74,6 +75,19 @@ class TradingCalendarServiceTest {
     }
 
     @Test
+    @DisplayName("토스 캘린더 API 대기 중단은 MARKET_CALENDAR_UNAVAILABLE 503으로 변환한다")
+    void getCalendar_mapsInterruptedProviderFailureToServiceUnavailable() {
+        when(tossMarketDataClient.getMarketCalendar(DATE))
+                .thenThrow(TossApiException.interrupted("provider wait interrupted", new InterruptedException()));
+
+        SectorException exception = assertThrows(SectorException.class, () -> tradingCalendarService.getCalendar(DATE));
+
+        assertEquals(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE, exception.getErrorCode());
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getErrorCode().getHttpStatus());
+        assertEquals("SECTOR_503_001", exception.getErrorCode().getCode());
+    }
+
+    @Test
     @DisplayName("직전 거래일의 정규장 정보가 누락되면 fail-closed 한다")
     void getCalendar_rejectsIncompletePreviousTradingDay() {
         Result result = new Result(
@@ -89,11 +103,14 @@ class TradingCalendarServiceTest {
     @DisplayName("토스 캘린더 API 장애는 MARKET_CALENDAR_UNAVAILABLE로 변환한다")
     void getCalendar_mapsProviderFailure() {
         when(tossMarketDataClient.getMarketCalendar(DATE))
-                .thenThrow(new TossApiException("request", "SERVER_ERROR", null, "provider failure"));
+                .thenThrow(new TossApiException(
+                        "request", "SERVER_ERROR", HttpStatus.INTERNAL_SERVER_ERROR, "provider failure"));
 
         SectorException exception = assertThrows(SectorException.class, () -> tradingCalendarService.getCalendar(DATE));
 
         assertEquals(SectorErrorCode.MARKET_CALENDAR_UNAVAILABLE, exception.getErrorCode());
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getErrorCode().getHttpStatus());
+        assertEquals("SECTOR_503_001", exception.getErrorCode().getCode());
     }
 
     private static Result calendar(BusinessDay today) {

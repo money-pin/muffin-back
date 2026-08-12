@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatusCode;
 @Getter
 public class TossApiException extends RuntimeException {
 
+    private static final String INTERRUPTED_CODE = "INTERRUPTED";
+
     private final String requestId;
     private final String tossCode;
     private final HttpStatusCode httpStatus;
@@ -18,10 +20,22 @@ public class TossApiException extends RuntimeException {
         this.httpStatus = httpStatus;
     }
 
+    public TossApiException(
+            String requestId, String tossCode, HttpStatusCode httpStatus, String message, Throwable cause) {
+        super(message, cause);
+        this.requestId = requestId;
+        this.tossCode = tossCode;
+        this.httpStatus = httpStatus;
+    }
+
     public TossApiException(String message, Throwable cause) {
         super(message, cause);
         this.requestId = null;
         this.tossCode = null;
         this.httpStatus = null;
+    }
+
+    public static TossApiException interrupted(String message, InterruptedException cause) {
+        return new TossApiException(null, INTERRUPTED_CODE, null, message, cause);
     }
 }

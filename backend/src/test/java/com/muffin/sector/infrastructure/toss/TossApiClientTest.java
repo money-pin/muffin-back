@@ -1,7 +1,9 @@
 package com.muffin.sector.infrastructure.toss;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -144,6 +146,27 @@ class TossApiClientTest {
 
         assertEquals(10000, result.price());
         server.verify();
+    }
+
+    @Test
+    @DisplayName("재시도 대기 중 인터럽트는 플래그를 유지하고 TossApiException으로 변환한다")
+    void execute_preservesInterruptAndThrowsTossApiException_whenRetryWaitIsInterrupted() {
+        server.expect(requestTo(URI)).andRespond(withTooManyRequests().header(HttpHeaders.RETRY_AFTER, "0"));
+
+        Thread.currentThread().interrupt();
+        try {
+            TossApiException exception = assertThrows(
+                    TossApiException.class,
+                    () -> client.execute(() ->
+                            restClient.get().uri("/api/v1/candles").retrieve().body(PriceDto.class)));
+
+            assertEquals("INTERRUPTED", exception.getTossCode());
+            assertInstanceOf(InterruptedException.class, exception.getCause());
+            assertTrue(Thread.currentThread().isInterrupted());
+            server.verify();
+        } finally {
+            Thread.interrupted();
+        }
     }
 
     private record PriceDto(int price) {}

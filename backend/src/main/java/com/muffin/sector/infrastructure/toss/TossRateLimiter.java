@@ -1,5 +1,6 @@
 package com.muffin.sector.infrastructure.toss;
 
+import com.muffin.sector.infrastructure.toss.exception.TossApiException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -45,7 +46,7 @@ public class TossRateLimiter {
             Thread.sleep(duration);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("레이트리밋 대기 중 인터럽트가 발생했습니다.", e);
+            throw TossApiException.interrupted("토스증권 API 레이트리밋 대기가 중단되었습니다.", e);
         }
     }
 
