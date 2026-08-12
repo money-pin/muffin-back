@@ -92,6 +92,12 @@ prometheus.exporter.cloudwatch "rds" {
 			Project = "muffin",
 		}
 
+		// CloudWatch의 AWS/RDS 네임스페이스는 같은 값을 여러 차원 조합으로 함께 발행한다
+		// (DBInstanceIdentifier, DatabaseClass, EngineName 등). 이 설정이 없으면 인스턴스가
+		// 하나뿐인데도 지표 하나가 시계열 4개로 들어와, stat 패널이 같은 값을 4분할로 보여주고
+		// 알림 룰은 인스턴스 하나에 알림 4개를 만든다. GetMetricData 호출량도 4배가 된다.
+		dimension_name_requirements = ["DBInstanceIdentifier"]
+
 		metric {
 			name       = "CPUUtilization"
 			statistics = ["Average"]
@@ -130,10 +136,15 @@ prometheus.exporter.cloudwatch "rds" {
 			period     = "5m"
 		}
 
-		// 버스트 밸런스가 바닥나면 t3 계열은 IO가 급격히 느려진다. 배치가 느려지는 원인 중
-		// 코드를 아무리 봐도 안 보이는 종류라 지표로 남긴다.
+		// CPU 크레딧이 바닥나면 t3 계열은 기준선(vCPU의 10%)으로 묶인다. 배치가 느려지는
+		// 원인 중 코드를 아무리 봐도 안 보이는 종류라 지표로 남긴다.
+		//
+		// 원래 BurstBalance(gp2 볼륨의 IO 크레딧)를 넣었는데 값이 오지 않았다.
+		// 우리 스토리지는 gp3라 CloudWatch가 그 지표를 발행하지 않는다(gp2 전용이다).
+		// gp3는 IOPS가 크레딧이 아니라 고정 할당이라 바닥날 잔량이라는 개념 자체가 없다.
+		// t3 인스턴스에서 실제로 바닥나는 것은 CPU 크레딧이므로 그걸로 바꿨다.
 		metric {
-			name       = "BurstBalance"
+			name       = "CPUCreditBalance"
 			statistics = ["Average"]
 			period     = "5m"
 		}

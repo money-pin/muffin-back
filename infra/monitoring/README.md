@@ -48,6 +48,13 @@ sudo docker compose up -d
 
 인스턴스가 교체되면 이 절차를 그대로 다시 실행한다(박스 위의 설정과 `.env`는 함께 사라진다).
 
+**설정만 고쳤을 때는 `up -d`가 아니라 `restart`다.** `config.alloy`는 바인드 마운트라, `up -d`는 이미지·명령어·볼륨 정의만 비교하고 마운트된 파일의 내용 변경은 보지 않는다. 파일은 새로 갔는데 Alloy가 옛 설정으로 계속 도는 상태가 된다.
+
+```bash
+./push-to-box.sh                      # 노트북에서
+sudo docker compose restart alloy     # 박스에서
+```
+
 ## 확인
 
 ```bash

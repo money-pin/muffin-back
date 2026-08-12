@@ -312,8 +312,8 @@
     {
       "id": 5,
       "type": "stat",
-      "title": "버스트 잔량",
-      "description": "t3 계열은 이게 바닥나면 IO가 급격히 느려진다. 코드를 아무리 봐도 원인이 안 보이는 종류의 지연이라 지표로 남긴다.",
+      "title": "CPU 크레딧 잔량",
+      "description": "t3 계열은 vCPU의 10%가 기준선이고 그보다 많이 쓰면 크레딧을 깎는다. 크레딧이 바닥나면 기준선으로 묶여 모든 쿼리가 느려진다. 코드를 아무리 봐도 원인이 안 보이는 종류의 지연이라 지표로 남긴다. RDS의 t3는 unlimited 모드가 기본이라 실제로는 묶이는 대신 초과분이 과금되는데, 어느 쪽이든 0에 가까워지면 인스턴스 등급을 봐야 한다는 신호다. 원래 BurstBalance(gp2 IO 크레딧)를 넣었으나 우리 스토리지가 gp3라 그 지표가 발행되지 않는다.",
       "datasource": {
         "type": "prometheus",
         "uid": "${prom}"
@@ -326,9 +326,8 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
+          "unit": "short",
           "decimals": 0,
-          "max": 100,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -342,7 +341,7 @@
               },
               {
                 "color": "green",
-                "value": 60
+                "value": 100
               }
             ]
           }
@@ -373,8 +372,8 @@
             "uid": "${prom}"
           },
           "editorMode": "code",
-          "expr": "aws_rds_burst_balance_average",
-          "legendFormat": "버스트"
+          "expr": "aws_rds_cpucredit_balance_average",
+          "legendFormat": "CPU 크레딧"
         }
       ]
     },
