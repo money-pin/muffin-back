@@ -231,7 +231,7 @@ class QuizControllerDocsTest {
                 OffsetDateTime.parse("2026-07-02T12:43:00+09:00"));
         MockMvc mockMvc = mockMvcOf(queryStub(null, null), commandStub(response), restDocumentation);
 
-        mockMvc.perform(post("/api/quizzes/{quizId}/attempt", 101L)
+        mockMvc.perform(post("/api/quizzes/{quizId}/attempts", 101L)
                         .header("Authorization", AUTHORIZATION)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"optionId\":1002}"))
