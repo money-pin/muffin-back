@@ -14,7 +14,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 @Tag(name = "Notification", description = "마이페이지 설정/알림 API")
 public interface NotificationSettingsApi {
 
-    @Operation(summary = "마이페이지 설정 조회 (MYPAGE-06-1)", description = "마이페이지 설정 화면에 필요한 값을 조회한다. 현재는 알림 설정만 포함한다.")
+    @Deprecated
+    @Operation(
+            summary = "마이페이지 설정 조회 (MYPAGE-06-1)",
+            description = "마이페이지 설정 화면에 필요한 값을 조회한다. 현재는 알림 설정만 포함한다.",
+            deprecated = true,
+            hidden = true)
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(

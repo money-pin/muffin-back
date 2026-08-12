@@ -24,6 +24,7 @@ public class NotificationSettingsController implements NotificationSettingsApi {
     private final NotificationSettingsQueryService notificationSettingsQueryService;
     private final NotificationSettingsCommandService notificationSettingsCommandService;
 
+    @Deprecated
     @Override
     @GetMapping
     public ApiResponse<NotificationSettingsResponse> getSettings(@AuthenticationPrincipal Long userId) {
