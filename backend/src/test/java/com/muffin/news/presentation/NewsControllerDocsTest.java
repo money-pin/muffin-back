@@ -265,7 +265,7 @@ class NewsControllerDocsTest {
     void documentNewsRead(RestDocumentationContextProvider restDocumentation) throws Exception {
         MockMvc mockMvc = mockMvcWith(stubNewsRead(new NewsReadResponse(432L)), restDocumentation);
 
-        mockMvc.perform(post("/api/news/{newsId}/read", 103L).header("Authorization", AUTHORIZATION))
+        mockMvc.perform(post("/api/news/{newsId}/views", 103L).header("Authorization", AUTHORIZATION))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "news-read-success",

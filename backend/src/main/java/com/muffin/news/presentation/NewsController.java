@@ -53,7 +53,7 @@ public class NewsController implements NewsApi {
     }
 
     @Override
-    @PostMapping("/{newsId}/read")
+    @PostMapping("/{newsId}/views")
     public ApiResponse<NewsReadResponse> recordNewsRead(
             @AuthenticationPrincipal Long userId, @PathVariable Long newsId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, newsQueryService.recordNewsRead(userId, newsId));
