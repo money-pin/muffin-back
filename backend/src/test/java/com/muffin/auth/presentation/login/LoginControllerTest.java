@@ -178,5 +178,20 @@ class LoginControllerTest {
                 .andExpect(jsonPath("$.message", is("로그인 시도 횟수를 초과하여 계정이 잠겼습니다. 잠시 후 다시 시도해 주세요.")));
     }
 
+    @Test
+    @DisplayName("서버가 생성할 수 없는 Accept 타입이면 406 (COMMON_406_001), 바디는 공통 에러 포맷을 따른다")
+    void login_notAcceptable() throws Exception {
+        registerLocalAccount();
+        String body = objectMapper.writeValueAsString(new LoginRequestBody(EMAIL, PASSWORD));
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType("application/json")
+                        .accept("application/xml")
+                        .content(body))
+                .andExpect(status().isNotAcceptable())
+                .andExpect(jsonPath("$.isSuccess", is(false)))
+                .andExpect(jsonPath("$.code", is("COMMON_406_001")));
+    }
+
     private record LoginRequestBody(String email, String password) {}
 }
