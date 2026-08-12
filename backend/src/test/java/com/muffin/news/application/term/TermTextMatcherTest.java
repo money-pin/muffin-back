@@ -27,7 +27,10 @@ class TermTextMatcherTest {
         String term = "기업어음(CP)";
 
         assertThat(TermTextMatcher.containsTerm("BCPE 팡케아 케이맨2에 투자했습니다.", term)).isFalse();
+        assertThat(TermTextMatcher.containsTerm("ABCP 발행이 늘었습니다.", term)).isFalse();
         assertThat(TermTextMatcher.containsTerm("기업은 CP 발행으로 단기자금을 조달했습니다.", term))
+                .isTrue();
+        assertThat(TermTextMatcher.containsTerm("CP is issued by the company.", term))
                 .isTrue();
     }
 

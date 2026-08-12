@@ -40,7 +40,7 @@ public final class TermTextMatcher {
                 }
 
                 int end = start + normalizedKeyword.length() - 1;
-                if (hasValidBoundary(normalizedContent.text(), normalizedKeyword, start, end)) {
+                if (hasValidBoundary(content, normalizedContent, normalizedKeyword, start, end)) {
                     matches.add(new TermTextMatch(
                             normalizedContent.originalIndexes().get(start),
                             normalizedContent.originalIndexes().get(end) + 1));
@@ -102,13 +102,16 @@ public final class TermTextMatcher {
         return builder.toString();
     }
 
-    private static boolean hasValidBoundary(String normalizedContent, String normalizedKeyword, int start, int end) {
+    private static boolean hasValidBoundary(
+            String originalContent, NormalizedText normalizedContent, String normalizedKeyword, int start, int end) {
         if (!isAsciiAlphaNumericKeyword(normalizedKeyword)) {
             return true;
         }
 
-        return !isAsciiAlphaNumericAt(normalizedContent, start - 1)
-                && !isAsciiAlphaNumericAt(normalizedContent, end + 1);
+        int originalStart = normalizedContent.originalIndexes().get(start);
+        int originalEnd = normalizedContent.originalIndexes().get(end);
+        return !isAsciiAlphaNumericAt(originalContent, originalStart - 1)
+                && !isAsciiAlphaNumericAt(originalContent, originalEnd + 1);
     }
 
     private static boolean isAsciiAlphaNumericKeyword(String keyword) {
