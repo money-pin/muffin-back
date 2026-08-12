@@ -7,9 +7,11 @@ import com.muffin.global.apiPayload.exception.GeneralException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -122,6 +124,20 @@ public class GeneralExceptionAdvice {
 
         String detail = "지원하지 않는 Content-Type 입니다: " + ex.getContentType();
         return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(detail)));
+    }
+
+    // 서버가 생성할 수 없는 Accept 타입 (406)
+    // 이 예외 자체가 클라이언트의 Accept 헤더가 JSON을 배제해서 발생하므로, 응답 Content-Type을
+    // JSON으로 명시 고정해 콘텐츠 협상을 건너뛰어야 한다(그러지 않으면 이 핸들러의 응답도 같은 이유로 쓰기에 실패한다).
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<ApiResponse<?>> handleMediaTypeNotAcceptable(HttpMediaTypeNotAcceptableException ex) {
+        BaseErrorCode ec = GeneralErrorCode.NOT_ACCEPTABLE;
+
+        String detail = "지원하지 않는 Accept 타입입니다: " + ex.getSupportedMediaTypes();
+        log.debug("[HttpMediaTypeNotAcceptable] {}", detail);
+        return ResponseEntity.status(ec.getHttpStatus())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ApiResponse.onFailure(ec, List.of(detail)));
     }
 
     // 존재하지 않는 URL 또는 정적 리소스 요청 (404)
