@@ -1,0 +1,566 @@
+{
+  "uid": "muffin-batch",
+  "title": "Muffin / 배치",
+  "description": "배치 잡 14개가 제때 돌고 있는지 본다. 가장 먼저 볼 것은 맨 위의 '마지막 성공 이후 경과'다. 실패·예외사망·스케줄러 미발화·cron 오설정·컨테이너 다운이 전부 이 하나에 나타난다.",
+  "tags": [
+    "muffin",
+    "batch"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "prom",
+        "label": "지표",
+        "query": "prometheus",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": []
+      },
+      {
+        "type": "datasource",
+        "name": "loki",
+        "label": "로그",
+        "query": "loki",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "bargauge",
+      "title": "마지막 성공 이후 경과 (하루 1회 이상 도는 잡)",
+      "description": "잡 하나가 한 줄이다. 막대는 26시간에 꽉 찬다: 다 차면 알림이 울린다는 뜻이라 남은 여유가 눈에 보인다. 하루 주기 잡에 24시간이 아니라 26시간을 쓰는 이유는 실행 시각이 조금씩 밀려도 오탐하지 않게 하기 위해서다. 스킵(휴장일 등)도 성공으로 치므로 연휴에 빨개지지 않는다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "min": 0,
+          "max": 93600,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 86400
+              },
+              {
+                "color": "red",
+                "value": 93600
+              }
+            ]
+          },
+          "displayName": "${__field.labels.batch_job}"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "namePlacement": "left",
+        "showUnfilled": true,
+        "minVizWidth": 8,
+        "minVizHeight": 12,
+        "sizing": "auto",
+        "text": {
+          "titleSize": 11,
+          "valueSize": 13
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "(time() - muffin_batch_job_last_success_timestamp_seconds{batch_job!=\"\",batch_job!~\"email_verification_cleanup|unverified_account_cleanup\"}) and muffin_batch_job_last_success_timestamp_seconds{batch_job!=\"\",batch_job!~\"email_verification_cleanup|unverified_account_cleanup\"} > 0",
+          "legendFormat": "{{batch_job}}",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "bargauge",
+      "title": "마지막 성공 이후 경과 (매시 잡)",
+      "description": "매시 정각에 도는 정리 잡 2개. 26시간 기준을 쓰면 하루를 통째로 놓치므로 3시간에 꽉 찬다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "min": 0,
+          "max": 10800,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 7200
+              },
+              {
+                "color": "red",
+                "value": 10800
+              }
+            ]
+          },
+          "displayName": "${__field.labels.batch_job}"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "namePlacement": "left",
+        "showUnfilled": true,
+        "minVizWidth": 8,
+        "minVizHeight": 12,
+        "sizing": "auto",
+        "text": {
+          "titleSize": 11,
+          "valueSize": 13
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "(time() - muffin_batch_job_last_success_timestamp_seconds{batch_job=~\"email_verification_cleanup|unverified_account_cleanup\"}) and muffin_batch_job_last_success_timestamp_seconds{batch_job=~\"email_verification_cleanup|unverified_account_cleanup\"} > 0",
+          "legendFormat": "{{batch_job}}",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "성공 기록 없는 잡",
+      "description": "게이지는 인메모리라 앱을 재기동하면 0으로 돌아간다. 여기 잡힌 잡은 '이번 기동 이후 아직 한 번도 정상 종료하지 않았다'는 뜻이지 고장났다는 뜻이 아니다. 배포 직후에는 대부분 여기 잡히고, 각자 다음 실행 시각이 지나면 사라진다. 사라지지 않으면 그때가 문제다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "text",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "text": {
+          "titleSize": 11,
+          "valueSize": 28
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "count(muffin_batch_job_last_success_timestamp_seconds{batch_job!=\"\"} == 0) or vector(0)",
+          "legendFormat": "잡 수",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "결과별 실행 추이",
+      "description": "failure가 보이면 로그 패널에서 같은 시각을 본다. deferred는 '할 일이 있는데 선행 조건이 안 갖춰져 못 한 것'이라 성공 시각을 갱신하지 않는다. 계속 쌓이면 결국 위쪽 경과시간이 빨개진다. increase()는 창 경계를 외삽하므로 실행 1회를 1.2처럼 낸다. 실행 횟수로 읽는 패널이라 소수점을 감춘다(값 자체는 근사치다).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failure"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "skipped"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deferred"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (outcome) (increase(muffin_batch_job_duration_seconds_count{batch_job!=\"\"}[$__rate_interval]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "잡별 평균 소요시간",
+      "description": "갑자기 길어진 잡은 대상 건수가 늘었거나 DB가 느려진 것이다. 후자면 DB 대시보드를 함께 본다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (batch_job) (rate(muffin_batch_job_duration_seconds_sum{batch_job!=\"\"}[$__rate_interval])) / sum by (batch_job) (rate(muffin_batch_job_duration_seconds_count{batch_job!=\"\"}[$__rate_interval]))",
+          "legendFormat": "{{batch_job}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "24시간 실행 집계 (잡 x 결과)",
+      "description": "어떤 잡이 몇 번 돌았고 어떻게 끝났는지. 하루 여러 번 도는 잡(시가 수집, 퀴즈 재시도 등)은 실행 횟수가 크게 나오는 것이 정상이다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${prom}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Value",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "application": true,
+              "instance": true,
+              "job": true
+            },
+            "renameByName": {
+              "batch_job": "잡",
+              "outcome": "결과",
+              "trigger": "트리거",
+              "Value": "실행 횟수"
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${prom}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (batch_job, outcome, trigger) (increase(muffin_batch_job_duration_seconds_count{batch_job!=\"\"}[24h])) > 0",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "logs",
+      "title": "배치 실행 로그",
+      "description": "실행 1회가 로그 한 줄이다. job / date / trigger / outcome / duration_ms / 건수가 logfmt로 들어 있다.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "expr": "{service=\"muffin\"} |= \"batch job=\"",
+          "queryType": "range"
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Muffin 대시보드",
+      "tags": [
+        "muffin"
+      ],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "external link",
+      "tooltip": "",
+      "url": ""
+    }
+  ]
+}

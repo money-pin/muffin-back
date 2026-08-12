@@ -148,6 +148,37 @@ resource "aws_iam_role_policy" "ec2_db_bootstrap" {
   })
 }
 
+# 온박스 Alloy가 RDS 인스턴스 지표(CPU/FreeableMemory/IOPS/BurstBalance)를 CloudWatch에서
+# 직접 긁기 위한 읽기 전용 권한. mysqld-exporter는 MySQL이 들고 있는 상태값만 보고 RDS 안쪽
+# 리눅스는 보지 못하므로, 이 지표가 없으면 "쿼리가 느린 게 DB 부하 때문인가"에 답할 수 없다.
+#
+# Grafana Cloud의 CloudWatch 데이터소스 대신 이 경로를 택한 이유: 그쪽은 만료 없는 액세스 키를
+# 외부 서비스에 보관해야 한다. 인스턴스 역할은 자격증명이 AWS 밖으로 나가지 않고 자동 교체된다.
+#
+# 세 액션 모두 리소스 단위 제한을 지원하지 않아 Resource = "*"다(조회 대상을 미리 특정할 수
+# 없는 discovery 계열 API). 대신 읽기 전용이고 지표 데이터 외에는 아무것도 반환하지 않는다.
+resource "aws_iam_role_policy" "ec2_cloudwatch_read" {
+  name = "${var.project_name}-ec2-cloudwatch-read"
+  role = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:GetMetricData",
+          "cloudwatch:ListMetrics",
+          # exporter가 태그(Project=muffin)로 대상을 찾을 때 쓴다. 인스턴스 식별자를
+          # 하드코딩하지 않기 위해 필요하다.
+          "tag:GetResources",
+        ]
+        Resource = "*"
+      },
+    ]
+  })
+}
+
 # SSM Run Command/Session Manager로 이 인스턴스를 관리하기 위한 표준 권한(ssmmessages/ec2messages 등).
 # CD가 SSH 대신 SSM으로 배포 스크립트를 실행하려면 인스턴스가 SSM에 등록돼 있어야 한다.
 resource "aws_iam_role_policy_attachment" "ec2_ssm_core" {

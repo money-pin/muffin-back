@@ -168,5 +168,10 @@ management:
       # 대신 자주 보는 지연대에만 경계를 두어 p95를 근사하고 "1초 초과 비율"은 정확히 얻는다.
       percentiles-histogram:
         http.server.requests: false
+      # 경계 하나가 (라벨 조합 수)개의 시계열이다.
+      # 경계를 고른 기준은 "실제로 값이 몰리는 곳을 촘촘하게"다. 기존 경계는 50ms에서
+      # 시작해 그 아래가 통째로 한 칸이었는데, 조회 API 대부분이 거기 들어가 p95가
+      # "50ms 미만"에서 더 좁혀지지 않았다. 반대로 위쪽은 2초에서 끊겨 그보다 느린 구간이
+      # 전부 한 칸으로 뭉쳤다. 3s/5s를 더해 p99가 꼬리에서 뭉개지는 것을 완화한다.
       slo:
-        http.server.requests: 50ms, 100ms, 200ms, 300ms, 500ms, 1s, 2s
+        http.server.requests: 10ms, 25ms, 50ms, 75ms, 100ms, 150ms, 200ms, 300ms, 500ms, 750ms, 1s, 2s, 3s, 5s
