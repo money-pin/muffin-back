@@ -5,9 +5,12 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,6 +18,13 @@ import org.springframework.context.annotation.Configuration;
 public class SwaggerConfig {
 
     private static final String SECURITY_SCHEME_NAME = "JWT TOKEN";
+
+    private static final Set<String> PUBLIC_OPERATIONS = Set.of(
+            "AuthController.signupLocal",
+            "AuthController.loginLocal",
+            "AuthController.refresh",
+            "AuthController.authenticateGoogle",
+            "ReadinessController.readiness");
 
     /**
      * 도메인 그룹 순서. REST Docs 목차 순서와 맞춘다. 목록에 없는 태그(Health 등)는 항상 맨 뒤로 간다.
@@ -38,6 +48,18 @@ public class SwaggerConfig {
                 .info(apiInfo())
                 .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME_NAME))
                 .components(securityComponents());
+    }
+
+    @Bean
+    public OperationCustomizer publicOperationSecurityCustomizer() {
+        return (operation, handlerMethod) -> {
+            String key = handlerMethod.getBeanType().getSimpleName() + "."
+                    + handlerMethod.getMethod().getName();
+            if (PUBLIC_OPERATIONS.contains(key)) {
+                operation.setSecurity(new ArrayList<>());
+            }
+            return operation;
+        };
     }
 
     @Bean
