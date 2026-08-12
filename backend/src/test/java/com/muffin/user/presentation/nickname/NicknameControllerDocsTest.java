@@ -63,7 +63,7 @@ class NicknameControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(stub, null, restDocumentation);
 
-        mockMvc.perform(get("/api/mypage/nickname/check").param("nickname", "길동이"))
+        mockMvc.perform(get("/api/mypage/nicknames/availability").param("nickname", "길동이"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "nickname-check-available",
@@ -86,7 +86,7 @@ class NicknameControllerDocsTest {
         };
         MockMvc mockMvc = mockMvcOf(stub, null, restDocumentation);
 
-        mockMvc.perform(get("/api/mypage/nickname/check").param("nickname", "길동이"))
+        mockMvc.perform(get("/api/mypage/nicknames/availability").param("nickname", "길동이"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "nickname-check-taken",

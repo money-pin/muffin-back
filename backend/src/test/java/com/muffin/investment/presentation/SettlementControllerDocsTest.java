@@ -50,7 +50,7 @@ class SettlementControllerDocsTest {
         // settled(investDate, totalProfitLoss, totalProfitLossRate, totalAmount, totalAsset)
         MockMvc mockMvc = mockMvcReturning(response, restDocumentation);
 
-        mockMvc.perform(get("/api/investments/settlement/result"))
+        mockMvc.perform(get("/api/investments/settlements/latest"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "settlement-result-settled",
@@ -72,7 +72,7 @@ class SettlementControllerDocsTest {
         SettlementResultResponse response = SettlementResultResponse.reason(SettlementReason.SETTLEMENT_PENDING);
         MockMvc mockMvc = mockMvcReturning(response, restDocumentation);
 
-        mockMvc.perform(get("/api/investments/settlement/result"))
+        mockMvc.perform(get("/api/investments/settlements/latest"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "settlement-result-reason",

@@ -61,7 +61,7 @@ class NicknameControllerMockTest {
     void checkNickname_delegatesToService() throws Exception {
         when(nicknameQueryService.isAvailable("길동이")).thenReturn(true);
 
-        mockMvc.perform(get("/api/mypage/nickname/check").param("nickname", "길동이"))
+        mockMvc.perform(get("/api/mypage/nicknames/availability").param("nickname", "길동이"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.available").value(true));
 
@@ -71,7 +71,7 @@ class NicknameControllerMockTest {
     @Test
     @DisplayName("nickname 파라미터가 없으면 서비스 호출 없이 400")
     void checkNickname_missingParam_badRequest() throws Exception {
-        mockMvc.perform(get("/api/mypage/nickname/check")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/mypage/nicknames/availability")).andExpect(status().isBadRequest());
 
         verifyNoInteractions(nicknameQueryService);
     }
@@ -114,7 +114,7 @@ class NicknameControllerMockTest {
     @DisplayName("GET에 잘못된 HTTP 메서드(POST)를 쓰면 405")
     void wrongHttpMethod_notAllowed() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
-                                "/api/mypage/nickname/check")
+                                "/api/mypage/nicknames/availability")
                         .param("nickname", "길동이"))
                 .andExpect(status().isMethodNotAllowed());
     }

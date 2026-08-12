@@ -36,7 +36,7 @@ public class QuizController implements QuizApi {
     }
 
     @Override
-    @PostMapping("/{quizId}/attempt")
+    @PostMapping("/{quizId}/attempts")
     public ApiResponse<QuizAttemptResponse> submitAnswer(
             @AuthenticationPrincipal Long userId,
             @PathVariable Long quizId,

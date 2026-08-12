@@ -327,7 +327,7 @@ class StatsControllerDocsTest {
                         new SectorDetailResponse("GOLD", "금", 0L, new BigDecimal("0.0"), 200_000L, true)));
         MockMvc mockMvc = mockMvcWith(recentDetailStub(response), restDocumentation);
 
-        mockMvc.perform(get("/api/stats/recent-detail"))
+        mockMvc.perform(get("/api/stats/recent"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "stats-recent-detail",
@@ -354,7 +354,7 @@ class StatsControllerDocsTest {
         RecentDetailResponse response = new RecentDetailResponse(null, 0L, 0L, List.of());
         MockMvc mockMvc = mockMvcWith(recentDetailStub(response), restDocumentation);
 
-        mockMvc.perform(get("/api/stats/recent-detail"))
+        mockMvc.perform(get("/api/stats/recent"))
                 .andExpect(status().isOk())
                 .andDo(document(
                         "stats-recent-detail-empty",

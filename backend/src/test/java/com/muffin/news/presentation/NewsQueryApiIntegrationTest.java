@@ -300,11 +300,11 @@ class NewsQueryApiIntegrationTest {
     @Test
     @DisplayName("뉴스 열람 처리 호출마다 조회수를 증가시키고 최신 조회수를 반환한다")
     void recordNewsRead() throws Exception {
-        mockMvc.perform(post("/api/news/{id}/read", news3Id).header("Authorization", bearerToken()))
+        mockMvc.perform(post("/api/news/{id}/views", news3Id).header("Authorization", bearerToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.viewCount").value(1));
 
-        mockMvc.perform(post("/api/news/{id}/read", news3Id).header("Authorization", bearerToken()))
+        mockMvc.perform(post("/api/news/{id}/views", news3Id).header("Authorization", bearerToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.viewCount").value(2));
 
@@ -354,7 +354,7 @@ class NewsQueryApiIntegrationTest {
     void authenticatedEndpoints_rejectAnonymous() throws Exception {
         mockMvc.perform(get("/api/news/today")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/news/{id}", news3Id)).andExpect(status().isUnauthorized());
-        mockMvc.perform(post("/api/news/{id}/read", news3Id)).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/news/{id}/views", news3Id)).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/news/{id}/sector-impacts", news1Id)).andExpect(status().isUnauthorized());
     }
 }
