@@ -1,7 +1,11 @@
 package com.muffin.sector.infrastructure.toss;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.muffin.sector.infrastructure.toss.exception.TossApiException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -59,6 +63,25 @@ class TossRateLimiterTest {
         rateLimiter.acquire();
 
         assertEquals(List.of(), sleeper.sleepDurations());
+    }
+
+    @Test
+    @DisplayName("레이트리밋 대기 중 인터럽트는 플래그를 유지하고 TossApiException으로 변환한다")
+    void acquire_preservesInterruptAndThrowsTossApiException_whenWaitIsInterrupted() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-07-13T00:00:00Z"));
+        TossRateLimiter rateLimiter = new TossRateLimiter(clock, Duration.ofSeconds(1));
+        rateLimiter.acquire();
+
+        Thread.currentThread().interrupt();
+        try {
+            TossApiException exception = assertThrows(TossApiException.class, rateLimiter::acquire);
+
+            assertEquals("INTERRUPTED", exception.getTossCode());
+            assertInstanceOf(InterruptedException.class, exception.getCause());
+            assertTrue(Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
+        }
     }
 
     private static final class MutableClock extends Clock {

@@ -26,7 +26,12 @@ public class TradingCalendarService {
         try {
             result = tossMarketDataClient.getMarketCalendar(date);
         } catch (TossApiException exception) {
-            log.warn("거래일 API 호출에 실패했습니다. date={}, code={}", date, exception.getTossCode());
+            log.warn(
+                    "거래일 API 호출에 실패했습니다. date={}, requestId={}, tossCode={}, httpStatus={}",
+                    date,
+                    exception.getRequestId(),
+                    exception.getTossCode(),
+                    exception.getHttpStatus());
             throw unavailable();
         }
 
