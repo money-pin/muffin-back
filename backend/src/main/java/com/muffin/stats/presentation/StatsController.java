@@ -49,7 +49,7 @@ public class StatsController implements StatsApi {
     }
 
     @Override
-    @GetMapping("/recent-detail")
+    @GetMapping("/recent")
     public ApiResponse<RecentDetailResponse> getRecentDetail(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, statsQueryService.getRecentDetail(userId));
