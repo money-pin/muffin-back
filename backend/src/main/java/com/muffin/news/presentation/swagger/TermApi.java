@@ -31,7 +31,10 @@ public interface TermApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "용어 저장 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다."),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "요청이 거부되었습니다."),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 용어입니다.")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 용어입니다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "온보딩을 먼저 완료해야 합니다. (USER_409_001)")
     })
     ApiResponse<TermSaveResponse> saveTerm(
             @AuthenticationPrincipal Long userId, @Parameter(description = "저장할 용어 ID") Long termId);
@@ -44,7 +47,10 @@ public interface TermApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "용어 저장 해제 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증이 필요합니다."),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "요청이 거부되었습니다."),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 용어입니다.")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 용어입니다."),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "온보딩을 먼저 완료해야 합니다. (USER_409_001)")
     })
     ApiResponse<TermSaveResponse> unsaveTerm(
             @AuthenticationPrincipal Long userId, @Parameter(description = "저장 해제할 용어 ID") Long termId);

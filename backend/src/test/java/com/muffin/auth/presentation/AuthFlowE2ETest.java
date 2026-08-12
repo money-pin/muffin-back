@@ -115,7 +115,7 @@ class AuthFlowE2ETest {
 
         MvcResult result = mockMvc.perform(
                         post("/auth/signup").contentType("application/json").content(signupBody))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andReturn();
 
         JsonNode json = objectMapper.readTree(result.getResponse().getContentAsString());

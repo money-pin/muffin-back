@@ -26,6 +26,8 @@ import com.muffin.quiz.presentation.dto.QuizRewardResponse;
 import com.muffin.quiz.presentation.dto.TodayQuizResponse;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
+import com.muffin.user.domain.exception.UserException;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
@@ -159,7 +161,7 @@ public class QuizQueryService {
                 userRepository.findById(userId).orElseThrow(() -> new GeneralException(GeneralErrorCode.UNAUTHORIZED));
 
         if (!user.isOnboardingCompleted()) {
-            throw new GeneralException(GeneralErrorCode.FORBIDDEN);
+            throw new UserException(UserErrorCode.ONBOARDING_NOT_COMPLETED);
         }
 
         return user;

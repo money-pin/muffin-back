@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.investment.domain.userasset.UserAsset;
 import com.muffin.investment.domain.userasset.UserAssetRepository;
@@ -331,10 +332,11 @@ class QuizCommandServiceTest {
                 .thenReturn(Optional.of(session));
         when(userAssetRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
-        assertThrows(
-                IllegalStateException.class,
+        GeneralException exception = assertThrows(
+                GeneralException.class,
                 () -> quizCommandService.submitAnswer(USER_ID, 103L, new QuizAttemptRequest(1031L)));
 
+        assertEquals(GeneralErrorCode.INTERNAL_SERVER_ERROR, exception.getErrorCode());
         verify(userAssetRepository).findByUserId(USER_ID);
         verify(quizSessionRepository, never()).saveAndFlush(any(QuizSession.class));
     }

@@ -8,8 +8,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.muffin.global.apiPayload.code.GeneralErrorCode;
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.news.application.exception.NewsErrorCode;
 import com.muffin.news.application.exception.NewsException;
 import com.muffin.news.domain.term.TermDictionary;
@@ -19,6 +17,8 @@ import com.muffin.news.domain.term.UserSavedTermRepository;
 import com.muffin.news.presentation.dto.TermSaveResponse;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
+import com.muffin.user.domain.exception.UserException;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -111,9 +111,9 @@ class TermCommandServiceTest {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> termCommandService.saveTerm(USER_ID, TERM_ID))
-                .isInstanceOf(GeneralException.class)
+                .isInstanceOf(UserException.class)
                 .extracting("errorCode")
-                .isEqualTo(GeneralErrorCode.FORBIDDEN);
+                .isEqualTo(UserErrorCode.ONBOARDING_NOT_COMPLETED);
     }
 
     @Test

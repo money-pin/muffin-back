@@ -11,6 +11,8 @@ import com.muffin.news.domain.term.UserSavedTermRepository;
 import com.muffin.news.presentation.dto.TermSaveResponse;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
+import com.muffin.user.domain.exception.UserException;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -64,7 +66,7 @@ public class TermCommandService {
         User user =
                 userRepository.findById(userId).orElseThrow(() -> new GeneralException(GeneralErrorCode.UNAUTHORIZED));
         if (!user.isOnboardingCompleted()) {
-            throw new GeneralException(GeneralErrorCode.FORBIDDEN);
+            throw new UserException(UserErrorCode.ONBOARDING_NOT_COMPLETED);
         }
     }
 

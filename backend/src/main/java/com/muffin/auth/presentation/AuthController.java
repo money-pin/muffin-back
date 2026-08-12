@@ -24,6 +24,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,7 +53,7 @@ public class AuthController implements AuthApi {
 
     @Override
     @PostMapping("/auth/signup")
-    public ApiResponse<SignupResponse> signupLocal(
+    public ResponseEntity<ApiResponse<SignupResponse>> signupLocal(
             @Valid @RequestBody LocalSignupRequest request, HttpServletResponse response) {
         TokenPair result = signupCommandService.signupLocal(
                 request.email(), request.password(), request.name(), request.termsAgreed());
@@ -60,7 +62,8 @@ public class AuthController implements AuthApi {
                 HttpHeaders.SET_COOKIE,
                 refreshTokenCookieHelper.build(result.refreshToken()).toString());
 
-        return ApiResponse.onSuccess(GeneralSuccessCode.OK, new SignupResponse(result.accessToken()));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.onSuccess(GeneralSuccessCode.CREATED, new SignupResponse(result.accessToken())));
     }
 
     @Override

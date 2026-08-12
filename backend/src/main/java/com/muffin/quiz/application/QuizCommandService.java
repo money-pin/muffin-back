@@ -19,6 +19,8 @@ import com.muffin.quiz.presentation.dto.QuizAttemptRequest;
 import com.muffin.quiz.presentation.dto.QuizAttemptResponse;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
+import com.muffin.user.domain.exception.UserException;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -71,7 +73,7 @@ public class QuizCommandService {
 
         // 온보딩을 마친 사용자만 퀴즈를 제출할 수 있다.
         if (!user.isOnboardingCompleted()) {
-            throw new GeneralException(GeneralErrorCode.FORBIDDEN);
+            throw new UserException(UserErrorCode.ONBOARDING_NOT_COMPLETED);
         }
 
         LocalDate today = LocalDate.now(KST);
@@ -161,7 +163,8 @@ public class QuizCommandService {
         if (rewardAmount > 0L) {
             UserAsset userAsset = userAssetRepository
                     .findByUserId(userId)
-                    .orElseThrow(() -> new IllegalStateException("사용자 자산이 없습니다: userId=" + userId));
+                    .orElseThrow(() -> new GeneralException(
+                            GeneralErrorCode.INTERNAL_SERVER_ERROR, "사용자 자산이 없습니다: userId=" + userId));
             userAsset.addQuizReward(rewardAmount);
         }
 

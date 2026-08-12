@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.quiz.domain.quizsession.QuizSession;
 import com.muffin.quiz.domain.quizsession.QuizSessionRepository;
@@ -25,6 +24,8 @@ import com.muffin.quiz.presentation.dto.QuizResultResponse;
 import com.muffin.quiz.presentation.dto.TodayQuizResponse;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
+import com.muffin.user.domain.exception.UserException;
+import com.muffin.user.domain.exception.code.UserErrorCode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -166,9 +167,9 @@ class QuizQueryServiceTest {
         User user = registeredUser("세현");
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
 
-        GeneralException exception = assertThrows(GeneralException.class, () -> quizQueryService.getTodayQuiz(USER_ID));
+        UserException exception = assertThrows(UserException.class, () -> quizQueryService.getTodayQuiz(USER_ID));
 
-        assertEquals(GeneralErrorCode.FORBIDDEN, exception.getErrorCode());
+        assertEquals(UserErrorCode.ONBOARDING_NOT_COMPLETED, exception.getErrorCode());
     }
 
     @Test

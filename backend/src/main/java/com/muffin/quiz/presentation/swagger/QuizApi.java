@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ResponseEntity;
 
 @Tag(name = "Quiz", description = "오늘의 한입 퀴즈 API")
 public interface QuizApi {
@@ -28,7 +29,10 @@ public interface QuizApi {
                 description = "인증이 필요합니다. (AUTH_401_001)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "403",
-                description = "요청이 거부되었습니다. (AUTH_403_001, 온보딩 미완료 등)")
+                description = "요청이 거부되었습니다. (AUTH_403_001)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "온보딩을 먼저 완료해야 합니다. (USER_409_001)")
     })
     ApiResponse<TodayQuizResponse> getTodayQuiz(@Parameter(hidden = true) Long userId);
 
@@ -36,7 +40,7 @@ public interface QuizApi {
             summary = "퀴즈 답안 제출 (QUIZ-02)",
             description = "사용자가 선택한 답안을 제출하고 정답 여부, 정답 선택지, 해설, 진행 상태를 반환한다. " + "이미 제출한 문항은 기존 제출 결과를 그대로 반환한다.")
     @ApiResponses({
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "답안 제출 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "답안 제출 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "400",
                 description = "해당 퀴즈 문항의 선택지가 아닙니다. (QUIZ_400_001)"),
@@ -45,12 +49,15 @@ public interface QuizApi {
                 description = "인증이 필요합니다. (AUTH_401_001)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "403",
-                description = "요청이 거부되었습니다. (AUTH_403_001, 온보딩 미완료 등)"),
+                description = "요청이 거부되었습니다. (AUTH_403_001)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "404",
-                description = "오늘의 퀴즈를 아직 준비 중(QUIZ_404_001)이거나 존재하지 않는 퀴즈 문항입니다.(QUIZ_404_002)")
+                description = "오늘의 퀴즈를 아직 준비 중(QUIZ_404_001)이거나 존재하지 않는 퀴즈 문항입니다.(QUIZ_404_002)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "온보딩을 먼저 완료해야 합니다. (USER_409_001)")
     })
-    ApiResponse<QuizAttemptResponse> submitAnswer(
+    ResponseEntity<ApiResponse<QuizAttemptResponse>> submitAnswer(
             @Parameter(hidden = true) Long userId,
             @Parameter(description = "답안을 제출할 퀴즈 문항 ID") Long quizId,
             QuizAttemptRequest request);
@@ -66,13 +73,13 @@ public interface QuizApi {
                 description = "인증이 필요합니다. (AUTH_401_001)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "403",
-                description = "요청이 거부되었습니다. (AUTH_403_001, 온보딩 미완료 등)"),
+                description = "요청이 거부되었습니다. (AUTH_403_001)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "404",
                 description = "오늘의 퀴즈를 아직 준비 중입니다. (QUIZ_404_001)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "409",
-                description = "퀴즈를 모두 완료한 후 결과를 조회할 수 있습니다. (QUIZ_409_001)")
+                description = "온보딩을 먼저 완료해야 합니다.(USER_409_001) 또는 퀴즈를 모두 완료한 후 결과를 조회할 수 있습니다.(QUIZ_409_001)")
     })
     ApiResponse<QuizResultResponse> getTodayQuizResult(@Parameter(hidden = true) Long userId);
 
@@ -86,7 +93,10 @@ public interface QuizApi {
                 description = "인증이 필요합니다. (AUTH_401_001)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "403",
-                description = "요청이 거부되었습니다. (AUTH_403_001, 온보딩 미완료 등)")
+                description = "요청이 거부되었습니다. (AUTH_403_001)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "온보딩을 먼저 완료해야 합니다. (USER_409_001)")
     })
     ApiResponse<QuizHistoryListResponse> getQuizHistories(@Parameter(hidden = true) Long userId);
 
@@ -103,7 +113,10 @@ public interface QuizApi {
                 description = "인증이 필요합니다. (AUTH_401_001)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "403",
-                description = "요청이 거부되었습니다. (AUTH_403_001, 온보딩 미완료 등)")
+                description = "요청이 거부되었습니다. (AUTH_403_001)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "온보딩을 먼저 완료해야 합니다. (USER_409_001)")
     })
     ApiResponse<QuizHistoryDetailResponse> getQuizHistoryDetail(
             @Parameter(hidden = true) Long userId, @Parameter(description = "조회할 퀴즈 날짜(yyyy-MM-dd)") String date);

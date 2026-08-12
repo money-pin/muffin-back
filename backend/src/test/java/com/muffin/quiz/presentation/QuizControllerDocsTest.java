@@ -235,7 +235,7 @@ class QuizControllerDocsTest {
                         .header("Authorization", AUTHORIZATION)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"optionId\":1002}"))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andDo(document(
                         "quiz-attempt-success",
                         requestHeaders(headerWithName("Authorization").description("Bearer access token")),

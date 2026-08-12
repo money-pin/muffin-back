@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @Tag(name = "Auth", description = "인증(회원가입/로그인/로그아웃/탈퇴) API")
@@ -22,7 +23,7 @@ public interface AuthApi {
             summary = "로컬 회원가입 (AUTH-01-1)",
             description = "이메일/비밀번호로 회원가입하고 즉시 로그인 상태로 access token을 발급한다. refresh token은 HttpOnly Cookie로 내려간다.")
     @ApiResponses({
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "가입 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "가입 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "400",
                 description = "요청 값 검증 실패(COMMON_400_002), 약관 미동의(AUTH_400_002), 비밀번호 형식 오류(COMMON_400_001)"),
@@ -30,7 +31,7 @@ public interface AuthApi {
                 responseCode = "409",
                 description = "이미 사용 중인 이메일입니다.(AUTH_409_001) 또는 최근 탈퇴한 이메일입니다.(AUTH_409_003, 탈퇴 후 30일 이내)")
     })
-    ApiResponse<SignupResponse> signupLocal(LocalSignupRequest request, HttpServletResponse response);
+    ResponseEntity<ApiResponse<SignupResponse>> signupLocal(LocalSignupRequest request, HttpServletResponse response);
 
     @Operation(
             summary = "로컬 로그인 (AUTH-02-1)",
