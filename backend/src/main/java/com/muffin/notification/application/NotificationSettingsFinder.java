@@ -1,5 +1,7 @@
 package com.muffin.notification.application;
 
+import com.muffin.global.apiPayload.code.GeneralErrorCode;
+import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.notification.domain.NotificationSettings;
 import com.muffin.notification.domain.NotificationSettingsRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,7 @@ class NotificationSettingsFinder {
         }
         return notificationSettingsRepository
                 .findById(userId)
-                .orElseThrow(() -> new IllegalStateException("알림 설정을 생성했지만 조회할 수 없습니다: userId=" + userId));
+                .orElseThrow(() -> new GeneralException(
+                        GeneralErrorCode.INTERNAL_SERVER_ERROR, "알림 설정을 생성했지만 조회할 수 없습니다: userId=" + userId));
     }
 }

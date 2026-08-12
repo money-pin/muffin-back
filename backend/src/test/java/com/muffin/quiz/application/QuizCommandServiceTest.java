@@ -332,7 +332,7 @@ class QuizCommandServiceTest {
         when(userAssetRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
         assertThrows(
-                IllegalStateException.class,
+                GeneralException.class,
                 () -> quizCommandService.submitAnswer(USER_ID, 103L, new QuizAttemptRequest(1031L)));
 
         verify(userAssetRepository).findByUserId(USER_ID);

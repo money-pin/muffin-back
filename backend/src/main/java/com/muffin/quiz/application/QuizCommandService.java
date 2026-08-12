@@ -163,7 +163,8 @@ public class QuizCommandService {
         if (rewardAmount > 0L) {
             UserAsset userAsset = userAssetRepository
                     .findByUserId(userId)
-                    .orElseThrow(() -> new IllegalStateException("사용자 자산이 없습니다: userId=" + userId));
+                    .orElseThrow(() -> new GeneralException(
+                            GeneralErrorCode.INTERNAL_SERVER_ERROR, "사용자 자산이 없습니다: userId=" + userId));
             userAsset.addQuizReward(rewardAmount);
         }
 
