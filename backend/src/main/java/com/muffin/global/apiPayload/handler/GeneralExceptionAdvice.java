@@ -29,7 +29,7 @@ public class GeneralExceptionAdvice {
     public ResponseEntity<ApiResponse<?>> handleGeneralException(GeneralException ex) {
         BaseErrorCode ec = ex.getErrorCode();
         log.warn("[GeneralException] code={}, message={}", ec.getCode(), ex.getMessage());
-        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(ex.getMessage())));
+        return toResponse(ec, List.of(ex.getMessage()));
     }
 
     // @Valid DTO 검증 실패 (RequestBody, @ModelAttribute, QueryParam)
@@ -43,7 +43,7 @@ public class GeneralExceptionAdvice {
                 .toList();
 
         log.debug("[ValidationFail] {}", detail);
-        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, detail));
+        return toResponse(ec, detail);
     }
 
     // @Validated + PathVariable/RequestParam 검증 실패
@@ -56,7 +56,7 @@ public class GeneralExceptionAdvice {
                 .toList();
 
         log.debug("[ConstraintViolation] {}", detail);
-        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, detail));
+        return toResponse(ec, detail);
     }
 
     // 도메인 엔티티가 직접 던지는 입력값 검증 실패(형식/범위 위반)
@@ -65,7 +65,7 @@ public class GeneralExceptionAdvice {
         BaseErrorCode ec = GeneralErrorCode.BAD_REQUEST;
 
         log.warn("[IllegalArgumentException] {}", ex.getMessage());
-        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(ex.getMessage())));
+        return toResponse(ec, List.of(ex.getMessage()));
     }
 
     // 도메인 엔티티가 직접 던지는 상태 전이 위반(이미 처리됨, 잘못된 상태에서의 요청 등)
@@ -74,7 +74,7 @@ public class GeneralExceptionAdvice {
         BaseErrorCode ec = GeneralErrorCode.CONFLICT;
 
         log.warn("[IllegalStateException] {}", ex.getMessage());
-        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(ex.getMessage())));
+        return toResponse(ec, List.of(ex.getMessage()));
     }
 
     // 타입 미스매치
@@ -84,7 +84,7 @@ public class GeneralExceptionAdvice {
 
         String detail = ex.getName() + ": 타입이 올바르지 않습니다. (value=" + ex.getValue() + ")";
         log.debug("[TypeMismatch] {}", detail);
-        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(detail)));
+        return toResponse(ec, List.of(detail));
     }
 
     // 필수 RequestParam 누락
@@ -94,7 +94,7 @@ public class GeneralExceptionAdvice {
 
         String detail = ex.getParameterName() + ": 필수 파라미터가 누락되었습니다.";
         log.debug("[MissingParam] {}", detail);
-        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(detail)));
+        return toResponse(ec, List.of(detail));
     }
 
     // JSON 파싱 실패 / 요청 body가 깨졌을 때
@@ -104,8 +104,7 @@ public class GeneralExceptionAdvice {
 
         log.warn("[HttpMessageNotReadable] malformed request body");
         log.debug("[HttpMessageNotReadable] detail", ex);
-        return ResponseEntity.status(ec.getHttpStatus())
-                .body(ApiResponse.onFailure(ec, List.of("요청 본문(JSON)을 올바르게 작성해 주세요.")));
+        return toResponse(ec, List.of("요청 본문(JSON)을 올바르게 작성해 주세요."));
     }
 
     // 지원하지 않는 HTTP Method (405)
@@ -114,7 +113,7 @@ public class GeneralExceptionAdvice {
         BaseErrorCode ec = GeneralErrorCode.METHOD_NOT_ALLOWED;
 
         String detail = "지원하지 않는 HTTP 메서드입니다: " + ex.getMethod();
-        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(detail)));
+        return toResponse(ec, List.of(detail));
     }
 
     // 지원하지 않는 Content-Type (415)
@@ -123,21 +122,17 @@ public class GeneralExceptionAdvice {
         BaseErrorCode ec = GeneralErrorCode.UNSUPPORTED_MEDIA_TYPE;
 
         String detail = "지원하지 않는 Content-Type 입니다: " + ex.getContentType();
-        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(detail)));
+        return toResponse(ec, List.of(detail));
     }
 
     // 서버가 생성할 수 없는 Accept 타입 (406)
-    // 이 예외 자체가 클라이언트의 Accept 헤더가 JSON을 배제해서 발생하므로, 응답 Content-Type을
-    // JSON으로 명시 고정해 콘텐츠 협상을 건너뛰어야 한다(그러지 않으면 이 핸들러의 응답도 같은 이유로 쓰기에 실패한다).
     @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
     public ResponseEntity<ApiResponse<?>> handleMediaTypeNotAcceptable(HttpMediaTypeNotAcceptableException ex) {
         BaseErrorCode ec = GeneralErrorCode.NOT_ACCEPTABLE;
 
         String detail = "지원하지 않는 Accept 타입입니다: " + ex.getSupportedMediaTypes();
         log.debug("[HttpMediaTypeNotAcceptable] {}", detail);
-        return ResponseEntity.status(ec.getHttpStatus())
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(ApiResponse.onFailure(ec, List.of(detail)));
+        return toResponse(ec, List.of(detail));
     }
 
     // 존재하지 않는 URL 또는 정적 리소스 요청 (404)
@@ -147,7 +142,7 @@ public class GeneralExceptionAdvice {
 
         String detail = "요청한 경로를 찾을 수 없습니다: " + ex.getResourcePath();
         log.debug("[NoResourceFound] {}", detail);
-        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of(detail)));
+        return toResponse(ec, List.of(detail));
     }
 
     // 나머지 전부 (500)
@@ -156,6 +151,24 @@ public class GeneralExceptionAdvice {
         log.error("Unhandled exception", ex);
 
         BaseErrorCode ec = GeneralErrorCode.INTERNAL_SERVER_ERROR;
-        return ResponseEntity.status(ec.getHttpStatus()).body(ApiResponse.onFailure(ec, List.of()));
+        return toResponse(ec, List.of());
+    }
+
+    /**
+     * 에러 응답을 만드는 유일한 통로.
+     *
+     * <p>Content-Type을 JSON으로 <b>명시 고정</b>하는 것이 핵심이다. 지정하지 않으면 스프링이 요청의 Accept 헤더로
+     * 콘텐츠 협상을 하는데, JSON을 받아들이지 않는 Accept(예: {@code application/xml})가 오면 이 에러 응답 자체를
+     * 쓰지 못해 {@link HttpMediaTypeNotAcceptableException}이 다시 발생한다. 그 예외는 예외 처리 도중에 터진 것이라
+     * 여기서 다시 잡히지 않고 서블릿까지 올라가 ERROR 디스패치({@code /error})로 넘어가며, 결국 원래 의미(400/500 등)와
+     * 전혀 다른 응답으로 둔갑한다.
+     *
+     * <p>이 어드바이스가 내보내는 응답은 {@link ApiResponse} JSON 하나뿐이라 협상할 대상이 애초에 없다. 그래서 Accept를
+     * 무시하고 JSON으로 고정하는 것이 맞다.
+     */
+    private ResponseEntity<ApiResponse<?>> toResponse(BaseErrorCode errorCode, List<String> errorDetail) {
+        return ResponseEntity.status(errorCode.getHttpStatus())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ApiResponse.onFailure(errorCode, errorDetail));
     }
 }
