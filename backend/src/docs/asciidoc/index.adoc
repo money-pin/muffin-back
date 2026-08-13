@@ -474,7 +474,7 @@ include::{snippets}/investment-confirm-window-closed/response-fields.adoc[]
 |HTTP|code|message|설명
 
 |400|COMMON_400_002|요청 값 검증에 실패했습니다.|섹터 목록이 비어 있거나 섹터 코드·수량 형식이 올바르지 않음
-|400|INVESTMENT_400_001|현재는 투자할 수 없는 시간입니다.|거래일이 아니거나 10:00 이전, 처리 대기 투자가 있는 경우
+|400|INVESTMENT_400_001|현재는 투자할 수 있는 시간이 아닙니다.|거래일이 아니거나 10:00 이전, 처리 대기 투자가 있는 경우
 |400|INVESTMENT_400_002|투자할 수 없는 섹터가 포함되어 있습니다.|존재하지 않거나 비활성화된 섹터 포함
 |400|INVESTMENT_400_003|투자 금액이 보유 자산을 초과합니다.|선택한 섹터 수량의 총 투자 금액이 총자산을 초과
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
@@ -546,7 +546,7 @@ include::{snippets}/investment-update-today-success/response-fields.adoc[]
 |HTTP|code|message|설명
 
 |400|COMMON_400_002|요청 값 검증에 실패했습니다.|섹터 목록이 비어 있거나 섹터 코드·수량 형식이 올바르지 않음
-|400|INVESTMENT_400_001|현재는 투자할 수 없는 시간입니다.|수정 가능 시간이 아니거나 거래일이 아님
+|400|INVESTMENT_400_001|현재는 투자할 수 있는 시간이 아닙니다.|수정 가능 시간이 아니거나 거래일이 아님
 |400|INVESTMENT_400_002|투자할 수 없는 섹터가 포함되어 있습니다.|존재하지 않거나 비활성화된 섹터 포함
 |400|INVESTMENT_400_003|투자 금액이 보유 자산을 초과합니다.|선택한 섹터 수량의 총 투자 금액이 총자산을 초과
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
