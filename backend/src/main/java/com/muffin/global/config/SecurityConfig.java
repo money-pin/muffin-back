@@ -3,6 +3,7 @@ package com.muffin.global.config;
 import com.muffin.auth.infrastructure.jwt.JwtAuthenticationFilter;
 import com.muffin.global.apiPayload.handler.ApiAccessDeniedHandler;
 import com.muffin.global.apiPayload.handler.ApiAuthenticationEntryPoint;
+import jakarta.servlet.DispatcherType;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -44,7 +45,14 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers(
+                .authorizeHttpRequests(auth -> auth
+                        // 서블릿 ERROR 디스패치는 인가 대상이 아니다. 스프링 시큐리티 6부터 필터 체인이 ERROR
+                        // 디스패치에도 적용되는데, 이걸 막으면 처리되지 못한 예외가 전부 "인증이 필요합니다"(401)로
+                        // 둔갑해 원래 원인(400/500 등)을 감춘다. 어떤 요청을 인증할지는 아래 REQUEST 규칙이 이미
+                        // 판단했고, 여기로 오는 건 그 판단이 끝난 뒤 발생한 에러의 후처리다.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR)
+                        .permitAll()
+                        .requestMatchers(
                                 "/auth/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
