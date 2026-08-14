@@ -76,8 +76,8 @@ prometheus.scrape "mysql" {
 // RDS 안쪽 리눅스는 보지 못한다.
 //
 // 박스에서 긁는 것은 EC2 인스턴스 역할로 인증하기 위해서다(AWS 키를 외부에 두지 않는다).
-// 5분 간격은 GetMetricData가 호출당 과금이고 RDS 기본 지표가 60초 해상도라, 더 자주 긁어도
-// 같은 값에 요금만 늘기 때문이다.
+// 5분 간격은 비용 때문이다. GetMetricData는 호출 수가 아니라 요청한 메트릭 수로 과금되므로
+// 자주 긁을수록 총량이 늘고, RDS 기본 지표는 60초 해상도라 더 자주 긁어도 같은 값을 받는다.
 prometheus.exporter.cloudwatch "rds" {
 	sts_region = "ap-northeast-2"
 
@@ -108,7 +108,8 @@ prometheus.exporter.cloudwatch "rds" {
 			period     = "5m"
 		}
 
-		// 메모리 압박의 실제 신호. 스왑을 쓰기 시작한 시점부터 쿼리가 느려진다.
+		// 메모리 압박의 신호. 값이 0보다 크다고 곧바로 지연은 아니고, 늘어나거나 높게 유지될 때
+		// 위 FreeableMemory·버퍼풀 히트율·쿼리 지연과 함께 봐야 판단이 선다.
 		metric {
 			name       = "SwapUsage"
 			statistics = ["Average"]
@@ -139,8 +140,9 @@ prometheus.exporter.cloudwatch "rds" {
 			period     = "5m"
 		}
 
-		// 크레딧이 바닥나면 t3 계열은 기준선(vCPU의 10%)으로 묶여 전체가 느려진다.
-		// 코드를 봐도 원인이 보이지 않는 종류의 지연이라 지표로 남긴다.
+		// 기준선(db.t3.micro는 vCPU당 10%)을 넘겨 쓰면 크레딧이 깎인다. RDS의 t3는 unlimited가
+		// 기본이라 잔량이 0이어도 성능이 묶이지는 않고 초과분이 과금된다. 어느 쪽이든 0에
+		// 가까워지면 인스턴스 등급을 봐야 한다는 신호다.
 		metric {
 			name       = "CPUCreditBalance"
 			statistics = ["Average"]
