@@ -1,5 +1,6 @@
 package com.muffin.sector.application;
 
+import com.muffin.global.config.CacheConfig;
 import com.muffin.sector.domain.exception.SectorException;
 import com.muffin.sector.domain.exception.code.SectorErrorCode;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
@@ -10,6 +11,7 @@ import com.muffin.sector.infrastructure.toss.exception.TossApiException;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 /** 토스증권 국내 마켓 캘린더를 검증하고 모의투자에서 사용할 거래일 정보로 변환한다. */
@@ -20,7 +22,16 @@ public class TradingCalendarService {
 
     private final TossMarketDataClient tossMarketDataClient;
 
-    /** 요청 날짜의 거래일 여부와 직전·다음 거래일을 한 번의 외부 API 호출로 조회한다. */
+    /**
+     * 요청 날짜의 거래일 여부와 직전·다음 거래일을 한 번의 외부 API 호출로 조회한다.
+     *
+     * <p>날짜별로 하루 종일 불변이고 모든 사용자에게 같은 값이라 캐시한다. 캐시 전에는 조회 API가 요청마다 토스를 호출해, 화면을 열 때마다
+     * 외부 왕복이 응답시간을 지배했다. 호출 지점이 조회 2곳과 배치 5곳 이상이라 이 메서드 한 곳에 붙이면 전부 혜택을 본다.
+     *
+     * <p><b>예외는 캐시되지 않는다</b>: 스프링 캐시는 메서드가 예외를 던지면 저장하지 않으므로, 토스의 일시 장애가 TTL 동안 고정되지
+     * 않는다. 다음 호출이 곧바로 재시도한다.
+     */
+    @Cacheable(cacheNames = CacheConfig.TRADING_CALENDAR, key = "#date")
     public TradingCalendar getCalendar(LocalDate date) {
         Result result;
         try {
