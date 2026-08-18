@@ -17,7 +17,14 @@ import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.Sess
 import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse.Sessions;
 import com.muffin.sector.infrastructure.toss.exception.TossApiException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +47,10 @@ class TradingCalendarCacheTest {
     private static final LocalDate OTHER_DATE = LocalDate.of(2026, 7, 13);
     private static final LocalDate PREVIOUS_DATE = LocalDate.of(2026, 7, 9);
     private static final LocalDate NEXT_DATE = LocalDate.of(2026, 7, 13);
+
+    private static final int CONCURRENT_REQUESTS = 16;
+    private static final long EXTERNAL_CALL_DELAY_MILLIS = 100;
+    private static final long AWAIT_TIMEOUT_SECONDS = 10;
 
     @MockitoBean
     private TossMarketDataClient tossMarketDataClient;
@@ -99,6 +110,39 @@ class TradingCalendarCacheTest {
 
         verify(tossMarketDataClient, times(2)).getMarketCalendar(DATE);
         assertEquals(DATE, recovered.date());
+    }
+
+    @Test
+    @DisplayName("같은 날짜에 동시 요청이 몰려도 외부 API는 한 번만 호출한다")
+    void getCalendar_callsExternalApiOnceUnderConcurrentMisses() throws Exception {
+        when(tossMarketDataClient.getMarketCalendar(DATE)).thenAnswer(invocation -> {
+            // 미스 구간을 넓혀 경쟁 상황을 확실히 만든다. sync가 없으면 이 사이에 다른 스레드가 전부 들어온다.
+            Thread.sleep(EXTERNAL_CALL_DELAY_MILLIS);
+            return calendar(tradingBusinessDay(DATE));
+        });
+
+        ExecutorService executor = Executors.newFixedThreadPool(CONCURRENT_REQUESTS);
+        List<Future<TradingCalendar>> results = new ArrayList<>();
+        try {
+            CountDownLatch startGate = new CountDownLatch(1);
+            for (int i = 0; i < CONCURRENT_REQUESTS; i++) {
+                results.add(executor.submit(() -> {
+                    startGate.await();
+                    return tradingCalendarService.getCalendar(DATE);
+                }));
+            }
+            startGate.countDown();
+
+            for (Future<TradingCalendar> result : results) {
+                assertEquals(
+                        DATE,
+                        result.get(AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS).date());
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+
+        verify(tossMarketDataClient, times(1)).getMarketCalendar(DATE);
     }
 
     private Result calendar(BusinessDay today) {
