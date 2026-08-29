@@ -2,9 +2,8 @@
 
 <img src="images/muffin-overview.png" width="800" alt="Muffin overview" />
 
+# UMC 10th DEMO DAY 대상 수상🏆
 # 🧁 Muffin
-
-## UMC 10th DEMO DAY 대상 수상🏆
 
 ### 매일 아침 가볍게 즐기는 금융 핀셋 가이드
 
