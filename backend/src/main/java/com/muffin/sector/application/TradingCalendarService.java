@@ -1,5 +1,6 @@
 package com.muffin.sector.application;
 
+import com.muffin.global.config.CacheConfig;
 import com.muffin.sector.domain.exception.SectorException;
 import com.muffin.sector.domain.exception.code.SectorErrorCode;
 import com.muffin.sector.infrastructure.toss.TossMarketDataClient;
@@ -10,6 +11,7 @@ import com.muffin.sector.infrastructure.toss.exception.TossApiException;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 /** 토스증권 국내 마켓 캘린더를 검증하고 모의투자에서 사용할 거래일 정보로 변환한다. */
@@ -20,7 +22,9 @@ public class TradingCalendarService {
 
     private final TossMarketDataClient tossMarketDataClient;
 
-    /** 요청 날짜의 거래일 여부와 직전·다음 거래일을 한 번의 외부 API 호출로 조회한다. */
+    /** 요청 날짜의 거래일 여부와 직전·다음 거래일을 한 번의 외부 API 호출로 조회한다.
+     */
+    @Cacheable(cacheNames = CacheConfig.TRADING_CALENDAR, key = "#date", sync = true)
     public TradingCalendar getCalendar(LocalDate date) {
         Result result;
         try {
