@@ -4,6 +4,7 @@ import com.muffin.auth.infrastructure.jwt.JwtAuthenticationFilter;
 import com.muffin.global.apiPayload.handler.ApiAccessDeniedHandler;
 import com.muffin.global.apiPayload.handler.ApiAuthenticationEntryPoint;
 import jakarta.servlet.DispatcherType;
+import java.time.Duration;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -32,6 +33,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    /** preflight 응답을 브라우저가 재사용할 기간. Chrome 상한이 2시간이라 그 안에서 넉넉히 잡는다. */
+    private static final Duration PREFLIGHT_CACHE_DURATION = Duration.ofHours(1);
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ApiAuthenticationEntryPoint apiAuthenticationEntryPoint;
@@ -85,6 +89,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(PREFLIGHT_CACHE_DURATION);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
