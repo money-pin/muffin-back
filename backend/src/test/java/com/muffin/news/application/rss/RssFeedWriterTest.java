@@ -46,12 +46,12 @@ class RssFeedWriterTest {
         verify(newsRepository).save(newsCaptor.capture());
         assertThat(newsCaptor.getValue().getCategoryId()).isEqualTo(3L);
         assertThat(newsCaptor.getValue().getOriginalUrl()).isEqualTo(fresh.url());
-        assertThat(newsCaptor.getValue().getThumbnailUrl()).isEqualTo("https://example.com/thumb.jpg");
+        assertThat(newsCaptor.getValue().getThumbnailUrl()).isNull();
         assertThat(newsCaptor.getValue().getContent()).isNull();
         assertThat(newsCaptor.getValue().getStatus().name()).isEqualTo("PROCESSING");
     }
 
     private static RssArticle article(String title, String url) {
-        return new RssArticle(title, url, "요약", "https://example.com/thumb.jpg", LocalDateTime.of(2026, 7, 12, 6, 0));
+        return new RssArticle(title, url, "요약", null, LocalDateTime.of(2026, 7, 12, 6, 0));
     }
 }

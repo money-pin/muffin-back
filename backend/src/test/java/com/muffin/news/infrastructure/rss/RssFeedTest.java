@@ -12,7 +12,7 @@ class RssFeedTest {
 
     private final HttpRssFeedClient client = new HttpRssFeedClient();
 
-    /** link가 없는 item은 건너뛰고, 유효한 item만 RssArticle로 파싱한다. 썸네일이 없으면 null이다. */
+    /** link가 없는 item은 건너뛰고, 유효한 item만 RssArticle로 파싱한다. */
     @Test
     void parsesRssItemsAndSkipsItemsWithoutAUrl() throws Exception {
         String xml =
@@ -40,9 +40,9 @@ class RssFeedTest {
                         LocalDateTime.of(2026, 7, 12, 6, 0)));
     }
 
-    /** 매일경제 피드 형식(media:content)의 썸네일 URL을 추출한다. */
+    /** 사진 정책상 피드가 이미지를 제공해도 썸네일을 수집하지 않고 항상 null로 둔다. */
     @Test
-    void parsesThumbnailFromMediaContent() throws Exception {
+    void doesNotCollectThumbnailEvenWhenFeedProvidesImages() throws Exception {
         String xml =
                 """
                 <?xml version="1.0" encoding="UTF-8"?>
@@ -53,28 +53,7 @@ class RssFeedTest {
                     <description><![CDATA[기사 요약]]></description>
                     <pubDate>Sun, 12 Jul 2026 06:00:00 +0900</pubDate>
                     <media:content medium="image" url="https://pimg.mk.co.kr/news/thumb.jpg" />
-                  </item>
-                </channel></rss>
-                """;
-
-        List<RssArticle> result = client.parse(xml.getBytes(StandardCharsets.UTF_8));
-
-        assertThat(result).singleElement().satisfies(article -> assertThat(article.thumbnailUrl())
-                .isEqualTo("https://pimg.mk.co.kr/news/thumb.jpg"));
-    }
-
-    /** media 계열 태그가 없으면 이미지 타입 enclosure에서 썸네일을 추출한다. */
-    @Test
-    void parsesThumbnailFromImageEnclosureAsFallback() throws Exception {
-        String xml =
-                """
-                <?xml version="1.0" encoding="UTF-8"?>
-                <rss version="2.0"><channel>
-                  <item>
-                    <title><![CDATA[환율 변동]]></title>
-                    <link>https://example.com/news/3</link>
-                    <pubDate>Sun, 12 Jul 2026 06:00:00 +0900</pubDate>
-                    <enclosure url="https://example.com/audio.mp3" type="audio/mpeg" />
+                    <media:thumbnail url="https://pimg.mk.co.kr/news/thumb2.jpg" />
                     <enclosure url="https://example.com/thumb.png" type="image/png" />
                   </item>
                 </channel></rss>
@@ -83,52 +62,6 @@ class RssFeedTest {
         List<RssArticle> result = client.parse(xml.getBytes(StandardCharsets.UTF_8));
 
         assertThat(result).singleElement().satisfies(article -> assertThat(article.thumbnailUrl())
-                .isEqualTo("https://example.com/thumb.png"));
-    }
-
-    /** 비이미지 media:content(video)는 건너뛰고, 뒤따르는 image media:thumbnail을 썸네일로 채택한다. */
-    @Test
-    void skipsNonImageMediaContentAndFallsBackToMediaThumbnail() throws Exception {
-        String xml =
-                """
-                <?xml version="1.0" encoding="UTF-8"?>
-                <rss xmlns:media="http://search.yahoo.com/mrss/" version="2.0"><channel>
-                  <item>
-                    <title><![CDATA[영상 뉴스]]></title>
-                    <link>https://example.com/news/4</link>
-                    <pubDate>Sun, 12 Jul 2026 06:00:00 +0900</pubDate>
-                    <media:content medium="video" type="video/mp4" url="https://example.com/clip.mp4" />
-                    <media:thumbnail url="https://pimg.mk.co.kr/news/thumb.jpg" />
-                  </item>
-                </channel></rss>
-                """;
-
-        List<RssArticle> result = client.parse(xml.getBytes(StandardCharsets.UTF_8));
-
-        assertThat(result).singleElement().satisfies(article -> assertThat(article.thumbnailUrl())
-                .isEqualTo("https://pimg.mk.co.kr/news/thumb.jpg"));
-    }
-
-    /** 앞선 비이미지 media:content(video)를 건너뛰고 뒤의 image media:content를 채택한다. */
-    @Test
-    void picksImageMediaContentAfterNonImageMediaContent() throws Exception {
-        String xml =
-                """
-                <?xml version="1.0" encoding="UTF-8"?>
-                <rss xmlns:media="http://search.yahoo.com/mrss/" version="2.0"><channel>
-                  <item>
-                    <title><![CDATA[혼합 미디어]]></title>
-                    <link>https://example.com/news/5</link>
-                    <pubDate>Sun, 12 Jul 2026 06:00:00 +0900</pubDate>
-                    <media:content type="video/mp4" url="https://example.com/clip.mp4" />
-                    <media:content medium="image" url="https://pimg.mk.co.kr/news/real.jpg" />
-                  </item>
-                </channel></rss>
-                """;
-
-        List<RssArticle> result = client.parse(xml.getBytes(StandardCharsets.UTF_8));
-
-        assertThat(result).singleElement().satisfies(article -> assertThat(article.thumbnailUrl())
-                .isEqualTo("https://pimg.mk.co.kr/news/real.jpg"));
+                .isNull());
     }
 }
