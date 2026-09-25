@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor
 public enum SectorErrorCode implements BaseErrorCode {
+    REFERENCE_ASSET_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "SECTOR_500_001", "섹터의 기준 자산 정보를 확인할 수 없습니다."),
     MARKET_CALENDAR_UNAVAILABLE(
             HttpStatus.SERVICE_UNAVAILABLE, "SECTOR_503_001", "거래일 정보를 확인할 수 없습니다. 잠시 후 다시 시도해주세요."),
     ETF_PRICE_PROVIDER_UNAVAILABLE(
