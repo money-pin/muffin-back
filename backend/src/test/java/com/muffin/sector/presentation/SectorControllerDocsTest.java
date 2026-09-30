@@ -50,12 +50,20 @@ class SectorControllerDocsTest {
                                         "GOLD",
                                         "금",
                                         "글로벌 금 선물 기반",
-                                        new ReferenceAssetResponse(ReferenceAssetType.ETF, "132030", "KODEX 골드선물(H)")),
+                                        new ReferenceAssetResponse(
+                                                ReferenceAssetType.ETF,
+                                                "132030",
+                                                "KODEX 골드선물(H)",
+                                                "금 선물 가격의 움직임을 반영하는 ETF입니다.")),
                                 new SectorGuideItem(
                                         "CRYPTO",
                                         "코인",
                                         null,
-                                        new ReferenceAssetResponse(ReferenceAssetType.CRYPTO, "BTC", "비트코인")))));
+                                        new ReferenceAssetResponse(
+                                                ReferenceAssetType.CRYPTO,
+                                                "BTC",
+                                                "비트코인",
+                                                "비트코인 시세를 기준 자산으로 사용합니다.")))));
 
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new SectorController(sectorQueryService))
                 .apply(documentationConfiguration(restDocumentation)
@@ -88,7 +96,10 @@ class SectorControllerDocsTest {
                                 fieldWithPath("result.sectors[].referenceAsset.code")
                                         .description("ETF 종목코드 또는 BTC"),
                                 fieldWithPath("result.sectors[].referenceAsset.name")
-                                        .description("기준 자산 이름"))));
+                                        .description("기준 자산 이름"),
+                                fieldWithPath("result.sectors[].referenceAsset.description")
+                                        .optional()
+                                        .description("기준 자산 설명. 미등록 시 null"))));
     }
 
     @Test

@@ -45,7 +45,7 @@ class SectorGuideQueryRepositoryTest {
         SectorGroup future = groupRepository.save(SectorGroup.create("FUTURE_TECH", "미래", null, 2));
         SectorGroup base = groupRepository.save(SectorGroup.create("BASE_ASSET", "기초", null, 1));
         Etf btc = etfRepository.save(Etf.create("BTC", "비트코인"));
-        Etf actual = etfRepository.save(Etf.create("CUSTOM", "실제 연결 상품"));
+        Etf actual = etfRepository.save(Etf.create("CUSTOM", "실제 연결 상품", "실제 상품 설명"));
         // 기존 시드에 같은 섹터 코드의 상품이 있어도 sector.etf_id로 연결된 상품을 사용한다.
         etfRepository.save(Etf.create("132030", "KODEX 골드선물(H)"));
         sectorRepository.save(Sector.create(future.getId(), btc.getId(), "코인", null, "CRYPTO", 1));
@@ -58,7 +58,8 @@ class SectorGuideQueryRepositoryTest {
         List<SectorGuideProjection> result = queryRepository.findActiveSectorGuides();
 
         assertThat(result).extracting(SectorGuideProjection::sectorCode).containsExactly("DEPOSIT", "GOLD", "CRYPTO");
-        assertThat(result.get(1)).isEqualTo(new SectorGuideProjection("GOLD", "금", "실제 DB 설명", "CUSTOM", "실제 연결 상품"));
+        assertThat(result.get(1))
+                .isEqualTo(new SectorGuideProjection("GOLD", "금", "실제 DB 설명", "CUSTOM", "실제 연결 상품", "실제 상품 설명"));
         assertThat(result.get(2).assetCode()).isEqualTo("BTC");
         assertThat(result.get(2).description()).isNull();
     }
@@ -83,7 +84,7 @@ class SectorGuideQueryRepositoryTest {
         sectorRepository.save(Sector.create(group.getId(), Long.MAX_VALUE, "금", null, "GOLD", 1));
 
         assertThat(queryRepository.findActiveSectorGuides())
-                .containsExactly(new SectorGuideProjection("GOLD", "금", null, null, null));
+                .containsExactly(new SectorGuideProjection("GOLD", "금", null, null, null, null));
     }
 
     @Test

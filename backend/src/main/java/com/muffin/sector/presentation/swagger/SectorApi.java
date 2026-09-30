@@ -13,6 +13,7 @@ public interface SectorApi {
     @Operation(
             summary = "섹터별 기준 자산 안내 조회",
             description = "활성 섹터의 설명과 실제 연결된 기준 자산을 그룹·섹터 표시 순서대로 조회한다. "
+                    + "sectors[].description은 섹터 설명이고 referenceAsset.description은 기준 자산 설명이며, 등록되지 않은 설명은 null이다. "
                     + "referenceAsset.type은 ETF 또는 CRYPTO이며, BTC는 CRYPTO로 반환한다. "
                     + "활성 섹터가 없으면 totalCount는 0, sectors는 빈 배열이다.")
     @ApiResponses({

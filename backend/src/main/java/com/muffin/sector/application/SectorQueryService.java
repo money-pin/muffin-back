@@ -48,7 +48,7 @@ public class SectorQueryService {
                 sector.sectorCode(),
                 sector.name(),
                 sector.description(),
-                new ReferenceAssetResponse(type, sector.assetCode(), sector.assetName()));
+                new ReferenceAssetResponse(type, sector.assetCode(), sector.assetName(), sector.assetDescription()));
     }
 
     @Transactional(readOnly = true)

@@ -53,8 +53,8 @@ class SectorGuideIntegrationTest {
     @DisplayName("인증된 요청은 DB의 ETF와 BTC 매핑을 구분하고 비활성 섹터를 제외한다")
     void getSectorGuide_returnsActualMappings() throws Exception {
         SectorGroup group = groupRepository.save(SectorGroup.create("BASE_ASSET", "기초", null, 1));
-        Etf gold = etfRepository.save(Etf.create("132030", "KODEX 골드선물(H)"));
-        Etf btc = etfRepository.save(Etf.create("BTC", "비트코인"));
+        Etf gold = etfRepository.save(Etf.create("132030", "KODEX 골드선물(H)", "금 선물 기반 ETF"));
+        Etf btc = etfRepository.save(Etf.create("BTC", "비트코인", "비트코인 시세 기반"));
         sectorRepository.save(Sector.create(group.getId(), gold.getId(), "금", "글로벌 금 선물 기반", "GOLD", 1));
         sectorRepository.save(Sector.create(group.getId(), btc.getId(), "코인", null, "CRYPTO", 2));
         Sector inactive = Sector.create(group.getId(), gold.getId(), "숨긴 섹터", null, "HIDDEN", 0);
@@ -72,9 +72,13 @@ class SectorGuideIntegrationTest {
                 .andExpect(jsonPath("$.result.sectors[0].referenceAsset.type").value("ETF"))
                 .andExpect(jsonPath("$.result.sectors[0].referenceAsset.code").value("132030"))
                 .andExpect(jsonPath("$.result.sectors[0].referenceAsset.name").value("KODEX 골드선물(H)"))
+                .andExpect(jsonPath("$.result.sectors[0].referenceAsset.description")
+                        .value("금 선물 기반 ETF"))
                 .andExpect(jsonPath("$.result.sectors[1].referenceAsset.type").value("CRYPTO"))
                 .andExpect(jsonPath("$.result.sectors[1].referenceAsset.code").value("BTC"))
-                .andExpect(jsonPath("$.result.sectors[1].referenceAsset.name").value("비트코인"));
+                .andExpect(jsonPath("$.result.sectors[1].referenceAsset.name").value("비트코인"))
+                .andExpect(jsonPath("$.result.sectors[1].referenceAsset.description")
+                        .value("비트코인 시세 기반"));
     }
 
     @Test

@@ -30,7 +30,8 @@ public class SectorGuideQueryRepositoryImpl implements SectorGuideQueryRepositor
                         sector.name,
                         sector.description,
                         etf.etfCode,
-                        etf.etfName))
+                        etf.etfName,
+                        etf.description))
                 .from(sector)
                 .join(group)
                 .on(group.id.eq(sector.sectorGroupId))

@@ -77,8 +77,8 @@ class SectorQueryServiceTest {
     void getSectorGuide_mapsReferenceAssets() {
         when(sectorGuideQueryRepository.findActiveSectorGuides())
                 .thenReturn(List.of(
-                        new SectorGuideProjection("GOLD", "금", "DB 설명", "CUSTOM", "DB 상품명"),
-                        new SectorGuideProjection("CRYPTO", "코인", null, "BTC", "비트코인")));
+                        new SectorGuideProjection("GOLD", "금", "DB 설명", "CUSTOM", "DB 상품명", "DB 상품 설명"),
+                        new SectorGuideProjection("CRYPTO", "코인", null, "BTC", "비트코인", "BTC 설명")));
 
         SectorGuideResponse response = sectorQueryService.getSectorGuide();
 
@@ -88,12 +88,14 @@ class SectorQueryServiceTest {
         assertEquals("DB 설명", response.sectors().getFirst().description());
         assertEquals("CUSTOM", response.sectors().getFirst().referenceAsset().code());
         assertEquals("DB 상품명", response.sectors().getFirst().referenceAsset().name());
+        assertEquals("DB 상품 설명", response.sectors().getFirst().referenceAsset().description());
         assertEquals(
                 ReferenceAssetType.ETF,
                 response.sectors().getFirst().referenceAsset().type());
         assertEquals(
                 ReferenceAssetType.CRYPTO,
                 response.sectors().get(1).referenceAsset().type());
+        assertEquals("BTC 설명", response.sectors().get(1).referenceAsset().description());
         assertNull(response.sectors().get(1).description());
     }
 
@@ -112,7 +114,7 @@ class SectorQueryServiceTest {
     @DisplayName("기준 자산 매핑이 없으면 불완전한 안내 대신 오류를 반환한다")
     void getSectorGuide_rejectsMissingAsset() {
         when(sectorGuideQueryRepository.findActiveSectorGuides())
-                .thenReturn(List.of(new SectorGuideProjection("GOLD", "금", null, null, null)));
+                .thenReturn(List.of(new SectorGuideProjection("GOLD", "금", null, null, null, null)));
 
         SectorException exception = assertThrows(SectorException.class, () -> sectorQueryService.getSectorGuide());
 
