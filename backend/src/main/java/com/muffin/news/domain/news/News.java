@@ -42,6 +42,13 @@ public class News extends BaseEntity {
     @Column(name = "title", nullable = false)
     private String title;
 
+    /**
+     * RSS로 수집한 매경 원문 제목. 재구성 단계에서 {@link #title}은 AI 생성 제목으로 바뀌지만 이 값은 변하지 않는다. AI가 사실을
+     * 왜곡한 제목을 만들었을 때 원문과 대조하고, 프롬프트를 고친 뒤 다시 생성할 때 원본 입력으로 쓰기 위해 남긴다. API 응답에는 노출하지 않는다.
+     */
+    @Column(name = "original_title", length = 255)
+    private String originalTitle;
+
     @Column(name = "summary", length = 255)
     private String summary;
 
@@ -87,6 +94,8 @@ public class News extends BaseEntity {
             NewsStatus status) {
         this.categoryId = categoryId;
         this.title = title;
+        // 수집 시점에는 title이 곧 원문 제목이다. 재구성이 title만 덮어쓰고 이 값은 그대로 둔다.
+        this.originalTitle = title;
         this.summary = summary;
         this.publisher = publisher;
         this.publishedAt = publishedAt;
@@ -169,8 +178,16 @@ public class News extends BaseEntity {
         }
     }
 
-    /** AI 재구성 결과를 저장하고 정해진 발행 시각을 기다리는 상태로 변경한다. */
-    public void completeReconstruction(String summary, String reconstructedContent) {
+    /** AI 생성 제목의 최대 길이. 재구성 프롬프트가 요구하는 30자와 같은 값이며, 넘으면 원문 제목을 유지한다. */
+    private static final int MAX_AI_TITLE_LENGTH = 30;
+
+    /**
+     * AI 재구성 결과를 저장하고 정해진 발행 시각을 기다리는 상태로 변경한다.
+     *
+     * <p>제목은 쓸 수 있을 때만 교체한다. 제목 하나 때문에 뉴스를 실패 처리하면 그날 뉴스·해설카드·퀴즈·브리핑이 연쇄로 비는 손해가 더 크므로,
+     * 제목이 비정상이면 원문 제목을 그대로 두고 재구성 자체는 정상 완료시킨다. 요약과 본문은 기존대로 엄격하게 검증한다.
+     */
+    public void completeReconstruction(String title, String summary, String reconstructedContent) {
         if (status != NewsStatus.PROCESSING) {
             throw new IllegalStateException("Only processing news can complete reconstruction");
         }
@@ -178,9 +195,21 @@ public class News extends BaseEntity {
         validateSummary(summary);
         validateContent(reconstructedContent);
 
+        if (isUsableAiTitle(title)) {
+            this.title = title.strip();
+        }
         this.summary = summary;
         this.content = reconstructedContent;
         this.status = NewsStatus.PENDING;
+    }
+
+    /** AI가 생성한 제목을 쓸 수 있는지 확인한다. 비었거나 길이를 넘거나 줄바꿈이 섞이면 원문 제목을 유지한다. */
+    private static boolean isUsableAiTitle(String title) {
+        if (title == null || title.isBlank()) {
+            return false;
+        }
+        String stripped = title.strip();
+        return stripped.length() <= MAX_AI_TITLE_LENGTH && !stripped.contains("\n") && !stripped.contains("\r");
     }
 
     private static void validateSummary(String summary) {

@@ -166,7 +166,7 @@ class NewsQueryServiceTest {
     private News publishedNews(Long newsId, String content) {
         News news =
                 News.processing(1L, "제목", "매일경제", LocalDateTime.of(2026, 7, 18, 9, 0), null, "https://news/" + newsId);
-        news.completeReconstruction("요약", content);
+        news.completeReconstruction("제목", "요약", content);
         news.publish();
         return news;
     }

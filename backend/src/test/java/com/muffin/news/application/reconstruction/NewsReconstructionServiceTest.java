@@ -68,11 +68,17 @@ class NewsReconstructionServiceTest {
         when(newsRewriter.rewrite(new NewsReconstructionRequest(
                         news.getTitle(), news.getPublisher(), news.getPublishedAt(), "원문 본문")))
                 .thenReturn(new NewsReconstructionResult(
-                        "한 줄 요약", "재구성된 본문", List.of(new SectorImpactResult("GOLD", ImpactType.POSITIVE)), List.of()));
+                        "AI가 쓴 제목",
+                        "한 줄 요약",
+                        "재구성된 본문",
+                        List.of(new SectorImpactResult("GOLD", ImpactType.POSITIVE)),
+                        List.of()));
 
         reconstructionService.reconstruct(List.of(newsId));
 
         assertThat(news.getStatus()).isEqualTo(NewsStatus.PENDING);
+        assertThat(news.getTitle()).isEqualTo("AI가 쓴 제목");
+        assertThat(news.getOriginalTitle()).isEqualTo("경제 뉴스");
         assertThat(news.getSummary()).isEqualTo("한 줄 요약");
         assertThat(news.getContent()).isEqualTo("재구성된 본문");
         assertThat(news.hasReconstructionResult()).isTrue();
@@ -113,7 +119,11 @@ class NewsReconstructionServiceTest {
         when(newsRewriter.rewrite(new NewsReconstructionRequest(
                         news.getTitle(), news.getPublisher(), news.getPublishedAt(), "원문 본문")))
                 .thenReturn(new NewsReconstructionResult(
-                        "한 줄 요약", "재구성된 본문", List.of(new SectorImpactResult("GOLD", ImpactType.POSITIVE)), List.of()));
+                        "AI가 쓴 제목",
+                        "한 줄 요약",
+                        "재구성된 본문",
+                        List.of(new SectorImpactResult("GOLD", ImpactType.POSITIVE)),
+                        List.of()));
         when(newsSectorImpactRepository.saveAll(anyList())).thenThrow(new IllegalStateException("db unavailable"));
 
         reconstructionService.reconstruct(List.of(newsId));

@@ -52,7 +52,7 @@ class NewsPublicationServiceTest {
 
     private static News pendingNews(String originalUrl) {
         News news = News.processing(1L, "경제 뉴스", "매일경제", LocalDateTime.of(2026, 7, 16, 6, 0), null, originalUrl);
-        news.completeReconstruction("한 줄 요약", "재구성된 본문");
+        news.completeReconstruction("경제 뉴스", "한 줄 요약", "재구성된 본문");
         return news;
     }
 }
