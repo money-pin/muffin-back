@@ -4,6 +4,7 @@ import com.muffin.news.domain.explanation.enums.NewsExplanationStatus;
 import com.muffin.news.domain.news.enums.NewsStatus;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
@@ -62,6 +63,27 @@ public interface NewsRepository extends JpaRepository<News, Long> {
             """)
     List<News> findReconstructedQuizCandidates(
             @Param("status") NewsStatus status,
+            @Param("startInclusive") LocalDateTime startInclusive,
+            @Param("endExclusive") LocalDateTime endExclusive,
+            Pageable pageable);
+
+    /**
+     * 브리핑 이슈 후보. 브리핑은 뉴스 공개 시각보다 먼저 발행될 수 있어 아직 공개 전인 PENDING과 이미 공개된 PUBLISHED를 함께 본다.
+     */
+    @Query(
+            """
+            SELECT n
+            FROM News n
+            WHERE n.status IN :statuses
+              AND n.publishedAt >= :startInclusive
+              AND n.publishedAt < :endExclusive
+              AND n.deletedAt IS NULL
+              AND n.summary IS NOT NULL
+              AND n.content IS NOT NULL
+            ORDER BY n.publishedAt DESC
+            """)
+    List<News> findBriefingCandidates(
+            @Param("statuses") Collection<NewsStatus> statuses,
             @Param("startInclusive") LocalDateTime startInclusive,
             @Param("endExclusive") LocalDateTime endExclusive,
             Pageable pageable);
