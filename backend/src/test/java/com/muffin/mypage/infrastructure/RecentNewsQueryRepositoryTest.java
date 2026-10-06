@@ -142,7 +142,7 @@ class RecentNewsQueryRepositoryTest {
     private Long savePublished(Long categoryId, String title, LocalDateTime publishedAt, long viewCount) {
         News news = News.processing(
                 categoryId, title, "매일경제", publishedAt, "https://thumb/" + title, "https://news/" + title);
-        news.completeReconstruction(title + " 요약", title + " 재구성 본문");
+        news.completeReconstruction(title, title + " 요약", title + " 재구성 본문");
         news.publish();
         ReflectionTestUtils.setField(news, "viewCount", viewCount);
         return newsRepository.save(news).getId();

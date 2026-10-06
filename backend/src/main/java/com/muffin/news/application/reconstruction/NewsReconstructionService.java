@@ -91,7 +91,7 @@ public class NewsReconstructionService {
         transactionTemplate.executeWithoutResult(status -> {
             List<NewsSectorImpact> sectorImpacts = toSectorImpacts(news, result.sectorImpacts());
 
-            news.completeReconstruction(result.summary(), result.rewrittenBody());
+            news.completeReconstruction(result.title(), result.summary(), result.rewrittenBody());
 
             newsRepository.save(news);
             newsSectorImpactRepository.saveAll(sectorImpacts);

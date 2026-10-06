@@ -89,7 +89,7 @@ class NewsTermMappingServiceTest {
     private static News reconstructedNews(Long newsId, String content) {
         News news = News.processing(1L, "뉴스", "매일경제", LocalDateTime.of(2026, 7, 18, 9, 0), null, "https://example.com");
         ReflectionTestUtils.setField(news, "id", newsId);
-        news.completeReconstruction("뉴스 요약", content);
+        news.completeReconstruction("뉴스", "뉴스 요약", content);
         return news;
     }
 

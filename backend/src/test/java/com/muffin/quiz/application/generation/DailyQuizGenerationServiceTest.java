@@ -668,7 +668,7 @@ class DailyQuizGenerationServiceTest {
         News news =
                 News.processing(1L, title, "매일경제", LocalDateTime.of(2026, 7, 19, 8, 0), null, "https://news/" + newsId);
         ReflectionTestUtils.setField(news, "id", newsId);
-        news.completeReconstruction(title + " 요약", content);
+        news.completeReconstruction(title, title + " 요약", content);
         return news;
     }
 
@@ -676,7 +676,7 @@ class DailyQuizGenerationServiceTest {
             Long newsId, Long categoryId, LocalDateTime publishedAt, String content, int termCount) {
         News news = News.processing(categoryId, "뉴스" + newsId, "매일경제", publishedAt, null, "https://news/" + newsId);
         ReflectionTestUtils.setField(news, "id", newsId);
-        news.completeReconstruction("뉴스" + newsId + " 요약", content);
+        news.completeReconstruction("뉴스" + newsId, "뉴스" + newsId + " 요약", content);
         for (long termId = 1; termId <= termCount; termId++) {
             news.addTerm(termId);
         }

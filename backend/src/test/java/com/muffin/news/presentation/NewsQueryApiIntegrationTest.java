@@ -141,7 +141,7 @@ class NewsQueryApiIntegrationTest {
 
     private Long savePublished(Long categoryId, String title, LocalDateTime publishedAt) {
         News news = News.processing(categoryId, title, "매일경제", publishedAt, null, "https://news/" + title);
-        news.completeReconstruction(title + " 요약", title + " 재구성 본문");
+        news.completeReconstruction(title, title + " 요약", title + " 재구성 본문");
         news.publish();
         return newsRepository.save(news).getId();
     }

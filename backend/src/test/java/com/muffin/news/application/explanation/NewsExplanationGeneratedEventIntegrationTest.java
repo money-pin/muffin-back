@@ -80,7 +80,7 @@ class NewsExplanationGeneratedEventIntegrationTest {
         News news =
                 News.processing(1L, "금리 뉴스", "매일경제", LocalDateTime.of(2026, 7, 18, 9, 0), null, "https://example.com");
         ReflectionTestUtils.setField(news, "id", newsId);
-        news.completeReconstruction("금리 뉴스 요약", "기준금리가 바뀌면서 대출과 예금 환경에도 변화가 생겼습니다.");
+        news.completeReconstruction("금리 뉴스", "금리 뉴스 요약", "기준금리가 바뀌면서 대출과 예금 환경에도 변화가 생겼습니다.");
         return news;
     }
 }

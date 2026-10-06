@@ -30,7 +30,7 @@ class NewsTest {
     void completeReconstruction_setsPendingStatusAndContent() {
         News news = createNews();
 
-        news.completeReconstruction("한 줄 요약", "재구성된 뉴스 본문");
+        news.completeReconstruction("AI가 쓴 제목", "한 줄 요약", "재구성된 뉴스 본문");
 
         assertEquals("한 줄 요약", news.getSummary());
         assertEquals("재구성된 뉴스 본문", news.getContent());
@@ -38,10 +38,68 @@ class NewsTest {
     }
 
     @Test
+    @DisplayName("AI 제목으로 교체해도 매경 원문 제목은 그대로 남는다")
+    void completeReconstruction_replacesTitleButKeepsOriginalTitle() {
+        News news = createNews();
+
+        news.completeReconstruction("반도체 수출 3개월째 증가", "한 줄 요약", "재구성된 뉴스 본문");
+
+        assertEquals("반도체 수출 3개월째 증가", news.getTitle());
+        assertEquals("경제 뉴스", news.getOriginalTitle());
+    }
+
+    @Test
+    @DisplayName("AI 제목 앞뒤 공백은 제거하고 저장한다")
+    void completeReconstruction_stripsTitle() {
+        News news = createNews();
+
+        news.completeReconstruction("  반도체 수출 증가  ", "한 줄 요약", "재구성된 뉴스 본문");
+
+        assertEquals("반도체 수출 증가", news.getTitle());
+    }
+
+    /** 제목 하나 때문에 뉴스를 실패시키면 그날 해설카드·퀴즈까지 연쇄로 비므로, 원문 제목을 유지하고 재구성은 완료시킨다. */
+    @Test
+    @DisplayName("AI 제목이 비었거나 30자를 넘거나 줄바꿈이 섞이면 원문 제목을 유지하고 재구성은 완료된다")
+    void completeReconstruction_keepsOriginalTitleWhenAiTitleIsUnusable() {
+        String tooLong = "가".repeat(31);
+
+        for (String unusable : new String[] {null, "", "   ", tooLong, "제목\n두 번째 줄", "제목\r두 번째 줄"}) {
+            News news = createNews();
+
+            news.completeReconstruction(unusable, "한 줄 요약", "재구성된 뉴스 본문");
+
+            assertEquals("경제 뉴스", news.getTitle());
+            assertEquals("경제 뉴스", news.getOriginalTitle());
+            assertEquals(NewsStatus.PENDING, news.getStatus());
+        }
+    }
+
+    @Test
+    @DisplayName("제목이 정확히 30자면 그대로 사용한다")
+    void completeReconstruction_acceptsTitleAtMaxLength() {
+        News news = createNews();
+        String maxLength = "가".repeat(30);
+
+        news.completeReconstruction(maxLength, "한 줄 요약", "재구성된 뉴스 본문");
+
+        assertEquals(maxLength, news.getTitle());
+    }
+
+    @Test
+    @DisplayName("RSS로 수집한 시점에는 제목과 원문 제목이 같다")
+    void processing_setsOriginalTitleToCollectedTitle() {
+        News news = createNews();
+
+        assertEquals("경제 뉴스", news.getTitle());
+        assertEquals("경제 뉴스", news.getOriginalTitle());
+    }
+
+    @Test
     @DisplayName("뉴스 발행이 완료되면 상태가 PUBLISHED로 변경된다")
     void publish_setsPublishedStatus() {
         News news = createNews();
-        news.completeReconstruction("한 줄 요약", "재구성된 뉴스 본문");
+        news.completeReconstruction("AI가 쓴 제목", "한 줄 요약", "재구성된 뉴스 본문");
 
         news.publish();
 
