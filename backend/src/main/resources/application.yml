@@ -156,11 +156,11 @@ muffin:
         max-total: ${NEWS_AI_SELECTION_MAX_TOTAL:15}
 
       reconstruction:
-        model: ${NEWS_RECONSTRUCTION_MODEL:gpt-4o}
+        model: ${NEWS_RECONSTRUCTION_MODEL:gpt-6.1-sol}
         max-source-length: ${NEWS_RECONSTRUCTION_MAX_SOURCE_LENGTH:20000}
 
       explanation:
-        model: ${NEWS_EXPLANATION_MODEL:gpt-4o}
+        model: ${NEWS_EXPLANATION_MODEL:gpt-6.1-sol}
 
       quiz:
         model: ${QUIZ_GENERATION_MODEL:gpt-4o}
