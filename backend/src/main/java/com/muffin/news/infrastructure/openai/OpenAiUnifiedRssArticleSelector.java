@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -27,7 +27,7 @@ import tools.jackson.databind.ObjectMapper;
  * 가로지르는 비교이므로, 후보마다 카테고리를 라벨로 붙여 넘기고 카테고리 균형을 맞추지 말라고 명시한다.
  */
 @Component
-@ConditionalOnProperty(name = "muffin.news.ai.enabled", havingValue = "true")
+@ConditionalOnExpression("${muffin.news.ai.enabled:false} and '${muffin.news.ai.unified-selector:OPENAI}' == 'OPENAI'")
 public class OpenAiUnifiedRssArticleSelector implements UnifiedRssArticleSelector {
 
     private static final String INSTRUCTIONS =
