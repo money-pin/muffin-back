@@ -27,7 +27,7 @@ class RssSelectorTest {
                 builder.build(),
                 new ObjectMapper(),
                 new OpenAiClientProperties("test-key", "https://api.test/responses"),
-                new AiSelectionProperties("gpt-5-mini", 5));
+                new AiSelectionProperties("gpt-5-mini", 5, 15));
         RssArticle selected = article("선택", "https://example.com/1");
         RssArticle rejected = article("탈락", "https://example.com/2");
         server.expect(requestTo("https://api.test/responses"))
@@ -61,7 +61,7 @@ class RssSelectorTest {
                 builder.build(),
                 new ObjectMapper(),
                 new OpenAiClientProperties("test-key", "https://api.test/responses"),
-                new AiSelectionProperties("gpt-5-mini", 2));
+                new AiSelectionProperties("gpt-5-mini", 2, 15));
         RssArticle first = article("첫 번째 후보", "https://example.com/1");
         RssArticle second = article("두 번째 후보", "https://example.com/2");
         RssArticle third = article("세 번째 후보", "https://example.com/3");

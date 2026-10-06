@@ -119,6 +119,9 @@ muffin:
   news:
     rss:
       publisher: ${NEWS_RSS_PUBLISHER:매일경제}
+      # UNIFIED: 전체 후보를 한 번에 평가해 하루 max-total건 (카테고리 균형 보장 안 함)
+      # PER_CATEGORY: 카테고리마다 따로 평가해 각각 max-per-category건 (총량이 카테고리 수에 비례)
+      selection-mode: ${NEWS_RSS_SELECTION_MODE:UNIFIED}
       feeds:
         - category: 경제
           url: ${NEWS_RSS_ECONOMY_URL:https://www.mk.co.kr/rss/30100041/}
@@ -135,7 +138,10 @@ muffin:
 
       ai-selection:
         model: ${NEWS_AI_SELECTION_MODEL:gpt-5-mini}
+        # PER_CATEGORY 모드에서 카테고리당 상한
         max-per-category: ${NEWS_AI_SELECTION_MAX_PER_CATEGORY:5}
+        # UNIFIED 모드에서 하루 전체 상한. 재구성·해설카드 비용을 이 값이 결정한다
+        max-total: ${NEWS_AI_SELECTION_MAX_TOTAL:15}
 
       reconstruction:
         model: ${NEWS_RECONSTRUCTION_MODEL:gpt-4o}
