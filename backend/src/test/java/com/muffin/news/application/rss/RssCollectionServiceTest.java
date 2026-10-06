@@ -21,9 +21,11 @@ class RssCollectionServiceTest {
             List.of(
                     new RssFeedSource("경제", "https://feed.example/economy"),
                     new RssFeedSource("증권", "https://feed.example/stock"),
-                    new RssFeedSource("세계", "https://feed.example/world")));
-    private final RssCollectionService service =
-            new RssCollectionService(feedClient, articleSelector, feedWriter, eventPublisher, properties);
+                    new RssFeedSource("세계", "https://feed.example/world")),
+            RssSelectionMode.PER_CATEGORY);
+    // 카테고리별 선별 전략을 실제로 끼워 넣어, 서비스와 전략이 맞물린 상태로 수집 흐름을 검증한다.
+    private final RssCollectionService service = new RssCollectionService(
+            feedClient, new PerCategoryRssSelectionStrategy(articleSelector), feedWriter, eventPublisher, properties);
 
     /** 한 피드의 조회가 실패해도 나머지 피드는 계속 수집하고, 성공한 결과만 모아 이벤트를 발행한다. */
     @Test
