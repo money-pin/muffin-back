@@ -13,6 +13,8 @@ package com.muffin.global.batch;
  * 반대로 수집과 미수집 확정처럼 하는 일이 다르면 분리한다.
  */
 public enum BatchJob {
+    BRIEFING_GENERATION("briefing_generation", "briefing"),
+    BRIEFING_PUBLICATION("briefing_publication", "briefing"),
     EMAIL_VERIFICATION_CLEANUP("email_verification_cleanup", "auth"),
     UNVERIFIED_ACCOUNT_CLEANUP("unverified_account_cleanup", "auth"),
     WITHDRAWN_DATA_CLEANUP("withdrawn_data_cleanup", "auth"),

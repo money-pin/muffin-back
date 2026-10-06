@@ -49,6 +49,18 @@ muffin:
       cron: ${QUIZ_PUBLICATION_CRON:0 0 9 * * *}
       zone: ${QUIZ_PUBLICATION_ZONE:Asia/Seoul}
 
+    briefing-generation:
+      # 재구성이 끝난 뉴스가 모이면 그때 생성된다. 발행 전까지 반복 시도하는 안전망이다.
+      scheduler-enabled: ${BRIEFING_GENERATION_ENABLED:true}
+      cron: ${BRIEFING_GENERATION_CRON:0 */10 6-7 * * *}
+      zone: ${BRIEFING_GENERATION_ZONE:Asia/Seoul}
+
+    briefing-publication:
+      # 크론의 MON-FRI가 "주말 미발행" 정책을 담당한다. 공휴일에는 발행한다.
+      scheduler-enabled: ${BRIEFING_PUBLICATION_ENABLED:true}
+      cron: ${BRIEFING_PUBLICATION_CRON:0 30 7 * * MON-FRI}
+      zone: ${BRIEFING_PUBLICATION_ZONE:Asia/Seoul}
+
     quiz-generation-retry:
       # 뉴스 재구성 완료 이벤트 기반 생성이 실패하거나 누락된 경우를 위한 발행 전 재시도 안전망
       scheduler-enabled: ${QUIZ_GENERATION_RETRY_ENABLED:true}
@@ -152,6 +164,20 @@ muffin:
 
       quiz:
         model: ${QUIZ_GENERATION_MODEL:gpt-4o}
+
+      briefing:
+        model: ${BRIEFING_GENERATION_MODEL:gpt-4o}
+
+  briefing:
+    # 이슈 3건을 고를 후보가 이만큼 모이기 전에는 아직 생성 시점이 아니라고 보고 미룬다.
+    min-candidate-news: ${BRIEFING_MIN_CANDIDATE_NEWS:8}
+    # 날짜 선택 칩으로 다시 볼 수 있는 편수.
+    recent-days: ${BRIEFING_RECENT_DAYS:7}
+    buzz:
+      # 외부 매체 화제도. 조회에 실패해도 브리핑은 AI 판단만으로 생성된다.
+      enabled: ${BRIEFING_BUZZ_ENABLED:true}
+      queries: ${BRIEFING_BUZZ_QUERIES:증시,코스피,환율,금리}
+      timeout-seconds: ${BRIEFING_BUZZ_TIMEOUT:10}
 
 # 배치 관측용 지표 노출. 외부에는 열지 않는다: EC2 보안그룹이 80/443만 허용해
 # 8080 직접 접근이 불가능하고, Nginx에서 /actuator를 차단한다(인프라 PR).
