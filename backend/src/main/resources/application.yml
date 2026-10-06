@@ -134,6 +134,9 @@ muffin:
       # UNIFIED: 전체 후보를 한 번에 평가해 하루 max-total건 (카테고리 균형 보장 안 함)
       # PER_CATEGORY: 카테고리마다 따로 평가해 각각 max-per-category건 (총량이 카테고리 수에 비례)
       selection-mode: ${NEWS_RSS_SELECTION_MODE:UNIFIED}
+      # 매경 뉴스 섹션 피드. 헤드라인·전체뉴스는 섹션 피드와 기사가 겹치고 카테고리를 잃어 제외한다
+      # 문화·연예, 스포츠, 게임은 선별 기준이 대부분 걸러내는 후보라 수집하지 않는다
+      # category 값은 R__seed_category.sql의 category.name과 정확히 일치해야 한다
       feeds:
         - category: 경제
           url: ${NEWS_RSS_ECONOMY_URL:https://www.mk.co.kr/rss/30100041/}
@@ -141,6 +144,14 @@ muffin:
           url: ${NEWS_RSS_STOCK_URL:https://www.mk.co.kr/rss/50200011/}
         - category: 세계
           url: ${NEWS_RSS_WORLD_URL:https://www.mk.co.kr/rss/30300018/}
+        - category: 기업·경영
+          url: ${NEWS_RSS_BUSINESS_URL:https://www.mk.co.kr/rss/50100032/}
+        - category: 부동산
+          url: ${NEWS_RSS_REALESTATE_URL:https://www.mk.co.kr/rss/50300009/}
+        - category: 정치
+          url: ${NEWS_RSS_POLITICS_URL:https://www.mk.co.kr/rss/30200030/}
+        - category: 사회
+          url: ${NEWS_RSS_SOCIETY_URL:https://www.mk.co.kr/rss/50400012/}
 
     ai:
       # AI 기반 기능의 활성화 여부 (비활성화 시 관련 AI 컴포넌트를 등록하지 않음)
