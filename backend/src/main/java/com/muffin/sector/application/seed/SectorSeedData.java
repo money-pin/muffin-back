@@ -9,7 +9,7 @@ public final class SectorSeedData {
 
     public record GroupSeed(String groupCode, String name, String description, int groupOrder) {}
 
-    public record EtfSeed(String etfCode, String etfName) {}
+    public record EtfSeed(String etfCode, String etfName, String description) {}
 
     public record SectorSeed(
             String sectorCode, String groupCode, String etfCode, String name, String description, int sectorOrder) {}
@@ -26,18 +26,18 @@ public final class SectorSeedData {
      * {@link com.muffin.sector.infrastructure.EtfPriceCollector}(토스 전용)의 수집 대상에서 코드로 직접 제외된다.
      */
     public static final List<EtfSeed> ETFS = List.of(
-            new EtfSeed("459580", "KODEX CD금리액티브(합성)"),
-            new EtfSeed("132030", "KODEX 골드선물(H)"),
-            new EtfSeed("148070", "KIWOOM 국고채10년"),
-            new EtfSeed("261240", "KODEX 미국달러선물"),
-            new EtfSeed("381170", "TIGER 미국테크TOP10 INDXX"),
-            new EtfSeed("381180", "TIGER 미국필라델피아반도체나스닥"),
-            new EtfSeed("203780", "TIGER 미국나스닥바이오"),
-            new EtfSeed("390400", "KODEX 미국스마트모빌리티S&P"),
-            new EtfSeed("218420", "KODEX 미국S&P500에너지(합성)"),
-            new EtfSeed("453650", "KODEX 미국S&P500금융"),
-            new EtfSeed("494840", "TIGER 미국방산TOP10"),
-            new EtfSeed("BTC", "비트코인"));
+            new EtfSeed("459580", "KODEX CD금리액티브(합성)", "국내 CD금리의 움직임을 반영하는 단기 금리형 ETF입니다."),
+            new EtfSeed("132030", "KODEX 골드선물(H)", "금 선물 가격의 움직임을 반영하는 ETF입니다."),
+            new EtfSeed("148070", "KIWOOM 국고채10년", "국내 10년 만기 국고채에 투자하는 ETF입니다."),
+            new EtfSeed("261240", "KODEX 미국달러선물", "미국 달러 선물 가격의 움직임을 반영하는 ETF입니다."),
+            new EtfSeed("381170", "TIGER 미국테크TOP10 INDXX", "미국 주요 기술 기업 10곳에 투자하는 ETF입니다."),
+            new EtfSeed("381180", "TIGER 미국필라델피아반도체나스닥", "미국 반도체 기업에 투자하는 ETF입니다."),
+            new EtfSeed("203780", "TIGER 미국나스닥바이오", "미국 나스닥 시장의 바이오 관련 기업에 투자하는 ETF입니다."),
+            new EtfSeed("390400", "KODEX 미국스마트모빌리티S&P", "미국 스마트 모빌리티 관련 기업에 투자하는 ETF입니다."),
+            new EtfSeed("218420", "KODEX 미국S&P500에너지(합성)", "미국 S&P500 에너지 업종의 움직임을 반영하는 ETF입니다."),
+            new EtfSeed("453650", "KODEX 미국S&P500금융", "미국 S&P500 금융 업종에 투자하는 ETF입니다."),
+            new EtfSeed("494840", "TIGER 미국방산TOP10", "미국 주요 방산 기업에 투자하는 ETF입니다."),
+            new EtfSeed("BTC", "비트코인", "비트코인 시세를 기준 자산으로 사용합니다."));
 
     /** §4.1~4.3의 11개 섹터와 코인 섹터 기준가 정책에 따라 추가된 `CRYPTO`(BTC) 1건. */
     public static final List<SectorSeed> SECTORS = List.of(

@@ -30,13 +30,29 @@ public class Etf extends BaseEntity {
     @Column(name = "etf_name", nullable = false, length = 50)
     private String etfName;
 
-    private Etf(String etfCode, String etfName) {
+    @Column(name = "description", length = 500)
+    private String description;
+
+    private Etf(String etfCode, String etfName, String description) {
         this.etfCode = etfCode;
         this.etfName = etfName;
+        this.description = description;
     }
 
     /** ETF 레코드를 생성한다. */
     public static Etf create(String etfCode, String etfName) {
-        return new Etf(etfCode, etfName);
+        return create(etfCode, etfName, null);
+    }
+
+    /** 설명을 포함한 ETF 레코드를 생성한다. */
+    public static Etf create(String etfCode, String etfName, String description) {
+        return new Etf(etfCode, etfName, description);
+    }
+
+    /** 기존 상품에 설명이 없을 때만 시드 설명을 채운다. */
+    public void describeIfMissing(String description) {
+        if (this.description == null) {
+            this.description = description;
+        }
     }
 }

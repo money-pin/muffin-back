@@ -610,6 +610,42 @@ include::{snippets}/sector-list-success/response-fields.adoc[]
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |===
 
+[[sector-guide]]
+=== 섹터별 기준 자산 안내 조회
+
+`GET /api/sectors/guide`는 섹터 안내 화면에 필요한 이름, 설명, 실제 연결된 기준 자산을 반환한다.
+기존 `GET /api/sectors` 응답은 변경하지 않는다.
+
+활성 섹터만 그룹 표시 순서 → 섹터 표시 순서 → 섹터 코드 오름차순으로 제공한다.
+`totalCount`는 반환 목록의 길이이며 활성 섹터가 없으면 `0`, `sectors`는 `[]`이다.
+`sectors[].description`은 섹터 설명, `sectors[].referenceAsset.description`은 연결 상품 설명이다.
+각 설명은 DB에 등록되지 않았으면 `null`이다. 아이콘은 프론트에서 `sectorCode`로 매핑한다.
+
+기준 자산은 정산과 동일한 DB의 `sector.etf_id` 연결을 사용하며 외부 시세 API를 호출하지 않는다.
+기존 상품의 설명은 애플리케이션 기동 시 비어 있는 경우에만 채우며, 이미 작성된 설명은 유지한다.
+`referenceAsset.type`은 ETF 종목이면 `ETF`, 비트코인(`BTC`)이면 `CRYPTO`다.
+코인은 ETF가 아닌 BTC 시세를 사용하므로 화면 제목은 "섹터별 기준 자산 안내"를 권장한다.
+기준 자산 연결이 누락되면 해당 섹터를 숨기거나 임의의 상품을 반환하지 않고 `SECTOR_500_001` 오류를 반환한다.
+
+NOTE: 인증(`Authorization: Bearer {accessToken}`)이 필요하다.
+
+==== 요청 및 응답
+
+include::{snippets}/sector-guide-success/http-request.adoc[]
+include::{snippets}/sector-guide-success/request-headers.adoc[]
+include::{snippets}/sector-guide-success/http-response.adoc[]
+include::{snippets}/sector-guide-success/response-fields.adoc[]
+
+==== 에러 코드
+
+[cols="1,2,3,3"]
+|===
+|HTTP|code|message|설명
+
+|401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|500|SECTOR_500_001|섹터의 기준 자산 정보를 확인할 수 없습니다.|활성 섹터에 연결된 기준 자산 데이터 누락
+|===
+
 [[group-mypage]]
 == Mypage
 
