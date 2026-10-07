@@ -55,6 +55,13 @@ muffin:
       cron: ${BRIEFING_GENERATION_CRON:0 */10 6-7 * * *}
       zone: ${BRIEFING_GENERATION_ZONE:Asia/Seoul}
 
+    market-indicator:
+      # 미국 장 마감(한국시간 05:00~06:00, 섬머타임에 따라 이동) 이후 브리핑 발행(07:30) 전에 수집한다.
+      # 여러 번 돌려도 같은 행을 갱신하므로, 실패한 지표를 다시 받기 위해 두 번 시도한다.
+      scheduler-enabled: ${MARKET_INDICATOR_ENABLED:true}
+      cron: ${MARKET_INDICATOR_CRON:0 10,40 6 * * *}
+      zone: ${MARKET_INDICATOR_ZONE:Asia/Seoul}
+
     briefing-publication:
       # 크론의 MON-FRI가 "주말 미발행" 정책을 담당한다. 공휴일에는 발행한다.
       scheduler-enabled: ${BRIEFING_PUBLICATION_ENABLED:true}
