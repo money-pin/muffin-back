@@ -38,6 +38,8 @@ class SectorSeedDataTest {
         Set<String> etfCodes =
                 SectorSeedData.ETFS.stream().map(EtfSeed::etfCode).collect(Collectors.toSet());
         assertEquals(SectorSeedData.ETFS.size(), etfCodes.size());
+        assertTrue(SectorSeedData.ETFS.stream()
+                .allMatch(etf -> etf.description() != null && !etf.description().isBlank()));
     }
 
     @Test

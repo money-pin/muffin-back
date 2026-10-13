@@ -3,6 +3,7 @@ package com.muffin.sector.application.seed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.muffin.global.config.JpaAuditingConfig;
+import com.muffin.sector.domain.etf.Etf;
 import com.muffin.sector.domain.etf.EtfRepository;
 import com.muffin.sector.domain.sector.SectorRepository;
 import com.muffin.sector.domain.sectorgroup.SectorGroupRepository;
@@ -48,5 +49,22 @@ class SectorSeedRunnerIntegrationTest {
         assertEquals(SectorSeedData.GROUPS.size(), sectorGroupRepository.count());
         assertEquals(SectorSeedData.ETFS.size(), etfRepository.count());
         assertEquals(SectorSeedData.SECTORS.size(), sectorRepository.count());
+    }
+
+    @Test
+    @DisplayName("기존 상품의 빈 설명을 채우되 이미 작성된 설명은 덮어쓰지 않는다")
+    void run_fillsOnlyMissingEtfDescriptions() throws Exception {
+        etfRepository.save(Etf.create("459580", "KODEX CD금리액티브(합성)"));
+        etfRepository.save(Etf.create("132030", "KODEX 골드선물(H)", "운영에서 작성한 설명"));
+
+        SectorSeedRunner runner = new SectorSeedRunner(sectorGroupRepository, etfRepository, sectorRepository);
+        runner.run(new DefaultApplicationArguments());
+        runner.run(new DefaultApplicationArguments());
+        etfRepository.flush();
+
+        for (SectorSeedData.EtfSeed seed : SectorSeedData.ETFS) {
+            Etf etf = etfRepository.findByEtfCode(seed.etfCode()).orElseThrow();
+            assertEquals("132030".equals(seed.etfCode()) ? "운영에서 작성한 설명" : seed.description(), etf.getDescription());
+        }
     }
 }

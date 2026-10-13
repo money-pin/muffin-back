@@ -3,6 +3,7 @@ package com.muffin.sector.presentation;
 import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.global.apiPayload.code.GeneralSuccessCode;
 import com.muffin.sector.application.SectorQueryService;
+import com.muffin.sector.presentation.dto.SectorGuideResponse;
 import com.muffin.sector.presentation.dto.SectorListResponse;
 import com.muffin.sector.presentation.swagger.SectorApi;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SectorController implements SectorApi {
 
     private final SectorQueryService sectorQueryService;
+
+    @Override
+    @GetMapping("/guide")
+    public ApiResponse<SectorGuideResponse> getSectorGuide() {
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, sectorQueryService.getSectorGuide());
+    }
 
     @Override
     @GetMapping
