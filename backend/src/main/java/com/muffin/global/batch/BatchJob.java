@@ -15,6 +15,7 @@ package com.muffin.global.batch;
 public enum BatchJob {
     BRIEFING_GENERATION("briefing_generation", "briefing"),
     BRIEFING_PUBLICATION("briefing_publication", "briefing"),
+    MARKET_INDICATOR_COLLECT("market_indicator_collect", "briefing"),
     EMAIL_VERIFICATION_CLEANUP("email_verification_cleanup", "auth"),
     UNVERIFIED_ACCOUNT_CLEANUP("unverified_account_cleanup", "auth"),
     WITHDRAWN_DATA_CLEANUP("withdrawn_data_cleanup", "auth"),

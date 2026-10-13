@@ -9,7 +9,10 @@ import com.muffin.briefing.domain.BriefingRepository;
 import com.muffin.briefing.domain.BriefingSectorScore;
 import com.muffin.briefing.domain.BriefingView;
 import com.muffin.briefing.domain.BriefingViewRepository;
+import com.muffin.briefing.domain.MarketIndicatorPrice;
+import com.muffin.briefing.domain.MarketIndicatorPriceRepository;
 import com.muffin.briefing.domain.enums.BriefingStatus;
+import com.muffin.briefing.domain.enums.MarketIndicator;
 import com.muffin.briefing.domain.enums.SectorRankType;
 import com.muffin.briefing.presentation.dto.BriefingDateListResponse;
 import com.muffin.briefing.presentation.dto.BriefingDateListResponse.BriefingDateItem;
@@ -65,6 +68,7 @@ public class BriefingQueryService {
     private final NewsSectorImpactRepository newsSectorImpactRepository;
     private final TermDictionaryRepository termDictionaryRepository;
     private final SectorRepository sectorRepository;
+    private final MarketIndicatorPriceRepository marketIndicatorPriceRepository;
     private final BriefingProperties properties;
     private final Clock clock;
 
@@ -173,11 +177,39 @@ public class BriefingQueryService {
                 briefing.getStatus(),
                 isToday,
                 briefing.getHeadline(),
-                List.of(),
+                marketIndices(briefing.getBriefingDate()),
                 issues,
                 sectorScoreboard(briefing, sectorsById),
                 todayTerm(briefing),
                 notice());
+    }
+
+    /**
+     * 간밤의 시장 카드. 지표별로 기준일 이하의 가장 최근 정상 수신 건을 쓴다.
+     *
+     * <p>받아오지 못한 지표는 배열에서 빠진다. 한 지표의 수집 실패가 블록 전체를 비우면 안 되기 때문이다. 순서는 기획서의 카드 순서
+     * (코스피 · 코스닥 · S&amp;P 500 · 나스닥 · 원/달러)와 같은 {@code MarketIndicator} 선언 순서를 따른다.
+     */
+    private List<BriefingResponse.MarketIndex> marketIndices(LocalDate briefingDate) {
+        Map<MarketIndicator, MarketIndicatorPrice> pricesByIndicator =
+                marketIndicatorPriceRepository.findLatestUsableOn(briefingDate).stream()
+                        .collect(Collectors.toMap(MarketIndicatorPrice::getIndicator, price -> price));
+
+        List<BriefingResponse.MarketIndex> indices = new ArrayList<>();
+        for (MarketIndicator indicator : MarketIndicator.values()) {
+            MarketIndicatorPrice price = pricesByIndicator.get(indicator);
+            if (price == null) {
+                continue;
+            }
+            indices.add(new BriefingResponse.MarketIndex(
+                    indicator.displayName(),
+                    price.getClosePrice(),
+                    price.getChangeRate(),
+                    price.getPriceDate(),
+                    indicator.unit(),
+                    indicator.referenceSymbol()));
+        }
+        return indices;
     }
 
     /**
