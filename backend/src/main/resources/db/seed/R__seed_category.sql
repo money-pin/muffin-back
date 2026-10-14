@@ -1,4 +1,4 @@
--- category seed: RSS 수집이 참조하는 경제/증권/세계 3종 카테고리 추가.
+-- category seed: RSS 수집이 참조하는 매경 뉴스 섹션 7종 카테고리 추가.
 -- name 값은 application.yml의 muffin.news.rss.feeds[].category와 정확히 일치해야 한다.
 -- RssFeedWriter가 findByName으로 조회해 없으면 예외를 던지므로, 이 시드가 없으면 뉴스가 한 건도 저장되지 않는다.
 -- fallback_thumbnail_url은 원본 썸네일이 없을 때의 기본 이미지를 프론트가 카테고리별 자체 에셋으로
@@ -10,5 +10,9 @@ INSERT INTO `category` (`name`, `fallback_thumbnail_url`, `created_at`)
 VALUES
   ('경제', NULL, NOW(6)),
   ('증권', NULL, NOW(6)),
-  ('세계', NULL, NOW(6)) AS new_category
+  ('세계', NULL, NOW(6)),
+  ('기업·경영', NULL, NOW(6)),
+  ('부동산', NULL, NOW(6)),
+  ('정치', NULL, NOW(6)),
+  ('사회', NULL, NOW(6)) AS new_category
 ON DUPLICATE KEY UPDATE `name` = new_category.name;
