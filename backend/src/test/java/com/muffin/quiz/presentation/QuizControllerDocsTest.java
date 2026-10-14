@@ -12,6 +12,7 @@ import static org.springframework.restdocs.request.RequestDocumentation.paramete
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.muffin.global.apiPayload.exception.GeneralException;
@@ -72,7 +73,7 @@ class QuizControllerDocsTest {
     }
 
     @Test
-    @DisplayName("오늘의 한입 퀴즈 조회 성공 문서화")
+    @DisplayName("퀴즈 안내 팝업 대상인 미시작 상태 문서화")
     void documentTodayQuizSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
         TodayQuizResponse response = new TodayQuizResponse(
                 1L,
@@ -93,6 +94,9 @@ class QuizControllerDocsTest {
 
         mockMvc.perform(get("/api/quizzes/today").header("Authorization", AUTHORIZATION))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.quizSetStatus").value("PUBLISHED"))
+                .andExpect(jsonPath("$.result.sessionStatus").value("NOT_STARTED"))
+                .andExpect(jsonPath("$.result.progress.solvedCount").value(0))
                 .andDo(document(
                         "quiz-today-success",
                         requestHeaders(headerWithName("Authorization").description("Bearer access token")),
@@ -103,7 +107,8 @@ class QuizControllerDocsTest {
                                 fieldWithPath("result.dailyQuizSetId").description("오늘의 퀴즈 세트 ID"),
                                 fieldWithPath("result.quizDate").description("퀴즈 날짜(KST)"),
                                 fieldWithPath("result.quizSetStatus").description("퀴즈 세트 상태"),
-                                fieldWithPath("result.sessionStatus").description("사용자의 풀이 세션 상태"),
+                                fieldWithPath("result.sessionStatus")
+                                        .description("NOT_STARTED. PUBLISHED와 함께 퀴즈 안내 팝업 노출 조건"),
                                 fieldWithPath("result.nickname").description("개인화 문구에 사용할 닉네임"),
                                 fieldWithPath("result.progress.totalCount").description("전체 문항 수"),
                                 fieldWithPath("result.progress.solvedCount").description("풀이 완료 문항 수"),
@@ -122,7 +127,7 @@ class QuizControllerDocsTest {
     }
 
     @Test
-    @DisplayName("오늘의 한입 퀴즈 이어 풀기 상태 문서화")
+    @DisplayName("퀴즈 안내 팝업을 생략하는 진행 중 상태와 기존 이어 풀기 문서화")
     void documentTodayQuizProgress(RestDocumentationContextProvider restDocumentation) throws Exception {
         TodayQuizResponse response = new TodayQuizResponse(
                 1L,
@@ -147,11 +152,23 @@ class QuizControllerDocsTest {
                                 List.of(
                                         new QuizOptionResponse(1004L, 1, "반도체 설계 전문 회사"),
                                         new QuizOptionResponse(1005L, 2, "반도체 생산 전문 회사"),
-                                        new QuizOptionResponse(1006L, 3, "반도체 유통 회사")))));
+                                        new QuizOptionResponse(1006L, 3, "반도체 유통 회사"))),
+                        new QuizQuestionResponse(
+                                103L,
+                                3,
+                                "분산 투자의 목적은 무엇일까요?",
+                                List.of(
+                                        new QuizOptionResponse(1007L, 1, "위험을 나누기"),
+                                        new QuizOptionResponse(1008L, 2, "수익을 보장하기"),
+                                        new QuizOptionResponse(1009L, 3, "한 종목에 집중하기")))));
         MockMvc mockMvc = mockMvcOf(queryStub(response, null), commandStub(null), restDocumentation);
 
         mockMvc.perform(get("/api/quizzes/today").header("Authorization", AUTHORIZATION))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.quizSetStatus").value("PUBLISHED"))
+                .andExpect(jsonPath("$.result.sessionStatus").value("PROGRESS"))
+                .andExpect(jsonPath("$.result.progress.solvedCount").value(1))
+                .andExpect(jsonPath("$.result.progress.nextQuestionOrder").value(2))
                 .andDo(document(
                         "quiz-today-progress",
                         requestHeaders(headerWithName("Authorization").description("Bearer access token")),
@@ -162,7 +179,8 @@ class QuizControllerDocsTest {
                                 fieldWithPath("result.dailyQuizSetId").description("오늘의 퀴즈 세트 ID"),
                                 fieldWithPath("result.quizDate").description("퀴즈 날짜(KST)"),
                                 fieldWithPath("result.quizSetStatus").description("퀴즈 세트 상태"),
-                                fieldWithPath("result.sessionStatus").description("사용자의 풀이 세션 상태(PROGRESS)"),
+                                fieldWithPath("result.sessionStatus")
+                                        .description("PROGRESS. 일부 문항을 푼 사용자는 퀴즈 안내 팝업 생략"),
                                 fieldWithPath("result.nickname").description("개인화 문구에 사용할 닉네임"),
                                 fieldWithPath("result.progress.totalCount").description("전체 문항 수"),
                                 fieldWithPath("result.progress.solvedCount").description("풀이 완료 문항 수"),
@@ -178,6 +196,44 @@ class QuizControllerDocsTest {
                                         .description("선택지 순서"),
                                 fieldWithPath("result.questions[].options[].content")
                                         .description("선택지 내용"))));
+    }
+
+    @Test
+    @DisplayName("퀴즈 안내 팝업을 생략하는 오늘의 한입 퀴즈 완료 상태 문서화")
+    void documentTodayQuizFinished(RestDocumentationContextProvider restDocumentation) throws Exception {
+        TodayQuizResponse response = new TodayQuizResponse(
+                1L,
+                LocalDate.of(2026, 7, 2),
+                QuizSetStatus.PUBLISHED,
+                QuizSessionStatus.FINISHED,
+                "예은",
+                new QuizProgressResponse(3, 3, 0, null),
+                List.of());
+        MockMvc mockMvc = mockMvcOf(queryStub(response, null), commandStub(null), restDocumentation);
+
+        mockMvc.perform(get("/api/quizzes/today").header("Authorization", AUTHORIZATION))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.sessionStatus").value("FINISHED"))
+                .andExpect(jsonPath("$.result.progress.nextQuestionOrder").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.result.questions").isEmpty())
+                .andDo(document(
+                        "quiz-today-finished",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.dailyQuizSetId").description("오늘의 퀴즈 세트 ID"),
+                                fieldWithPath("result.quizDate").description("퀴즈 날짜(KST)"),
+                                fieldWithPath("result.quizSetStatus").description("PUBLISHED"),
+                                fieldWithPath("result.sessionStatus").description("FINISHED. 정답 수와 관계없이 퀴즈 안내 팝업 생략"),
+                                fieldWithPath("result.nickname").description("개인화 문구에 사용할 닉네임"),
+                                fieldWithPath("result.progress.totalCount").description("전체 문항 수"),
+                                fieldWithPath("result.progress.solvedCount").description("풀이 완료 문항 수"),
+                                fieldWithPath("result.progress.correctCount").description("정답 문항 수. 팝업 노출 판단에 사용하지 않음"),
+                                fieldWithPath("result.progress.nextQuestionOrder")
+                                        .description("완료 상태이므로 null"),
+                                fieldWithPath("result.questions").description("완료 상태이므로 빈 배열"))));
     }
 
     @Test

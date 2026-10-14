@@ -19,7 +19,17 @@ public interface QuizApi {
     @Operation(
             summary = "오늘의 한입 퀴즈 조회 (QUIZ-01)",
             description = "KST 기준 오늘 공개된 퀴즈 세트와 사용자의 풀이 진행 상태를 조회한다. "
-                    + "퀴즈가 없거나 공개 전이면 quizSetStatus=UNAVAILABLE과 빈 questions를 반환한다.")
+                    + "퀴즈가 없거나 생성 중·공개 전·생성 실패이면 HTTP 200의 quizSetStatus=UNAVAILABLE과 빈 questions를 반환한다. "
+                    + "모의투자 확정 성공(최초 201, 동일 구성 재요청 200) 후 구매 완료 팝업의 확인을 누르면 이 API를 새로 조회한다. "
+                    + "result.quizSetStatus=PUBLISHED이고 result.sessionStatus=NOT_STARTED인 경우에만 "
+                    + "'퀴즈를 풀면 최대 30만원을 더 받을 수 있어요' 안내 팝업을 표시한다. 오늘 퀴즈를 한 문제도 풀지 않은 사용자만 대상이다. "
+                    + "PROGRESS·FINISHED·UNAVAILABLE·조회 실패에서는 팝업을 생략하며, 퀴즈 조회 실패가 투자 성공 결과에 영향을 주면 안 된다. "
+                    + "퀴즈 화면 진입 시 다시 조회하고 progress.nextQuestionOrder와 일치하는 questions[].quizOrder부터 시작하거나 이어 푼다. "
+                    + "완료 또는 이용 불가이면 nextQuestionOrder는 null이다. HTTP 성공 여부·정답 수·보상 지급 여부로 노출을 판단하지 않는다. "
+                    + "오늘은 Asia/Seoul 기준이며 quizDate를 사용한다. 날짜 또는 사용자가 바뀌면 이전 응답을 재사용하지 않는다. "
+                    + "같은 투자 완료 이벤트에서는 한 번만 표시하고 화면 이탈 후 도착한 응답은 무시한다. "
+                    + "최대 30만원은 하루 퀴즈 전체의 가상 머니 보상 상한이며 남은 보상액이나 확정 지급액이 아니다. "
+                    + "팝업 표시·닫기·이동 자체로 보상을 지급하지 않는다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "200",
