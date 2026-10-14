@@ -73,7 +73,7 @@ class QuizControllerDocsTest {
     }
 
     @Test
-    @DisplayName("오늘의 한입 퀴즈 조회 성공 문서화")
+    @DisplayName("퀴즈 안내 팝업 대상인 미시작 상태 문서화")
     void documentTodayQuizSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
         TodayQuizResponse response = new TodayQuizResponse(
                 1L,
@@ -94,6 +94,9 @@ class QuizControllerDocsTest {
 
         mockMvc.perform(get("/api/quizzes/today").header("Authorization", AUTHORIZATION))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.quizSetStatus").value("PUBLISHED"))
+                .andExpect(jsonPath("$.result.sessionStatus").value("NOT_STARTED"))
+                .andExpect(jsonPath("$.result.progress.solvedCount").value(0))
                 .andDo(document(
                         "quiz-today-success",
                         requestHeaders(headerWithName("Authorization").description("Bearer access token")),
@@ -104,7 +107,8 @@ class QuizControllerDocsTest {
                                 fieldWithPath("result.dailyQuizSetId").description("오늘의 퀴즈 세트 ID"),
                                 fieldWithPath("result.quizDate").description("퀴즈 날짜(KST)"),
                                 fieldWithPath("result.quizSetStatus").description("퀴즈 세트 상태"),
-                                fieldWithPath("result.sessionStatus").description("사용자의 풀이 세션 상태"),
+                                fieldWithPath("result.sessionStatus")
+                                        .description("NOT_STARTED. PUBLISHED와 함께 퀴즈 안내 팝업 노출 조건"),
                                 fieldWithPath("result.nickname").description("개인화 문구에 사용할 닉네임"),
                                 fieldWithPath("result.progress.totalCount").description("전체 문항 수"),
                                 fieldWithPath("result.progress.solvedCount").description("풀이 완료 문항 수"),
@@ -123,7 +127,7 @@ class QuizControllerDocsTest {
     }
 
     @Test
-    @DisplayName("오늘의 한입 퀴즈 이어 풀기 상태 문서화")
+    @DisplayName("퀴즈 안내 팝업을 생략하는 진행 중 상태와 기존 이어 풀기 문서화")
     void documentTodayQuizProgress(RestDocumentationContextProvider restDocumentation) throws Exception {
         TodayQuizResponse response = new TodayQuizResponse(
                 1L,
@@ -161,6 +165,10 @@ class QuizControllerDocsTest {
 
         mockMvc.perform(get("/api/quizzes/today").header("Authorization", AUTHORIZATION))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.quizSetStatus").value("PUBLISHED"))
+                .andExpect(jsonPath("$.result.sessionStatus").value("PROGRESS"))
+                .andExpect(jsonPath("$.result.progress.solvedCount").value(1))
+                .andExpect(jsonPath("$.result.progress.nextQuestionOrder").value(2))
                 .andDo(document(
                         "quiz-today-progress",
                         requestHeaders(headerWithName("Authorization").description("Bearer access token")),
@@ -171,7 +179,8 @@ class QuizControllerDocsTest {
                                 fieldWithPath("result.dailyQuizSetId").description("오늘의 퀴즈 세트 ID"),
                                 fieldWithPath("result.quizDate").description("퀴즈 날짜(KST)"),
                                 fieldWithPath("result.quizSetStatus").description("퀴즈 세트 상태"),
-                                fieldWithPath("result.sessionStatus").description("사용자의 풀이 세션 상태(PROGRESS)"),
+                                fieldWithPath("result.sessionStatus")
+                                        .description("PROGRESS. 일부 문항을 푼 사용자는 퀴즈 안내 팝업 생략"),
                                 fieldWithPath("result.nickname").description("개인화 문구에 사용할 닉네임"),
                                 fieldWithPath("result.progress.totalCount").description("전체 문항 수"),
                                 fieldWithPath("result.progress.solvedCount").description("풀이 완료 문항 수"),
