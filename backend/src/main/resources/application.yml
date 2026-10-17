@@ -148,6 +148,28 @@ muffin:
       api-key: ${OPENAI_API_KEY:}
       endpoint: ${OPENAI_RESPONSES_URL:https://api.openai.com/v1/responses}
 
+      # UNIFIED 선별을 누가 수행할지. OPENAI = 범용 LLM, JEV = 구조화 결정 모델
+      unified-selector: ${NEWS_UNIFIED_SELECTOR:OPENAI}
+
+      jev:
+        api-key: ${JEV_API_KEY:}
+        endpoint: ${JEV_ENDPOINT:https://api.typesafe.ai/v1/systemone}
+        # 재현성이 필요하면 jev-1.13.0처럼 버전을 고정한다
+        model: ${JEV_MODEL:jev-latest}
+        concurrency: ${JEV_CONCURRENCY:8}
+        # 선별 프롬프트의 1~3순위를 숫자로 옮긴 값. 원인 사건은 파급력과 같은 비중으로 쓴다
+        market-impact-weight: ${JEV_MARKET_IMPACT_WEIGHT:3}
+        daily-life-weight: ${JEV_DAILY_LIFE_WEIGHT:2}
+        learning-value-weight: ${JEV_LEARNING_VALUE_WEIGHT:1}
+        # 광고·부고·연예·스포츠·시황표 판정 확률이 이 값 이상이면 버린다
+        noise-threshold: ${JEV_NOISE_THRESHOLD:0.5}
+        # 등락 결과만 전하는 시황 기사를 거르는 기준
+        causality-cutoff: ${JEV_CAUSALITY_CUTOFF:1.0}
+        # 중복 검사를 돌릴 상위 건수. 쌍 수가 제곱으로 늘어난다. 0이면 중복 제거를 끈다
+        dedup-pool-size: ${JEV_DEDUP_POOL_SIZE:30}
+        # 이 값 이상이면 같은 사건으로 보고 하나만 남긴다
+        same-event-threshold: ${JEV_SAME_EVENT_THRESHOLD:0.85}
+
       ai-selection:
         model: ${NEWS_AI_SELECTION_MODEL:gpt-5-mini}
         # PER_CATEGORY 모드에서 카테고리당 상한
