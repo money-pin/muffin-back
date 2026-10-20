@@ -112,87 +112,7 @@
             "uid": "${prom}"
           },
           "editorMode": "code",
-          "expr": "(time() - muffin_batch_job_last_success_timestamp_seconds{batch_job!=\"\",batch_job!~\"email_verification_cleanup|unverified_account_cleanup\"}) and muffin_batch_job_last_success_timestamp_seconds{batch_job!=\"\",batch_job!~\"email_verification_cleanup|unverified_account_cleanup\"} > 0",
-          "legendFormat": "{{batch_job}}",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "type": "bargauge",
-      "title": "마지막 성공 이후 경과 (매시 잡)",
-      "description": "매시 정각에 도는 정리 잡 2개. 26시간 기준을 쓰면 하루를 통째로 놓치므로 3시간에 꽉 찬다.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${prom}"
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "decimals": 0,
-          "min": 0,
-          "max": 10800,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 7200
-              },
-              {
-                "color": "red",
-                "value": 10800
-              }
-            ]
-          },
-          "displayName": "${__field.labels.batch_job}"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "horizontal",
-        "displayMode": "basic",
-        "valueMode": "color",
-        "namePlacement": "left",
-        "showUnfilled": true,
-        "minVizWidth": 8,
-        "minVizHeight": 12,
-        "sizing": "auto",
-        "text": {
-          "titleSize": 11,
-          "valueSize": 13
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${prom}"
-          },
-          "editorMode": "code",
-          "expr": "(time() - muffin_batch_job_last_success_timestamp_seconds{batch_job=~\"email_verification_cleanup|unverified_account_cleanup\"}) and muffin_batch_job_last_success_timestamp_seconds{batch_job=~\"email_verification_cleanup|unverified_account_cleanup\"} > 0",
+          "expr": "(time() - muffin_batch_job_last_success_timestamp_seconds{batch_job!=\"\"}) and muffin_batch_job_last_success_timestamp_seconds{batch_job!=\"\"} > 0",
           "legendFormat": "{{batch_job}}",
           "instant": true,
           "range": false,
@@ -210,10 +130,10 @@
         "uid": "${prom}"
       },
       "gridPos": {
-        "h": 4,
+        "h": 9,
         "w": 12,
         "x": 12,
-        "y": 5
+        "y": 0
       },
       "fieldConfig": {
         "defaults": {
