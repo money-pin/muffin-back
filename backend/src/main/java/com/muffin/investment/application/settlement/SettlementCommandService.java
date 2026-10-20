@@ -1,5 +1,6 @@
 package com.muffin.investment.application.settlement;
 
+import com.muffin.global.event.SettlementCompletedEvent;
 import com.muffin.investment.domain.investment.Investment;
 import com.muffin.investment.domain.investment.InvestmentRepository;
 import com.muffin.investment.domain.investment.enums.InvestmentStatus;
@@ -21,6 +22,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Service;
 
@@ -57,6 +59,7 @@ public class SettlementCommandService {
     private final TradingCalendarService tradingCalendarService;
     private final SettlementSnapshotProcessor snapshotProcessor;
     private final SettlementAggregationProcessor aggregationProcessor;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 지정 일자의 ETF 시가로 미정산(PENDING/FAILED) 건을 정산/취소/미정산 처리한다.
@@ -115,8 +118,11 @@ public class SettlementCommandService {
             pending = retryNext;
         }
 
-        SettlementBatchResult result = new SettlementBatchResult(settlementDate, true, targets.size(), success, failed);
-        return result;
+        if (success > 0) {
+            // 투자 결과 알림이 구독한다. 이번 실행에서 처리한 건이 있을 때만 알린다.
+            eventPublisher.publishEvent(new SettlementCompletedEvent(settlementDate, prevTradingDay));
+        }
+        return new SettlementBatchResult(settlementDate, true, targets.size(), success, failed);
     }
 
     private void dispatch(
