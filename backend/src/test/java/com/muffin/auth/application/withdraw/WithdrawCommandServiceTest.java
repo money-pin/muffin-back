@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.*;
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
-import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
-import com.muffin.auth.domain.deletedemail.EmailHasher;
+import com.muffin.auth.domain.deletedaccount.DeletedAccountRepository;
+import com.muffin.auth.domain.deletedaccount.IdentityHasher;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.user.domain.User;
@@ -37,7 +37,7 @@ class WithdrawCommandServiceTest {
     private AuthRepository authRepository;
 
     @Autowired
-    private DeletedEmailRepository deletedEmailRepository;
+    private DeletedAccountRepository deletedAccountRepository;
 
     @Autowired
     private RefreshTokenIssuer refreshTokenIssuer;
@@ -46,12 +46,12 @@ class WithdrawCommandServiceTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
-    private EmailHasher emailHasher;
+    private IdentityHasher identityHasher;
 
     @AfterEach
     void cleanUp() {
         refreshTokenRepository.deleteAll();
-        deletedEmailRepository.deleteAll();
+        deletedAccountRepository.deleteAll();
         authRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -65,7 +65,7 @@ class WithdrawCommandServiceTest {
     }
 
     @Test
-    @DisplayName("탈퇴하면 이름이 지워지고 상태가 WITHDRAWN, 이메일은 복구 불가능한 값으로 대체되며 refresh token이 삭제된다")
+    @DisplayName("탈퇴하면 이름·이메일·sub가 지워지고 상태가 WITHDRAWN, provider+sub 해시가 남으며 refresh token이 삭제된다")
     void withdraw_success() {
         User user = createUser();
         Auth auth = createAuth(user.getUserId());
@@ -78,10 +78,12 @@ class WithdrawCommandServiceTest {
         assertThat(updatedUser.getName()).isNull();
 
         Auth updatedAuth = authRepository.findByUserId(user.getUserId()).orElseThrow();
-        assertThat(updatedAuth.getEmail()).isEqualTo("withdrawn-" + auth.getAuthId() + "@deleted.local");
+        assertThat(updatedAuth.getEmail()).isNull();
+        assertThat(updatedAuth.getProviderUserId()).isEqualTo("withdrawn-" + auth.getAuthId());
 
-        assertThat(deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(
-                        emailHasher.hash(EMAIL), LocalDateTime.now().minusMinutes(1)))
+        assertThat(deletedAccountRepository.existsByIdentityHashAndDeletedAtAfter(
+                        identityHasher.hash(AuthProvider.GOOGLE, "google-sub-" + user.getUserId()),
+                        LocalDateTime.now().minusMinutes(1)))
                 .isTrue();
 
         assertThat(refreshTokenRepository.findByUserId(user.getUserId())).isEmpty();

@@ -10,7 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.muffin.auth.domain.AccessTokenProvider;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
-import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedaccount.DeletedAccountRepository;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
@@ -44,11 +44,11 @@ class WithdrawControllerTest {
     private AuthRepository authRepository;
 
     @Autowired
-    private DeletedEmailRepository deletedEmailRepository;
+    private DeletedAccountRepository deletedAccountRepository;
 
     @AfterEach
     void cleanUp() {
-        deletedEmailRepository.deleteAll();
+        deletedAccountRepository.deleteAll();
         authRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -99,7 +99,7 @@ class WithdrawControllerTest {
     }
 
     @Test
-    @DisplayName("GOOGLE 계정도 탈퇴하면 200, WITHDRAWN 상태가 되고 이메일이 익명화된다")
+    @DisplayName("GOOGLE 계정도 탈퇴하면 200, WITHDRAWN 상태가 되고 이메일과 sub가 지워진다")
     void withdraw_googleAccount_success() throws Exception {
         User user = createUser();
         Auth auth = authRepository.save(
@@ -111,7 +111,8 @@ class WithdrawControllerTest {
 
         assertThat(userRepository.findById(user.getUserId()).orElseThrow().getStatus())
                 .isEqualTo(UserStatus.WITHDRAWN);
-        assertThat(authRepository.findByUserId(user.getUserId()).orElseThrow().getEmail())
-                .isEqualTo("withdrawn-" + auth.getAuthId() + "@deleted.local");
+        Auth withdrawn = authRepository.findByUserId(user.getUserId()).orElseThrow();
+        assertThat(withdrawn.getEmail()).isNull();
+        assertThat(withdrawn.getProviderUserId()).isEqualTo("withdrawn-" + auth.getAuthId());
     }
 }

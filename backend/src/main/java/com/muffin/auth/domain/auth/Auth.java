@@ -75,8 +75,13 @@ public class Auth extends BaseEntity {
         }
     }
 
-    /** 탈퇴 처리: 원본 이메일을 복구 불가능한 값으로 대체한다. */
-    public void anonymizeEmail() {
-        this.email = "withdrawn-" + authId + "@deleted.local";
+    /**
+     * 탈퇴 처리: 소셜 계정과의 연결(sub)과 이메일을 지운다. sub를 남겨두면 같은 소셜 계정으로 다시 로그인했을 때 이 탈퇴한
+     * Auth가 조회돼 영구히 재가입할 수 없다. provider_user_id는 비울 수 없고(NOT NULL) 같은 provider 안에서 겹칠 수도
+     * 없어서(uk_provider_user), 탈퇴 계정마다 다른 값이 되도록 auth_id를 붙인다.
+     */
+    public void anonymize() {
+        this.providerUserId = "withdrawn-" + authId;
+        this.email = null;
     }
 }

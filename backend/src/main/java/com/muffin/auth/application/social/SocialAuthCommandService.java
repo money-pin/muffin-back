@@ -8,8 +8,8 @@ import com.muffin.auth.domain.SocialIdTokenVerifier;
 import com.muffin.auth.domain.SocialIdentity;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
-import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
-import com.muffin.auth.domain.deletedemail.EmailHasher;
+import com.muffin.auth.domain.deletedaccount.DeletedAccountRepository;
+import com.muffin.auth.domain.deletedaccount.IdentityHasher;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.exception.AuthException;
 import com.muffin.auth.domain.exception.code.AuthErrorCode;
@@ -38,16 +38,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class SocialAuthCommandService {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
-    private static final long DELETED_EMAIL_BLOCK_DAYS = 30;
+    private static final long REJOIN_BLOCK_DAYS = 30;
 
     private final List<SocialIdTokenVerifier> verifiers;
     private final AuthRepository authRepository;
     private final UserRepository userRepository;
-    private final DeletedEmailRepository deletedEmailRepository;
+    private final DeletedAccountRepository deletedAccountRepository;
     private final AccessTokenProvider accessTokenProvider;
     private final RefreshTokenIssuer refreshTokenIssuer;
     private final EntityManager entityManager;
-    private final EmailHasher emailHasher;
+    private final IdentityHasher identityHasher;
 
     @Transactional
     public TokenPair authenticate(AuthProvider provider, String idToken) {
@@ -86,9 +86,10 @@ public class SocialAuthCommandService {
     }
 
     private Auth signup(AuthProvider provider, SocialIdentity identity) {
-        LocalDateTime cutoff = LocalDateTime.now(KST).minusDays(DELETED_EMAIL_BLOCK_DAYS);
-        if (deletedEmailRepository.existsByEmailHashAndDeletedAtAfter(emailHasher.hash(identity.email()), cutoff)) {
-            throw new AuthException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
+        LocalDateTime cutoff = LocalDateTime.now(KST).minusDays(REJOIN_BLOCK_DAYS);
+        String identityHash = identityHasher.hash(provider, identity.sub());
+        if (deletedAccountRepository.existsByIdentityHashAndDeletedAtAfter(identityHash, cutoff)) {
+            throw new AuthException(AuthErrorCode.RECENTLY_WITHDRAWN_ACCOUNT);
         }
 
         User user = User.register(null, UUID.randomUUID().toString(), User.truncateName(identity.name()), null);

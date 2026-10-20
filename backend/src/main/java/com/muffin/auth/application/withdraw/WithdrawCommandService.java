@@ -2,9 +2,9 @@ package com.muffin.auth.application.withdraw;
 
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
-import com.muffin.auth.domain.deletedemail.DeletedEmail;
-import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
-import com.muffin.auth.domain.deletedemail.EmailHasher;
+import com.muffin.auth.domain.deletedaccount.DeletedAccount;
+import com.muffin.auth.domain.deletedaccount.DeletedAccountRepository;
+import com.muffin.auth.domain.deletedaccount.IdentityHasher;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
@@ -15,8 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 탈퇴 유스케이스(즉시 처리 범위). 이름은 User.withdraw()가 즉시 지우고, 이메일은 복구 불가능한 값으로 대체한 뒤 원본의
- * 해시만 DeletedEmail에 남겨 재가입 제한(30일)에 쓴다. refresh token은 즉시 무효화한다.
+ * 탈퇴 유스케이스(즉시 처리 범위). 이름은 User.withdraw()가 즉시 지우고, 소셜 계정 식별자(provider+sub)의 해시만
+ * DeletedAccount에 남겨 재가입 제한(30일)에 쓰며 Auth의 sub와 이메일을 지운다. refresh token은 즉시 무효화한다.
  *
  * <p>투자/퀴즈 기록의 비식별화·삭제는 별도 배치(6개월 후)에서 처리하며 여기서 다루지 않는다.
  */
@@ -26,9 +26,9 @@ public class WithdrawCommandService {
 
     private final UserRepository userRepository;
     private final AuthRepository authRepository;
-    private final DeletedEmailRepository deletedEmailRepository;
+    private final DeletedAccountRepository deletedAccountRepository;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final EmailHasher emailHasher;
+    private final IdentityHasher identityHasher;
 
     @Transactional
     public void withdraw(Long userId) {
@@ -37,8 +37,10 @@ public class WithdrawCommandService {
                 authRepository.findByUserId(userId).orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
 
         user.withdraw();
-        deletedEmailRepository.save(DeletedEmail.of(emailHasher.hash(auth.getEmail())));
-        auth.anonymizeEmail();
+        // 익명화하면 메모리의 원본 sub가 덮어써지므로 해시를 먼저 만든다. DB 반영은 트랜잭션 종료 시 함께 이뤄진다.
+        deletedAccountRepository.save(
+                DeletedAccount.of(identityHasher.hash(auth.getProvider(), auth.getProviderUserId())));
+        auth.anonymize();
         refreshTokenRepository.deleteByUserId(userId);
     }
 }

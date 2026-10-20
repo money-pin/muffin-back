@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muffin.auth.domain.SocialIdentity;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
-import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedaccount.DeletedAccountRepository;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.exception.AuthException;
 import com.muffin.auth.domain.exception.code.AuthErrorCode;
@@ -54,7 +54,7 @@ class GoogleAuthControllerTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
-    private DeletedEmailRepository deletedEmailRepository;
+    private DeletedAccountRepository deletedAccountRepository;
 
     @MockitoBean
     private GoogleIdTokenVerifierAdapter googleIdTokenVerifier;
@@ -69,7 +69,7 @@ class GoogleAuthControllerTest {
         refreshTokenRepository.deleteAll();
         authRepository.deleteAll();
         userRepository.deleteAll();
-        deletedEmailRepository.deleteAll();
+        deletedAccountRepository.deleteAll();
     }
 
     @Test

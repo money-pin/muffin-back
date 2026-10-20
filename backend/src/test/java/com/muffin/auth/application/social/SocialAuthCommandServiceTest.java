@@ -4,18 +4,20 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 import com.muffin.auth.application.TokenPair;
+import com.muffin.auth.application.withdraw.WithdrawCommandService;
 import com.muffin.auth.domain.SocialIdentity;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
-import com.muffin.auth.domain.deletedemail.DeletedEmail;
-import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
-import com.muffin.auth.domain.deletedemail.EmailHasher;
+import com.muffin.auth.domain.deletedaccount.DeletedAccount;
+import com.muffin.auth.domain.deletedaccount.DeletedAccountRepository;
+import com.muffin.auth.domain.deletedaccount.IdentityHasher;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.auth.infrastructure.google.GoogleIdTokenVerifierAdapter;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /** 구글 verifier는 실제 서명 검증을 하지 않도록 @MockitoBean으로 대체하고, 그 이후 로직(자동 가입/로그인)을 검증한다. */
 @SpringBootTest
@@ -45,10 +48,13 @@ class SocialAuthCommandServiceTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
-    private DeletedEmailRepository deletedEmailRepository;
+    private DeletedAccountRepository deletedAccountRepository;
 
     @Autowired
-    private EmailHasher emailHasher;
+    private IdentityHasher identityHasher;
+
+    @Autowired
+    private WithdrawCommandService withdrawCommandService;
 
     @MockitoBean
     private GoogleIdTokenVerifierAdapter googleIdTokenVerifier;
@@ -63,7 +69,7 @@ class SocialAuthCommandServiceTest {
         refreshTokenRepository.deleteAll();
         authRepository.deleteAll();
         userRepository.deleteAll();
-        deletedEmailRepository.deleteAll();
+        deletedAccountRepository.deleteAll();
     }
 
     private void stubPayload(String sub, String email, String name) {
@@ -104,15 +110,50 @@ class SocialAuthCommandServiceTest {
     }
 
     @Test
-    @DisplayName("30일 이내 탈퇴한 이메일이면 신규 가입 시 RECENTLY_DELETED_EMAIL(AUTH_409_003)")
-    void authenticate_newAccount_recentlyDeletedEmail() {
-        deletedEmailRepository.save(DeletedEmail.of(emailHasher.hash("deleted@example.com")));
-        stubPayload("google-sub-4", "deleted@example.com", "홍길동");
+    @DisplayName("탈퇴 후 30일 이내에 같은 소셜 계정으로 다시 로그인하면 RECENTLY_WITHDRAWN_ACCOUNT(AUTH_409_003)")
+    void authenticate_afterWithdraw_within30Days_blocked() {
+        stubPayload("google-sub-4", "rejoin@example.com", "홍길동");
+        signUpAndWithdraw();
 
         assertThatThrownBy(() -> socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN))
                 .isInstanceOf(GeneralException.class)
                 .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
                         .isEqualTo("AUTH_409_003"));
+    }
+
+    @Test
+    @DisplayName("탈퇴 후 30일이 지나면 같은 소셜 계정으로 새 계정이 만들어진다")
+    void authenticate_afterWithdraw_after30Days_signsUpAsNewAccount() {
+        stubPayload("google-sub-5", "rejoin@example.com", "홍길동");
+        Long withdrawnUserId = signUpAndWithdraw();
+        deletedAccountRepository.findAll().forEach(deleted -> {
+            ReflectionTestUtils.setField(
+                    deleted, "deletedAt", LocalDateTime.now().minusDays(31));
+            deletedAccountRepository.save(deleted);
+        });
+
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
+
+        Auth rejoined = authRepository
+                .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-5")
+                .orElseThrow();
+        assertThat(rejoined.getUserId()).isNotEqualTo(withdrawnUserId);
+    }
+
+    @Test
+    @DisplayName("sub가 같아도 provider가 다른 탈퇴 기록이면 차단되지 않는다")
+    void authenticate_sameSubWithdrawnOnOtherProvider_notBlocked() {
+        deletedAccountRepository.save(DeletedAccount.of(identityHasher.hash(AuthProvider.KAKAO, "same-sub")));
+        stubPayload("same-sub", "other@example.com", "홍길동");
+
+        assertThatNoException().isThrownBy(() -> socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN));
+    }
+
+    private Long signUpAndWithdraw() {
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
+        Long userId = authRepository.findAll().get(0).getUserId();
+        withdrawCommandService.withdraw(userId);
+        return userId;
     }
 
     @Test

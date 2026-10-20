@@ -35,8 +35,8 @@ muffin:
     google:
       client-id: test-google-client-id
 
-    deleted-email:
-      hash-secret: test-deleted-email-hash-secret-for-automated-tests-only
+    deleted-account:
+      hash-secret: test-deleted-account-hash-secret-for-automated-tests-only
 
   news:
     ai:

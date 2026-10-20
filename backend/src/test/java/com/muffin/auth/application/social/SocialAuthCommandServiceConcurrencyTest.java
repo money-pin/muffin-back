@@ -11,8 +11,8 @@ import com.muffin.auth.domain.SocialIdTokenVerifier;
 import com.muffin.auth.domain.SocialIdentity;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
-import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
-import com.muffin.auth.domain.deletedemail.EmailHasher;
+import com.muffin.auth.domain.deletedaccount.DeletedAccountRepository;
+import com.muffin.auth.domain.deletedaccount.IdentityHasher;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
@@ -50,7 +50,7 @@ class SocialAuthCommandServiceConcurrencyTest {
     private UserRepository userRepository;
 
     @Mock
-    private DeletedEmailRepository deletedEmailRepository;
+    private DeletedAccountRepository deletedAccountRepository;
 
     @Mock
     private AccessTokenProvider accessTokenProvider;
@@ -62,7 +62,7 @@ class SocialAuthCommandServiceConcurrencyTest {
     private EntityManager entityManager;
 
     @Mock
-    private EmailHasher emailHasher;
+    private IdentityHasher identityHasher;
 
     private SocialAuthCommandService socialAuthCommandService;
 
@@ -73,11 +73,11 @@ class SocialAuthCommandServiceConcurrencyTest {
                 List.of(googleIdTokenVerifier),
                 authRepository,
                 userRepository,
-                deletedEmailRepository,
+                deletedAccountRepository,
                 accessTokenProvider,
                 refreshTokenIssuer,
                 entityManager,
-                emailHasher);
+                identityHasher);
     }
 
     @Test
