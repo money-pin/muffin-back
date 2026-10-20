@@ -3,10 +3,13 @@ package com.muffin.auth.infrastructure.apple;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.muffin.auth.application.AppleProperties;
 import com.muffin.auth.application.withdraw.AppleAuthorizationClient;
+import com.muffin.auth.domain.exception.AuthException;
+import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 /** 애플 토큰 교환(/auth/token)·철회(/auth/revoke) API를 호출한다. iOS 네이티브 로그인이라 redirect_uri는 보내지 않는다. */
@@ -32,13 +35,19 @@ public class AppleTokenClient implements AppleAuthorizationClient {
         form.add("code", authorizationCode);
         form.add("grant_type", "authorization_code");
 
-        TokenResponse response = appleApiRestClient
-                .post()
-                .uri("/auth/token")
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body(form)
-                .retrieve()
-                .body(TokenResponse.class);
+        TokenResponse response;
+        try {
+            response = appleApiRestClient
+                    .post()
+                    .uri("/auth/token")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve()
+                    .body(TokenResponse.class);
+        } catch (HttpClientErrorException e) {
+            // 만료(5분)·재사용된 code가 대부분이다. 5xx·네트워크 오류는 사용자 잘못이 아니라 그대로 던진다.
+            throw new AuthException(AuthErrorCode.INVALID_APPLE_AUTHORIZATION_CODE);
+        }
         return new AppleTokens(response.refreshToken(), response.idToken());
     }
 

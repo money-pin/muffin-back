@@ -70,7 +70,7 @@ class SocialAuthCommandServiceConcurrencyTest {
     void setUp() {
         when(googleIdTokenVerifier.provider()).thenReturn(AuthProvider.GOOGLE);
         socialAuthCommandService = new SocialAuthCommandService(
-                List.of(googleIdTokenVerifier),
+                new SocialIdTokenVerifiers(List.of(googleIdTokenVerifier)),
                 authRepository,
                 userRepository,
                 deletedAccountRepository,

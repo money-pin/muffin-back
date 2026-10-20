@@ -4,7 +4,6 @@ import com.muffin.auth.application.ConstraintViolations;
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.domain.AccessTokenProvider;
-import com.muffin.auth.domain.SocialIdTokenVerifier;
 import com.muffin.auth.domain.SocialIdentity;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
@@ -21,7 +20,6 @@ import com.muffin.user.domain.enums.UserStatus;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,7 +38,7 @@ public class SocialAuthCommandService {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final long REJOIN_BLOCK_DAYS = 30;
 
-    private final List<SocialIdTokenVerifier> verifiers;
+    private final SocialIdTokenVerifiers verifiers;
     private final AuthRepository authRepository;
     private final UserRepository userRepository;
     private final DeletedAccountRepository deletedAccountRepository;
@@ -52,7 +50,7 @@ public class SocialAuthCommandService {
     /** nameHint는 토큰에 이름이 없을 때(애플) 가입 시에만 쓴다. 이미 가입된 계정이면 무시한다. */
     @Transactional
     public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
-        SocialIdentity identity = verifierFor(provider).verify(idToken);
+        SocialIdentity identity = verifiers.verify(provider, idToken);
 
         Auth auth = authRepository
                 .findByProviderAndProviderUserId(provider, identity.sub())
@@ -73,17 +71,6 @@ public class SocialAuthCommandService {
                 accessTokenProvider.issue(user.getUserId(), user.getRole().name());
         String refreshToken = refreshTokenIssuer.issue(user.getUserId());
         return new TokenPair(accessToken, refreshToken);
-    }
-
-    /**
-     * 목록에서 매번 찾는다. 기동 시점에 Map으로 만들어 두면, 테스트가 verifier를 목으로 바꿨을 때 아직 스텁되지 않은
-     * provider()가 null을 돌려줘 컨텍스트 기동이 깨진다. verifier는 provider 수(최대 3개)만큼이라 비용은 무시할 수준이다.
-     */
-    private SocialIdTokenVerifier verifierFor(AuthProvider provider) {
-        return verifiers.stream()
-                .filter(verifier -> verifier.provider() == provider)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("ID Token 검증기가 등록되지 않은 provider입니다: " + provider));
     }
 
     private Auth signup(AuthProvider provider, SocialIdentity identity, String nameHint) {

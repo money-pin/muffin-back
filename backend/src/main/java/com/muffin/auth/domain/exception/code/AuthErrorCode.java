@@ -8,6 +8,9 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor
 public enum AuthErrorCode implements BaseErrorCode {
+    APPLE_AUTHORIZATION_CODE_REQUIRED(HttpStatus.BAD_REQUEST, "AUTH_400_003", "애플 계정은 탈퇴 시 authorizationCode가 필요합니다."),
+    INVALID_APPLE_AUTHORIZATION_CODE(HttpStatus.BAD_REQUEST, "AUTH_400_004", "유효하지 않거나 만료된 애플 authorizationCode입니다."),
+    APPLE_ACCOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "AUTH_400_005", "탈퇴하려는 계정과 애플 인증 계정이 다릅니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_401_003", "유효하지 않은 refresh token입니다."),
     INVALID_SOCIAL_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_401_004", "유효하지 않은 소셜 로그인 토큰입니다."),
     WITHDRAWN_ACCOUNT(HttpStatus.FORBIDDEN, "AUTH_403_002", "탈퇴한 계정입니다."),

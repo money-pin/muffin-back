@@ -70,31 +70,31 @@ class AppleClientSecretGeneratorTest {
     }
 
     @Test
-    @DisplayName("키가 비어 있으면 생성은 되지만 client_secret을 만들 때 IllegalStateException")
+    @DisplayName("키가 비어 있으면 생성은 되지만 client_secret을 만들 때 AppleClientSecretException")
     void generate_withoutKey_fails() {
         AppleClientSecretGenerator generator = new AppleClientSecretGenerator(propertiesWithKey(""));
 
         assertThatThrownBy(generator::generate)
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(AppleClientSecretException.class)
                 .hasMessageContaining("설정되지 않았습니다");
     }
 
     @Test
-    @DisplayName("EC 개인키로 읽을 수 없는 값이면 생성 시점에 IllegalStateException")
+    @DisplayName("EC 개인키로 읽을 수 없는 값이면 생성 시점에 AppleClientSecretException")
     void constructor_invalidKey_fails() {
         String notAKey = Base64.getEncoder()
                 .encodeToString("-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----".getBytes());
 
         assertThatThrownBy(() -> new AppleClientSecretGenerator(propertiesWithKey(notAKey)))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(AppleClientSecretException.class)
                 .hasMessageContaining("EC 개인키로 읽을 수 없습니다");
     }
 
     @Test
-    @DisplayName("base64가 아닌 값(패딩이 깨진 값)이어도 같은 IllegalStateException으로 감싼다")
+    @DisplayName("base64가 아닌 값(패딩이 깨진 값)이어도 같은 AppleClientSecretException으로 감싼다")
     void constructor_brokenBase64_fails() {
         assertThatThrownBy(() -> new AppleClientSecretGenerator(propertiesWithKey("abc=d")))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(AppleClientSecretException.class)
                 .hasMessageContaining("EC 개인키로 읽을 수 없습니다");
     }
 }

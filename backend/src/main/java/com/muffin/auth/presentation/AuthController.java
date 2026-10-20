@@ -16,6 +16,7 @@ import com.muffin.auth.presentation.kakao.dto.KakaoAuthRequest;
 import com.muffin.auth.presentation.kakao.dto.KakaoAuthResponse;
 import com.muffin.auth.presentation.refresh.dto.RefreshResponse;
 import com.muffin.auth.presentation.swagger.AuthApi;
+import com.muffin.auth.presentation.withdraw.dto.AppleWithdrawalRequest;
 import com.muffin.global.apiPayload.ApiResponse;
 import com.muffin.global.apiPayload.code.GeneralSuccessCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -73,8 +74,11 @@ public class AuthController implements AuthApi {
 
     @Override
     @DeleteMapping("/api/auth/account")
-    public ApiResponse<Void> withdraw(@AuthenticationPrincipal Long userId, HttpServletResponse response) {
-        withdrawCommandService.withdraw(userId);
+    public ApiResponse<Void> withdraw(
+            @AuthenticationPrincipal Long userId,
+            @RequestBody(required = false) AppleWithdrawalRequest request,
+            HttpServletResponse response) {
+        withdrawCommandService.withdraw(userId, request == null ? null : request.authorizationCode());
         response.addHeader(
                 HttpHeaders.SET_COOKIE, refreshTokenCookieHelper.expire().toString());
         return ApiResponse.onSuccess(GeneralSuccessCode.OK);

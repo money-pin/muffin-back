@@ -7,6 +7,7 @@ import com.muffin.auth.presentation.google.dto.GoogleAuthResponse;
 import com.muffin.auth.presentation.kakao.dto.KakaoAuthRequest;
 import com.muffin.auth.presentation.kakao.dto.KakaoAuthResponse;
 import com.muffin.auth.presentation.refresh.dto.RefreshResponse;
+import com.muffin.auth.presentation.withdraw.dto.AppleWithdrawalRequest;
 import com.muffin.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -49,9 +50,15 @@ public interface AuthApi {
     @Operation(
             summary = "회원 탈퇴 (AUTH-09-2)",
             description = "Authorization 헤더의 access token으로 식별된 계정을 탈퇴 처리한다. 이름과 이메일은 즉시 삭제되고 소셜 계정 연결(sub)도 끊기며, "
-                    + "refresh token이 무효화되고 refresh token Cookie가 만료(Max-Age=0)된다. 투자/퀴즈 기록은 탈퇴 6개월 후 별도 배치가 삭제한다.")
+                    + "refresh token이 무효화되고 refresh token Cookie가 만료(Max-Age=0)된다. 투자/퀴즈 기록은 탈퇴 6개월 후 별도 배치가 삭제한다. "
+                    + "애플 계정은 탈퇴 직전 애플 로그인을 다시 띄워 받은 authorizationCode를 body로 보내야 하며(애플 토큰 철회용), "
+                    + "구글·카카오 계정은 body 없이 호출한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "탈퇴 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "400",
+                description = "애플 계정인데 authorizationCode가 없음(AUTH_400_003), 유효하지 않거나 만료된 code(AUTH_400_004), "
+                        + "code의 애플 계정이 탈퇴 대상과 다름(AUTH_400_005)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "401",
                 description = "인증이 필요합니다. (AUTH_401_001)"),
@@ -59,7 +66,8 @@ public interface AuthApi {
                 responseCode = "409",
                 description = "이미 탈퇴했거나 정지된 계정이라 탈퇴할 수 없습니다. (COMMON_409_001)")
     })
-    ApiResponse<Void> withdraw(@AuthenticationPrincipal Long userId, HttpServletResponse response);
+    ApiResponse<Void> withdraw(
+            @AuthenticationPrincipal Long userId, AppleWithdrawalRequest request, HttpServletResponse response);
 
     @Operation(
             summary = "구글 로그인/가입",

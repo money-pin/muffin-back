@@ -7,10 +7,12 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.muffin.auth.application.AppleProperties;
 import com.muffin.auth.application.withdraw.AppleAuthorizationClient.AppleTokens;
+import com.muffin.global.apiPayload.exception.GeneralException;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -66,13 +68,24 @@ class AppleTokenClientTest {
     }
 
     @Test
-    @DisplayName("만료·사용된 code 등으로 애플이 400을 주면 예외를 던진다(처리는 호출부가 맡음)")
-    void exchange_throwsOnBadRequest() {
+    @DisplayName("만료·사용된 code 등으로 애플이 4xx를 주면 INVALID_APPLE_AUTHORIZATION_CODE(AUTH_400_004)로 바꾼다")
+    void exchange_clientError_becomesInvalidCode() {
         server.expect(requestTo(BASE_URL + "/auth/token"))
                 .andRespond(
                         withBadRequest().body("{\"error\":\"invalid_grant\"}").contentType(MediaType.APPLICATION_JSON));
 
-        assertThatThrownBy(() -> client.exchange("expired-code")).isInstanceOf(RestClientResponseException.class);
+        assertThatThrownBy(() -> client.exchange("expired-code"))
+                .isInstanceOf(GeneralException.class)
+                .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
+                        .isEqualTo("AUTH_400_004"));
+    }
+
+    @Test
+    @DisplayName("애플 서버 오류(5xx)는 사용자 잘못이 아니라 그대로 던진다")
+    void exchange_serverError_propagates() {
+        server.expect(requestTo(BASE_URL + "/auth/token")).andRespond(withServerError());
+
+        assertThatThrownBy(() -> client.exchange("code")).isInstanceOf(RestClientResponseException.class);
     }
 
     @Test

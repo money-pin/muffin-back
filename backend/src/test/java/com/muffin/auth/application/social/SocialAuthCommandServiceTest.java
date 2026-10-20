@@ -153,7 +153,7 @@ class SocialAuthCommandServiceTest {
     private Long signUpAndWithdraw() {
         socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
         Long userId = authRepository.findAll().get(0).getUserId();
-        withdrawCommandService.withdraw(userId);
+        withdrawCommandService.withdraw(userId, null);
         return userId;
     }
 

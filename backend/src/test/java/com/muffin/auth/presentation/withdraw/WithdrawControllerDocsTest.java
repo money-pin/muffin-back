@@ -4,6 +4,7 @@ import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.docu
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.http.MediaType;
 import org.springframework.restdocs.RestDocumentationContextProvider;
 import org.springframework.restdocs.RestDocumentationExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -50,19 +52,7 @@ class WithdrawControllerDocsTest {
     @Test
     @DisplayName("탈퇴 성공 문서화")
     void documentWithdrawSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        WithdrawCommandService stub = new WithdrawCommandService(null, null, null, null, null, null) {
-            @Override
-            public void withdraw(Long userId) {}
-        };
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(
-                        new AuthController(null, null, null, stub, refreshTokenCookieHelper))
-                .setControllerAdvice(new GeneralExceptionAdvice())
-                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
-                .apply(documentationConfiguration(restDocumentation)
-                        .operationPreprocessors()
-                        .withRequestDefaults(prettyPrint())
-                        .withResponseDefaults(prettyPrint()))
-                .build();
+        MockMvc mockMvc = mockMvcOf(restDocumentation);
 
         mockMvc.perform(delete("/api/auth/account"))
                 .andExpect(status().isOk())
@@ -72,5 +62,35 @@ class WithdrawControllerDocsTest {
                                 fieldWithPath("isSuccess").description("성공 여부"),
                                 fieldWithPath("code").description("응답 코드"),
                                 fieldWithPath("message").description("응답 메시지"))));
+    }
+
+    @Test
+    @DisplayName("애플 계정 탈퇴 요청 문서화")
+    void documentAppleWithdraw(RestDocumentationContextProvider restDocumentation) throws Exception {
+        MockMvc mockMvc = mockMvcOf(restDocumentation);
+
+        mockMvc.perform(delete("/api/auth/account")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"authorizationCode\":\"apple-authorization-code-example\"}"))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "withdraw-apple",
+                        requestFields(fieldWithPath("authorizationCode")
+                                .description("탈퇴 직전 애플 로그인을 다시 띄워 받은 authorization code(5분 유효, 1회용)"))));
+    }
+
+    private MockMvc mockMvcOf(RestDocumentationContextProvider restDocumentation) {
+        WithdrawCommandService stub = new WithdrawCommandService(null, null, null, null, null, null, null, null, null) {
+            @Override
+            public void withdraw(Long userId, String appleAuthorizationCode) {}
+        };
+        return MockMvcBuilders.standaloneSetup(new AuthController(null, null, null, stub, refreshTokenCookieHelper))
+                .setControllerAdvice(new GeneralExceptionAdvice())
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+                .apply(documentationConfiguration(restDocumentation)
+                        .operationPreprocessors()
+                        .withRequestDefaults(prettyPrint())
+                        .withResponseDefaults(prettyPrint()))
+                .build();
     }
 }

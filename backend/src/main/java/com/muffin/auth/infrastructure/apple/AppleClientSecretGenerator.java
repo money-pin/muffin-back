@@ -47,7 +47,7 @@ public class AppleClientSecretGenerator {
 
     public String generate() {
         if (privateKey == null) {
-            throw new IllegalStateException("APPLE_PRIVATE_KEY가 설정되지 않았습니다.");
+            throw new AppleClientSecretException("APPLE_PRIVATE_KEY가 설정되지 않았습니다.");
         }
         Instant now = clock.instant();
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
@@ -65,7 +65,7 @@ public class AppleClientSecretGenerator {
         try {
             jwt.sign(new ECDSASigner(privateKey));
         } catch (JOSEException e) {
-            throw new IllegalStateException("애플 client_secret 서명에 실패했습니다.", e);
+            throw new AppleClientSecretException("애플 client_secret 서명에 실패했습니다.", e);
         }
         return jwt.serialize();
     }
@@ -83,7 +83,7 @@ public class AppleClientSecretGenerator {
             return (ECPrivateKey) KeyFactory.getInstance("EC")
                     .generatePrivate(new PKCS8EncodedKeySpec(Base64.getDecoder().decode(body)));
         } catch (GeneralSecurityException | IllegalArgumentException e) {
-            throw new IllegalStateException("APPLE_PRIVATE_KEY를 EC 개인키로 읽을 수 없습니다.", e);
+            throw new AppleClientSecretException("APPLE_PRIVATE_KEY를 EC 개인키로 읽을 수 없습니다.", e);
         }
     }
 }

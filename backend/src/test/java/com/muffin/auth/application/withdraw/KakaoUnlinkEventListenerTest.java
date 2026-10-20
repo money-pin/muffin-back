@@ -30,7 +30,7 @@ class KakaoUnlinkEventListenerTest {
     @Test
     @DisplayName("카카오 계정이 탈퇴하면 원본 회원번호로 연결을 끊는다")
     void handle_kakao_unlinks() {
-        listener.handle(new AccountWithdrawnEvent(AuthProvider.KAKAO, "3812345678"));
+        listener.handle(new AccountWithdrawnEvent(AuthProvider.KAKAO, "3812345678", null));
 
         verify(kakaoAccountUnlinker).unlink("3812345678");
     }
@@ -38,7 +38,7 @@ class KakaoUnlinkEventListenerTest {
     @Test
     @DisplayName("카카오가 아닌 계정이면 호출하지 않는다")
     void handle_otherProvider_skips() {
-        listener.handle(new AccountWithdrawnEvent(AuthProvider.GOOGLE, "google-sub"));
+        listener.handle(new AccountWithdrawnEvent(AuthProvider.GOOGLE, "google-sub", null));
 
         verify(kakaoAccountUnlinker, never()).unlink(any());
     }
@@ -51,6 +51,6 @@ class KakaoUnlinkEventListenerTest {
                 .unlink("3812345678");
 
         assertThatNoException()
-                .isThrownBy(() -> listener.handle(new AccountWithdrawnEvent(AuthProvider.KAKAO, "3812345678")));
+                .isThrownBy(() -> listener.handle(new AccountWithdrawnEvent(AuthProvider.KAKAO, "3812345678", null)));
     }
 }

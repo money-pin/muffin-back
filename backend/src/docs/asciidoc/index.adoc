@@ -69,6 +69,13 @@ NOTE: 탈퇴한 소셜 계정은 30일간 재가입이 제한되고, 30일이 �
 
 NOTE: 카카오 계정은 탈퇴가 완료된 뒤 카카오 쪽 앱 연결도 해제한다(카카오 연결 해제 API). 응답을 기다리지 않고 비동기로 처리하며, 연결 해제가 실패해도 탈퇴는 이미 완료된 상태다.
 
+NOTE: 애플 계정은 탈퇴 직전에 애플 로그인을 한 번 더 띄워 받은 `authorizationCode`(5분 유효, 1회용)를 요청 body로 보내야 한다. 서버는 이 code를 애플 토큰으로 교환해 탈퇴 대상 본인의 애플 계정인지 확인한 뒤 탈퇴를 처리하고, 탈퇴가 완료되면 애플 토큰을 철회해 앱 연결을 끊는다(비동기, 실패해도 탈퇴는 완료된 상태). code 확인에 실패하면 아무것도 바뀌지 않는다. 구글·카카오 계정은 body 없이 호출한다.
+
+==== 요청 - 애플 계정
+
+include::{snippets}/withdraw-apple/http-request.adoc[]
+include::{snippets}/withdraw-apple/request-fields.adoc[]
+
 ==== 응답 - 성공
 
 include::{snippets}/withdraw-success/http-response.adoc[]
@@ -80,6 +87,9 @@ include::{snippets}/withdraw-success/response-fields.adoc[]
 |===
 |HTTP|code|message|설명
 
+|400|AUTH_400_003|애플 계정은 탈퇴 시 authorizationCode가 필요합니다.|애플 계정인데 body의 authorizationCode 없음
+|400|AUTH_400_004|유효하지 않거나 만료된 애플 authorizationCode입니다.|만료(5분)됐거나 이미 사용한 code
+|400|AUTH_400_005|탈퇴하려는 계정과 애플 인증 계정이 다릅니다.|다른 애플 계정으로 받은 code
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
 |409|COMMON_409_001|요청이 현재 상태와 충돌합니다.|이미 탈퇴했거나 정지된 계정
 |===
