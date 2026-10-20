@@ -41,6 +41,10 @@ muffin:
 
     apple:
       bundle-id: test.apple.bundle
+      team-id: TESTTEAMID
+      key-id: TESTKEYID0
+      # 비어 있으면 키 파싱을 건너뛴다(테스트는 실제 애플 API를 부르지 않음)
+      private-key: ""
 
     deleted-account:
       hash-secret: test-deleted-account-hash-secret-for-automated-tests-only

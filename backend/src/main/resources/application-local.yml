@@ -44,6 +44,9 @@ muffin:
 
     apple:
       bundle-id: ${APPLE_BUNDLE_ID:}
+      team-id: ${APPLE_TEAM_ID:}
+      key-id: ${APPLE_KEY_ID:}
+      private-key: ${APPLE_PRIVATE_KEY:}
 
     deleted-account:
       # 로컬 개발 전용 더미 시크릿

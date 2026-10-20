@@ -35,7 +35,9 @@ class AppleIdTokenVerifierAdapterTest {
 
     @BeforeEach
     void setUp() {
-        verifier = new AppleIdTokenVerifierAdapter(appleJwtDecoder, new AppleProperties(BUNDLE_ID, "unused", ISSUER));
+        AppleProperties properties =
+                new AppleProperties(BUNDLE_ID, "unused", ISSUER, "unused", "unused", "", "unused", null, null);
+        verifier = new AppleIdTokenVerifierAdapter(appleJwtDecoder, properties);
     }
 
     private Jwt jwtWithClaims(Map<String, Object> claims) {

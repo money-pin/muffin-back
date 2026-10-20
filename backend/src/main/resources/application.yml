@@ -113,6 +113,11 @@ muffin:
       # 애플이 정한 고정값이라 기본값을 둔다. 바뀌면 env로 덮어쓴다.
       jwk-set-uri: ${APPLE_JWK_SET_URI:https://appleid.apple.com/auth/keys}
       issuer: ${APPLE_ISSUER:https://appleid.apple.com}
+      team-id: ${APPLE_TEAM_ID}
+      key-id: ${APPLE_KEY_ID}
+      # .p8 파일 전체를 base64 한 줄로 인코딩한 값
+      private-key: ${APPLE_PRIVATE_KEY}
+      api-base-url: ${APPLE_API_BASE_URL:https://appleid.apple.com}
 
     withdrawal:
       data-cleanup:
