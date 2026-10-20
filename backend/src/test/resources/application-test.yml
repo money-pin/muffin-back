@@ -37,6 +37,7 @@ muffin:
 
     kakao:
       native-app-key: test-kakao-native-app-key
+      admin-key: test-kakao-admin-key
 
     deleted-account:
       hash-secret: test-deleted-account-hash-secret-for-automated-tests-only

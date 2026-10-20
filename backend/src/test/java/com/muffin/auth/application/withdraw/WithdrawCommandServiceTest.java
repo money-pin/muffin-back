@@ -1,6 +1,10 @@
 package com.muffin.auth.application.withdraw;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.after;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.domain.auth.Auth;
@@ -20,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -47,6 +52,9 @@ class WithdrawCommandServiceTest {
 
     @Autowired
     private IdentityHasher identityHasher;
+
+    @MockitoBean
+    private KakaoAccountUnlinker kakaoAccountUnlinker;
 
     @AfterEach
     void cleanUp() {
@@ -87,6 +95,28 @@ class WithdrawCommandServiceTest {
                 .isTrue();
 
         assertThat(refreshTokenRepository.findByUserId(user.getUserId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("카카오 계정이 탈퇴하면 커밋 후 원본 회원번호로 카카오 연결 끊기를 호출한다")
+    void withdraw_kakaoAccount_unlinksAfterCommit() {
+        User user = createUser();
+        authRepository.save(Auth.createSocial(user.getUserId(), AuthProvider.KAKAO, null, "3812345678"));
+
+        withdrawCommandService.withdraw(user.getUserId());
+
+        verify(kakaoAccountUnlinker, timeout(2000)).unlink("3812345678");
+    }
+
+    @Test
+    @DisplayName("카카오가 아닌 계정이 탈퇴하면 카카오 연결 끊기를 호출하지 않는다")
+    void withdraw_googleAccount_doesNotUnlinkKakao() {
+        User user = createUser();
+        createAuth(user.getUserId());
+
+        withdrawCommandService.withdraw(user.getUserId());
+
+        verify(kakaoAccountUnlinker, after(500).never()).unlink(any());
     }
 
     @Test

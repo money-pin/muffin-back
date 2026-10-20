@@ -40,6 +40,7 @@ muffin:
 
     kakao:
       native-app-key: ${KAKAO_NATIVE_APP_KEY:}
+      admin-key: ${KAKAO_ADMIN_KEY:}
 
     deleted-account:
       # 로컬 개발 전용 더미 시크릿

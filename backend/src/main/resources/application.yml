@@ -105,6 +105,8 @@ muffin:
       # 카카오가 정한 고정값이라 기본값을 둔다. 바뀌면 env로 덮어쓴다.
       jwk-set-uri: ${KAKAO_JWK_SET_URI:https://kauth.kakao.com/.well-known/jwks.json}
       issuer: ${KAKAO_ISSUER:https://kauth.kakao.com}
+      admin-key: ${KAKAO_ADMIN_KEY}
+      api-base-url: ${KAKAO_API_BASE_URL:https://kapi.kakao.com}
 
     withdrawal:
       data-cleanup:

@@ -34,7 +34,8 @@ class KakaoIdTokenVerifierAdapterTest {
 
     @BeforeEach
     void setUp() {
-        verifier = new KakaoIdTokenVerifierAdapter(kakaoJwtDecoder, new KakaoProperties(APP_KEY, "unused", ISSUER));
+        KakaoProperties properties = new KakaoProperties(APP_KEY, "unused", ISSUER, "unused", "unused", null, null);
+        verifier = new KakaoIdTokenVerifierAdapter(kakaoJwtDecoder, properties);
     }
 
     private Jwt jwtWithClaims(Map<String, Object> claims) {

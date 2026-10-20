@@ -11,6 +11,7 @@ import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,7 @@ public class WithdrawCommandService {
     private final DeletedAccountRepository deletedAccountRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final IdentityHasher identityHasher;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public void withdraw(Long userId) {
@@ -37,10 +39,12 @@ public class WithdrawCommandService {
                 authRepository.findByUserId(userId).orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
 
         user.withdraw();
-        // 익명화하면 메모리의 원본 sub가 덮어써지므로 해시를 먼저 만든다. DB 반영은 트랜잭션 종료 시 함께 이뤄진다.
-        deletedAccountRepository.save(
-                DeletedAccount.of(identityHasher.hash(auth.getProvider(), auth.getProviderUserId())));
+        // 익명화하면 Auth의 원본 sub가 덮어써지므로 미리 꺼내 둔다.
+        String providerUserId = auth.getProviderUserId();
+        deletedAccountRepository.save(DeletedAccount.of(identityHasher.hash(auth.getProvider(), providerUserId)));
         auth.anonymize();
         refreshTokenRepository.deleteByUserId(userId);
+
+        eventPublisher.publishEvent(new AccountWithdrawnEvent(auth.getProvider(), providerUserId));
     }
 }
