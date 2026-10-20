@@ -1,5 +1,7 @@
 package com.muffin.auth.presentation.swagger;
 
+import com.muffin.auth.presentation.apple.dto.AppleAuthRequest;
+import com.muffin.auth.presentation.apple.dto.AppleAuthResponse;
 import com.muffin.auth.presentation.google.dto.GoogleAuthRequest;
 import com.muffin.auth.presentation.google.dto.GoogleAuthResponse;
 import com.muffin.auth.presentation.kakao.dto.KakaoAuthRequest;
@@ -96,4 +98,24 @@ public interface AuthApi {
                 description = "최근 탈퇴한 계정입니다.(AUTH_409_003, 탈퇴 후 30일 이내 재가입 시)")
     })
     ApiResponse<KakaoAuthResponse> authenticateKakao(KakaoAuthRequest request, HttpServletResponse response);
+
+    @Operation(
+            summary = "애플 로그인/가입",
+            description = "애플 SDK가 발급한 identity token을 검증해 기존 계정이면 로그인, 없으면 자동 가입한다(서비스 약관은 자동 동의로 간주). "
+                    + "애플은 이름을 최초 로그인 때만 SDK로 주므로 그때 givenName/familyName을 함께 보내야 한다(이후에는 생략). "
+                    + "access token은 응답 바디로, refresh token은 HttpOnly Cookie로 발급한다. "
+                    + "기능명세서(v3.1)에 없는 확장 기능이라 별도 명세 ID가 없다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인/가입 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "유효하지 않은 소셜 로그인 토큰입니다. (AUTH_401_004)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "403",
+                description = "탈퇴한 계정입니다.(AUTH_403_002) 또는 정지된 계정입니다.(AUTH_403_003)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "최근 탈퇴한 계정입니다.(AUTH_409_003, 탈퇴 후 30일 이내 재가입 시)")
+    })
+    ApiResponse<AppleAuthResponse> authenticateApple(AppleAuthRequest request, HttpServletResponse response);
 }

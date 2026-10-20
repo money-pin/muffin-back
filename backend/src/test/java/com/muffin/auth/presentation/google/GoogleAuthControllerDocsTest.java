@@ -39,7 +39,7 @@ class GoogleAuthControllerDocsTest {
     void documentGoogleAuthSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
         SocialAuthCommandService stub = new SocialAuthCommandService(null, null, null, null, null, null, null, null) {
             @Override
-            public TokenPair authenticate(AuthProvider provider, String idToken) {
+            public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
                 return new TokenPair("access-token-example", "refresh-token-example");
             }
         };
@@ -64,7 +64,7 @@ class GoogleAuthControllerDocsTest {
     void documentGoogleAuthInvalidToken(RestDocumentationContextProvider restDocumentation) throws Exception {
         SocialAuthCommandService stub = new SocialAuthCommandService(null, null, null, null, null, null, null, null) {
             @Override
-            public TokenPair authenticate(AuthProvider provider, String idToken) {
+            public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
                 throw new AuthException(AuthErrorCode.INVALID_SOCIAL_TOKEN);
             }
         };

@@ -81,7 +81,7 @@ class SocialAuthCommandServiceTest {
     void authenticate_newAccount_signsUp() {
         stubPayload("google-sub-1", "new@example.com", "홍길동");
 
-        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
+        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
 
         assertThat(result.accessToken()).isNotBlank();
         assertThat(result.refreshToken()).isNotBlank();
@@ -100,10 +100,10 @@ class SocialAuthCommandServiceTest {
     @DisplayName("이미 가입된 구글 계정이면 로그인만 처리되고 새 계정을 만들지 않는다")
     void authenticate_existingAccount_logsIn() {
         stubPayload("google-sub-3", "existing@example.com", "홍길동");
-        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
         assertThat(authRepository.count()).isEqualTo(1);
 
-        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
+        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
 
         assertThat(result.accessToken()).isNotBlank();
         assertThat(authRepository.count()).isEqualTo(1);
@@ -115,7 +115,7 @@ class SocialAuthCommandServiceTest {
         stubPayload("google-sub-4", "rejoin@example.com", "홍길동");
         signUpAndWithdraw();
 
-        assertThatThrownBy(() -> socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN))
+        assertThatThrownBy(() -> socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null))
                 .isInstanceOf(GeneralException.class)
                 .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
                         .isEqualTo("AUTH_409_003"));
@@ -132,7 +132,7 @@ class SocialAuthCommandServiceTest {
             deletedAccountRepository.save(deleted);
         });
 
-        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
 
         Auth rejoined = authRepository
                 .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-5")
@@ -146,11 +146,12 @@ class SocialAuthCommandServiceTest {
         deletedAccountRepository.save(DeletedAccount.of(identityHasher.hash(AuthProvider.KAKAO, "same-sub")));
         stubPayload("same-sub", "other@example.com", "홍길동");
 
-        assertThatNoException().isThrownBy(() -> socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN));
+        assertThatNoException()
+                .isThrownBy(() -> socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null));
     }
 
     private Long signUpAndWithdraw() {
-        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
         Long userId = authRepository.findAll().get(0).getUserId();
         withdrawCommandService.withdraw(userId);
         return userId;
@@ -160,10 +161,10 @@ class SocialAuthCommandServiceTest {
     @DisplayName("다른 계정과 이메일이 같아도 sub가 다르면 별개 계정으로 가입된다")
     void authenticate_newAccount_sameEmailAsOtherAccount_signsUpSeparately() {
         stubPayload("google-sub-a", "shared@example.com", "홍길동");
-        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
         stubPayload("google-sub-b", "shared@example.com", "홍길동");
 
-        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
 
         Auth first = authRepository
                 .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-a")
@@ -180,7 +181,7 @@ class SocialAuthCommandServiceTest {
     void authenticate_newAccount_longNameIsTruncated() {
         stubPayload("google-sub-6", "student@g.hongik.ac.kr", "산업경영공학과 홍길동 20211234");
 
-        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
+        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
 
         assertThat(result.accessToken()).isNotBlank();
         User user = userRepository
@@ -196,7 +197,7 @@ class SocialAuthCommandServiceTest {
     @DisplayName("탈퇴한 계정이면 WITHDRAWN_ACCOUNT(AUTH_403_002)")
     void authenticate_withdrawnAccount() {
         stubPayload("google-sub-5", "withdrawn@example.com", "홍길동");
-        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
         User user = userRepository
                 .findById(authRepository
                         .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-5")
@@ -206,7 +207,7 @@ class SocialAuthCommandServiceTest {
         user.withdraw();
         userRepository.save(user);
 
-        assertThatThrownBy(() -> socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN))
+        assertThatThrownBy(() -> socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null))
                 .isInstanceOf(GeneralException.class)
                 .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
                         .isEqualTo("AUTH_403_002"));

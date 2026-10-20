@@ -8,6 +8,8 @@ import com.muffin.auth.application.withdraw.WithdrawCommandService;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.exception.AuthException;
 import com.muffin.auth.domain.exception.code.AuthErrorCode;
+import com.muffin.auth.presentation.apple.dto.AppleAuthRequest;
+import com.muffin.auth.presentation.apple.dto.AppleAuthResponse;
 import com.muffin.auth.presentation.google.dto.GoogleAuthRequest;
 import com.muffin.auth.presentation.google.dto.GoogleAuthResponse;
 import com.muffin.auth.presentation.kakao.dto.KakaoAuthRequest;
@@ -28,7 +30,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 인증(구글·카카오 로그인/토큰재발급/로그아웃/탈퇴) 컨트롤러.
+ * 인증(구글·카카오·애플 로그인/토큰재발급/로그아웃/탈퇴) 컨트롤러.
  *
  * <p>로그인 전에도 열어야 하는 엔드포인트({@code /auth/**})와 인증이 필요한 엔드포인트({@code /api/auth/**})가
  * 섞여 있어 클래스 레벨 {@code @RequestMapping} 없이 메서드마다 전체 경로를 명시한다({@link
@@ -82,7 +84,7 @@ public class AuthController implements AuthApi {
     @PostMapping("/auth/google")
     public ApiResponse<GoogleAuthResponse> authenticateGoogle(
             @Valid @RequestBody GoogleAuthRequest request, HttpServletResponse response) {
-        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, request.idToken());
+        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, request.idToken(), null);
 
         response.addHeader(
                 HttpHeaders.SET_COOKIE,
@@ -95,12 +97,26 @@ public class AuthController implements AuthApi {
     @PostMapping("/auth/kakao")
     public ApiResponse<KakaoAuthResponse> authenticateKakao(
             @Valid @RequestBody KakaoAuthRequest request, HttpServletResponse response) {
-        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.KAKAO, request.idToken());
+        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.KAKAO, request.idToken(), null);
 
         response.addHeader(
                 HttpHeaders.SET_COOKIE,
                 refreshTokenCookieHelper.build(result.refreshToken()).toString());
 
         return ApiResponse.onSuccess(GeneralSuccessCode.OK, new KakaoAuthResponse(result.accessToken()));
+    }
+
+    @Override
+    @PostMapping("/auth/apple")
+    public ApiResponse<AppleAuthResponse> authenticateApple(
+            @Valid @RequestBody AppleAuthRequest request, HttpServletResponse response) {
+        TokenPair result =
+                socialAuthCommandService.authenticate(AuthProvider.APPLE, request.idToken(), request.fullName());
+
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                refreshTokenCookieHelper.build(result.refreshToken()).toString());
+
+        return ApiResponse.onSuccess(GeneralSuccessCode.OK, new AppleAuthResponse(result.accessToken()));
     }
 }

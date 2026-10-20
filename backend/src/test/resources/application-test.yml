@@ -39,6 +39,9 @@ muffin:
       native-app-key: test-kakao-native-app-key
       admin-key: test-kakao-admin-key
 
+    apple:
+      bundle-id: test.apple.bundle
+
     deleted-account:
       hash-secret: test-deleted-account-hash-secret-for-automated-tests-only
 

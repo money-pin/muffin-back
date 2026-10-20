@@ -108,6 +108,12 @@ muffin:
       admin-key: ${KAKAO_ADMIN_KEY}
       api-base-url: ${KAKAO_API_BASE_URL:https://kapi.kakao.com}
 
+    apple:
+      bundle-id: ${APPLE_BUNDLE_ID}
+      # 애플이 정한 고정값이라 기본값을 둔다. 바뀌면 env로 덮어쓴다.
+      jwk-set-uri: ${APPLE_JWK_SET_URI:https://appleid.apple.com/auth/keys}
+      issuer: ${APPLE_ISSUER:https://appleid.apple.com}
+
     withdrawal:
       data-cleanup:
         retention-months: 6

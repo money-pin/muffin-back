@@ -23,6 +23,7 @@ public class SwaggerConfig {
             "AuthController.refresh",
             "AuthController.authenticateGoogle",
             "AuthController.authenticateKakao",
+            "AuthController.authenticateApple",
             "ReadinessController.readiness");
 
     /**

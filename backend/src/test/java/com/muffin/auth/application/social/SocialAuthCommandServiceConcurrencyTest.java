@@ -105,7 +105,7 @@ class SocialAuthCommandServiceConcurrencyTest {
         when(accessTokenProvider.issue(1L, "USER")).thenReturn("access-token");
         when(refreshTokenIssuer.issue(1L)).thenReturn("refresh-token");
 
-        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
+        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
 
         assertThat(result.accessToken()).isEqualTo("access-token");
         assertThat(result.refreshToken()).isEqualTo("refresh-token");
@@ -129,7 +129,7 @@ class SocialAuthCommandServiceConcurrencyTest {
         when(authRepository.findByProviderAndProviderUserId(AuthProvider.GOOGLE, SUB))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN))
+        assertThatThrownBy(() -> socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null))
                 .isSameAs(unrelated);
     }
 }

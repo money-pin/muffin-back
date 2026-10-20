@@ -49,13 +49,14 @@ public class SocialAuthCommandService {
     private final EntityManager entityManager;
     private final IdentityHasher identityHasher;
 
+    /** nameHint는 토큰에 이름이 없을 때(애플) 가입 시에만 쓴다. 이미 가입된 계정이면 무시한다. */
     @Transactional
-    public TokenPair authenticate(AuthProvider provider, String idToken) {
+    public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
         SocialIdentity identity = verifierFor(provider).verify(idToken);
 
         Auth auth = authRepository
                 .findByProviderAndProviderUserId(provider, identity.sub())
-                .orElseGet(() -> signup(provider, identity));
+                .orElseGet(() -> signup(provider, identity, nameHint));
 
         User user = userRepository
                 .findById(auth.getUserId())
@@ -85,14 +86,15 @@ public class SocialAuthCommandService {
                 .orElseThrow(() -> new IllegalStateException("ID Token 검증기가 등록되지 않은 provider입니다: " + provider));
     }
 
-    private Auth signup(AuthProvider provider, SocialIdentity identity) {
+    private Auth signup(AuthProvider provider, SocialIdentity identity, String nameHint) {
         LocalDateTime cutoff = LocalDateTime.now(KST).minusDays(REJOIN_BLOCK_DAYS);
         String identityHash = identityHasher.hash(provider, identity.sub());
         if (deletedAccountRepository.existsByIdentityHashAndDeletedAtAfter(identityHash, cutoff)) {
             throw new AuthException(AuthErrorCode.RECENTLY_WITHDRAWN_ACCOUNT);
         }
 
-        User user = User.register(null, UUID.randomUUID().toString(), User.truncateName(identity.name()), null);
+        String name = identity.name() != null ? identity.name() : nameHint;
+        User user = User.register(null, UUID.randomUUID().toString(), User.truncateName(name), null);
         user.agreeToTerms();
         userRepository.save(user);
 
