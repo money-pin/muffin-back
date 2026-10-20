@@ -51,14 +51,17 @@ muffin:
 
     briefing-generation:
       # 재구성이 끝난 뉴스가 모이면 그때 생성된다. 발행 전까지 반복 시도하는 안전망이다.
+      # 07:30까지 못 만들면 늦게라도 발행하도록 09:50까지 시도한다(발행 재시도와 같은 구간).
       scheduler-enabled: ${BRIEFING_GENERATION_ENABLED:true}
-      cron: ${BRIEFING_GENERATION_CRON:0 */10 6-7 * * *}
+      cron: ${BRIEFING_GENERATION_CRON:0 */10 6-9 * * *}
       zone: ${BRIEFING_GENERATION_ZONE:Asia/Seoul}
 
     briefing-publication:
       # 크론의 MON-FRI가 "주말 미발행" 정책을 담당한다. 공휴일에는 발행한다.
+      # 07:30에 공개하고, 생성이 늦으면 09:50까지 10분마다 다시 시도한다. 알림은 09:00 전 공개분만 보낸다.
       scheduler-enabled: ${BRIEFING_PUBLICATION_ENABLED:true}
-      cron: ${BRIEFING_PUBLICATION_CRON:0 30 7 * * MON-FRI}
+      cron: ${BRIEFING_PUBLICATION_CRON:0 30,40,50 7 * * MON-FRI}
+      catch-up-cron: ${BRIEFING_PUBLICATION_CATCH_UP_CRON:0 */10 8-9 * * MON-FRI}
       zone: ${BRIEFING_PUBLICATION_ZONE:Asia/Seoul}
 
     quiz-generation-retry:
