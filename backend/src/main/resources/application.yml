@@ -89,6 +89,13 @@ muffin:
       final-cron: "0 5 16 * * *"
       zone: Asia/Seoul
 
+    notification:
+      # 퀴즈 리마인드(NOTI-02)와, 오전에 확정된 주간 랭킹 알림(NOTI-04)을 보낸다. 나머지 알림은 발행·정산 이벤트로 보낸다.
+      scheduler-enabled: ${NOTIFICATION_SCHEDULER_ENABLED:true}
+      quiz-reminder-cron: "0 0 18 * * *"
+      ranking-cron: "0 0 12 * * *"
+      zone: Asia/Seoul
+
     investment-finalization:
       scheduler-enabled: true
       cron: "0 0/10 0-8 * * *"
