@@ -2,6 +2,8 @@ package com.muffin.auth.presentation.swagger;
 
 import com.muffin.auth.presentation.google.dto.GoogleAuthRequest;
 import com.muffin.auth.presentation.google.dto.GoogleAuthResponse;
+import com.muffin.auth.presentation.kakao.dto.KakaoAuthRequest;
+import com.muffin.auth.presentation.kakao.dto.KakaoAuthResponse;
 import com.muffin.auth.presentation.refresh.dto.RefreshResponse;
 import com.muffin.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -75,4 +77,23 @@ public interface AuthApi {
                 description = "최근 탈퇴한 계정입니다.(AUTH_409_003, 탈퇴 후 30일 이내 재가입 시)")
     })
     ApiResponse<GoogleAuthResponse> authenticateGoogle(GoogleAuthRequest request, HttpServletResponse response);
+
+    @Operation(
+            summary = "카카오 로그인/가입",
+            description = "카카오 SDK가 발급한 OpenID Connect ID Token을 검증해 기존 계정이면 로그인, 없으면 자동 가입한다(서비스 약관은 자동 동의로 간주). "
+                    + "access token은 응답 바디로, refresh token은 HttpOnly Cookie로 발급한다. "
+                    + "기능명세서(v3.1)에 없는 확장 기능이라 별도 명세 ID가 없다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인/가입 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "유효하지 않은 소셜 로그인 토큰입니다. (AUTH_401_004)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "403",
+                description = "탈퇴한 계정입니다.(AUTH_403_002) 또는 정지된 계정입니다.(AUTH_403_003)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "최근 탈퇴한 계정입니다.(AUTH_409_003, 탈퇴 후 30일 이내 재가입 시)")
+    })
+    ApiResponse<KakaoAuthResponse> authenticateKakao(KakaoAuthRequest request, HttpServletResponse response);
 }

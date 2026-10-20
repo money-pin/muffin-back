@@ -38,6 +38,9 @@ muffin:
     google:
       client-id: ${GOOGLE_CLIENT_ID:}
 
+    kakao:
+      native-app-key: ${KAKAO_NATIVE_APP_KEY:}
+
     deleted-account:
       # 로컬 개발 전용 더미 시크릿
       hash-secret: ${DELETED_ACCOUNT_HASH_SECRET:local-dev-only-deleted-account-hash-secret-please-change}

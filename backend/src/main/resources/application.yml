@@ -100,6 +100,12 @@ muffin:
     google:
       client-id: ${GOOGLE_CLIENT_ID}
 
+    kakao:
+      native-app-key: ${KAKAO_NATIVE_APP_KEY}
+      # 카카오가 정한 고정값이라 기본값을 둔다. 바뀌면 env로 덮어쓴다.
+      jwk-set-uri: ${KAKAO_JWK_SET_URI:https://kauth.kakao.com/.well-known/jwks.json}
+      issuer: ${KAKAO_ISSUER:https://kauth.kakao.com}
+
     withdrawal:
       data-cleanup:
         retention-months: 6
