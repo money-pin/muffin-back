@@ -1,11 +1,10 @@
-package com.muffin.auth.application.google;
+package com.muffin.auth.application.social;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.domain.GoogleIdTokenPayload;
-import com.muffin.auth.domain.GoogleIdTokenVerifier;
+import com.muffin.auth.domain.SocialIdentity;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
 import com.muffin.auth.domain.deletedemail.DeletedEmail;
@@ -13,10 +12,12 @@ import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
 import com.muffin.auth.domain.deletedemail.EmailHasher;
 import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
+import com.muffin.auth.infrastructure.google.GoogleIdTokenVerifierAdapter;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,15 +25,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-/** GoogleIdTokenVerifier는 실제 구글 서명 검증을 하지 않도록 @MockitoBean으로 대체하고, 그 이후 로직(자동 가입/로그인)을 검증한다. */
+/** 구글 verifier는 실제 서명 검증을 하지 않도록 @MockitoBean으로 대체하고, 그 이후 로직(자동 가입/로그인)을 검증한다. */
 @SpringBootTest
 @ActiveProfiles("test")
-class GoogleAuthCommandServiceTest {
+class SocialAuthCommandServiceTest {
 
     private static final String ID_TOKEN = "id-token";
 
     @Autowired
-    private GoogleAuthCommandService googleAuthCommandService;
+    private SocialAuthCommandService socialAuthCommandService;
 
     @Autowired
     private UserRepository userRepository;
@@ -50,7 +51,12 @@ class GoogleAuthCommandServiceTest {
     private EmailHasher emailHasher;
 
     @MockitoBean
-    private GoogleIdTokenVerifier googleIdTokenVerifier;
+    private GoogleIdTokenVerifierAdapter googleIdTokenVerifier;
+
+    @BeforeEach
+    void stubProvider() {
+        when(googleIdTokenVerifier.provider()).thenReturn(AuthProvider.GOOGLE);
+    }
 
     @AfterEach
     void cleanUp() {
@@ -61,7 +67,7 @@ class GoogleAuthCommandServiceTest {
     }
 
     private void stubPayload(String sub, String email, String name) {
-        when(googleIdTokenVerifier.verify(ID_TOKEN)).thenReturn(new GoogleIdTokenPayload(sub, email, name));
+        when(googleIdTokenVerifier.verify(ID_TOKEN)).thenReturn(new SocialIdentity(sub, email, name));
     }
 
     @Test
@@ -69,7 +75,7 @@ class GoogleAuthCommandServiceTest {
     void authenticate_newAccount_signsUp() {
         stubPayload("google-sub-1", "new@example.com", "홍길동");
 
-        TokenPair result = googleAuthCommandService.authenticate(ID_TOKEN);
+        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
 
         assertThat(result.accessToken()).isNotBlank();
         assertThat(result.refreshToken()).isNotBlank();
@@ -88,10 +94,10 @@ class GoogleAuthCommandServiceTest {
     @DisplayName("이미 가입된 구글 계정이면 로그인만 처리되고 새 계정을 만들지 않는다")
     void authenticate_existingAccount_logsIn() {
         stubPayload("google-sub-3", "existing@example.com", "홍길동");
-        googleAuthCommandService.authenticate(ID_TOKEN);
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
         assertThat(authRepository.count()).isEqualTo(1);
 
-        TokenPair result = googleAuthCommandService.authenticate(ID_TOKEN);
+        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
 
         assertThat(result.accessToken()).isNotBlank();
         assertThat(authRepository.count()).isEqualTo(1);
@@ -103,7 +109,7 @@ class GoogleAuthCommandServiceTest {
         deletedEmailRepository.save(DeletedEmail.of(emailHasher.hash("deleted@example.com")));
         stubPayload("google-sub-4", "deleted@example.com", "홍길동");
 
-        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN))
+        assertThatThrownBy(() -> socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN))
                 .isInstanceOf(GeneralException.class)
                 .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
                         .isEqualTo("AUTH_409_003"));
@@ -113,10 +119,10 @@ class GoogleAuthCommandServiceTest {
     @DisplayName("다른 계정과 이메일이 같아도 sub가 다르면 별개 계정으로 가입된다")
     void authenticate_newAccount_sameEmailAsOtherAccount_signsUpSeparately() {
         stubPayload("google-sub-a", "shared@example.com", "홍길동");
-        googleAuthCommandService.authenticate(ID_TOKEN);
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
         stubPayload("google-sub-b", "shared@example.com", "홍길동");
 
-        googleAuthCommandService.authenticate(ID_TOKEN);
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
 
         Auth first = authRepository
                 .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-a")
@@ -133,7 +139,7 @@ class GoogleAuthCommandServiceTest {
     void authenticate_newAccount_longNameIsTruncated() {
         stubPayload("google-sub-6", "student@g.hongik.ac.kr", "산업경영공학과 홍길동 20211234");
 
-        TokenPair result = googleAuthCommandService.authenticate(ID_TOKEN);
+        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
 
         assertThat(result.accessToken()).isNotBlank();
         User user = userRepository
@@ -149,7 +155,7 @@ class GoogleAuthCommandServiceTest {
     @DisplayName("탈퇴한 계정이면 WITHDRAWN_ACCOUNT(AUTH_403_002)")
     void authenticate_withdrawnAccount() {
         stubPayload("google-sub-5", "withdrawn@example.com", "홍길동");
-        googleAuthCommandService.authenticate(ID_TOKEN);
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN);
         User user = userRepository
                 .findById(authRepository
                         .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-5")
@@ -159,7 +165,7 @@ class GoogleAuthCommandServiceTest {
         user.withdraw();
         userRepository.save(user);
 
-        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN))
+        assertThatThrownBy(() -> socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN))
                 .isInstanceOf(GeneralException.class)
                 .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
                         .isEqualTo("AUTH_403_002"));

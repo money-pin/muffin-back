@@ -11,6 +11,7 @@ import com.muffin.auth.domain.AccessTokenProvider;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
 import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import com.muffin.user.domain.enums.UserStatus;
@@ -64,7 +65,8 @@ class WithdrawControllerTest {
     @DisplayName("인증된 상태에서 탈퇴하면 200, 계정이 WITHDRAWN 상태가 되고 쿠키가 만료된다")
     void withdraw_success() throws Exception {
         User user = createUser();
-        authRepository.save(Auth.createGoogle(user.getUserId(), "wd1@example.com", "google-sub-wd1"));
+        authRepository.save(
+                Auth.createSocial(user.getUserId(), AuthProvider.GOOGLE, "wd1@example.com", "google-sub-wd1"));
 
         mockMvc.perform(delete("/api/auth/account").header("Authorization", bearerTokenFor(user.getUserId())))
                 .andExpect(status().isOk())
@@ -85,7 +87,8 @@ class WithdrawControllerTest {
     @DisplayName("이미 탈퇴한 계정이면 409 (COMMON_409_001)")
     void withdraw_alreadyWithdrawn() throws Exception {
         User user = createUser();
-        authRepository.save(Auth.createGoogle(user.getUserId(), "wd2@example.com", "google-sub-wd2"));
+        authRepository.save(
+                Auth.createSocial(user.getUserId(), AuthProvider.GOOGLE, "wd2@example.com", "google-sub-wd2"));
         String bearer = bearerTokenFor(user.getUserId());
         mockMvc.perform(delete("/api/auth/account").header("Authorization", bearer))
                 .andExpect(status().isOk());
@@ -99,7 +102,8 @@ class WithdrawControllerTest {
     @DisplayName("GOOGLE 계정도 탈퇴하면 200, WITHDRAWN 상태가 되고 이메일이 익명화된다")
     void withdraw_googleAccount_success() throws Exception {
         User user = createUser();
-        Auth auth = authRepository.save(Auth.createGoogle(user.getUserId(), "wd-google@example.com", "google-sub-wd"));
+        Auth auth = authRepository.save(
+                Auth.createSocial(user.getUserId(), AuthProvider.GOOGLE, "wd-google@example.com", "google-sub-wd"));
 
         mockMvc.perform(delete("/api/auth/account").header("Authorization", bearerTokenFor(user.getUserId())))
                 .andExpect(status().isOk())

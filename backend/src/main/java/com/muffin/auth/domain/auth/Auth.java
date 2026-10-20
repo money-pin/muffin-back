@@ -56,9 +56,12 @@ public class Auth extends BaseEntity {
         this.email = email;
     }
 
-    // 구글 OAuth2 가입
-    public static Auth createGoogle(Long userId, String email, String providerUserId) {
-        Auth credential = new Auth(userId, AuthProvider.GOOGLE, email);
+    // 소셜 로그인 가입
+    public static Auth createSocial(Long userId, AuthProvider provider, String email, String providerUserId) {
+        if (provider == null) {
+            throw new NullPointerException("provider는 필수입니다.");
+        }
+        Auth credential = new Auth(userId, provider, email);
         if (providerUserId == null) {
             throw new NullPointerException("providerUserId는 필수입니다.");
         }

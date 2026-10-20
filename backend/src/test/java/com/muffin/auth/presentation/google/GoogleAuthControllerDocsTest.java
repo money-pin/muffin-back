@@ -11,7 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.muffin.auth.application.JwtProperties;
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.application.google.GoogleAuthCommandService;
+import com.muffin.auth.application.social.SocialAuthCommandService;
+import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.exception.AuthException;
 import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.auth.presentation.AuthController;
@@ -36,9 +37,9 @@ class GoogleAuthControllerDocsTest {
     @Test
     @DisplayName("구글 로그인/가입 성공 문서화")
     void documentGoogleAuthSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null, null) {
+        SocialAuthCommandService stub = new SocialAuthCommandService(null, null, null, null, null, null, null, null) {
             @Override
-            public TokenPair authenticate(String idToken) {
+            public TokenPair authenticate(AuthProvider provider, String idToken) {
                 return new TokenPair("access-token-example", "refresh-token-example");
             }
         };
@@ -61,10 +62,10 @@ class GoogleAuthControllerDocsTest {
     @Test
     @DisplayName("구글 인증 실패(유효하지 않은 ID Token) 문서화")
     void documentGoogleAuthInvalidToken(RestDocumentationContextProvider restDocumentation) throws Exception {
-        GoogleAuthCommandService stub = new GoogleAuthCommandService(null, null, null, null, null, null, null, null) {
+        SocialAuthCommandService stub = new SocialAuthCommandService(null, null, null, null, null, null, null, null) {
             @Override
-            public TokenPair authenticate(String idToken) {
-                throw new AuthException(AuthErrorCode.INVALID_GOOGLE_TOKEN);
+            public TokenPair authenticate(AuthProvider provider, String idToken) {
+                throw new AuthException(AuthErrorCode.INVALID_SOCIAL_TOKEN);
             }
         };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
@@ -82,7 +83,7 @@ class GoogleAuthControllerDocsTest {
                                 fieldWithPath("errorDetail").description("에러 상세 메시지 목록"))));
     }
 
-    private MockMvc mockMvcOf(GoogleAuthCommandService stub, RestDocumentationContextProvider restDocumentation) {
+    private MockMvc mockMvcOf(SocialAuthCommandService stub, RestDocumentationContextProvider restDocumentation) {
         return MockMvcBuilders.standaloneSetup(new AuthController(stub, null, null, null, refreshTokenCookieHelper))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .apply(documentationConfiguration(restDocumentation)

@@ -66,7 +66,7 @@ public interface AuthApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인/가입 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "401",
-                description = "유효하지 않은 구글 로그인 토큰입니다. (AUTH_401_004)"),
+                description = "유효하지 않은 소셜 로그인 토큰입니다. (AUTH_401_004)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "403",
                 description = "탈퇴한 계정입니다.(AUTH_403_002) 또는 정지된 계정입니다.(AUTH_403_003)"),

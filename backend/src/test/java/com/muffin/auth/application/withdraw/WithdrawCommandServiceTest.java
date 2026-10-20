@@ -7,6 +7,7 @@ import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
 import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
 import com.muffin.auth.domain.deletedemail.EmailHasher;
+import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
@@ -60,7 +61,7 @@ class WithdrawCommandServiceTest {
     }
 
     private Auth createAuth(Long userId) {
-        return authRepository.save(Auth.createGoogle(userId, EMAIL, "google-sub-" + userId));
+        return authRepository.save(Auth.createSocial(userId, AuthProvider.GOOGLE, EMAIL, "google-sub-" + userId));
     }
 
     @Test

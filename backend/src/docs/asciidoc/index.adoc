@@ -111,7 +111,7 @@ include::{snippets}/google-auth-invalid-token/response-fields.adoc[]
 |HTTP|code|message|설명
 
 |400|COMMON_400_002|요청 값 검증에 실패했습니다.|idToken 누락 등(errorDetail 참고)
-|401|AUTH_401_004|유효하지 않은 구글 로그인 토큰입니다.|서명/발급자/대상 검증 실패
+|401|AUTH_401_004|유효하지 않은 소셜 로그인 토큰입니다.|서명/발급자/대상 검증 실패
 |403|AUTH_403_002|탈퇴한 계정입니다.|status=WITHDRAWN
 |403|AUTH_403_003|정지된 계정입니다.|status=SUSPENDED
 |409|AUTH_409_003|최근 탈퇴한 이메일입니다. 30일 후 다시 가입할 수 있습니다.|신규 가입인데 탈퇴 후 30일 이내(<<auth-withdraw>>)

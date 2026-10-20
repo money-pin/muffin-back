@@ -1,10 +1,11 @@
 package com.muffin.auth.presentation;
 
 import com.muffin.auth.application.TokenPair;
-import com.muffin.auth.application.google.GoogleAuthCommandService;
 import com.muffin.auth.application.logout.LogoutCommandService;
 import com.muffin.auth.application.refresh.RefreshCommandService;
+import com.muffin.auth.application.social.SocialAuthCommandService;
 import com.muffin.auth.application.withdraw.WithdrawCommandService;
+import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.exception.AuthException;
 import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.auth.presentation.google.dto.GoogleAuthRequest;
@@ -35,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthController implements AuthApi {
 
-    private final GoogleAuthCommandService googleAuthCommandService;
+    private final SocialAuthCommandService socialAuthCommandService;
     private final RefreshCommandService refreshCommandService;
     private final LogoutCommandService logoutCommandService;
     private final WithdrawCommandService withdrawCommandService;
@@ -79,7 +80,7 @@ public class AuthController implements AuthApi {
     @PostMapping("/auth/google")
     public ApiResponse<GoogleAuthResponse> authenticateGoogle(
             @Valid @RequestBody GoogleAuthRequest request, HttpServletResponse response) {
-        TokenPair result = googleAuthCommandService.authenticate(request.idToken());
+        TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, request.idToken());
 
         response.addHeader(
                 HttpHeaders.SET_COOKIE,
