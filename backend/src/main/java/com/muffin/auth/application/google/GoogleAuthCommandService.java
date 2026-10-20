@@ -30,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 구글 OAuth 통합 유스케이스. ID Token을 검증한 뒤 Auth(GOOGLE, sub)가 있으면 로그인, 없으면 자동 가입한다(가입/로그인을
  * 별도 엔드포인트로 나누지 않음). 구글 자체 동의 화면을 거쳐 로그인했다고 보고 서비스 약관도 자동 동의로 간주한다.
- * 구글이 이미 이메일을 검증했으므로 Auth.createGoogle이 emailVerified=true로 시작한다.
+ * 계정은 provider+sub로만 식별하므로, 다른 계정과 이메일이 같아도 별개 계정으로 가입된다.
  */
 @Service
 @RequiredArgsConstructor
@@ -79,10 +79,6 @@ public class GoogleAuthCommandService {
             throw new AuthException(AuthErrorCode.RECENTLY_DELETED_EMAIL);
         }
 
-        if (authRepository.existsByEmail(payload.email())) {
-            throw new AuthException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
-        }
-
         User user = User.register(null, UUID.randomUUID().toString(), User.truncateName(payload.name()), null);
         user.agreeToTerms();
         userRepository.save(user);
@@ -103,11 +99,6 @@ public class GoogleAuthCommandService {
                 return authRepository
                         .findByProviderAndProviderUserId(AuthProvider.GOOGLE, payload.sub())
                         .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_GOOGLE_TOKEN));
-            }
-            if (ConstraintViolations.isConstraint(e, "uk_email")) {
-                // 다른 계정(다른 구글 sub이거나 LOCAL 등 다른 provider)이 이미 같은 이메일을 쓰고 있음: 실패시킴
-                // uk_email이 provider와 무관하게 이메일을 전역으로 유일하게 강제한다.
-                throw new AuthException(AuthErrorCode.EMAIL_ALREADY_IN_USE);
             }
             throw e;
         }

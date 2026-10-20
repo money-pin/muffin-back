@@ -14,7 +14,6 @@ import com.muffin.auth.domain.auth.AuthRepository;
 import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
 import com.muffin.auth.domain.deletedemail.EmailHasher;
 import com.muffin.auth.domain.enums.AuthProvider;
-import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -109,30 +108,6 @@ class GoogleAuthCommandServiceConcurrencyTest {
         assertThat(result.refreshToken()).isEqualTo("refresh-token");
         verify(entityManager).clear();
         verify(userRepository).deleteById(99L);
-    }
-
-    @Test
-    @DisplayName("uk_email 위반(다른 계정이 같은 이메일 사용 중, provider 무관)이면 EMAIL_ALREADY_IN_USE로 실패하고 "
-            + "자신의 User 행을 따로 지우지 않는다(트랜잭션 롤백에 맡김)")
-    void authenticate_differentAccountSameEmail_throwsEmailAlreadyInUse() {
-        when(googleIdTokenVerifier.verify(ID_TOKEN)).thenReturn(new GoogleIdTokenPayload(SUB, EMAIL, "레이스"));
-
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
-            User user = invocation.getArgument(0);
-            ReflectionTestUtils.setField(user, "userId", 99L);
-            return user;
-        });
-
-        when(authRepository.saveAndFlush(any(Auth.class))).thenThrow(new DataIntegrityViolationException("uk_email"));
-        when(authRepository.findByProviderAndProviderUserId(AuthProvider.GOOGLE, SUB))
-                .thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN))
-                .isInstanceOf(GeneralException.class)
-                .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
-                        .isEqualTo("AUTH_409_001"));
-
-        verify(userRepository, never()).deleteById(any());
     }
 
     @Test

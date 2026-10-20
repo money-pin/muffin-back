@@ -59,15 +59,15 @@ class WithdrawCommandServiceTest {
         return userRepository.save(User.register(null, UUID.randomUUID().toString(), "홍길동", null));
     }
 
-    private Auth createLocalAuth(Long userId) {
-        return authRepository.save(Auth.createLocal(userId, EMAIL, "password1", "encoded"));
+    private Auth createAuth(Long userId) {
+        return authRepository.save(Auth.createGoogle(userId, EMAIL, "google-sub-" + userId));
     }
 
     @Test
     @DisplayName("탈퇴하면 이름이 지워지고 상태가 WITHDRAWN, 이메일은 복구 불가능한 값으로 대체되며 refresh token이 삭제된다")
     void withdraw_success() {
         User user = createUser();
-        Auth auth = createLocalAuth(user.getUserId());
+        Auth auth = createAuth(user.getUserId());
         refreshTokenIssuer.issue(user.getUserId());
 
         withdrawCommandService.withdraw(user.getUserId());
@@ -90,7 +90,7 @@ class WithdrawCommandServiceTest {
     @DisplayName("이미 탈퇴한 계정이면 IllegalStateException")
     void withdraw_alreadyWithdrawn() {
         User user = createUser();
-        createLocalAuth(user.getUserId());
+        createAuth(user.getUserId());
         withdrawCommandService.withdraw(user.getUserId());
 
         assertThatThrownBy(() -> withdrawCommandService.withdraw(user.getUserId()))
@@ -101,7 +101,7 @@ class WithdrawCommandServiceTest {
     @DisplayName("정지된 계정이면 IllegalStateException")
     void withdraw_suspendedAccount() {
         User user = createUser();
-        createLocalAuth(user.getUserId());
+        createAuth(user.getUserId());
         user.suspend();
         userRepository.save(user);
 

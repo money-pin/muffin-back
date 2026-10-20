@@ -78,7 +78,6 @@ class GoogleAuthCommandServiceTest {
                 .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-1")
                 .orElseThrow();
         assertThat(auth.getEmail()).isEqualTo("new@example.com");
-        assertThat(auth.isEmailVerified()).isTrue();
 
         User user = userRepository.findById(auth.getUserId()).orElseThrow();
         assertThat(user.getName()).isEqualTo("홍길동");
@@ -111,24 +110,22 @@ class GoogleAuthCommandServiceTest {
     }
 
     @Test
-    @DisplayName("이미 로컬로 가입된 이메일과 같은 구글 계정이면 새 계정을 만들지 않고 EMAIL_ALREADY_IN_USE(AUTH_409_001)")
-    void authenticate_newAccount_emailAlreadyUsedByLocalSignup() {
-        User localUser = userRepository.save(
-                User.register(null, java.util.UUID.randomUUID().toString(), "홍길동", null));
-        authRepository.save(Auth.createLocal(localUser.getUserId(), "shared@example.com", "password1", "encoded"));
+    @DisplayName("다른 계정과 이메일이 같아도 sub가 다르면 별개 계정으로 가입된다")
+    void authenticate_newAccount_sameEmailAsOtherAccount_signsUpSeparately() {
+        stubPayload("google-sub-a", "shared@example.com", "홍길동");
+        googleAuthCommandService.authenticate(ID_TOKEN);
+        stubPayload("google-sub-b", "shared@example.com", "홍길동");
 
-        stubPayload("google-sub-shared", "shared@example.com", "홍길동");
+        googleAuthCommandService.authenticate(ID_TOKEN);
 
-        assertThatThrownBy(() -> googleAuthCommandService.authenticate(ID_TOKEN))
-                .isInstanceOf(GeneralException.class)
-                .satisfies(e -> assertThat(((GeneralException) e).getErrorCode().getCode())
-                        .isEqualTo("AUTH_409_001"));
-
-        assertThat(authRepository.count()).isEqualTo(1);
-        assertThat(userRepository.count()).isEqualTo(1);
-        assertThat(userRepository.findById(localUser.getUserId())).isPresent();
-        assertThat(authRepository.findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-shared"))
-                .isEmpty();
+        Auth first = authRepository
+                .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-a")
+                .orElseThrow();
+        Auth second = authRepository
+                .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-b")
+                .orElseThrow();
+        assertThat(first.getUserId()).isNotEqualTo(second.getUserId());
+        assertThat(userRepository.count()).isEqualTo(2);
     }
 
     @Test
