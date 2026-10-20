@@ -19,12 +19,8 @@ public class SwaggerConfig {
 
     private static final String SECURITY_SCHEME_NAME = "JWT TOKEN";
 
-    private static final Set<String> PUBLIC_OPERATIONS = Set.of(
-            "AuthController.signupLocal",
-            "AuthController.loginLocal",
-            "AuthController.refresh",
-            "AuthController.authenticateGoogle",
-            "ReadinessController.readiness");
+    private static final Set<String> PUBLIC_OPERATIONS =
+            Set.of("AuthController.refresh", "AuthController.authenticateGoogle", "ReadinessController.readiness");
 
     /**
      * 도메인 그룹 순서. REST Docs 목차 순서와 맞춘다. 목록에 없는 태그(Health 등)는 항상 맨 뒤로 간다.

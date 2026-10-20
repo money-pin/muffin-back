@@ -30,7 +30,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * findByProviderAndProviderUserId 통과 이후 커밋 직전에 같은 구글 계정(sub)으로 다른 요청이 먼저 가입을 완료하는
- * 레이스 상황을 리포지토리 목킹으로 재현한다(SignupCommandServiceConcurrencyTest와 동일한 패턴).
+ * 레이스 상황을 리포지토리 목킹으로 재현한다.
  */
 @ExtendWith(MockitoExtension.class)
 class GoogleAuthCommandServiceConcurrencyTest {

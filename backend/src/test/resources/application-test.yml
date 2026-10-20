@@ -35,10 +35,6 @@ muffin:
     google:
       client-id: test-google-client-id
 
-    login:
-      max-attempts: 5
-      lock-minutes: 30
-
     deleted-email:
       hash-secret: test-deleted-email-hash-secret-for-automated-tests-only
 

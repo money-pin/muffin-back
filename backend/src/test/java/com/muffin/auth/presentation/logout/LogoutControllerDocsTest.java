@@ -55,7 +55,7 @@ class LogoutControllerDocsTest {
             public void logout(Long userId) {}
         };
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(
-                        new AuthController(null, null, null, null, stub, null, refreshTokenCookieHelper))
+                        new AuthController(null, null, stub, null, refreshTokenCookieHelper))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)

@@ -83,8 +83,7 @@ class GoogleAuthControllerDocsTest {
     }
 
     private MockMvc mockMvcOf(GoogleAuthCommandService stub, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(
-                        new AuthController(null, null, stub, null, null, null, refreshTokenCookieHelper))
+        return MockMvcBuilders.standaloneSetup(new AuthController(stub, null, null, null, refreshTokenCookieHelper))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .apply(documentationConfiguration(restDocumentation)
                         .operationPreprocessors()

@@ -26,8 +26,6 @@ class SwaggerConfigTest {
     void publicOperationsHaveEmptySecurity() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.paths['/auth/signup'].post.security").isEmpty())
-                .andExpect(jsonPath("$.paths['/auth/login'].post.security").isEmpty())
                 .andExpect(jsonPath("$.paths['/auth/google'].post.security").isEmpty())
                 .andExpect(
                         jsonPath("$.paths['/auth/token/refresh'].post.security").isEmpty())

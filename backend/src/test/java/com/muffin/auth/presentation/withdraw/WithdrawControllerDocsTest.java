@@ -55,7 +55,7 @@ class WithdrawControllerDocsTest {
             public void withdraw(Long userId) {}
         };
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(
-                        new AuthController(null, null, null, null, null, stub, refreshTokenCookieHelper))
+                        new AuthController(null, null, null, stub, refreshTokenCookieHelper))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .apply(documentationConfiguration(restDocumentation)

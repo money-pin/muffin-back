@@ -2,53 +2,17 @@ package com.muffin.auth.presentation.swagger;
 
 import com.muffin.auth.presentation.google.dto.GoogleAuthRequest;
 import com.muffin.auth.presentation.google.dto.GoogleAuthResponse;
-import com.muffin.auth.presentation.login.dto.LocalLoginRequest;
-import com.muffin.auth.presentation.login.dto.LoginResponse;
 import com.muffin.auth.presentation.refresh.dto.RefreshResponse;
-import com.muffin.auth.presentation.signup.dto.LocalSignupRequest;
-import com.muffin.auth.presentation.signup.dto.SignupResponse;
 import com.muffin.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
-@Tag(name = "Auth", description = "인증(회원가입/로그인/로그아웃/탈퇴) API")
+@Tag(name = "Auth", description = "인증(소셜 로그인/로그아웃/탈퇴) API")
 public interface AuthApi {
-
-    @Operation(
-            summary = "로컬 회원가입 (AUTH-01-1)",
-            description = "이메일/비밀번호로 회원가입하고 즉시 로그인 상태로 access token을 발급한다. refresh token은 HttpOnly Cookie로 내려간다.")
-    @ApiResponses({
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "가입 성공"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "400",
-                description = "요청 값 검증 실패(COMMON_400_002), 약관 미동의(AUTH_400_002), 비밀번호 형식 오류(COMMON_400_001)"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "409",
-                description = "이미 사용 중인 이메일입니다.(AUTH_409_001) 또는 최근 탈퇴한 이메일입니다.(AUTH_409_003, 탈퇴 후 30일 이내)")
-    })
-    ResponseEntity<ApiResponse<SignupResponse>> signupLocal(LocalSignupRequest request, HttpServletResponse response);
-
-    @Operation(
-            summary = "로컬 로그인 (AUTH-02-1)",
-            description = "이메일/비밀번호로 로그인하고 access token을 발급한다. refresh token은 HttpOnly Cookie로 내려간다.")
-    @ApiResponses({
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인 성공"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "401",
-                description = "이메일 또는 비밀번호가 일치하지 않습니다. (AUTH_401_002)"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "403",
-                description = "탈퇴한 계정입니다.(AUTH_403_002) 또는 정지된 계정입니다.(AUTH_403_003)"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "423",
-                description = "로그인 시도 횟수를 초과하여 계정이 잠겼습니다.(AUTH_423_002, 30분 후 자동 해제)")
-    })
-    ApiResponse<LoginResponse> loginLocal(LocalLoginRequest request, HttpServletResponse response);
 
     @Operation(
             summary = "Access/Refresh Token 재발급 (AUTH-02-2)",
