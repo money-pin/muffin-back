@@ -128,6 +128,10 @@ public class User extends BaseEntity {
         return name.substring(0, cutIndex);
     }
 
+    public static int nameMaxLength() {
+        return NAME_MAX_LENGTH;
+    }
+
     // 회원가입 공통 진입점
     public static User register(Long characterId, String userUuid, String name, String nickname) {
         return new User(characterId, userUuid, name, nickname);

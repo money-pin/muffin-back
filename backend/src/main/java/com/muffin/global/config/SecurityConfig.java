@@ -20,10 +20,10 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * 세션을 쓰지 않는 stateless API 서버 구성. 로그인 없이는 쓸 수 없는 앱이라 로그인/회원가입/구글 로그인 등
+ * 세션을 쓰지 않는 stateless API 서버 구성. 로그인 없이는 쓸 수 없는 앱이라 소셜 로그인/토큰 재발급 등
  * 퍼블릭 엔드포인트만 "/auth/**"로 분리해 permitAll로 열어두고, 그 외 "/api/**"를 포함한 나머지 요청은 전부
  * authenticated()가 기본값이다.
- * logout/탈퇴/이메일 인증처럼 인증이 필요한 엔드포인트는 별도 화이트리스트 없이 이 기본값에 자연히 포함되도록
+ * logout/탈퇴처럼 인증이 필요한 엔드포인트는 별도 화이트리스트 없이 이 기본값에 자연히 포함되도록
  * "/api/auth/**" 아래 그대로 둔다.
  *
  * <p>{@code HttpSecurity}는 서블릿 웹 컨텍스트에서만 존재하는 빈이라, {@code webEnvironment = NONE}으로 뜨는

@@ -92,15 +92,6 @@ muffin:
       zone: Asia/Seoul
 
   auth:
-    email-verification:
-      code-length: 6
-      expire-minutes: 5
-      resend-cooldown-seconds: 30
-      max-attempts: 5
-      max-daily-resend-count: 10
-      cleanup-cron: "0 0 * * * *" # 매시 정각, 만료된 인증 레코드 정리
-      zone: Asia/Seoul
-
     jwt:
       secret: ${JWT_SECRET}
       access-token-expire-minutes: 60
@@ -109,15 +100,24 @@ muffin:
     google:
       client-id: ${GOOGLE_CLIENT_ID}
 
-    login:
-      max-attempts: 5
-      lock-minutes: 30
+    kakao:
+      native-app-key: ${KAKAO_NATIVE_APP_KEY}
+      # 카카오가 정한 고정값이라 기본값을 둔다. 바뀌면 env로 덮어쓴다.
+      jwk-set-uri: ${KAKAO_JWK_SET_URI:https://kauth.kakao.com/.well-known/jwks.json}
+      issuer: ${KAKAO_ISSUER:https://kauth.kakao.com}
+      admin-key: ${KAKAO_ADMIN_KEY}
+      api-base-url: ${KAKAO_API_BASE_URL:https://kapi.kakao.com}
 
-    signup:
-      unverified-account-cleanup:
-        ttl-minutes: 1440 # 24시간
-        cleanup-cron: "0 0 * * * *" # 매시 정각
-        zone: Asia/Seoul
+    apple:
+      bundle-id: ${APPLE_BUNDLE_ID}
+      # 애플이 정한 고정값이라 기본값을 둔다. 바뀌면 env로 덮어쓴다.
+      jwk-set-uri: ${APPLE_JWK_SET_URI:https://appleid.apple.com/auth/keys}
+      issuer: ${APPLE_ISSUER:https://appleid.apple.com}
+      team-id: ${APPLE_TEAM_ID}
+      key-id: ${APPLE_KEY_ID}
+      # .p8 파일 전체를 base64 한 줄로 인코딩한 값
+      private-key: ${APPLE_PRIVATE_KEY}
+      api-base-url: ${APPLE_API_BASE_URL:https://appleid.apple.com}
 
     withdrawal:
       data-cleanup:
@@ -125,8 +125,8 @@ muffin:
         cleanup-cron: "0 0 3 * * *" # 매일 새벽 3시
         zone: Asia/Seoul
 
-    deleted-email:
-      hash-secret: ${DELETED_EMAIL_HASH_SECRET}
+    deleted-account:
+      hash-secret: ${DELETED_ACCOUNT_HASH_SECRET}
 
   news:
     rss:

@@ -20,10 +20,10 @@ public class SwaggerConfig {
     private static final String SECURITY_SCHEME_NAME = "JWT TOKEN";
 
     private static final Set<String> PUBLIC_OPERATIONS = Set.of(
-            "AuthController.signupLocal",
-            "AuthController.loginLocal",
             "AuthController.refresh",
             "AuthController.authenticateGoogle",
+            "AuthController.authenticateKakao",
+            "AuthController.authenticateApple",
             "ReadinessController.readiness");
 
     /**

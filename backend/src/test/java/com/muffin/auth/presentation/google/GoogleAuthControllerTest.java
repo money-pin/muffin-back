@@ -10,18 +10,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.muffin.auth.domain.GoogleIdTokenPayload;
-import com.muffin.auth.domain.GoogleIdTokenVerifier;
+import com.muffin.auth.domain.SocialIdentity;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
-import com.muffin.auth.domain.deletedemail.DeletedEmailRepository;
+import com.muffin.auth.domain.deletedaccount.DeletedAccountRepository;
+import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.exception.AuthException;
 import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
+import com.muffin.auth.infrastructure.google.GoogleIdTokenVerifierAdapter;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,24 +54,29 @@ class GoogleAuthControllerTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
-    private DeletedEmailRepository deletedEmailRepository;
+    private DeletedAccountRepository deletedAccountRepository;
 
     @MockitoBean
-    private GoogleIdTokenVerifier googleIdTokenVerifier;
+    private GoogleIdTokenVerifierAdapter googleIdTokenVerifier;
+
+    @BeforeEach
+    void stubProvider() {
+        when(googleIdTokenVerifier.provider()).thenReturn(AuthProvider.GOOGLE);
+    }
 
     @AfterEach
     void cleanUp() {
         refreshTokenRepository.deleteAll();
         authRepository.deleteAll();
         userRepository.deleteAll();
-        deletedEmailRepository.deleteAll();
+        deletedAccountRepository.deleteAll();
     }
 
     @Test
     @DisplayName("신규 구글 계정이면 200, 약관 자동 동의로 가입되고 쿠키가 내려간다")
     void authenticate_newAccount_success() throws Exception {
         when(googleIdTokenVerifier.verify("valid-id-token"))
-                .thenReturn(new GoogleIdTokenPayload("google-sub-x", "x@example.com", "홍길동"));
+                .thenReturn(new SocialIdentity("google-sub-x", "x@example.com", "홍길동"));
 
         mockMvc.perform(post("/auth/google")
                         .contentType("application/json")
@@ -97,9 +104,10 @@ class GoogleAuthControllerTest {
     @DisplayName("이미 가입된 구글 계정으로 재요청하면 200, 새 계정을 만들지 않고 로그인만 된다")
     void authenticate_existingAccount_logsIn() throws Exception {
         User user = userRepository.save(User.register(null, UUID.randomUUID().toString(), "홍길동", null));
-        authRepository.save(Auth.createGoogle(user.getUserId(), "existing@example.com", "google-sub-existing"));
+        authRepository.save(Auth.createSocial(
+                user.getUserId(), AuthProvider.GOOGLE, "existing@example.com", "google-sub-existing"));
         when(googleIdTokenVerifier.verify("existing-id-token"))
-                .thenReturn(new GoogleIdTokenPayload("google-sub-existing", "existing@example.com", "홍길동"));
+                .thenReturn(new SocialIdentity("google-sub-existing", "existing@example.com", "홍길동"));
 
         mockMvc.perform(post("/auth/google")
                         .contentType("application/json")
@@ -114,11 +122,12 @@ class GoogleAuthControllerTest {
     @DisplayName("탈퇴한 구글 계정이면 403 (AUTH_403_002)")
     void authenticate_withdrawnAccount() throws Exception {
         User user = userRepository.save(User.register(null, UUID.randomUUID().toString(), "홍길동", null));
-        authRepository.save(Auth.createGoogle(user.getUserId(), "withdrawn@example.com", "google-sub-withdrawn"));
+        authRepository.save(Auth.createSocial(
+                user.getUserId(), AuthProvider.GOOGLE, "withdrawn@example.com", "google-sub-withdrawn"));
         user.withdraw();
         userRepository.save(user);
         when(googleIdTokenVerifier.verify("withdrawn-id-token"))
-                .thenReturn(new GoogleIdTokenPayload("google-sub-withdrawn", "withdrawn@example.com", "홍길동"));
+                .thenReturn(new SocialIdentity("google-sub-withdrawn", "withdrawn@example.com", "홍길동"));
 
         mockMvc.perform(post("/auth/google")
                         .contentType("application/json")
@@ -131,11 +140,12 @@ class GoogleAuthControllerTest {
     @DisplayName("정지된 구글 계정이면 403 (AUTH_403_003)")
     void authenticate_suspendedAccount() throws Exception {
         User user = userRepository.save(User.register(null, UUID.randomUUID().toString(), "홍길동", null));
-        authRepository.save(Auth.createGoogle(user.getUserId(), "suspended@example.com", "google-sub-suspended"));
+        authRepository.save(Auth.createSocial(
+                user.getUserId(), AuthProvider.GOOGLE, "suspended@example.com", "google-sub-suspended"));
         user.suspend();
         userRepository.save(user);
         when(googleIdTokenVerifier.verify("suspended-id-token"))
-                .thenReturn(new GoogleIdTokenPayload("google-sub-suspended", "suspended@example.com", "홍길동"));
+                .thenReturn(new SocialIdentity("google-sub-suspended", "suspended@example.com", "홍길동"));
 
         mockMvc.perform(post("/auth/google")
                         .contentType("application/json")
@@ -148,7 +158,7 @@ class GoogleAuthControllerTest {
     @DisplayName("유효하지 않은 구글 ID Token이면 401 (AUTH_401_004)")
     void authenticate_invalidGoogleToken() throws Exception {
         when(googleIdTokenVerifier.verify("bogus-id-token"))
-                .thenThrow(new AuthException(AuthErrorCode.INVALID_GOOGLE_TOKEN));
+                .thenThrow(new AuthException(AuthErrorCode.INVALID_SOCIAL_TOKEN));
 
         mockMvc.perform(post("/auth/google")
                         .contentType("application/json")

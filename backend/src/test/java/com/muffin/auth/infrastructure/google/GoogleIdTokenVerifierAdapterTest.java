@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 import com.muffin.auth.application.GoogleProperties;
-import com.muffin.auth.domain.GoogleIdTokenPayload;
+import com.muffin.auth.domain.SocialIdentity;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import java.time.Instant;
 import java.util.List;
@@ -59,7 +59,7 @@ class GoogleIdTokenVerifierAdapterTest {
                         "email", "user@example.com",
                         "name", "홍길동")));
 
-        GoogleIdTokenPayload payload = verifier.verify(RAW_TOKEN);
+        SocialIdentity payload = verifier.verify(RAW_TOKEN);
 
         assertThat(payload.sub()).isEqualTo("google-sub-1");
         assertThat(payload.email()).isEqualTo("user@example.com");
@@ -67,7 +67,7 @@ class GoogleIdTokenVerifierAdapterTest {
     }
 
     @Test
-    @DisplayName("서명 검증 자체가 실패하면(BadJwtException) INVALID_GOOGLE_TOKEN")
+    @DisplayName("서명 검증 자체가 실패하면(BadJwtException) INVALID_SOCIAL_TOKEN")
     void verify_signatureInvalid() {
         when(googleJwtDecoder.decode(RAW_TOKEN)).thenThrow(new BadJwtException("bad signature"));
 
@@ -78,7 +78,7 @@ class GoogleIdTokenVerifierAdapterTest {
     }
 
     @Test
-    @DisplayName("발급자(iss)가 구글이 아니면 INVALID_GOOGLE_TOKEN")
+    @DisplayName("발급자(iss)가 구글이 아니면 INVALID_SOCIAL_TOKEN")
     void verify_wrongIssuer() {
         when(googleJwtDecoder.decode(RAW_TOKEN))
                 .thenReturn(jwtWithClaims(Map.of(
@@ -94,7 +94,7 @@ class GoogleIdTokenVerifierAdapterTest {
     }
 
     @Test
-    @DisplayName("대상(aud)이 우리 클라이언트가 아니면 INVALID_GOOGLE_TOKEN")
+    @DisplayName("대상(aud)이 우리 클라이언트가 아니면 INVALID_SOCIAL_TOKEN")
     void verify_wrongAudience() {
         when(googleJwtDecoder.decode(RAW_TOKEN))
                 .thenReturn(jwtWithClaims(Map.of(
