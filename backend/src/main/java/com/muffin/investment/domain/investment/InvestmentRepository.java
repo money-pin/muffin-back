@@ -63,4 +63,8 @@ public interface InvestmentRepository extends JpaRepository<Investment, Long> {
     @Modifying(clearAutomatically = true)
     @Query(value = "delete from investment where user_id in (:userIds)", nativeQuery = true)
     int deleteAllByUserIdIn(@Param("userIds") List<Long> userIds);
+
+    /** 투자 결과 알림용: 지정 투자일에 정산이 끝난 확정 투자. 손익 합계만 읽으므로 섹터는 함께 불러오지 않는다. */
+    List<Investment> findByInvestDateAndStatusAndSettlementStatus(
+            LocalDate investDate, InvestmentStatus status, SettlementStatus settlementStatus);
 }

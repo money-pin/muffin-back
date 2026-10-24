@@ -45,4 +45,8 @@ public interface QuizSessionRepository extends JpaRepository<QuizSession, Long> 
     @Modifying(clearAutomatically = true)
     @Query(value = "delete from quiz_session where user_id in (:userIds)", nativeQuery = true)
     int deleteAllByUserIdIn(@Param("userIds") List<Long> userIds);
+
+    /** 퀴즈 리마인드 알림용: 지정 날짜에 세션을 특정 상태로 가진 사용자 ID. */
+    @Query("select q.userId from QuizSession q where q.date = :date and q.status = :status")
+    List<Long> findUserIdsByDateAndStatus(@Param("date") LocalDate date, @Param("status") QuizSessionStatus status);
 }
