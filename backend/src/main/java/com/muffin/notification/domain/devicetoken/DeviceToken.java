@@ -59,4 +59,13 @@ public class DeviceToken extends BaseEntity {
         }
         return new DeviceToken(userId, token, environment);
     }
+
+    /** 같은 기기에서 다른 계정으로 로그인하면 토큰의 주인을 옮긴다. */
+    public void assignTo(Long userId, ApnsEnvironment environment) {
+        if (userId == null || environment == null) {
+            throw new IllegalArgumentException("userId와 environment는 필수입니다.");
+        }
+        this.userId = userId;
+        this.environment = environment;
+    }
 }
