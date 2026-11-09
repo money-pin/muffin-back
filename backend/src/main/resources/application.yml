@@ -101,6 +101,14 @@ muffin:
       cron: "0 0/10 0-8 * * *"
       zone: Asia/Seoul
 
+  push:
+    apns:
+      # 비어 있으면 APNs로 보내지 않고 로그만 남긴다(로컬, 키 등록 전 배포). .p8 파일 전체를 base64 한 줄로 인코딩한 값
+      private-key: ${APNS_PRIVATE_KEY:}
+      key-id: ${APNS_KEY_ID:}
+      team-id: ${APPLE_TEAM_ID:}
+      topic: ${APPLE_BUNDLE_ID:}
+
   auth:
     jwt:
       secret: ${JWT_SECRET}

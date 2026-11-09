@@ -10,6 +10,8 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceToken, Long> 
 
     Optional<DeviceToken> findByToken(String token);
 
+    Optional<DeviceToken> findByUserId(Long userId);
+
     void deleteByUserId(Long userId);
 
     // 사용자의 옛 토큰만 지운다. token <> 조건으로 같은 토큰을 다시 보낸 경우의 행은 남긴다.
