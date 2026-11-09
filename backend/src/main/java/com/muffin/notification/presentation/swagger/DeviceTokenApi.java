@@ -22,7 +22,8 @@ public interface DeviceTokenApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "등록 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "400",
-                description = "token 누락·255자 초과(COMMON_400_002), environment가 SANDBOX/PRODUCTION이 아님(COMMON_400_001)"),
+                description = "token 누락·255자 초과, environment 누락(COMMON_400_002), "
+                        + "environment가 SANDBOX/PRODUCTION이 아님(COMMON_400_001)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "401",
                 description = "인증이 필요합니다. (AUTH_401_001)")

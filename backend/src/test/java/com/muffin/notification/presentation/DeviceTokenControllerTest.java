@@ -118,6 +118,14 @@ class DeviceTokenControllerTest {
     }
 
     @Test
+    @DisplayName("environment가 없으면 400 COMMON_400_002")
+    void register_missingEnvironment_badRequest() throws Exception {
+        register(USER_A, "{\"token\":\"token-1\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_400_002"));
+    }
+
+    @Test
     @DisplayName("Authorization 헤더가 없으면 401")
     void register_unauthorized() throws Exception {
         mockMvc.perform(put("/api/notifications/device-token")
