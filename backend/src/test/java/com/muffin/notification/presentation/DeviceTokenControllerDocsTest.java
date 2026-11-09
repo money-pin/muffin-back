@@ -44,9 +44,9 @@ class DeviceTokenControllerDocsTest {
     @Test
     @DisplayName("푸시 기기 토큰 등록 문서화")
     void documentRegisterDeviceToken(RestDocumentationContextProvider restDocumentation) throws Exception {
-        DeviceTokenCommandService commandStub = new DeviceTokenCommandService(null) {
+        DeviceTokenCommandService commandStub = new DeviceTokenCommandService(null, null, null) {
             @Override
-            public void register(Long userId, String token, ApnsEnvironment environment) {}
+            public void register(Long userId, String accessToken, String token, ApnsEnvironment environment) {}
         };
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new DeviceTokenController(commandStub))
                 .setControllerAdvice(new GeneralExceptionAdvice())
@@ -58,6 +58,7 @@ class DeviceTokenControllerDocsTest {
                 .build();
 
         mockMvc.perform(put("/api/notifications/device-token")
+                        .header("Authorization", "Bearer access-token-example")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"token\":\"7a3f9c0e1b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a\","
                                 + "\"environment\":\"PRODUCTION\"}"))

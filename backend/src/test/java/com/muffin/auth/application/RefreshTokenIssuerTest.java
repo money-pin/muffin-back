@@ -6,11 +6,13 @@ import com.muffin.auth.domain.refreshtoken.RefreshToken;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
@@ -24,6 +26,9 @@ class RefreshTokenIssuerTest {
 
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @AfterEach
     void cleanUp() {
@@ -50,6 +55,25 @@ class RefreshTokenIssuerTest {
         RefreshToken saved = refreshTokenRepository.findByUserId(USER_ID).orElseThrow();
         assertThat(saved.getTokenHash()).isEqualTo(RefreshTokenIssuer.hash(secondToken));
         assertThat(saved.getTokenHash()).isNotEqualTo(RefreshTokenIssuer.hash(firstToken));
+    }
+
+    @Test
+    @DisplayName("로그인(startSession)은 로그인 시각을 새로 찍고, 재발급(issue)은 그대로 둔다")
+    void startSession_updatesSessionStart_issueKeepsIt() {
+        refreshTokenIssuer.startSession(USER_ID);
+        // DB(datetime(6))는 마이크로초까지만 저장한다.
+        LocalDateTime pastSessionStart =
+                LocalDateTime.now(ZoneId.of("Asia/Seoul")).minusHours(1).truncatedTo(ChronoUnit.MICROS);
+        jdbcTemplate.update(
+                "update refresh_token set session_started_at = ? where user_id = ?", pastSessionStart, USER_ID);
+
+        refreshTokenIssuer.issue(USER_ID);
+        assertThat(refreshTokenRepository.findByUserId(USER_ID).orElseThrow().getSessionStartedAt())
+                .isEqualTo(pastSessionStart);
+
+        refreshTokenIssuer.startSession(USER_ID);
+        assertThat(refreshTokenRepository.findByUserId(USER_ID).orElseThrow().getSessionStartedAt())
+                .isAfter(pastSessionStart);
     }
 
     @Test

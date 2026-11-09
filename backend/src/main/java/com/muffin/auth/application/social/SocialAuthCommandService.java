@@ -72,9 +72,10 @@ public class SocialAuthCommandService {
         // 새 로그인이 이전 기기의 세션을 끊으므로 그 기기의 푸시도 끊는다. 새 기기는 로그인 직후 토큰을 다시 등록한다.
         deviceTokenRepository.deleteByUserId(user.getUserId());
 
+        // 세션(로그인 시각)을 먼저 시작해야 이어서 발급하는 access token이 이 세션 것으로 인정된다.
+        String refreshToken = refreshTokenIssuer.startSession(user.getUserId());
         String accessToken =
                 accessTokenProvider.issue(user.getUserId(), user.getRole().name());
-        String refreshToken = refreshTokenIssuer.issue(user.getUserId());
         return new TokenPair(accessToken, refreshToken);
     }
 

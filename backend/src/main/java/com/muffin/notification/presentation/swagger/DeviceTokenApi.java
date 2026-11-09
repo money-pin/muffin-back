@@ -26,9 +26,10 @@ public interface DeviceTokenApi {
                         + "environment가 SANDBOX/PRODUCTION이 아님(COMMON_400_001)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "401",
-                description = "인증이 필요합니다. (AUTH_401_001)")
+                description = "인증이 필요합니다(AUTH_401_001). 다른 기기에서 로그인했거나 로그아웃된 세션의 access token입니다(AUTH_401_005).")
     })
     ApiResponse<Void> registerDeviceToken(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+            @Parameter(hidden = true) String authorization,
             @RequestBody @Valid DeviceTokenRegisterRequest request);
 }

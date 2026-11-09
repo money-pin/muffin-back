@@ -108,7 +108,7 @@ class SocialAuthCommandServiceConcurrencyTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(winnerUser));
 
         when(accessTokenProvider.issue(1L, "USER")).thenReturn("access-token");
-        when(refreshTokenIssuer.issue(1L)).thenReturn("refresh-token");
+        when(refreshTokenIssuer.startSession(1L)).thenReturn("refresh-token");
 
         TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
 

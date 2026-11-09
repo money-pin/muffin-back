@@ -30,8 +30,19 @@ public class RefreshTokenIssuer {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtProperties properties;
 
+    /** 재발급용. 기존 세션을 이어 가므로 로그인 시각을 바꾸지 않는다. */
     @Transactional
     public String issue(Long userId) {
+        return issue(userId, false);
+    }
+
+    /** 로그인용. 다른 기기의 세션을 대체하고 로그인 시각을 새로 찍는다. */
+    @Transactional
+    public String startSession(Long userId) {
+        return issue(userId, true);
+    }
+
+    private String issue(Long userId, boolean newSession) {
         String rawToken = generateRawToken();
         String tokenHash = hash(rawToken);
         LocalDateTime expiresAt = LocalDateTime.now(KST).plusDays(properties.refreshTokenExpireDays());
@@ -39,7 +50,13 @@ public class RefreshTokenIssuer {
         refreshTokenRepository
                 .findByUserId(userId)
                 .ifPresentOrElse(
-                        existing -> existing.rotate(tokenHash, expiresAt),
+                        existing -> {
+                            if (newSession) {
+                                existing.startNewSession(tokenHash, expiresAt);
+                            } else {
+                                existing.rotate(tokenHash, expiresAt);
+                            }
+                        },
                         () -> refreshTokenRepository.save(RefreshToken.issue(userId, tokenHash, expiresAt)));
 
         return rawToken;

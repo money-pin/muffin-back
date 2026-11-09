@@ -5,10 +5,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.muffin.auth.application.RefreshTokenIssuer;
+import com.muffin.auth.application.refresh.RefreshCommandService;
 import com.muffin.auth.domain.AccessTokenProvider;
+import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.notification.domain.devicetoken.ApnsEnvironment;
 import com.muffin.notification.domain.devicetoken.DeviceToken;
 import com.muffin.notification.domain.devicetoken.DeviceTokenRepository;
+import com.muffin.user.domain.User;
+import com.muffin.user.domain.UserRepository;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -37,16 +46,46 @@ class DeviceTokenControllerTest {
     @Autowired
     private DeviceTokenRepository deviceTokenRepository;
 
+    @Autowired
+    private RefreshTokenIssuer refreshTokenIssuer;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
+    private RefreshCommandService refreshCommandService;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private UserRepository userRepository;
+
     @AfterEach
     void cleanUp() {
         deviceTokenRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
+    }
+
+    /** 로그인과 같은 순서로 세션을 시작한 뒤 access token을 발급한다. */
+    private String loggedIn(Long userId) {
+        refreshTokenIssuer.startSession(userId);
+        return accessTokenProvider.issue(userId, "USER");
     }
 
     private ResultActions register(Long userId, String body) throws Exception {
+        return registerWith(loggedIn(userId), body);
+    }
+
+    private ResultActions registerWith(String accessToken, String body) throws Exception {
         return mockMvc.perform(put("/api/notifications/device-token")
-                .header("Authorization", "Bearer " + accessTokenProvider.issue(userId, "USER"))
+                .header("Authorization", "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body));
+    }
+
+    private static String body(String token) {
+        return "{\"token\":\"" + token + "\",\"environment\":\"PRODUCTION\"}";
     }
 
     private ResultActions register(Long userId, String token, String environment) throws Exception {
@@ -115,6 +154,50 @@ class DeviceTokenControllerTest {
         register(USER_A, "token-1", "PROD")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_400_001"));
+    }
+
+    @Test
+    @DisplayName("다른 기기에서 로그인하기 전에 발급된 access token이면 401 AUTH_401_005이고 현재 기기 토큰을 덮어쓰지 않는다")
+    void register_staleSession_rejected() throws Exception {
+        String oldDeviceAccessToken = loggedIn(USER_A);
+        register(USER_A, "new-device", "PRODUCTION").andExpect(status().isOk());
+        // 다른 기기 로그인을 흉내 낸다. access token 발급 시각이 초 단위라 1초 넘게 뒤로 둔다.
+        jdbcTemplate.update(
+                "update refresh_token set session_started_at = ? where user_id = ?",
+                LocalDateTime.now(ZoneId.of("Asia/Seoul")).plusSeconds(5),
+                USER_A);
+
+        registerWith(oldDeviceAccessToken, body("old-device"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH_401_005"));
+
+        assertThat(deviceTokenRepository.findByToken("new-device")).isPresent();
+        assertThat(deviceTokenRepository.findByToken("old-device")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("로그아웃·탈퇴로 세션이 없으면 남은 access token으로 등록할 수 없다(401 AUTH_401_005)")
+    void register_noSession_rejected() throws Exception {
+        String accessToken = loggedIn(USER_A);
+        refreshTokenRepository.deleteAll();
+
+        registerWith(accessToken, body("token-1"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH_401_005"));
+        assertThat(deviceTokenRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("재발급으로 받은 access token은 같은 세션이라 등록할 수 있다")
+    void register_afterRefresh_allowed() throws Exception {
+        User user = userRepository.save(User.register(null, UUID.randomUUID().toString(), "홍길동", null));
+        String rawRefreshToken = refreshTokenIssuer.startSession(user.getUserId());
+        String refreshedAccessToken =
+                refreshCommandService.refresh(rawRefreshToken).accessToken();
+
+        registerWith(refreshedAccessToken, body("token-1")).andExpect(status().isOk());
+
+        userRepository.delete(user);
     }
 
     @Test

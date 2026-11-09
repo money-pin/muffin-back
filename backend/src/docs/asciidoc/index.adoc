@@ -863,6 +863,8 @@ NOTE: 사용자당 마지막으로 등록한 토큰 1개만 남는다. 다른 �
 
 NOTE: 로그인·로그아웃·탈퇴 시 서버가 그 계정의 토큰을 지운다. 그래서 로그인 직후에는 토큰을 반드시 다시 등록해야 푸시를 받는다.
 
+NOTE: 다른 기기에서 로그인했거나 로그아웃·탈퇴한 뒤에는, 그 전에 받은 access token이 아직 만료되지 않았어도 등록이 거절된다(`401 AUTH_401_005`). 재발급으로 받은 access token은 같은 세션이라 그대로 쓸 수 있다.
+
 ==== 요청/응답
 
 include::{snippets}/device-token-register/http-request.adoc[]
@@ -880,6 +882,7 @@ include::{snippets}/device-token-register/response-fields.adoc[]
 |400|COMMON_400_001|잘못된 요청입니다.|environment가 SANDBOX/PRODUCTION이 아님
 |400|COMMON_400_002|요청 값 검증에 실패했습니다.|token 누락 또는 255자 초과, environment 누락
 |401|AUTH_401_001|인증이 필요합니다.|Authorization 헤더에 유효한 access token 없음
+|401|AUTH_401_005|다른 기기에서 로그인했거나 로그아웃된 세션입니다.|다른 기기 로그인·로그아웃·탈퇴 전에 발급된 access token
 |===
 
 [[group-quiz]]

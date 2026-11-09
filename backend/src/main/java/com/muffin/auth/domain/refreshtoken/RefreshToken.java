@@ -8,8 +8,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -42,10 +44,15 @@ public class RefreshToken extends BaseEntity {
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
+    /** 로그인 시각. 재발급(rotate)으로는 바뀌지 않아, 이보다 먼저 발급된 access token은 다른 기기 로그인 전의 옛 세션 것이다. */
+    @Column(name = "session_started_at", nullable = false)
+    private LocalDateTime sessionStartedAt;
+
     private RefreshToken(Long userId, String tokenHash, LocalDateTime expiresAt) {
         this.userId = userId;
         this.tokenHash = tokenHash;
         this.expiresAt = expiresAt;
+        this.sessionStartedAt = LocalDateTime.now(KST);
     }
 
     public static RefreshToken issue(Long userId, String tokenHash, LocalDateTime expiresAt) {
@@ -60,9 +67,21 @@ public class RefreshToken extends BaseEntity {
         return !expiresAt.isAfter(now);
     }
 
-    /** 재발급(refresh) 시 또는 같은 유저가 새로 로그인해 기존 세션을 대체할 때 호출한다. */
+    /** 재발급(refresh) 시 호출한다. 같은 세션이 이어지므로 로그인 시각은 그대로 둔다. */
     public void rotate(String newTokenHash, LocalDateTime newExpiresAt) {
         this.tokenHash = newTokenHash;
         this.expiresAt = newExpiresAt;
+    }
+
+    /** 같은 유저가 새로 로그인해 기존 세션을 대체할 때 호출한다. */
+    public void startNewSession(String newTokenHash, LocalDateTime newExpiresAt) {
+        rotate(newTokenHash, newExpiresAt);
+        this.sessionStartedAt = LocalDateTime.now(KST);
+    }
+
+    /** 이 세션이 시작된 뒤에 발급된 access token인지. access token 발급 시각은 초 단위라 로그인 시각도 초 단위로 비교한다. */
+    public boolean isIssuedInCurrentSession(Instant accessTokenIssuedAt) {
+        Instant sessionStart = sessionStartedAt.atZone(KST).toInstant().truncatedTo(ChronoUnit.SECONDS);
+        return !accessTokenIssuedAt.isBefore(sessionStart);
     }
 }

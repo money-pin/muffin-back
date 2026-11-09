@@ -45,12 +45,24 @@ public class JwtAccessTokenProvider implements AccessTokenProvider {
     @Override
     public Long parseUserId(String accessToken) {
         try {
-            Claims claims = Jwts.parser()
+            return Long.valueOf(parseClaims(accessToken).getSubject());
+        } catch (IllegalArgumentException e) {
+            throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+        }
+    }
+
+    @Override
+    public Instant parseIssuedAt(String accessToken) {
+        return parseClaims(accessToken).getIssuedAt().toInstant();
+    }
+
+    private Claims parseClaims(String accessToken) {
+        try {
+            return Jwts.parser()
                     .verifyWith(key)
                     .build()
                     .parseSignedClaims(accessToken)
                     .getPayload();
-            return Long.valueOf(claims.getSubject());
         } catch (JwtException | IllegalArgumentException e) {
             throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
         }
