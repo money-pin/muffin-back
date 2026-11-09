@@ -1,22 +1,27 @@
 package com.muffin.news.application.publication;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.muffin.global.event.NewsPublishedEvent;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.news.enums.NewsStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 class NewsPublicationServiceTest {
 
     private final NewsRepository newsRepository = mock(NewsRepository.class);
-    private final NewsPublicationService publicationService = new NewsPublicationService(newsRepository);
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    private final NewsPublicationService publicationService =
+            new NewsPublicationService(newsRepository, eventPublisher);
 
     /** 발행 배치는 PENDING 뉴스만 조회하여 모두 PUBLISHED 상태로 변경한다. */
     @Test
@@ -48,6 +53,29 @@ class NewsPublicationServiceTest {
         assertThat(completed.getStatus()).isEqualTo(NewsStatus.PUBLISHED);
         verify(incomplete, never()).publish();
         verify(incomplete).fail();
+    }
+
+    /** 공개된 뉴스 ID를 담아 이벤트를 한 번 발행한다. 뉴스 알림이 이 이벤트로 하루 한 번 발송된다. */
+    @Test
+    void publishesEventWithPublishedNewsIds() {
+        News published = mock(News.class);
+        when(published.hasReconstructionResult()).thenReturn(true);
+        when(published.getId()).thenReturn(7L);
+        when(newsRepository.findAllByStatus(NewsStatus.PENDING)).thenReturn(List.of(published));
+
+        publicationService.publishPendingNews();
+
+        verify(eventPublisher).publishEvent(new NewsPublishedEvent(List.of(7L)));
+    }
+
+    /** 공개된 뉴스가 없으면 알림을 보낼 일이 없으므로 이벤트를 발행하지 않는다. */
+    @Test
+    void doesNotPublishEventWhenNothingPublished() {
+        when(newsRepository.findAllByStatus(NewsStatus.PENDING)).thenReturn(List.of());
+
+        publicationService.publishPendingNews();
+
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
     private static News pendingNews(String originalUrl) {

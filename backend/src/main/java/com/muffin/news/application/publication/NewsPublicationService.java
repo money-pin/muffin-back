@@ -1,11 +1,14 @@
 package com.muffin.news.application.publication;
 
+import com.muffin.global.event.NewsPublishedEvent;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.news.enums.NewsStatus;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,12 +18,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class NewsPublicationService {
 
     private final NewsRepository newsRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** AI 처리가 끝난 발행 대기 뉴스를 모두 사용자 공개 상태로 변경한다. */
     @Transactional
     public int publishPendingNews() {
         List<News> pendingNews = newsRepository.findAllByStatus(NewsStatus.PENDING);
-        int publishedCount = 0;
+        List<Long> publishedIds = new ArrayList<>();
 
         for (News news : pendingNews) {
             if (!news.hasReconstructionResult()) {
@@ -31,9 +35,12 @@ public class NewsPublicationService {
             }
 
             news.publish();
-            publishedCount++;
+            publishedIds.add(news.getId());
         }
 
-        return publishedCount;
+        if (!publishedIds.isEmpty()) {
+            eventPublisher.publishEvent(new NewsPublishedEvent(publishedIds));
+        }
+        return publishedIds.size();
     }
 }

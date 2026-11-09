@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import com.muffin.global.event.WeeklyRankingCreatedEvent;
 import com.muffin.ranking.domain.weeklyranking.WeeklyRanking;
 import com.muffin.ranking.domain.weeklyranking.WeeklyRankingCandidate;
 import com.muffin.ranking.domain.weeklyranking.WeeklyRankingRepository;
@@ -19,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class WeeklyRankingBatchServiceTest {
@@ -29,6 +31,9 @@ class WeeklyRankingBatchServiceTest {
     @Mock
     private WeeklyRankingRepository weeklyRankingRepository;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     @Captor
     private ArgumentCaptor<List<WeeklyRanking>> rankingsCaptor;
 
@@ -36,7 +41,7 @@ class WeeklyRankingBatchServiceTest {
     @DisplayName("화요일 재시도도 직전 월요일부터 일요일까지를 같은 지난주로 집계한다")
     void createPreviousWeekRanking_createsPreviousCalendarWeek() {
         WeeklyRankingBatchService service =
-                new WeeklyRankingBatchService(aggregationRepository, weeklyRankingRepository);
+                new WeeklyRankingBatchService(aggregationRepository, weeklyRankingRepository, eventPublisher);
         LocalDate weekStartDate = LocalDate.of(2026, 7, 6);
         LocalDate weekEndDate = LocalDate.of(2026, 7, 12);
         when(aggregationRepository.existsByWeekStartDate(weekStartDate)).thenReturn(false);
@@ -54,13 +59,14 @@ class WeeklyRankingBatchServiceTest {
         WeeklyRanking ranking = rankingsCaptor.getValue().getFirst();
         org.junit.jupiter.api.Assertions.assertEquals(weekStartDate, ranking.getWeekStartDate());
         org.junit.jupiter.api.Assertions.assertEquals(1, ranking.getRankingPosition());
+        verify(eventPublisher).publishEvent(new WeeklyRankingCreatedEvent(weekStartDate));
     }
 
     @Test
     @DisplayName("이미 생성된 주간 스냅샷은 다시 집계하지 않는다")
     void createPreviousWeekRanking_skipsWhenSnapshotExists() {
         WeeklyRankingBatchService service =
-                new WeeklyRankingBatchService(aggregationRepository, weeklyRankingRepository);
+                new WeeklyRankingBatchService(aggregationRepository, weeklyRankingRepository, eventPublisher);
         LocalDate weekStartDate = LocalDate.of(2026, 7, 6);
         when(aggregationRepository.existsByWeekStartDate(weekStartDate)).thenReturn(true);
 
@@ -75,7 +81,7 @@ class WeeklyRankingBatchServiceTest {
     @DisplayName("지난주에 미정산 확정 투자가 있으면 스냅샷 생성을 다음 실행으로 보류한다")
     void createPreviousWeekRanking_defersWhenSettlementIsPending() {
         WeeklyRankingBatchService service =
-                new WeeklyRankingBatchService(aggregationRepository, weeklyRankingRepository);
+                new WeeklyRankingBatchService(aggregationRepository, weeklyRankingRepository, eventPublisher);
         LocalDate weekStartDate = LocalDate.of(2026, 7, 6);
         LocalDate weekEndDate = LocalDate.of(2026, 7, 12);
         when(aggregationRepository.existsByWeekStartDate(weekStartDate)).thenReturn(false);
@@ -87,5 +93,6 @@ class WeeklyRankingBatchServiceTest {
         assertThat(result.outcome()).isEqualTo(WeeklyRankingBatchResult.Outcome.SETTLEMENT_PENDING);
         verify(aggregationRepository).hasUnsettledConfirmedInvestment(weekStartDate, weekEndDate);
         verify(weeklyRankingRepository, never()).saveAll(any());
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 }
