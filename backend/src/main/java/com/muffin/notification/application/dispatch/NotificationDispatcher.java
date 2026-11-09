@@ -26,6 +26,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class NotificationDispatcher {
 
     private static final String SEND_FAILED = "send_failed";
+    private static final String NO_DEVICE = "no_device";
 
     private final NotificationDeliveryRepository deliveryRepository;
     private final PushSender pushSender;
@@ -79,16 +80,20 @@ public class NotificationDispatcher {
             return DispatchOutcome.DUPLICATE;
         }
 
-        boolean delivered = sendSafely(userId, message, dedupKey);
+        PushResult result = sendSafely(userId, message, dedupKey);
         transactionTemplate.executeWithoutResult(status -> {
             NotificationDelivery delivery = deliveryRepository.getReferenceById(deliveryId);
-            if (delivered) {
-                delivery.sent(LocalDateTime.now(clock));
-            } else {
-                delivery.failed(SEND_FAILED);
+            switch (result) {
+                case SENT -> delivery.sent(LocalDateTime.now(clock));
+                case NO_DEVICE -> delivery.failed(NO_DEVICE);
+                case FAILED -> delivery.failed(SEND_FAILED);
             }
         });
-        return delivered ? DispatchOutcome.SENT : DispatchOutcome.FAILED;
+        return switch (result) {
+            case SENT -> DispatchOutcome.SENT;
+            case NO_DEVICE -> DispatchOutcome.NO_DEVICE;
+            case FAILED -> DispatchOutcome.FAILED;
+        };
     }
 
     private DispatchOutcome dispatchSafely(NotificationType type, Long userId, String scope, PushMessage message) {
@@ -112,12 +117,12 @@ public class NotificationDispatcher {
         }
     }
 
-    private boolean sendSafely(Long userId, PushMessage message, String dedupKey) {
+    private PushResult sendSafely(Long userId, PushMessage message, String dedupKey) {
         try {
             return pushSender.send(userId, message);
         } catch (RuntimeException exception) {
             log.error("Push send failed: dedupKey={}", dedupKey, exception);
-            return false;
+            return PushResult.FAILED;
         }
     }
 }

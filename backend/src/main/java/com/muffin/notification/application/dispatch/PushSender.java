@@ -7,10 +7,6 @@ package com.muffin.notification.application.dispatch;
  */
 public interface PushSender {
 
-    /**
-     * 사용자의 기기로 보낸다. 기기 하나의 실패가 나머지 기기 발송을 막지 않아야 한다.
-     *
-     * @return 기기 하나 이상에 전달했으면 {@code true}
-     */
-    boolean send(Long userId, PushMessage message);
+    /** 사용자의 기기로 보낸다. 기기 하나의 실패가 나머지 기기 발송을 막지 않아야 한다. */
+    PushResult send(Long userId, PushMessage message);
 }

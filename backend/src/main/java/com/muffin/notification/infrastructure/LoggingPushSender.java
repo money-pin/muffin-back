@@ -1,6 +1,7 @@
 package com.muffin.notification.infrastructure;
 
 import com.muffin.notification.application.dispatch.PushMessage;
+import com.muffin.notification.application.dispatch.PushResult;
 import com.muffin.notification.application.dispatch.PushSender;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -15,12 +16,12 @@ import org.springframework.stereotype.Component;
 public class LoggingPushSender implements PushSender {
 
     @Override
-    public boolean send(Long userId, PushMessage message) {
+    public PushResult send(Long userId, PushMessage message) {
         log.info(
                 "Push send skipped (device token not integrated): userId={} title={} deepLink={}",
                 userId,
                 message.title(),
                 message.deepLink());
-        return true;
+        return PushResult.SENT;
     }
 }

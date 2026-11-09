@@ -44,7 +44,7 @@ class NotificationDispatcherTest {
     @Test
     @DisplayName("보내고 나면 중복 방지 키와 함께 SENT로 기록한다")
     void recordsSent() {
-        when(pushSender.send(1L, MESSAGE)).thenReturn(true);
+        when(pushSender.send(1L, MESSAGE)).thenReturn(PushResult.SENT);
 
         DispatchOutcome outcome = dispatcher.dispatch(NotificationType.NEWS, 1L, "2026-10-20", MESSAGE);
 
@@ -58,7 +58,7 @@ class NotificationDispatcherTest {
     @Test
     @DisplayName("같은 중복 방지 키로 다시 부르면 보내지 않는다")
     void skipsDuplicate() {
-        when(pushSender.send(1L, MESSAGE)).thenReturn(true);
+        when(pushSender.send(1L, MESSAGE)).thenReturn(PushResult.SENT);
 
         dispatcher.dispatch(NotificationType.NEWS, 1L, "2026-10-20", MESSAGE);
         DispatchOutcome second = dispatcher.dispatch(NotificationType.NEWS, 1L, "2026-10-20", MESSAGE);
@@ -71,7 +71,7 @@ class NotificationDispatcherTest {
     @Test
     @DisplayName("전달하지 못하면 FAILED로 기록하고 다시 보내지 않는다")
     void recordsFailureOnce() {
-        when(pushSender.send(1L, MESSAGE)).thenReturn(false);
+        when(pushSender.send(1L, MESSAGE)).thenReturn(PushResult.FAILED);
 
         DispatchOutcome outcome = dispatcher.dispatch(NotificationType.QUIZ, 1L, "2026-10-20", MESSAGE);
         DispatchOutcome retry = dispatcher.dispatch(NotificationType.QUIZ, 1L, "2026-10-20", MESSAGE);
@@ -84,10 +84,23 @@ class NotificationDispatcherTest {
     }
 
     @Test
+    @DisplayName("등록된 기기가 없으면 NO_DEVICE로 돌려주고 사유 no_device로 기록한다")
+    void recordsNoDevice() {
+        when(pushSender.send(1L, MESSAGE)).thenReturn(PushResult.NO_DEVICE);
+
+        DispatchOutcome outcome = dispatcher.dispatch(NotificationType.NEWS, 1L, "2026-10-20", MESSAGE);
+
+        assertThat(outcome).isEqualTo(DispatchOutcome.NO_DEVICE);
+        NotificationDelivery delivery = deliveryRepository.findAll().getFirst();
+        assertThat(delivery.getStatus()).isEqualTo(DeliveryStatus.FAILED);
+        assertThat(delivery.getFailureReason()).isEqualTo("no_device");
+    }
+
+    @Test
     @DisplayName("발송기가 예외를 던져도 다른 사용자 발송은 이어지고 결과를 집계한다")
     void continuesAfterSenderException() {
         when(pushSender.send(1L, MESSAGE)).thenThrow(new IllegalStateException("boom"));
-        when(pushSender.send(2L, MESSAGE)).thenReturn(true);
+        when(pushSender.send(2L, MESSAGE)).thenReturn(PushResult.SENT);
 
         NotificationDispatchSummary summary =
                 dispatcher.dispatchAll(NotificationType.RANKING, "2026-W42", Map.of(1L, MESSAGE, 2L, MESSAGE));
