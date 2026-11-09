@@ -36,6 +36,7 @@ class DeviceTokenControllerTest {
 
     private static final Long USER_A = 100L;
     private static final Long USER_B = 200L;
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     @Autowired
     private MockMvc mockMvc;
@@ -121,6 +122,36 @@ class DeviceTokenControllerTest {
         assertThat(deviceTokenRepository.findByToken("token-new").orElseThrow().getEnvironment())
                 .isEqualTo(ApnsEnvironment.SANDBOX);
         assertThat(deviceTokenRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("다른 기기에서 로그인해 새 토큰을 등록해도, 곧 로그아웃될 이전 기기의 토큰은 남는다")
+    void register_newDevice_keepsLeavingDeviceToken() throws Exception {
+        register(USER_A, "old-device", "PRODUCTION").andExpect(status().isOk());
+        endAt("old-device", LocalDateTime.now(KST).plusMinutes(30));
+
+        register(USER_A, "new-device", "PRODUCTION").andExpect(status().isOk());
+
+        assertThat(deviceTokenRepository.findByToken("old-device")).isPresent();
+        assertThat(deviceTokenRepository.findByToken("new-device").orElseThrow().getExpiresAt())
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("같은 기기에서 다시 로그인해 같은 토큰을 등록하면 종료 시각이 지워진다")
+    void register_sameDeviceAfterRelogin_clearsEnd() throws Exception {
+        register(USER_A, "my-device", "PRODUCTION").andExpect(status().isOk());
+        endAt("my-device", LocalDateTime.now(KST).plusMinutes(30));
+
+        register(USER_A, "my-device", "PRODUCTION").andExpect(status().isOk());
+
+        assertThat(deviceTokenRepository.findByToken("my-device").orElseThrow().getExpiresAt())
+                .isNull();
+    }
+
+    /** 다른 기기 로그인 때 서버가 적는 종료 시각을 흉내 낸다. */
+    private void endAt(String token, LocalDateTime endsAt) {
+        jdbcTemplate.update("update device_token set expires_at = ? where token = ?", endsAt, token);
     }
 
     @Test

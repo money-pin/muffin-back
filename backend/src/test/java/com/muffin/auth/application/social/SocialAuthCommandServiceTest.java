@@ -117,8 +117,8 @@ class SocialAuthCommandServiceTest {
     }
 
     @Test
-    @DisplayName("로그인하면 이전 기기의 푸시 토큰이 지워진다")
-    void authenticate_login_deletesPreviousDeviceToken() {
+    @DisplayName("다시 로그인하면 이전 기기 토큰은 지우지 않고, 이전 세션의 마지막 access token 만료 시각에 끝나게 한다")
+    void authenticate_login_endsPreviousDeviceTokenAtLastAccessTokenExpiry() {
         stubPayload("google-sub-device", "device@example.com", "홍길동");
         socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
         Long userId = authRepository
@@ -126,10 +126,33 @@ class SocialAuthCommandServiceTest {
                 .orElseThrow()
                 .getUserId();
         deviceTokenRepository.save(DeviceToken.register(userId, "old-device", ApnsEnvironment.PRODUCTION));
+        LocalDateTime expectedEnd = refreshTokenRepository
+                .findByUserId(userId)
+                .orElseThrow()
+                .getUpdatedAt()
+                .plusMinutes(60);
 
         socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
 
-        assertThat(deviceTokenRepository.findByToken("old-device")).isEmpty();
+        DeviceToken oldDevice = deviceTokenRepository.findByToken("old-device").orElseThrow();
+        assertThat(oldDevice.getExpiresAt()).isEqualTo(expectedEnd);
+    }
+
+    @Test
+    @DisplayName("이전 세션이 없으면(로그아웃 후 로그인) 남은 기기 토큰을 지운다")
+    void authenticate_withoutPreviousSession_deletesDeviceTokens() {
+        stubPayload("google-sub-device2", "device2@example.com", "홍길동");
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
+        Long userId = authRepository
+                .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-device2")
+                .orElseThrow()
+                .getUserId();
+        deviceTokenRepository.save(DeviceToken.register(userId, "stale-device", ApnsEnvironment.PRODUCTION));
+        refreshTokenRepository.deleteAll();
+
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
+
+        assertThat(deviceTokenRepository.findByToken("stale-device")).isEmpty();
     }
 
     @Test

@@ -25,10 +25,12 @@ public class DeviceTokenCommandService {
     public void register(Long userId, String accessToken, String token, ApnsEnvironment environment) {
         requireCurrentSession(userId, accessToken);
         deviceTokenRepository.deleteOtherTokensOf(userId, token);
+        // 이미 있는 토큰이면 이 계정의 현재 기기로 되돌린다. 다른 계정의 토큰이었거나(같은 기기에서 계정 전환),
+        // 로그인 때 종료 시각이 적혔지만 실제로는 같은 기기에서 다시 로그인한 경우다.
         deviceTokenRepository
                 .findByToken(token)
                 .ifPresentOrElse(
-                        existing -> existing.assignTo(userId, environment),
+                        existing -> existing.makeCurrentDeviceOf(userId, environment),
                         () -> deviceTokenRepository.save(DeviceToken.register(userId, token, environment)));
     }
 

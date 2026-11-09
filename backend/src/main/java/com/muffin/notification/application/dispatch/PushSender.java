@@ -4,10 +4,10 @@ package com.muffin.notification.application.dispatch;
 public interface PushSender {
 
     /**
-     * 사용자의 기기(사용자당 1개)로 보낸다.
+     * 사용자의 기기(현재 기기와, 다른 기기 로그인으로 곧 로그아웃될 기기)로 보낸다. 기기 하나의 실패가 나머지 기기 발송을 막지 않아야 한다.
      *
-     * @return 전달했으면 SENT, 등록된 기기가 없거나 무효해진 기기를 지웠으면 NO_DEVICE, 그 외 실패는 FAILED. NO_DEVICE는 배치 실패 판단에서
-     *     빠지므로 발송 경로의 문제(인증·설정 오류 등)를 NO_DEVICE로 돌려주면 안 된다.
+     * @return 한 기기라도 전달했으면 SENT, 보낼 기기가 없거나 무효해진 기기를 지웠으면 NO_DEVICE, 그 외 실패는 FAILED. NO_DEVICE는 배치 실패
+     *     판단에서 빠지므로 발송 경로의 문제(인증·설정 오류 등)를 NO_DEVICE로 돌려주면 안 된다.
      */
     PushResult send(Long userId, PushMessage message);
 }

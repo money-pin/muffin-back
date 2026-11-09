@@ -62,6 +62,17 @@ public class RefreshTokenIssuer {
         return rawToken;
     }
 
+    /**
+     * 지금 세션에 마지막으로 발급한 access token의 만료 시각. 그 기기는 이때 재발급이 막혀 실제로 로그아웃된다. refresh token 행은 발급(로그인·재발급) 때만
+     * 바뀌므로 updatedAt이 마지막 발급 시각이다.
+     */
+    public Optional<LocalDateTime> lastAccessTokenExpiry(Long userId) {
+        return refreshTokenRepository
+                .findByUserId(userId)
+                .map(token -> token.getUpdatedAt() != null ? token.getUpdatedAt() : token.getCreatedAt())
+                .map(lastIssuedAt -> lastIssuedAt.plusMinutes(properties.accessTokenExpireMinutes()));
+    }
+
     /** 원문 refresh token으로 아직 만료되지 않은 레코드를 찾는다. 재발급/로그아웃에서 사용한다. */
     public Optional<RefreshToken> findValid(String rawToken) {
         return refreshTokenRepository.findByTokenHash(hash(rawToken)).filter(token -> !token.isExpired());

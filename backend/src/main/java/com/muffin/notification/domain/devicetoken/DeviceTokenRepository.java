@@ -1,5 +1,7 @@
 package com.muffin.notification.domain.devicetoken;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -10,13 +12,17 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceToken, Long> 
 
     Optional<DeviceToken> findByToken(String token);
 
-    Optional<DeviceToken> findByUserId(Long userId);
+    List<DeviceToken> findAllByUserId(Long userId);
 
     void deleteByUserId(Long userId);
 
-    // 사용자의 옛 토큰만 지운다. token <> 조건으로 같은 토큰을 다시 보낸 경우의 행은 남긴다.
-    // 벌크 삭제라 즉시 실행되어, 이어지는 주인 이동이 user_id 유니크에 걸리지 않는다.
+    // 이 기기의 바뀌기 전 토큰을 지운다. 같은 토큰 행(token <>)과, 곧 로그아웃될 다른 기기의 토큰(expiresAt 있음)은 남긴다.
     @Modifying
-    @Query("delete from DeviceToken d where d.userId = :userId and d.token <> :token")
+    @Query("delete from DeviceToken d where d.userId = :userId and d.token <> :token and d.expiresAt is null")
     void deleteOtherTokensOf(@Param("userId") Long userId, @Param("token") String token);
+
+    /** 다른 기기에서 로그인하면, 그때까지 쓰던 기기의 토큰에 알림을 받을 마지막 시각(그 기기가 로그아웃되는 시각)을 적는다. */
+    @Modifying
+    @Query("update DeviceToken d set d.expiresAt = :endsAt where d.userId = :userId and d.expiresAt is null")
+    void endCurrentTokensAt(@Param("userId") Long userId, @Param("endsAt") LocalDateTime endsAt);
 }

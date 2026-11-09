@@ -15,8 +15,9 @@ public interface DeviceTokenApi {
 
     @Operation(
             summary = "푸시 기기 토큰 등록",
-            description = "APNs 기기 토큰을 등록한다. 앱 실행 시와 로그인 직후마다 호출한다. 사용자당 마지막으로 등록한 토큰 1개만 남고, "
-                    + "다른 계정에 등록된 토큰이면 이 계정으로 옮겨진다. environment는 Xcode 빌드면 SANDBOX, "
+            description = "APNs 기기 토큰을 등록한다. 앱 실행 시와 로그인 직후마다 호출한다. 이 기기의 토큰은 마지막으로 등록한 것만 남고, "
+                    + "다른 계정에 등록된 토큰이면 이 계정으로 옮겨진다. 다른 기기에서 로그인하면 이전 기기는 로그아웃될 때까지(최대 60분) "
+                    + "알림을 계속 받는다. environment는 Xcode 빌드면 SANDBOX, "
                     + "TestFlight·App Store 빌드면 PRODUCTION.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "등록 성공"),

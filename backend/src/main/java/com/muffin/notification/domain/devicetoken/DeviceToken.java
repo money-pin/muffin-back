@@ -10,22 +10,20 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 사용자의 푸시 기기 토큰. 세션(RefreshToken)이 사용자당 1개라 토큰도 마지막 로그인 기기 1개만 둔다. 로그아웃된 기기로 알림이 가지 않게
- * 하기 위해서다.
+ * 사용자의 푸시 기기 토큰. 현재 로그인한 기기의 토큰({@code expiresAt == null})과, 다른 기기 로그인으로 곧 로그아웃될 옛 기기의 토큰을 둔다.
+ * 옛 기기는 마지막으로 받은 access token이 만료되어 실제로 로그아웃될 때까지만 알림을 받는다.
  */
 @Entity
 @Getter
 @Table(
         name = "device_token",
-        uniqueConstraints = {
-            @UniqueConstraint(name = "uk_device_token_user_id", columnNames = "user_id"),
-            @UniqueConstraint(name = "uk_device_token_token", columnNames = "token")
-        })
+        uniqueConstraints = @UniqueConstraint(name = "uk_device_token_token", columnNames = "token"))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class DeviceToken extends BaseEntity {
 
@@ -44,6 +42,9 @@ public class DeviceToken extends BaseEntity {
     @Column(name = "environment", nullable = false, length = 20)
     private ApnsEnvironment environment;
 
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
     private DeviceToken(Long userId, String token, ApnsEnvironment environment) {
         this.userId = userId;
         this.token = token;
@@ -60,12 +61,16 @@ public class DeviceToken extends BaseEntity {
         return new DeviceToken(userId, token, environment);
     }
 
-    /** 같은 기기에서 다른 계정으로 로그인하면 토큰의 주인을 옮긴다. */
-    public void assignTo(Long userId, ApnsEnvironment environment) {
+    public void makeCurrentDeviceOf(Long userId, ApnsEnvironment environment) {
         if (userId == null || environment == null) {
             throw new IllegalArgumentException("userId와 environment는 필수입니다.");
         }
         this.userId = userId;
         this.environment = environment;
+        this.expiresAt = null;
+    }
+
+    public boolean isExpired(LocalDateTime now) {
+        return expiresAt != null && !expiresAt.isAfter(now);
     }
 }

@@ -69,8 +69,13 @@ public class SocialAuthCommandService {
             throw new AuthException(AuthErrorCode.SUSPENDED_ACCOUNT);
         }
 
-        // 새 로그인이 이전 기기의 세션을 끊으므로 그 기기의 푸시도 끊는다. 새 기기는 로그인 직후 토큰을 다시 등록한다.
-        deviceTokenRepository.deleteByUserId(user.getUserId());
+        // 지금까지 쓰던 기기는 마지막 access token이 만료되어 로그아웃될 때까지만 알림을 받는다. 그 시각은 세션을 새로 시작하기
+        // 전에만 구할 수 있다. 로그인 요청만으로는 같은 기기의 재로그인인지 알 수 없어, 같은 기기라면 직후의 토큰 재등록으로 되살린다.
+        refreshTokenIssuer
+                .lastAccessTokenExpiry(user.getUserId())
+                .ifPresentOrElse(
+                        endsAt -> deviceTokenRepository.endCurrentTokensAt(user.getUserId(), endsAt),
+                        () -> deviceTokenRepository.deleteByUserId(user.getUserId()));
 
         // 세션(로그인 시각)을 먼저 시작해야 이어서 발급하는 access token이 이 세션 것으로 인정된다.
         String refreshToken = refreshTokenIssuer.startSession(user.getUserId());

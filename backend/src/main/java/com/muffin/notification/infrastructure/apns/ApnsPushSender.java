@@ -6,20 +6,23 @@ import com.muffin.notification.application.dispatch.PushSender;
 import com.muffin.notification.domain.devicetoken.ApnsEnvironment;
 import com.muffin.notification.domain.devicetoken.DeviceToken;
 import com.muffin.notification.domain.devicetoken.DeviceTokenRepository;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Map;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 /** 사용자의 기기 토큰으로 APNs에 알림을 보낸다. 앱은 알림을 탭하면 페이로드의 deepLink 화면을 연다. */
 @Slf4j
 @RequiredArgsConstructor
 public class ApnsPushSender implements PushSender {
 
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final String PRODUCTION_HOST = "https://api.push.apple.com";
     private static final String SANDBOX_HOST = "https://api.sandbox.push.apple.com";
 
@@ -30,12 +33,22 @@ public class ApnsPushSender implements PushSender {
 
     @Override
     public PushResult send(Long userId, PushMessage message) {
-        Optional<DeviceToken> found = deviceTokenRepository.findByUserId(userId);
-        if (found.isEmpty()) {
-            return PushResult.NO_DEVICE;
+        LocalDateTime now = LocalDateTime.now(KST);
+        PushResult result = PushResult.NO_DEVICE;
+        for (DeviceToken device : deviceTokenRepository.findAllByUserId(userId)) {
+            if (device.isExpired(now)) {
+                deviceTokenRepository.delete(device);
+                continue;
+            }
+            PushResult sent = sendTo(device, userId, message);
+            if (sent == PushResult.SENT || (sent == PushResult.FAILED && result == PushResult.NO_DEVICE)) {
+                result = sent;
+            }
         }
-        DeviceToken device = found.get();
+        return result;
+    }
 
+    private PushResult sendTo(DeviceToken device, Long userId, PushMessage message) {
         try {
             apnsRestClient
                     .post()
@@ -61,6 +74,9 @@ public class ApnsPushSender implements PushSender {
                     userId,
                     e.getStatusCode().value(),
                     e.getResponseBodyAsString());
+            return PushResult.FAILED;
+        } catch (RestClientException e) {
+            log.warn("APNs push failed: userId={}", userId, e);
             return PushResult.FAILED;
         }
     }
