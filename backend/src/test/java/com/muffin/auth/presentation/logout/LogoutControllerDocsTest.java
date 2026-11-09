@@ -50,7 +50,7 @@ class LogoutControllerDocsTest {
     @Test
     @DisplayName("로그아웃 성공 문서화")
     void documentLogoutSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        LogoutCommandService stub = new LogoutCommandService(null) {
+        LogoutCommandService stub = new LogoutCommandService(null, null) {
             @Override
             public void logout(Long userId) {}
         };

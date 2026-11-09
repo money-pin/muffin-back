@@ -6,6 +6,9 @@ import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.application.TokenPair;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.notification.domain.devicetoken.ApnsEnvironment;
+import com.muffin.notification.domain.devicetoken.DeviceToken;
+import com.muffin.notification.domain.devicetoken.DeviceTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import java.util.UUID;
@@ -32,8 +35,12 @@ class RefreshCommandServiceTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private DeviceTokenRepository deviceTokenRepository;
+
     @AfterEach
     void cleanUp() {
+        deviceTokenRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -55,6 +62,18 @@ class RefreshCommandServiceTest {
         assertThat(result.refreshToken()).isNotEqualTo(oldRawToken);
         assertThat(refreshTokenIssuer.findValid(oldRawToken)).isEmpty();
         assertThat(refreshTokenIssuer.findValid(result.refreshToken())).isPresent();
+    }
+
+    @Test
+    @DisplayName("재발급해도 푸시 기기 토큰은 지워지지 않는다(로그인 때만 지운다)")
+    void refresh_keepsDeviceToken() {
+        User user = createUser();
+        String rawToken = refreshTokenIssuer.issue(user.getUserId());
+        deviceTokenRepository.save(DeviceToken.register(user.getUserId(), "device-1", ApnsEnvironment.PRODUCTION));
+
+        refreshCommandService.refresh(rawToken);
+
+        assertThat(deviceTokenRepository.findByToken("device-1")).isPresent();
     }
 
     @Test

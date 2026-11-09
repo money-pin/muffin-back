@@ -37,12 +37,13 @@ class KakaoAuthControllerDocsTest {
     @Test
     @DisplayName("카카오 로그인/가입 성공 문서화")
     void documentKakaoAuthSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SocialAuthCommandService stub = new SocialAuthCommandService(null, null, null, null, null, null, null, null) {
-            @Override
-            public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
-                return new TokenPair("access-token-example", "refresh-token-example");
-            }
-        };
+        SocialAuthCommandService stub =
+                new SocialAuthCommandService(null, null, null, null, null, null, null, null, null) {
+                    @Override
+                    public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
+                        return new TokenPair("access-token-example", "refresh-token-example");
+                    }
+                };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
         mockMvc.perform(post("/auth/kakao")
@@ -62,12 +63,13 @@ class KakaoAuthControllerDocsTest {
     @Test
     @DisplayName("카카오 인증 실패(유효하지 않은 ID Token) 문서화")
     void documentKakaoAuthInvalidToken(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SocialAuthCommandService stub = new SocialAuthCommandService(null, null, null, null, null, null, null, null) {
-            @Override
-            public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
-                throw new AuthException(AuthErrorCode.INVALID_SOCIAL_TOKEN);
-            }
-        };
+        SocialAuthCommandService stub =
+                new SocialAuthCommandService(null, null, null, null, null, null, null, null, null) {
+                    @Override
+                    public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
+                        throw new AuthException(AuthErrorCode.INVALID_SOCIAL_TOKEN);
+                    }
+                };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
         mockMvc.perform(post("/auth/kakao")

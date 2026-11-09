@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
+import com.muffin.notification.domain.devicetoken.ApnsEnvironment;
+import com.muffin.notification.domain.devicetoken.DeviceToken;
+import com.muffin.notification.domain.devicetoken.DeviceTokenRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,9 +29,23 @@ class LogoutCommandServiceTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private DeviceTokenRepository deviceTokenRepository;
+
     @AfterEach
     void cleanUp() {
         refreshTokenRepository.deleteAll();
+        deviceTokenRepository.deleteAll();
+    }
+
+    @Test
+    @DisplayName("로그아웃하면 푸시 기기 토큰도 삭제된다")
+    void logout_deletesDeviceToken() {
+        deviceTokenRepository.save(DeviceToken.register(USER_ID, "device-1", ApnsEnvironment.PRODUCTION));
+
+        logoutCommandService.logout(USER_ID);
+
+        assertThat(deviceTokenRepository.findByToken("device-1")).isEmpty();
     }
 
     @Test

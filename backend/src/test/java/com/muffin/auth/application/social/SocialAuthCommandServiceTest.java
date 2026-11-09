@@ -15,6 +15,9 @@ import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.auth.infrastructure.google.GoogleIdTokenVerifierAdapter;
 import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.notification.domain.devicetoken.ApnsEnvironment;
+import com.muffin.notification.domain.devicetoken.DeviceToken;
+import com.muffin.notification.domain.devicetoken.DeviceTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import java.time.LocalDateTime;
@@ -56,6 +59,9 @@ class SocialAuthCommandServiceTest {
     @Autowired
     private WithdrawCommandService withdrawCommandService;
 
+    @Autowired
+    private DeviceTokenRepository deviceTokenRepository;
+
     @MockitoBean
     private GoogleIdTokenVerifierAdapter googleIdTokenVerifier;
 
@@ -66,6 +72,7 @@ class SocialAuthCommandServiceTest {
 
     @AfterEach
     void cleanUp() {
+        deviceTokenRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         authRepository.deleteAll();
         userRepository.deleteAll();
@@ -107,6 +114,22 @@ class SocialAuthCommandServiceTest {
 
         assertThat(result.accessToken()).isNotBlank();
         assertThat(authRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("로그인하면 이전 기기의 푸시 토큰이 지워진다")
+    void authenticate_login_deletesPreviousDeviceToken() {
+        stubPayload("google-sub-device", "device@example.com", "홍길동");
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
+        Long userId = authRepository
+                .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-device")
+                .orElseThrow()
+                .getUserId();
+        deviceTokenRepository.save(DeviceToken.register(userId, "old-device", ApnsEnvironment.PRODUCTION));
+
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
+
+        assertThat(deviceTokenRepository.findByToken("old-device")).isEmpty();
     }
 
     @Test

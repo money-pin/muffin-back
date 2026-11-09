@@ -21,6 +21,9 @@ import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.auth.infrastructure.apple.AppleIdTokenVerifierAdapter;
 import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.notification.domain.devicetoken.ApnsEnvironment;
+import com.muffin.notification.domain.devicetoken.DeviceToken;
+import com.muffin.notification.domain.devicetoken.DeviceTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import com.muffin.user.domain.enums.UserStatus;
@@ -63,6 +66,9 @@ class WithdrawCommandServiceTest {
     @Autowired
     private IdentityHasher identityHasher;
 
+    @Autowired
+    private DeviceTokenRepository deviceTokenRepository;
+
     @MockitoBean
     private KakaoAccountUnlinker kakaoAccountUnlinker;
 
@@ -79,6 +85,7 @@ class WithdrawCommandServiceTest {
 
     @AfterEach
     void cleanUp() {
+        deviceTokenRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         deletedAccountRepository.deleteAll();
         authRepository.deleteAll();
@@ -116,6 +123,18 @@ class WithdrawCommandServiceTest {
                 .isTrue();
 
         assertThat(refreshTokenRepository.findByUserId(user.getUserId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("탈퇴하면 푸시 기기 토큰도 삭제된다")
+    void withdraw_deletesDeviceToken() {
+        User user = createUser();
+        createAuth(user.getUserId());
+        deviceTokenRepository.save(DeviceToken.register(user.getUserId(), "device-1", ApnsEnvironment.PRODUCTION));
+
+        withdrawCommandService.withdraw(user.getUserId(), null);
+
+        assertThat(deviceTokenRepository.findByToken("device-1")).isEmpty();
     }
 
     @Test

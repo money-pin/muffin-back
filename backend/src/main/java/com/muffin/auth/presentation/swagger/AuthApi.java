@@ -37,7 +37,7 @@ public interface AuthApi {
 
     @Operation(
             summary = "로그아웃 (AUTH-09-1)",
-            description = "Authorization 헤더의 access token으로 식별된 계정의 refresh token을 무효화하고, "
+            description = "Authorization 헤더의 access token으로 식별된 계정의 refresh token을 무효화하고 푸시 기기 토큰을 삭제하며, "
                     + "refresh token Cookie를 만료시킨다(Max-Age=0). 이미 로그아웃된 상태에서 다시 호출해도 200을 반환한다(멱등).")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그아웃 성공"),
@@ -50,7 +50,7 @@ public interface AuthApi {
     @Operation(
             summary = "회원 탈퇴 (AUTH-09-2)",
             description = "Authorization 헤더의 access token으로 식별된 계정을 탈퇴 처리한다. 이름과 이메일은 즉시 삭제되고 소셜 계정 연결(sub)도 끊기며, "
-                    + "refresh token이 무효화되고 refresh token Cookie가 만료(Max-Age=0)된다. 투자/퀴즈 기록은 탈퇴 6개월 후 별도 배치가 삭제한다. "
+                    + "refresh token이 무효화되고 푸시 기기 토큰이 삭제되며 refresh token Cookie가 만료(Max-Age=0)된다. 투자/퀴즈 기록은 탈퇴 6개월 후 별도 배치가 삭제한다. "
                     + "애플 계정은 탈퇴 직전 애플 로그인을 다시 띄워 받은 authorizationCode를 body로 보내야 하며(애플 토큰 철회용), "
                     + "구글·카카오 계정은 body 없이 호출한다.")
     @ApiResponses({

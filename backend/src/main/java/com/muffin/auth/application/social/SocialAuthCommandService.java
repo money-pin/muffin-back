@@ -14,6 +14,7 @@ import com.muffin.auth.domain.exception.AuthException;
 import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.notification.domain.devicetoken.DeviceTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import com.muffin.user.domain.enums.UserStatus;
@@ -46,6 +47,7 @@ public class SocialAuthCommandService {
     private final RefreshTokenIssuer refreshTokenIssuer;
     private final EntityManager entityManager;
     private final IdentityHasher identityHasher;
+    private final DeviceTokenRepository deviceTokenRepository;
 
     /** nameHint는 토큰에 이름이 없을 때(애플) 가입 시에만 쓴다. 이미 가입된 계정이면 무시한다. */
     @Transactional
@@ -66,6 +68,9 @@ public class SocialAuthCommandService {
         if (user.getStatus() == UserStatus.SUSPENDED) {
             throw new AuthException(AuthErrorCode.SUSPENDED_ACCOUNT);
         }
+
+        // 새 로그인이 이전 기기의 세션을 끊으므로 그 기기의 푸시도 끊는다. 새 기기는 로그인 직후 토큰을 다시 등록한다.
+        deviceTokenRepository.deleteByUserId(user.getUserId());
 
         String accessToken =
                 accessTokenProvider.issue(user.getUserId(), user.getRole().name());

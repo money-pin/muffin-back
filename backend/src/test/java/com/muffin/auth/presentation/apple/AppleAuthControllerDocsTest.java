@@ -37,12 +37,13 @@ class AppleAuthControllerDocsTest {
     @Test
     @DisplayName("애플 로그인/가입 성공 문서화")
     void documentAppleAuthSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SocialAuthCommandService stub = new SocialAuthCommandService(null, null, null, null, null, null, null, null) {
-            @Override
-            public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
-                return new TokenPair("access-token-example", "refresh-token-example");
-            }
-        };
+        SocialAuthCommandService stub =
+                new SocialAuthCommandService(null, null, null, null, null, null, null, null, null) {
+                    @Override
+                    public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
+                        return new TokenPair("access-token-example", "refresh-token-example");
+                    }
+                };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
         mockMvc.perform(
@@ -67,12 +68,13 @@ class AppleAuthControllerDocsTest {
     @Test
     @DisplayName("애플 인증 실패(유효하지 않은 ID Token) 문서화")
     void documentAppleAuthInvalidToken(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SocialAuthCommandService stub = new SocialAuthCommandService(null, null, null, null, null, null, null, null) {
-            @Override
-            public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
-                throw new AuthException(AuthErrorCode.INVALID_SOCIAL_TOKEN);
-            }
-        };
+        SocialAuthCommandService stub =
+                new SocialAuthCommandService(null, null, null, null, null, null, null, null, null) {
+                    @Override
+                    public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
+                        throw new AuthException(AuthErrorCode.INVALID_SOCIAL_TOKEN);
+                    }
+                };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
         mockMvc.perform(post("/auth/apple")

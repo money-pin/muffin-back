@@ -80,10 +80,11 @@ class WithdrawControllerDocsTest {
     }
 
     private MockMvc mockMvcOf(RestDocumentationContextProvider restDocumentation) {
-        WithdrawCommandService stub = new WithdrawCommandService(null, null, null, null, null, null, null, null, null) {
-            @Override
-            public void withdraw(Long userId, String appleAuthorizationCode) {}
-        };
+        WithdrawCommandService stub =
+                new WithdrawCommandService(null, null, null, null, null, null, null, null, null, null) {
+                    @Override
+                    public void withdraw(Long userId, String appleAuthorizationCode) {}
+                };
         return MockMvcBuilders.standaloneSetup(new AuthController(null, null, null, stub, refreshTokenCookieHelper))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
