@@ -12,13 +12,18 @@ import com.muffin.briefing.domain.Briefing;
 import com.muffin.briefing.domain.BriefingRepository;
 import com.muffin.briefing.domain.BriefingView;
 import com.muffin.briefing.domain.BriefingViewRepository;
+import com.muffin.briefing.domain.MarketIndicatorPrice;
+import com.muffin.briefing.domain.MarketIndicatorPriceRepository;
 import com.muffin.briefing.domain.enums.BriefingStatus;
+import com.muffin.briefing.domain.enums.MarketIndicator;
+import com.muffin.briefing.domain.enums.MarketIndicatorUnit;
 import com.muffin.briefing.presentation.dto.BriefingResponse;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.sectorimpact.NewsSectorImpactRepository;
 import com.muffin.news.domain.term.TermDictionaryRepository;
 import com.muffin.sector.domain.sector.SectorRepository;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -43,6 +48,7 @@ class BriefingQueryServiceTest {
     private NewsSectorImpactRepository newsSectorImpactRepository;
     private TermDictionaryRepository termDictionaryRepository;
     private SectorRepository sectorRepository;
+    private MarketIndicatorPriceRepository marketIndicatorPriceRepository;
     private BriefingQueryService queryService;
 
     @BeforeEach
@@ -57,6 +63,9 @@ class BriefingQueryServiceTest {
         when(sectorRepository.findAll()).thenReturn(List.of());
         when(newsSectorImpactRepository.findByNewsIdIn(any())).thenReturn(List.of());
 
+        marketIndicatorPriceRepository = mock(MarketIndicatorPriceRepository.class);
+        when(marketIndicatorPriceRepository.findLatestUsableOn(any())).thenReturn(List.of());
+
         queryService = new BriefingQueryService(
                 briefingRepository,
                 briefingViewRepository,
@@ -64,6 +73,7 @@ class BriefingQueryServiceTest {
                 newsSectorImpactRepository,
                 termDictionaryRepository,
                 sectorRepository,
+                marketIndicatorPriceRepository,
                 new BriefingProperties(8, 7, new BriefingProperties.Buzz(false, List.of(), 10)),
                 CLOCK);
     }
@@ -144,12 +154,67 @@ class BriefingQueryServiceTest {
     }
 
     @Test
-    @DisplayName("시장 지표는 아직 수집하지 않으므로 항상 빈 배열이다")
-    void getTodayBriefing_returnsEmptyMarketIndices() {
+    @DisplayName("수집된 지표가 없으면 시장 블록은 빈 배열이다")
+    void getTodayBriefing_returnsEmptyMarketIndicesWhenNotCollected() {
         givenPublishedToday();
         givenNews(publishedNews(101L), publishedNews(102L), publishedNews(103L));
 
         assertThat(queryService.getTodayBriefing().marketIndices()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("지표 카드는 기획서 순서(코스피·코스닥·S&P 500·나스닥·원/달러)로 내려간다")
+    void getTodayBriefing_returnsMarketIndicesInPlannedOrder() {
+        givenPublishedToday();
+        givenNews(publishedNews(101L), publishedNews(102L), publishedNews(103L));
+        when(marketIndicatorPriceRepository.findLatestUsableOn(any()))
+                .thenReturn(List.of(
+                        indicatorPrice(MarketIndicator.USD_KRW, "1380.5000", "1375.0000"),
+                        indicatorPrice(MarketIndicator.KOSPI, "2812.4500", "2798.1000"),
+                        indicatorPrice(MarketIndicator.NASDAQ100, "512.3000", "518.0000")));
+
+        assertThat(queryService.getTodayBriefing().marketIndices())
+                .extracting(BriefingResponse.MarketIndex::name)
+                .containsExactly("코스피", "나스닥 100", "원/달러");
+    }
+
+    /** 해외 지수는 추종 ETF 가격이라 지수 레벨과 다르다. 화면이 근거를 밝힐 수 있도록 기준 종목을 함께 내린다. */
+    @Test
+    @DisplayName("ETF로 대신한 지표는 기준 종목을 함께 내려보낸다")
+    void getTodayBriefing_exposesReferenceSymbolForEtfBackedIndicator() {
+        givenPublishedToday();
+        givenNews(publishedNews(101L), publishedNews(102L), publishedNews(103L));
+        when(marketIndicatorPriceRepository.findLatestUsableOn(any()))
+                .thenReturn(List.of(
+                        indicatorPrice(MarketIndicator.KOSPI, "2812.4500", "2798.1000"),
+                        indicatorPrice(MarketIndicator.NASDAQ100, "512.3000", "518.0000")));
+
+        assertThat(queryService.getTodayBriefing().marketIndices())
+                .extracting(
+                        BriefingResponse.MarketIndex::name,
+                        BriefingResponse.MarketIndex::referenceSymbol,
+                        BriefingResponse.MarketIndex::unit)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("코스피", null, MarketIndicatorUnit.POINT),
+                        org.assertj.core.groups.Tuple.tuple("나스닥 100", "QQQ", MarketIndicatorUnit.USD));
+    }
+
+    /** 한 지표의 수집 실패가 블록 전체를 비우면 안 된다. */
+    @Test
+    @DisplayName("받아오지 못한 지표는 카드에서만 빠진다")
+    void getTodayBriefing_omitsOnlyMissingIndicators() {
+        givenPublishedToday();
+        givenNews(publishedNews(101L), publishedNews(102L), publishedNews(103L));
+        when(marketIndicatorPriceRepository.findLatestUsableOn(any()))
+                .thenReturn(List.of(indicatorPrice(MarketIndicator.KOSPI, "2812.4500", "2798.1000")));
+
+        assertThat(queryService.getTodayBriefing().marketIndices()).hasSize(1);
+    }
+
+    private static MarketIndicatorPrice indicatorPrice(
+            MarketIndicator indicator, String closePrice, String previousClose) {
+        return MarketIndicatorPrice.success(
+                indicator, TODAY, new BigDecimal(closePrice), new BigDecimal(previousClose));
     }
 
     @Test

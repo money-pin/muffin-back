@@ -1,6 +1,7 @@
 package com.muffin.briefing.presentation.dto;
 
 import com.muffin.briefing.domain.enums.BriefingStatus;
+import com.muffin.briefing.domain.enums.MarketIndicatorUnit;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -9,8 +10,8 @@ import java.util.List;
 /**
  * 모닝 머핀 브리핑 응답.
  *
- * <p>{@code marketIndices}는 자리만 잡아 둔 것으로 지금은 항상 빈 배열이다. 시장 지표 수집이 별도 스펙이라, 그 파이프라인이
- * 붙으면 이 배열만 채워진다. 프론트는 비어 있을 때 "데이터 준비 중"으로 렌더링한다.
+ * <p>{@code marketIndices}는 지표별로 기준일 이하의 가장 최근 정상 수신 건을 담는다. 받아오지 못한 지표는 배열에서 빠지므로
+ * 카드 수가 5장보다 적을 수 있고, 프론트는 없는 카드를 "데이터 준비 중"으로 렌더링한다.
  *
  * @param isToday 요청한 날짜의 브리핑인지 여부. 주말에 금요일 브리핑으로 대체된 경우 false다
  */
@@ -39,8 +40,21 @@ public record BriefingResponse(
                 notice);
     }
 
-    /** 간밤의 시장 지표. 별도 스펙이 붙기 전까지 사용되지 않는다. */
-    public record MarketIndex(String name, BigDecimal closePrice, BigDecimal changeRate, LocalDate baseDate) {}
+    /**
+     * 간밤의 시장 지표 카드.
+     *
+     * @param unit 값의 단위. POINT(지수 포인트), KRW(원), USD(달러)
+     * @param referenceSymbol 지수를 대신해 쓴 ETF 종목코드. 지수·환율을 직접 받은 지표는 null이다. 값이 있으면
+     *     {@code closePrice}가 지수 레벨이 아니라 ETF 가격이므로, 화면은 "나스닥 100 (QQQ 기준)"처럼 근거를 함께 보여준다
+     * @param changeRate 직전 종가 대비 등락률(%). 비교할 직전 종가가 없으면 null
+     */
+    public record MarketIndex(
+            String name,
+            BigDecimal closePrice,
+            BigDecimal changeRate,
+            LocalDate baseDate,
+            MarketIndicatorUnit unit,
+            String referenceSymbol) {}
 
     /**
      * @param sectors 관련 섹터 칩. NEUTRAL을 제외한 상위 2개까지만 담는다

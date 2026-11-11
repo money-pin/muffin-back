@@ -2,6 +2,7 @@ package com.muffin.sector.infrastructure.toss;
 
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse;
 import com.muffin.sector.infrastructure.toss.dto.TossCandleResponse.Candle;
+import com.muffin.sector.infrastructure.toss.dto.TossExchangeRateResponse;
 import com.muffin.sector.infrastructure.toss.dto.TossMarketCalendarResponse;
 import com.muffin.sector.infrastructure.toss.exception.TossApiException;
 import java.time.LocalDate;
@@ -23,6 +24,8 @@ import org.springframework.web.client.RestClient;
 public class TossMarketDataClient {
 
     private static final String CANDLES_PATH = "/api/v1/candles";
+    private static final String MARKET_INDICATOR_CANDLES_PATH = "/api/v1/market-indicators/{symbol}/candles";
+    private static final String EXCHANGE_RATE_PATH = "/api/v1/exchange-rate";
     private static final String MARKET_CALENDAR_PATH = "/api/v1/market-calendar/KR";
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final String DAILY_INTERVAL = "1d";
@@ -60,6 +63,82 @@ public class TossMarketDataClient {
                 .body(TossCandleResponse.class));
 
         return candleOn(response, date);
+    }
+
+    /**
+     * 시장 지표(국내 지수·국채)의 최근 일봉을 최신순으로 조회한다.
+     *
+     * <p>지표 카탈로그에 없는 심볼은 토스가 400 {@code unsupported-symbol}로 응답한다. 해외 지수는 카탈로그에 없으므로
+     * {@link #getDailyCandles(String, int)}로 추종 ETF를 조회해야 한다.
+     *
+     * @param count 가져올 봉 수. 등락률 계산에는 2개가 필요하다
+     */
+    public List<Candle> getIndicatorDailyCandles(String indicatorSymbol, int count) {
+        TossCandleResponse response = tossApiClient.execute(() -> tossRestClient
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                        .path(MARKET_INDICATOR_CANDLES_PATH)
+                        .queryParam("interval", DAILY_INTERVAL)
+                        .queryParam("count", count)
+                        .build(indicatorSymbol))
+                .header(HttpHeaders.AUTHORIZATION, bearerToken())
+                .retrieve()
+                .body(TossCandleResponse.class));
+
+        return candles(response);
+    }
+
+    /** 개별 종목의 최근 일봉을 최신순으로 조회한다. 국내 종목코드와 미국 티커를 모두 받는다. */
+    public List<Candle> getDailyCandles(String symbol, int count) {
+        TossCandleResponse response = tossApiClient.execute(() -> tossRestClient
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                        .path(CANDLES_PATH)
+                        .queryParam("symbol", symbol)
+                        .queryParam("interval", DAILY_INTERVAL)
+                        .queryParam("count", count)
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, bearerToken())
+                .retrieve()
+                .body(TossCandleResponse.class));
+
+        return candles(response);
+    }
+
+    /**
+     * 환율을 조회한다. 1분 주기로 갱신되는 참고용 표시 환율이다.
+     *
+     * @param dateTime 조회 시각. null이면 현재 시점의 유효 환율
+     */
+    public TossExchangeRateResponse.Result getExchangeRate(
+            String baseCurrency, String quoteCurrency, OffsetDateTime dateTime) {
+        TossExchangeRateResponse response = tossApiClient.execute(() -> tossRestClient
+                .get()
+                .uri(uriBuilder -> {
+                    uriBuilder
+                            .path(EXCHANGE_RATE_PATH)
+                            .queryParam("baseCurrency", baseCurrency)
+                            .queryParam("quoteCurrency", quoteCurrency);
+                    if (dateTime != null) {
+                        uriBuilder.queryParam("dateTime", dateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+                    }
+                    return uriBuilder.build();
+                })
+                .header(HttpHeaders.AUTHORIZATION, bearerToken())
+                .retrieve()
+                .body(TossExchangeRateResponse.class));
+
+        if (response == null || response.result() == null) {
+            throw invalidResponse("환율");
+        }
+        return response.result();
+    }
+
+    private List<Candle> candles(TossCandleResponse response) {
+        if (response == null || response.result() == null || response.result().candles() == null) {
+            throw invalidResponse("일봉");
+        }
+        return response.result().candles();
     }
 
     /** 특정 일자가 국내 거래일인지 여부를 조회한다. */
