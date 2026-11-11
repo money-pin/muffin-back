@@ -12,6 +12,15 @@ spring:
     enabled: true
     locations: classpath:db
     baseline-on-migrate: false
+  task:
+    scheduling:
+      pool:
+        # 지정하지 않으면 기본값 1이라 모든 @Scheduled 배치가 스레드 하나를 공유한다.
+        # 그러면 한 배치가 오래 붙잡힐 때 그날 남은 배치가 전부 밀리고, 10분 간격 재시도 배치는
+        # 앞 배치 뒤에서 대기만 하다 시도를 소모한다.
+        # 06:00(RSS 수집·브리핑 생성·퀴즈 생성 재시도·투자 정산)과 07:30에 각각 4개가 동시에 뜨므로
+        # 그 두 배로 두어 긴 배치 하나가 나머지를 굶기지 않게 한다.
+        size: ${SCHEDULING_POOL_SIZE:8}
 
 springdoc:
   swagger-ui:
@@ -170,7 +179,7 @@ muffin:
       endpoint: ${OPENAI_RESPONSES_URL:https://api.openai.com/v1/responses}
 
       ai-selection:
-        model: ${NEWS_AI_SELECTION_MODEL:gpt-5-mini}
+        model: ${NEWS_AI_SELECTION_MODEL:gpt-6-luna}
         # PER_CATEGORY 모드에서 카테고리당 상한
         max-per-category: ${NEWS_AI_SELECTION_MAX_PER_CATEGORY:5}
         # UNIFIED 모드에서 하루 전체 상한. 재구성·해설카드 비용을 이 값이 결정한다
