@@ -41,7 +41,7 @@ public class BriefingPublicationScheduler {
      * 공개했으면 할 일이 없으므로 건너뛴다. 09:00 이후 공개분은 알림을 보내지 않는다(NOTI-01).
      */
     @Scheduled(
-            cron = "${muffin.batch.briefing-publication.catch-up-cron:0 */10 8-9 * * MON-FRI}",
+            cron = "${muffin.batch.briefing-publication.catch-up-cron:0 */10 8-23 * * MON-FRI}",
             zone = "${muffin.batch.briefing-publication.zone:Asia/Seoul}")
     public void publishLateBriefing() {
         publish();

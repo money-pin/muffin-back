@@ -31,11 +31,17 @@ public class JwtAccessTokenProvider implements AccessTokenProvider {
 
     @Override
     public String issue(Long userId, String role) {
+        return issue(userId, role, null);
+    }
+
+    @Override
+    public String issue(Long userId, String role, String sessionId) {
         Instant now = Instant.now();
         Instant expiry = now.plus(properties.accessTokenExpireMinutes(), ChronoUnit.MINUTES);
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim(ROLE_CLAIM, role)
+                .claim("sessionId", sessionId)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
                 .signWith(key)
@@ -45,12 +51,33 @@ public class JwtAccessTokenProvider implements AccessTokenProvider {
     @Override
     public Long parseUserId(String accessToken) {
         try {
-            Claims claims = Jwts.parser()
+            return Long.valueOf(parseClaims(accessToken).getSubject());
+        } catch (IllegalArgumentException e) {
+            throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+        }
+    }
+
+    @Override
+    public String parseSessionId(String accessToken) {
+        return parseClaims(accessToken).get("sessionId", String.class);
+    }
+
+    @Override
+    public Instant parseIssuedAt(String accessToken) {
+        Date issuedAt = parseClaims(accessToken).getIssuedAt();
+        if (issuedAt == null) {
+            throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+        }
+        return issuedAt.toInstant();
+    }
+
+    private Claims parseClaims(String accessToken) {
+        try {
+            return Jwts.parser()
                     .verifyWith(key)
                     .build()
                     .parseSignedClaims(accessToken)
                     .getPayload();
-            return Long.valueOf(claims.getSubject());
         } catch (JwtException | IllegalArgumentException e) {
             throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
         }

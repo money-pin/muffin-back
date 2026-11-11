@@ -28,6 +28,27 @@ class NotificationDispatchSummaryTest {
     }
 
     @Test
+    @DisplayName("기기가 없는 사용자만 있으면 발송 경로 실패가 아니므로 성공이고 no_device 수를 남긴다")
+    void allNoDeviceIsSuccess() {
+        NotificationDispatchSummary summary = NotificationDispatchSummary.empty()
+                .add(DispatchOutcome.NO_DEVICE)
+                .add(DispatchOutcome.NO_DEVICE);
+
+        assertThat(summary.toReport().outcome()).isEqualTo(BatchOutcome.SUCCESS);
+        assertThat(summary.toReport().details()).containsEntry("no_device", 2).containsEntry("failed", 0);
+    }
+
+    @Test
+    @DisplayName("기기 없음이 섞여 있어도 실제 발송이 모두 실패했으면 실패로 보고한다")
+    void noDeviceDoesNotHideAllFailed() {
+        NotificationDispatchSummary summary = NotificationDispatchSummary.empty()
+                .add(DispatchOutcome.NO_DEVICE)
+                .add(DispatchOutcome.FAILED);
+
+        assertThat(summary.toReport().outcome()).isEqualTo(BatchOutcome.FAILURE);
+    }
+
+    @Test
     @DisplayName("모두 이미 보낸 재실행은 성공이다")
     void allDuplicateIsSuccess() {
         NotificationDispatchSummary summary =

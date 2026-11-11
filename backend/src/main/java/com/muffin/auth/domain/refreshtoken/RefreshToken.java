@@ -10,6 +10,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -42,10 +43,19 @@ public class RefreshToken extends BaseEntity {
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
+    /** 로그인 시각. 재발급(rotate)으로는 바뀌지 않는다. */
+    @Column(name = "session_started_at", nullable = false)
+    private LocalDateTime sessionStartedAt;
+
+    @Column(name = "session_id", nullable = false, length = 36)
+    private String sessionId;
+
     private RefreshToken(Long userId, String tokenHash, LocalDateTime expiresAt) {
         this.userId = userId;
         this.tokenHash = tokenHash;
         this.expiresAt = expiresAt;
+        this.sessionStartedAt = LocalDateTime.now(KST);
+        this.sessionId = UUID.randomUUID().toString();
     }
 
     public static RefreshToken issue(Long userId, String tokenHash, LocalDateTime expiresAt) {
@@ -60,9 +70,20 @@ public class RefreshToken extends BaseEntity {
         return !expiresAt.isAfter(now);
     }
 
-    /** 재발급(refresh) 시 또는 같은 유저가 새로 로그인해 기존 세션을 대체할 때 호출한다. */
+    /** 재발급(refresh) 시 호출한다. 같은 세션이 이어지므로 로그인 시각은 그대로 둔다. */
     public void rotate(String newTokenHash, LocalDateTime newExpiresAt) {
         this.tokenHash = newTokenHash;
         this.expiresAt = newExpiresAt;
+    }
+
+    /** 같은 유저가 새로 로그인해 기존 세션을 대체할 때 호출한다. */
+    public void startNewSession(String newTokenHash, LocalDateTime newExpiresAt) {
+        rotate(newTokenHash, newExpiresAt);
+        this.sessionStartedAt = LocalDateTime.now(KST);
+        this.sessionId = UUID.randomUUID().toString();
+    }
+
+    public boolean isCurrentSession(String accessSessionId) {
+        return sessionId.equals(accessSessionId);
     }
 }

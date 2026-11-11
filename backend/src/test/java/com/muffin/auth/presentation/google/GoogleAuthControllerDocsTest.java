@@ -37,12 +37,13 @@ class GoogleAuthControllerDocsTest {
     @Test
     @DisplayName("구글 로그인/가입 성공 문서화")
     void documentGoogleAuthSuccess(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SocialAuthCommandService stub = new SocialAuthCommandService(null, null, null, null, null, null, null, null) {
-            @Override
-            public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
-                return new TokenPair("access-token-example", "refresh-token-example");
-            }
-        };
+        SocialAuthCommandService stub =
+                new SocialAuthCommandService(null, null, null, null, null, null, null, null, null) {
+                    @Override
+                    public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
+                        return new TokenPair("access-token-example", "refresh-token-example");
+                    }
+                };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
         mockMvc.perform(post("/auth/google")
@@ -62,12 +63,13 @@ class GoogleAuthControllerDocsTest {
     @Test
     @DisplayName("구글 인증 실패(유효하지 않은 ID Token) 문서화")
     void documentGoogleAuthInvalidToken(RestDocumentationContextProvider restDocumentation) throws Exception {
-        SocialAuthCommandService stub = new SocialAuthCommandService(null, null, null, null, null, null, null, null) {
-            @Override
-            public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
-                throw new AuthException(AuthErrorCode.INVALID_SOCIAL_TOKEN);
-            }
-        };
+        SocialAuthCommandService stub =
+                new SocialAuthCommandService(null, null, null, null, null, null, null, null, null) {
+                    @Override
+                    public TokenPair authenticate(AuthProvider provider, String idToken, String nameHint) {
+                        throw new AuthException(AuthErrorCode.INVALID_SOCIAL_TOKEN);
+                    }
+                };
         MockMvc mockMvc = mockMvcOf(stub, restDocumentation);
 
         mockMvc.perform(post("/auth/google")

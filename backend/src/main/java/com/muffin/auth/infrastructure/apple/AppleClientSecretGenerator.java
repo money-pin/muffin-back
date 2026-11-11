@@ -1,21 +1,17 @@
 package com.muffin.auth.infrastructure.apple;
 
 import com.muffin.auth.application.AppleProperties;
+import com.muffin.global.crypto.EcPrivateKeys;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
-import java.security.KeyFactory;
 import java.security.interfaces.ECPrivateKey;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Date;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -70,19 +66,14 @@ public class AppleClientSecretGenerator {
         return jwt.serialize();
     }
 
-    /** base64로 감싼 .p8(PKCS#8 PEM)을 EC 개인키로 읽는다. 키가 비어 있으면(로컬) null로 두고 실제 호출 시점에 실패시킨다. */
+    /** 키가 비어 있으면(로컬) null로 두고 실제 호출 시점에 실패시킨다. */
     private static ECPrivateKey parsePrivateKey(String base64Pem) {
         if (base64Pem == null || base64Pem.isBlank()) {
             return null;
         }
         try {
-            String pem = new String(Base64.getMimeDecoder().decode(base64Pem), StandardCharsets.UTF_8);
-            String body = pem.replace("-----BEGIN PRIVATE KEY-----", "")
-                    .replace("-----END PRIVATE KEY-----", "")
-                    .replaceAll("\\s", "");
-            return (ECPrivateKey) KeyFactory.getInstance("EC")
-                    .generatePrivate(new PKCS8EncodedKeySpec(Base64.getDecoder().decode(body)));
-        } catch (GeneralSecurityException | IllegalArgumentException e) {
+            return EcPrivateKeys.fromBase64Pem(base64Pem);
+        } catch (IllegalArgumentException e) {
             throw new AppleClientSecretException("APPLE_PRIVATE_KEY를 EC 개인키로 읽을 수 없습니다.", e);
         }
     }

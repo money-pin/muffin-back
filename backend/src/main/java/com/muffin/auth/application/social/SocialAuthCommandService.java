@@ -14,6 +14,7 @@ import com.muffin.auth.domain.exception.AuthException;
 import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.notification.domain.devicetoken.DeviceTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import com.muffin.user.domain.enums.UserStatus;
@@ -46,6 +47,7 @@ public class SocialAuthCommandService {
     private final RefreshTokenIssuer refreshTokenIssuer;
     private final EntityManager entityManager;
     private final IdentityHasher identityHasher;
+    private final DeviceTokenRepository deviceTokenRepository;
 
     /** nameHint는 토큰에 이름이 없을 때(애플) 가입 시에만 쓴다. 이미 가입된 계정이면 무시한다. */
     @Transactional
@@ -67,9 +69,18 @@ public class SocialAuthCommandService {
             throw new AuthException(AuthErrorCode.SUSPENDED_ACCOUNT);
         }
 
-        String accessToken =
-                accessTokenProvider.issue(user.getUserId(), user.getRole().name());
-        String refreshToken = refreshTokenIssuer.issue(user.getUserId());
+        // 지금까지 쓰던 기기는 마지막 access token이 만료되어 로그아웃될 때까지만 알림을 받는다. 그 시각은 세션을 새로 시작하기
+        // 전에만 구할 수 있다. 로그인 요청만으로는 같은 기기의 재로그인인지 알 수 없어, 같은 기기라면 직후의 토큰 재등록으로 되살린다.
+        refreshTokenIssuer
+                .lastAccessTokenExpiry(user.getUserId())
+                .ifPresentOrElse(
+                        endsAt -> deviceTokenRepository.endCurrentTokensAt(user.getUserId(), endsAt),
+                        () -> deviceTokenRepository.deleteByUserId(user.getUserId()));
+
+        // 세션을 먼저 시작해 access token에 같은 세션 식별자를 넣는다.
+        String refreshToken = refreshTokenIssuer.startSession(user.getUserId());
+        String accessToken = accessTokenProvider.issue(
+                user.getUserId(), user.getRole().name(), refreshTokenIssuer.sessionId(user.getUserId()));
         return new TokenPair(accessToken, refreshToken);
     }
 

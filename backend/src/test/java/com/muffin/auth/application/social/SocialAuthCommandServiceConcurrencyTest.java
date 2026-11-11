@@ -14,6 +14,7 @@ import com.muffin.auth.domain.auth.AuthRepository;
 import com.muffin.auth.domain.deletedaccount.DeletedAccountRepository;
 import com.muffin.auth.domain.deletedaccount.IdentityHasher;
 import com.muffin.auth.domain.enums.AuthProvider;
+import com.muffin.notification.domain.devicetoken.DeviceTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -64,6 +65,9 @@ class SocialAuthCommandServiceConcurrencyTest {
     @Mock
     private IdentityHasher identityHasher;
 
+    @Mock
+    private DeviceTokenRepository deviceTokenRepository;
+
     private SocialAuthCommandService socialAuthCommandService;
 
     @BeforeEach
@@ -77,7 +81,8 @@ class SocialAuthCommandServiceConcurrencyTest {
                 accessTokenProvider,
                 refreshTokenIssuer,
                 entityManager,
-                identityHasher);
+                identityHasher,
+                deviceTokenRepository);
     }
 
     @Test
@@ -102,8 +107,9 @@ class SocialAuthCommandServiceConcurrencyTest {
                 .thenReturn(Optional.of(winnerAuth));
         when(userRepository.findById(1L)).thenReturn(Optional.of(winnerUser));
 
-        when(accessTokenProvider.issue(1L, "USER")).thenReturn("access-token");
-        when(refreshTokenIssuer.issue(1L)).thenReturn("refresh-token");
+        when(refreshTokenIssuer.sessionId(1L)).thenReturn("session-id");
+        when(accessTokenProvider.issue(1L, "USER", "session-id")).thenReturn("access-token");
+        when(refreshTokenIssuer.startSession(1L)).thenReturn("refresh-token");
 
         TokenPair result = socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
 

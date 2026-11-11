@@ -15,6 +15,9 @@ import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.auth.infrastructure.google.GoogleIdTokenVerifierAdapter;
 import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.notification.domain.devicetoken.ApnsEnvironment;
+import com.muffin.notification.domain.devicetoken.DeviceToken;
+import com.muffin.notification.domain.devicetoken.DeviceTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import java.time.LocalDateTime;
@@ -56,6 +59,9 @@ class SocialAuthCommandServiceTest {
     @Autowired
     private WithdrawCommandService withdrawCommandService;
 
+    @Autowired
+    private DeviceTokenRepository deviceTokenRepository;
+
     @MockitoBean
     private GoogleIdTokenVerifierAdapter googleIdTokenVerifier;
 
@@ -66,6 +72,7 @@ class SocialAuthCommandServiceTest {
 
     @AfterEach
     void cleanUp() {
+        deviceTokenRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         authRepository.deleteAll();
         userRepository.deleteAll();
@@ -107,6 +114,45 @@ class SocialAuthCommandServiceTest {
 
         assertThat(result.accessToken()).isNotBlank();
         assertThat(authRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("다시 로그인하면 이전 기기 토큰은 지우지 않고, 이전 세션의 마지막 access token 만료 시각에 끝나게 한다")
+    void authenticate_login_endsPreviousDeviceTokenAtLastAccessTokenExpiry() {
+        stubPayload("google-sub-device", "device@example.com", "홍길동");
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
+        Long userId = authRepository
+                .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-device")
+                .orElseThrow()
+                .getUserId();
+        deviceTokenRepository.save(DeviceToken.register(userId, "old-device", ApnsEnvironment.PRODUCTION));
+        LocalDateTime expectedEnd = refreshTokenRepository
+                .findByUserId(userId)
+                .orElseThrow()
+                .getUpdatedAt()
+                .plusMinutes(60);
+
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
+
+        DeviceToken oldDevice = deviceTokenRepository.findByToken("old-device").orElseThrow();
+        assertThat(oldDevice.getExpiresAt()).isEqualTo(expectedEnd);
+    }
+
+    @Test
+    @DisplayName("이전 세션이 없으면(로그아웃 후 로그인) 남은 기기 토큰을 지운다")
+    void authenticate_withoutPreviousSession_deletesDeviceTokens() {
+        stubPayload("google-sub-device2", "device2@example.com", "홍길동");
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
+        Long userId = authRepository
+                .findByProviderAndProviderUserId(AuthProvider.GOOGLE, "google-sub-device2")
+                .orElseThrow()
+                .getUserId();
+        deviceTokenRepository.save(DeviceToken.register(userId, "stale-device", ApnsEnvironment.PRODUCTION));
+        refreshTokenRepository.deleteAll();
+
+        socialAuthCommandService.authenticate(AuthProvider.GOOGLE, ID_TOKEN, null);
+
+        assertThat(deviceTokenRepository.findByToken("stale-device")).isEmpty();
     }
 
     @Test

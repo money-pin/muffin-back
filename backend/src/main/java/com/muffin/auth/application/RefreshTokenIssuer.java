@@ -30,8 +30,19 @@ public class RefreshTokenIssuer {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtProperties properties;
 
+    /** 재발급용. 기존 세션을 이어 가므로 로그인 시각을 바꾸지 않는다. */
     @Transactional
     public String issue(Long userId) {
+        return issue(userId, false);
+    }
+
+    /** 로그인용. 다른 기기의 세션을 대체하고 로그인 시각을 새로 찍는다. */
+    @Transactional
+    public String startSession(Long userId) {
+        return issue(userId, true);
+    }
+
+    private String issue(Long userId, boolean newSession) {
         String rawToken = generateRawToken();
         String tokenHash = hash(rawToken);
         LocalDateTime expiresAt = LocalDateTime.now(KST).plusDays(properties.refreshTokenExpireDays());
@@ -39,15 +50,40 @@ public class RefreshTokenIssuer {
         refreshTokenRepository
                 .findByUserId(userId)
                 .ifPresentOrElse(
-                        existing -> existing.rotate(tokenHash, expiresAt),
+                        existing -> {
+                            if (newSession) {
+                                existing.startNewSession(tokenHash, expiresAt);
+                            } else {
+                                existing.rotate(tokenHash, expiresAt);
+                            }
+                        },
                         () -> refreshTokenRepository.save(RefreshToken.issue(userId, tokenHash, expiresAt)));
 
         return rawToken;
     }
 
+    /**
+     * 지금 세션에 마지막으로 발급한 access token의 만료 시각. 그 기기는 이때 재발급이 막혀 실제로 로그아웃된다. refresh token 행은 발급(로그인·재발급) 때만
+     * 바뀌므로 updatedAt이 마지막 발급 시각이다.
+     */
+    public Optional<LocalDateTime> lastAccessTokenExpiry(Long userId) {
+        return refreshTokenRepository
+                .findByUserIdForUpdate(userId)
+                .map(token -> token.getUpdatedAt() != null ? token.getUpdatedAt() : token.getCreatedAt())
+                .map(lastIssuedAt -> lastIssuedAt.plusMinutes(properties.accessTokenExpireMinutes()));
+    }
+
     /** 원문 refresh token으로 아직 만료되지 않은 레코드를 찾는다. 재발급/로그아웃에서 사용한다. */
     public Optional<RefreshToken> findValid(String rawToken) {
         return refreshTokenRepository.findByTokenHash(hash(rawToken)).filter(token -> !token.isExpired());
+    }
+
+    public Optional<RefreshToken> findValidForUpdate(String rawToken) {
+        return refreshTokenRepository.findByTokenHashForUpdate(hash(rawToken)).filter(token -> !token.isExpired());
+    }
+
+    public String sessionId(Long userId) {
+        return refreshTokenRepository.findByUserId(userId).orElseThrow().getSessionId();
     }
 
     private static String generateRawToken() {

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.*;
 import com.muffin.auth.application.JwtProperties;
 import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -20,6 +22,15 @@ class JwtAccessTokenProviderTest {
         String token = provider.issue(42L, "USER");
 
         assertThat(provider.parseUserId(token)).isEqualTo(42L);
+    }
+
+    @Test
+    @DisplayName("발급 시각을 초 단위로 꺼낸다")
+    void issueThenParseIssuedAt() {
+        Instant before = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        String token = provider.issue(42L, "USER");
+
+        assertThat(provider.parseIssuedAt(token)).isBetween(before, Instant.now());
     }
 
     @Test

@@ -14,6 +14,7 @@ import com.muffin.auth.domain.exception.code.AuthErrorCode;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
+import com.muffin.notification.domain.devicetoken.DeviceTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,7 @@ public class WithdrawCommandService {
     private final AppleAuthorizationClient appleAuthorizationClient;
     private final SocialIdTokenVerifiers socialIdTokenVerifiers;
     private final TransactionTemplate transactionTemplate;
+    private final DeviceTokenRepository deviceTokenRepository;
 
     /**
      * 애플 계정은 철회에 쓸 토큰을 받기 위해 appleAuthorizationCode가 필요하다. 애플 호출은 DB 커넥션을 잡지 않도록 트랜잭션
@@ -79,6 +81,7 @@ public class WithdrawCommandService {
         deletedAccountRepository.save(DeletedAccount.of(identityHasher.hash(auth.getProvider(), providerUserId)));
         auth.anonymize();
         refreshTokenRepository.deleteByUserId(userId);
+        deviceTokenRepository.deleteByUserId(userId);
 
         eventPublisher.publishEvent(new AccountWithdrawnEvent(auth.getProvider(), providerUserId, appleRefreshToken));
     }
