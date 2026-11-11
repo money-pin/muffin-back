@@ -3,11 +3,13 @@ package com.muffin.news.infrastructure.openai;
 import com.muffin.news.application.rss.CategorizedRssArticle;
 import com.muffin.news.application.rss.UnifiedRssArticleSelector;
 import com.muffin.news.infrastructure.retry.RetryExecutor;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatusCode;
@@ -25,10 +27,17 @@ import tools.jackson.databind.ObjectMapper;
  *
  * <p>카테고리별 선별({@link OpenAiRssArticleSelector})과 프롬프트가 다르다. 카테고리 안에서의 상대 평가가 아니라 하루 전체를
  * 가로지르는 비교이므로, 후보마다 카테고리를 라벨로 붙여 넘기고 카테고리 균형을 맞추지 말라고 명시한다.
+ *
+ * <p>선별 결과만 받으면 어떤 기사가 왜 뽑혔는지 사후에 알 수 없다. 그래서 URL과 함께 선별 이유와 기준별 점수를 받아 선별 건마다 로그로
+ * 남긴다. 반환값에는 담지 않는다. 호출하는 쪽이 쓰지 않는 값이고, 추적은 로그로 충분하다.
  */
+@Slf4j
 @Component
 @ConditionalOnProperty(name = "muffin.news.ai.enabled", havingValue = "true")
 public class OpenAiUnifiedRssArticleSelector implements UnifiedRssArticleSelector {
+
+    /** 기준별 점수 상한. 프롬프트의 0~3 척도와 같은 값이어야 한다. */
+    private static final int MAX_SCORE = 3;
 
     private static final String INSTRUCTIONS =
             """
@@ -73,16 +82,27 @@ public class OpenAiUnifiedRssArticleSelector implements UnifiedRssArticleSelecto
             - 제목에 겹치는 단어가 없어도 같은 사안일 수 있다. 제목이 아니라 다루는 사안이 같은지로 판단하라.
             - 같은 산업이나 같은 나라를 다루더라도 사건이 다르면 서로 다른 기사로 취급하라.
 
+            선별 근거 기록:
+            선별한 기사마다 왜 뽑았는지와 위 세 기준의 점수를 함께 반환하라.
+            - reason: 그 기사를 뽑은 이유를 한 문장으로 쓰라. 줄바꿈 없이 쓰라.
+            - market_impact: 1순위 기준(주식 시장 파급력) 점수
+            - daily_life: 2순위 기준(일상과의 연관성) 점수
+            - learning_value: 3순위 기준(학습 가치) 점수
+
+            점수는 세 기준 모두 0부터 3까지의 정수다.
+            0 = 해당 없음, 1 = 약함, 2 = 보통, 3 = 강함
+
             출력 규칙:
             - 반드시 제공된 후보 URL 중에서만 선택하라.
             - 새로운 URL을 만들지 마라.
             - 지정된 개수를 넘기지 마라. 적합한 기사가 부족하면 가능한 개수만 반환하라.
             - 중요한 순서대로 반환하라.
+            - 같은 URL을 두 번 넣지 마라.
             - 적합한 기사가 없으면 빈 배열을 반환하라.
             - JSON 외의 설명을 출력하지 마라.
 
             출력 형식:
-            {"selected_urls":["후보 URL 중 하나","후보 URL 중 하나"]}
+            {"selections":[{"url":"후보 URL 중 하나","reason":"선별 이유 한 문장","market_impact":3,"daily_life":2,"learning_value":1}]}
             """;
 
     private final RestClient restClient;
@@ -116,17 +136,64 @@ public class OpenAiUnifiedRssArticleSelector implements UnifiedRssArticleSelecto
             throw new IllegalStateException("Failed to parse OpenAI response", exception);
         }
 
-        Set<String> selectedUrls = extractSelectedUrls(response);
         Map<String, CategorizedRssArticle> candidatesByUrl = new LinkedHashMap<>();
         candidates.forEach(
                 candidate -> candidatesByUrl.putIfAbsent(candidate.article().url(), candidate));
 
-        // 모델이 중요도순으로 돌려준 순서를 유지한다. 후보에 없는 URL은 버린다.
-        return selectedUrls.stream()
-                .map(candidatesByUrl::get)
-                .filter(java.util.Objects::nonNull)
-                .limit(properties.maxTotal())
-                .toList();
+        // 모델이 중요도순으로 돌려준 순서를 유지한다. 후보에 없는 URL과 중복 URL은 버린다.
+        List<CategorizedRssArticle> selected = new ArrayList<>();
+        Set<String> seenUrls = new LinkedHashSet<>();
+        int unknownUrls = 0;
+        for (Selection selection : extractSelections(response)) {
+            if (!seenUrls.add(selection.url())) {
+                continue;
+            }
+            CategorizedRssArticle article = candidatesByUrl.get(selection.url());
+            if (article == null) {
+                unknownUrls++;
+                continue;
+            }
+            if (selected.size() >= properties.maxTotal()) {
+                break;
+            }
+            selected.add(article);
+            logPick(selected.size(), selection);
+        }
+
+        if (unknownUrls > 0) {
+            // 후보에 없는 URL은 걸러지므로 선별 자체는 멀쩡하다. 잦아지면 프롬프트나 모델을 봐야 한다는 신호다.
+            log.warn(
+                    "unified selection returned urls that are not candidates: count={} candidates={}",
+                    unknownUrls,
+                    candidates.size());
+        }
+        log.info("unified selection finished: candidates={} selected={}", candidates.size(), selected.size());
+        return List.copyOf(selected);
+    }
+
+    /** 선별 건당 한 줄. 사람이 읽을 수 있으면서 Loki/grep 어느 쪽에서도 같은 규칙으로 파싱되도록 logfmt로 남긴다. */
+    private void logPick(int rank, Selection selection) {
+        log.info(
+                "unified selection pick: rank={} market_impact={} daily_life={} learning_value={} url={} reason=\"{}\"",
+                rank,
+                selection.marketImpact(),
+                selection.dailyLife(),
+                selection.learningValue(),
+                selection.url(),
+                oneLine(selection.reason()));
+    }
+
+    /**
+     * 로그 한 줄이 여러 줄로 쪼개지지 않게 이유 문구를 한 줄로 눌러 담는다.
+     *
+     * <p>프롬프트로 줄바꿈 없이 쓰라고 지시하지만 모델 출력은 보장 대상이 아니므로 받는 쪽에서 막는다. 따옴표도 함께 처리하지 않으면 값
+     * 안의 따옴표가 닫는 따옴표로 읽힌다.
+     */
+    private static String oneLine(String reason) {
+        if (reason == null) {
+            return "";
+        }
+        return reason.replaceAll("[\\r\\n\\t]+", " ").replace("\"", "'").strip();
     }
 
     private String requestSelectionWithRetry(List<CategorizedRssArticle> candidates) {
@@ -181,14 +248,28 @@ public class OpenAiUnifiedRssArticleSelector implements UnifiedRssArticleSelecto
             throw new IllegalStateException("Failed to serialize RSS candidates", exception);
         }
 
+        // strict 모드는 모든 속성이 required여야 하고 객체마다 additionalProperties: false를 요구한다. 중첩 객체도 같다.
+        Map<String, Object> selectionSchema = new LinkedHashMap<>();
+        selectionSchema.put("type", "object");
+        selectionSchema.put(
+                "properties",
+                Map.of(
+                        "url", Map.of("type", "string"),
+                        "reason", Map.of("type", "string"),
+                        "market_impact", Map.of("type", "integer"),
+                        "daily_life", Map.of("type", "integer"),
+                        "learning_value", Map.of("type", "integer")));
+        selectionSchema.put("required", List.of("url", "reason", "market_impact", "daily_life", "learning_value"));
+        selectionSchema.put("additionalProperties", false);
+
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");
         schema.put(
                 "properties",
                 Map.of(
-                        "selected_urls",
-                        Map.of("type", "array", "items", Map.of("type", "string"), "maxItems", properties.maxTotal())));
-        schema.put("required", List.of("selected_urls"));
+                        "selections",
+                        Map.of("type", "array", "items", selectionSchema, "maxItems", properties.maxTotal())));
+        schema.put("required", List.of("selections"));
         schema.put("additionalProperties", false);
 
         return Map.of(
@@ -212,7 +293,7 @@ public class OpenAiUnifiedRssArticleSelector implements UnifiedRssArticleSelecto
                                 schema)));
     }
 
-    private Set<String> extractSelectedUrls(JsonNode response) {
+    private List<Selection> extractSelections(JsonNode response) {
         if (response == null) {
             throw new IllegalStateException("OpenAI returned an empty response");
         }
@@ -222,9 +303,15 @@ public class OpenAiUnifiedRssArticleSelector implements UnifiedRssArticleSelecto
                     try {
                         JsonNode result =
                                 objectMapper.readTree(content.path("text").asText());
-                        Set<String> selectedUrls = new LinkedHashSet<>();
-                        result.path("selected_urls").forEach(url -> selectedUrls.add(url.asText()));
-                        return selectedUrls;
+                        List<Selection> selections = new ArrayList<>();
+                        result.path("selections")
+                                .forEach(selection -> selections.add(new Selection(
+                                        selection.path("url").asText(),
+                                        selection.path("reason").asText(""),
+                                        score(selection, "market_impact"),
+                                        score(selection, "daily_life"),
+                                        score(selection, "learning_value"))));
+                        return selections;
                     } catch (JacksonException exception) {
                         throw new IllegalStateException("Failed to parse OpenAI selection response", exception);
                     }
@@ -233,4 +320,17 @@ public class OpenAiUnifiedRssArticleSelector implements UnifiedRssArticleSelecto
         }
         throw new IllegalStateException("OpenAI response did not contain output_text");
     }
+
+    /**
+     * 점수를 0~3으로 가둔다.
+     *
+     * <p>스키마가 정수만 받도록 제한하지만 strict 모드는 범위(minimum/maximum)를 지원하지 않는다. 그래서 범위는 프롬프트로만
+     * 지시되고, 벗어난 값이 로그에 그대로 남지 않도록 받는 쪽에서 가둔다.
+     */
+    private static int score(JsonNode selection, String field) {
+        return Math.clamp(selection.path(field).asInt(0), 0, MAX_SCORE);
+    }
+
+    /** 선별 한 건에 대한 모델의 답. 로그에만 쓰고 반환값에는 담지 않는다. */
+    private record Selection(String url, String reason, int marketImpact, int dailyLife, int learningValue) {}
 }
