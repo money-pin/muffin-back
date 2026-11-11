@@ -1,9 +1,11 @@
 package com.muffin.notification.domain.devicetoken;
 
+import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,6 +13,17 @@ import org.springframework.data.repository.query.Param;
 public interface DeviceTokenRepository extends JpaRepository<DeviceToken, Long> {
 
     Optional<DeviceToken> findByToken(String token);
+
+    @Query("select d.id from DeviceToken d where d.token = :token")
+    Optional<Long> findIdByToken(@Param("token") String token);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select d from DeviceToken d where d.id = :id")
+    Optional<DeviceToken> findByIdForUpdate(@Param("id") Long id);
+
+    @Modifying
+    @Query("delete from DeviceToken d where d.expiresAt is not null and d.expiresAt <= :now")
+    int deleteExpired(@Param("now") LocalDateTime now);
 
     List<DeviceToken> findAllByUserId(Long userId);
 

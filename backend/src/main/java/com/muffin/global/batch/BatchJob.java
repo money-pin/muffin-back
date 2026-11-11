@@ -19,6 +19,7 @@ public enum BatchJob {
     INVESTMENT_FINALIZATION("investment_finalization", "investment"),
     SETTLEMENT("settlement", "investment"),
     NEWS_PUBLICATION("news_publication", "news"),
+    DEVICE_TOKEN_CLEANUP("device_token_cleanup", "notification"),
     NOTIFICATION_BRIEFING("notification_briefing", "notification"),
     NOTIFICATION_INVESTMENT_RESULT("notification_investment_result", "notification"),
     NOTIFICATION_NEWS("notification_news", "notification"),

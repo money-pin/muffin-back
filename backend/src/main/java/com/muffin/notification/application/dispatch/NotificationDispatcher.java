@@ -1,5 +1,6 @@
 package com.muffin.notification.application.dispatch;
 
+import com.muffin.auth.application.ConstraintViolations;
 import com.muffin.notification.domain.delivery.NotificationDelivery;
 import com.muffin.notification.domain.delivery.NotificationDeliveryRepository;
 import com.muffin.notification.domain.delivery.NotificationType;
@@ -113,6 +114,9 @@ public class NotificationDispatcher {
                             userId, type, dedupKey, message.title(), message.body(), message.deepLink()))
                     .getId());
         } catch (DataIntegrityViolationException exception) {
+            if (!ConstraintViolations.isConstraint(exception, "uk_notification_delivery_dedup_key")) {
+                throw exception;
+            }
             return null;
         }
     }

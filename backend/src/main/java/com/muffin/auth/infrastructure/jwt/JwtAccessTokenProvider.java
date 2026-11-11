@@ -64,7 +64,11 @@ public class JwtAccessTokenProvider implements AccessTokenProvider {
 
     @Override
     public Instant parseIssuedAt(String accessToken) {
-        return parseClaims(accessToken).getIssuedAt().toInstant();
+        Date issuedAt = parseClaims(accessToken).getIssuedAt();
+        if (issuedAt == null) {
+            throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+        }
+        return issuedAt.toInstant();
     }
 
     private Claims parseClaims(String accessToken) {

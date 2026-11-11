@@ -47,6 +47,9 @@ class ApnsPushSenderTest {
     @Mock
     private DeviceTokenRepository deviceTokenRepository;
 
+    @Mock
+    private DeviceTokenDeliveryGuard deliveryGuard;
+
     private MockRestServiceServer server;
     private ApnsPushSender sender;
 
@@ -59,7 +62,15 @@ class ApnsPushSenderTest {
                 "KEYID12345",
                 (ECPrivateKey) ApnsTestKeys.newKeyPair().getPrivate(),
                 Clock.systemUTC());
-        sender = new ApnsPushSender(builder.build(), providerToken, TOPIC, deviceTokenRepository);
+        org.mockito.Mockito.lenient()
+                .when(deliveryGuard.withOwnedDevice(
+                        org.mockito.ArgumentMatchers.anyLong(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(
+                        invocation -> ((java.util.function.Function<DeviceToken, PushResult>) invocation.getArgument(2))
+                                .apply(invocation.getArgument(1)));
+        sender = new ApnsPushSender(builder.build(), providerToken, TOPIC, deviceTokenRepository, deliveryGuard);
     }
 
     private DeviceToken registered(String token, ApnsEnvironment environment) {
@@ -77,6 +88,18 @@ class ApnsPushSenderTest {
 
     private static String apnsError(String reason) {
         return "{\"reason\":\"" + reason + "\"}";
+    }
+
+    @Test
+    void sensitiveMessageDoesNotExposePrivateDetailsInApnsPayload() {
+        registered("abc123", ApnsEnvironment.PRODUCTION);
+        server.expect(requestTo("https://api.push.apple.com/3/device/abc123"))
+                .andExpect(jsonPath("$.aps.alert.title").value("새 알림이 도착했어요"))
+                .andExpect(jsonPath("$.aps.alert.body").value("앱에서 내용을 확인해 주세요."))
+                .andRespond(withSuccess());
+        assertThat(sender.send(USER_ID, PushMessage.sensitive("투자 결과", "+10000원", "muffin://home")))
+                .isEqualTo(PushResult.SENT);
+        server.verify();
     }
 
     @Test

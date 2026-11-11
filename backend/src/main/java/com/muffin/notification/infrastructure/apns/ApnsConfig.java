@@ -31,7 +31,10 @@ public class ApnsConfig {
     /** 키가 없으면(로컬, 키 등록 전 배포) 로그만 남긴다. 키가 있는데 다른 값이 비었거나 키를 읽을 수 없으면 기동을 실패시킨다. */
     @Bean
     public PushSender pushSender(
-            ApnsProperties properties, RestClient apnsRestClient, DeviceTokenRepository deviceTokenRepository) {
+            ApnsProperties properties,
+            RestClient apnsRestClient,
+            DeviceTokenRepository deviceTokenRepository,
+            DeviceTokenDeliveryGuard deliveryGuard) {
         if (!properties.isConfigured()) {
             return new LoggingPushSender();
         }
@@ -41,7 +44,8 @@ public class ApnsConfig {
 
         ApnsProviderToken providerToken = new ApnsProviderToken(
                 properties.teamId(), properties.keyId(), readPrivateKey(properties.privateKey()), Clock.systemUTC());
-        return new ApnsPushSender(apnsRestClient, providerToken, properties.topic(), deviceTokenRepository);
+        return new ApnsPushSender(
+                apnsRestClient, providerToken, properties.topic(), deviceTokenRepository, deliveryGuard);
     }
 
     private static ECPrivateKey readPrivateKey(String base64Pem) {

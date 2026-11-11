@@ -44,10 +44,15 @@ class DeviceTokenControllerDocsTest {
     @Test
     @DisplayName("푸시 기기 토큰 등록 문서화")
     void documentRegisterDeviceToken(RestDocumentationContextProvider restDocumentation) throws Exception {
-        DeviceTokenCommandService commandStub = new DeviceTokenCommandService(null, null, null) {
-            @Override
-            public void register(Long userId, String accessToken, String token, ApnsEnvironment environment) {}
-        };
+        DeviceTokenCommandService commandStub =
+                new DeviceTokenCommandService(
+                        null,
+                        null,
+                        null,
+                        org.mockito.Mockito.mock(org.springframework.transaction.PlatformTransactionManager.class)) {
+                    @Override
+                    public void register(Long userId, String accessToken, String token, ApnsEnvironment environment) {}
+                };
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new DeviceTokenController(commandStub))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())

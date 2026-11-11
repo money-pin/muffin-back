@@ -97,6 +97,16 @@ class NotificationDispatcherTest {
     }
 
     @Test
+    void invalidDeliveryIsFailureRatherThanDuplicate() {
+        PushMessage invalid = new PushMessage("x".repeat(101), "본문", "muffin://home");
+        NotificationDispatchSummary summary =
+                dispatcher.dispatchAll(NotificationType.NEWS, "scope", Map.of(1L, invalid));
+        assertThat(summary.failed()).isEqualTo(1);
+        assertThat(summary.duplicate()).isZero();
+        assertThat(deliveryRepository.count()).isZero();
+    }
+
+    @Test
     @DisplayName("발송기가 예외를 던져도 다른 사용자 발송은 이어지고 결과를 집계한다")
     void continuesAfterSenderException() {
         when(pushSender.send(1L, MESSAGE)).thenThrow(new IllegalStateException("boom"));

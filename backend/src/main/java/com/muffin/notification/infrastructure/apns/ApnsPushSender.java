@@ -30,6 +30,7 @@ public class ApnsPushSender implements PushSender {
     private final ApnsProviderToken providerToken;
     private final String topic;
     private final DeviceTokenRepository deviceTokenRepository;
+    private final DeviceTokenDeliveryGuard deliveryGuard;
 
     @Override
     public PushResult send(Long userId, PushMessage message) {
@@ -38,11 +39,13 @@ public class ApnsPushSender implements PushSender {
         for (DeviceToken device : deviceTokenRepository.findAllByUserId(userId)) {
             PushResult sent;
             try {
-                if (device.isExpired(now)) {
-                    deviceTokenRepository.delete(device);
-                    continue;
-                }
-                sent = sendTo(device, userId, message);
+                sent = deliveryGuard.withOwnedDevice(userId, device, owned -> {
+                    if (owned.isExpired(now)) {
+                        deviceTokenRepository.delete(owned);
+                        return PushResult.NO_DEVICE;
+                    }
+                    return sendTo(owned, userId, message);
+                });
             } catch (RuntimeException e) {
                 log.warn("APNs device processing failed: userId={}", userId, e);
                 sent = PushResult.FAILED;
@@ -106,7 +109,13 @@ public class ApnsPushSender implements PushSender {
     private static Map<String, Object> payload(PushMessage message) {
         return Map.of(
                 "aps",
-                Map.of("alert", Map.of("title", message.title(), "body", message.body()), "sound", "default"),
+                Map.of(
+                        "alert",
+                        Map.of(
+                                "title", message.sensitive() ? "새 알림이 도착했어요" : message.title(),
+                                "body", message.sensitive() ? "앱에서 내용을 확인해 주세요." : message.body()),
+                        "sound",
+                        "default"),
                 "deepLink",
                 message.deepLink());
     }

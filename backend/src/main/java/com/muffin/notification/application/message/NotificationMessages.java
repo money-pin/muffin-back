@@ -43,15 +43,15 @@ public final class NotificationMessages {
         String date = investDate.format(MONTH_DAY);
         String deepLink = "muffin://home?popup=settlement";
         if (profitLoss == 0) {
-            return new PushMessage(date + " 투자 결과가 나왔어요", "이번엔 본전이에요. 오늘의 투자를 시작해 보세요!", deepLink);
+            return PushMessage.sensitive(date + " 투자 결과가 나왔어요", "이번엔 본전이에요. 오늘의 투자를 시작해 보세요!", deepLink);
         }
         String rate = dailyRate(profitLoss, investedAmount).abs().toPlainString();
         String amount = formatAmount(Math.abs(profitLoss));
         if (profitLoss > 0) {
-            return new PushMessage(
+            return PushMessage.sensitive(
                     "머핀이 노릇노릇 구워졌어요", date + " 투자 결과 +" + amount + "원 (▲" + rate + "%). 확인해 보세요!", deepLink);
         }
-        return new PushMessage(
+        return PushMessage.sensitive(
                 "머핀이 조금 탔어요", date + " 투자 결과 " + MINUS + amount + "원 (▼" + rate + "%). 오늘 다시 구워봐요!", deepLink);
     }
 
@@ -69,25 +69,27 @@ public final class NotificationMessages {
                 + rate.abs().setScale(2, RoundingMode.HALF_UP).toPlainString();
 
         if (position <= 3) {
-            return new PushMessage(
+            return PushMessage.sensitive(
                     "🏆 지난주 " + position + "위! 시상대에 올랐어요",
                     "수익률 " + signedRate + "%로 상위 " + percentile + "%예요.",
                     deepLink);
         }
         if (position <= 10 && (previousPosition == null || previousPosition > 10)) {
-            return new PushMessage("TOP 10에 들었어요! 🎉", "지난주 " + position + "위, 수익률 " + signedRate + "%", deepLink);
+            return PushMessage.sensitive(
+                    "TOP 10에 들었어요! 🎉", "지난주 " + position + "위, 수익률 " + signedRate + "%", deepLink);
         }
         if (firstRanking) {
-            return new PushMessage(
+            return PushMessage.sensitive(
                     "첫 주간 랭킹이 나왔어요 🧁", "지난주 " + position + "위 (상위 " + percentile + "%). 확인해 보세요!", deepLink);
         }
         if (previousPosition != null && previousPosition > position) {
-            return new PushMessage(
+            return PushMessage.sensitive(
                     "지난주 " + position + "위, " + (previousPosition - position) + "계단 올랐어요 ▲",
                     "이번 주에도 머핀을 잘 구워봐요!",
                     deepLink);
         }
-        return new PushMessage("지난주 랭킹이 나왔어요 📊", position + "위 (상위 " + percentile + "%). 이번 주에 다시 올라가 봐요!", deepLink);
+        return PushMessage.sensitive(
+                "지난주 랭킹이 나왔어요 📊", position + "위 (상위 " + percentile + "%). 이번 주에 다시 올라가 봐요!", deepLink);
     }
 
     /**

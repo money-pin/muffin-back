@@ -18,7 +18,8 @@ class ApnsConfigTest {
     private final DeviceTokenRepository deviceTokenRepository = mock(DeviceTokenRepository.class);
 
     private PushSender pushSenderWith(ApnsProperties properties) {
-        return config.pushSender(properties, RestClient.create(), deviceTokenRepository);
+        return config.pushSender(
+                properties, RestClient.create(), deviceTokenRepository, mock(DeviceTokenDeliveryGuard.class));
     }
 
     @Test
