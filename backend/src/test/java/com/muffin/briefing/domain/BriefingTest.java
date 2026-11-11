@@ -132,8 +132,8 @@ class BriefingTest {
     void addSectorScore_keepsRankTypeAndOrder() {
         Briefing briefing = Briefing.create(BRIEFING_DATE);
 
-        briefing.addSectorScore(1L, new BigDecimal("1.20"), SectorRankType.TOP_GAINER, 1);
-        briefing.addSectorScore(2L, new BigDecimal("-2.30"), SectorRankType.TOP_LOSER, 2);
+        briefing.addSectorScore(1L, new BigDecimal("1.20"), "AI 서버 수요가 이어졌어요.", SectorRankType.TOP_GAINER, 1);
+        briefing.addSectorScore(2L, new BigDecimal("-2.30"), null, SectorRankType.TOP_LOSER, 2);
 
         assertThat(briefing.getSectorScores())
                 .extracting(BriefingSectorScore::getSectorId, BriefingSectorScore::getRankType)

@@ -215,6 +215,7 @@ class BriefingGenerationServiceTest {
                         new IssueResult(101L, "금리 동결", "한국은행이 기준금리를 묶었어요. 물가 흐름을 지켜보기로 했어요.", "대출 이자 부담은 그대로예요."),
                         new IssueResult(102L, "환율 상승", "원/달러 환율이 올랐어요. 달러 강세가 이어졌어요.", "해외 결제 비용이 늘 수 있어요."),
                         new IssueResult(103L, "반도체 수출 증가", "반도체 수출이 늘었어요. AI 서버용 주문이 이어졌어요.", "반도체 흐름 참고에 좋아요.")),
+                List.of(),
                 null,
                 null);
     }

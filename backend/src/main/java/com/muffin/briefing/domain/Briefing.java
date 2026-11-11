@@ -112,15 +112,18 @@ public class Briefing extends BaseEntity {
 
     /**
      * 섹터 성적표 한 줄을 추가한다. 시세를 받지 못했거나 비활성인 섹터는 애초에 순위에서 제외되므로, 성적표가 비어 있는 채로 발행될 수도 있다.
+     *
+     * @param changeReason 변동 이유 한 줄. AI가 해당 섹터를 설명하지 못했으면 null이고, 그때는 등락률만 보여준다
      */
-    public void addSectorScore(Long sectorId, BigDecimal changeRate, SectorRankType rankType, int scoreOrder) {
+    public void addSectorScore(
+            Long sectorId, BigDecimal changeRate, String changeReason, SectorRankType rankType, int scoreOrder) {
         if (status != BriefingStatus.GENERATING) {
             throw new IllegalStateException("생성 중인 브리핑에만 섹터 성적표를 추가할 수 있습니다.");
         }
         if (sectorScores.stream().anyMatch(score -> score.getSectorId().equals(sectorId))) {
             throw new IllegalArgumentException("이미 사용한 섹터입니다: " + sectorId);
         }
-        sectorScores.add(BriefingSectorScore.create(sectorId, changeRate, rankType, scoreOrder));
+        sectorScores.add(BriefingSectorScore.create(sectorId, changeRate, changeReason, rankType, scoreOrder));
     }
 
     /** 생성이 끝나면 한 줄 요약과 오늘의 용어를 채우고 발행 대기 상태로 전환한다. */

@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -117,7 +118,7 @@ public class BriefingGenerationService {
             BriefingGenerationResult result = briefingGenerator.generate(new BriefingGenerationRequest(
                     briefingDate, candidates, buzzSignal, toSectorLines(scoreboard, sectorNames), termCandidates));
 
-            completeBriefing(briefingId, result, scoreboard);
+            completeBriefing(briefingId, result, scoreboard, reasonsBySectorId(result, sectorNames));
             return BriefingGenerationSummary.generated(result.issues().size());
         } catch (RuntimeException exception) {
             saveUnavailableSafely(briefingId);
@@ -255,8 +256,49 @@ public class BriefingGenerationService {
         return lines;
     }
 
+    /**
+     * AI가 섹터 이름으로 돌려준 변동 이유를 섹터 id로 바꿔 담는다.
+     *
+     * <p>AI에게는 내부 id 대신 이름만 보여주므로 여기서 되돌린다. 이름이 겹치는 섹터가 생기면 어느 쪽 설명인지 가릴 수 없어 둘 다
+     * 버린다. 설명이 없는 섹터는 등락률만 나가지만, 엉뚱한 섹터에 붙은 설명은 사용자가 사실로 읽는다.
+     */
+    private static Map<Long, String> reasonsBySectorId(BriefingGenerationResult result, Map<Long, String> sectorNames) {
+        if (result.sectorReasons().isEmpty()) {
+            return Map.of();
+        }
+
+        Set<String> duplicatedNames = new LinkedHashSet<>();
+        Map<String, Long> sectorIdsByName = new LinkedHashMap<>();
+        for (Map.Entry<Long, String> sector : sectorNames.entrySet()) {
+            if (sectorIdsByName.putIfAbsent(sector.getValue(), sector.getKey()) != null) {
+                duplicatedNames.add(sector.getValue());
+            }
+        }
+        if (!duplicatedNames.isEmpty()) {
+            log.warn("Sector reasons dropped for duplicated sector names: {}", duplicatedNames);
+        }
+
+        Map<Long, String> reasons = new LinkedHashMap<>();
+        for (BriefingGenerationResult.SectorReasonResult sectorReason : result.sectorReasons()) {
+            if (duplicatedNames.contains(sectorReason.sectorName())) {
+                continue;
+            }
+            Long sectorId = sectorIdsByName.get(sectorReason.sectorName());
+            if (sectorId == null) {
+                log.warn("Sector reason dropped for unknown sector: {}", sectorReason.sectorName());
+                continue;
+            }
+            reasons.put(sectorId, sectorReason.reason());
+        }
+        return reasons;
+    }
+
     /** 생성 결과를 한 트랜잭션으로 저장하고 발행 대기 상태로 만든다. */
-    private void completeBriefing(Long briefingId, BriefingGenerationResult result, SectorScoreboard scoreboard) {
+    private void completeBriefing(
+            Long briefingId,
+            BriefingGenerationResult result,
+            SectorScoreboard scoreboard,
+            Map<Long, String> reasonsBySectorId) {
         transactionTemplate.executeWithoutResult(status -> {
             Briefing briefing = briefingRepository
                     .findById(briefingId)
@@ -269,10 +311,20 @@ public class BriefingGenerationService {
 
             int scoreOrder = 1;
             for (SectorScoreboard.SectorScore score : scoreboard.gainers()) {
-                briefing.addSectorScore(score.sectorId(), score.changeRate(), SectorRankType.TOP_GAINER, scoreOrder++);
+                briefing.addSectorScore(
+                        score.sectorId(),
+                        score.changeRate(),
+                        reasonsBySectorId.get(score.sectorId()),
+                        SectorRankType.TOP_GAINER,
+                        scoreOrder++);
             }
             for (SectorScoreboard.SectorScore score : scoreboard.losers()) {
-                briefing.addSectorScore(score.sectorId(), score.changeRate(), SectorRankType.TOP_LOSER, scoreOrder++);
+                briefing.addSectorScore(
+                        score.sectorId(),
+                        score.changeRate(),
+                        reasonsBySectorId.get(score.sectorId()),
+                        SectorRankType.TOP_LOSER,
+                        scoreOrder++);
             }
 
             briefing.ready(result.headline(), result.termId(), result.termSummary());

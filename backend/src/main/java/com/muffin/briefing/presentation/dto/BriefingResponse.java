@@ -75,7 +75,11 @@ public record BriefingResponse(
     /** 어제의 섹터 성적표. 시세를 받지 못했으면 양쪽 모두 비어 있을 수 있다. */
     public record SectorScoreboard(List<Entry> gainers, List<Entry> losers) {}
 
-    public record Entry(String sectorCode, String sectorName, BigDecimal changeRate) {}
+    /**
+     * @param changeReason 이 섹터가 왜 그렇게 움직였는지 설명하는 1~2문장. AI가 설명을 못 붙였거나 이 기능이
+     *     생기기 전에 발행된 브리핑이면 null이고, 화면은 등락률만 보여준다
+     */
+    public record Entry(String sectorCode, String sectorName, BigDecimal changeRate, String changeReason) {}
 
     public record TodayTerm(Long termId, String term, String summary) {}
 

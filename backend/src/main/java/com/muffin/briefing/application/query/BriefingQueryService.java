@@ -243,8 +243,8 @@ public class BriefingQueryService {
             if (sector == null) {
                 continue;
             }
-            BriefingResponse.Entry entry =
-                    new BriefingResponse.Entry(sector.getSectorCode(), sector.getName(), score.getChangeRate());
+            BriefingResponse.Entry entry = new BriefingResponse.Entry(
+                    sector.getSectorCode(), sector.getName(), score.getChangeRate(), score.getChangeReason());
             if (score.getRankType() == SectorRankType.TOP_GAINER) {
                 gainers.add(entry);
             } else {

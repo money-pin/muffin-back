@@ -4,6 +4,7 @@ import com.muffin.briefing.application.exception.BriefingGenerationException;
 import com.muffin.briefing.application.generation.BriefingGenerationRequest;
 import com.muffin.briefing.application.generation.BriefingGenerationResult;
 import com.muffin.briefing.application.generation.BriefingGenerationResult.IssueResult;
+import com.muffin.briefing.application.generation.BriefingGenerationResult.SectorReasonResult;
 import com.muffin.briefing.application.generation.BriefingGenerator;
 import com.muffin.briefing.application.generation.BriefingIssueCandidate;
 import com.muffin.briefing.application.generation.BriefingSectorLine;
@@ -17,6 +18,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatusCode;
@@ -45,6 +47,7 @@ public class OpenAiBriefingGenerator implements BriefingGenerator {
     private static final int MAX_ISSUE_SUMMARY_LENGTH = 90;
     private static final int MAX_IMPACT_LINE_LENGTH = 50;
     private static final int MAX_TERM_SUMMARY_LENGTH = 30;
+    private static final int MAX_SECTOR_REASON_LENGTH = 100;
 
     private static final String INSTRUCTIONS =
             """
@@ -101,6 +104,22 @@ public class OpenAiBriefingGenerator implements BriefingGenerator {
 
             - term_candidates 중 브리핑 내용과 가장 관련 있는 용어 하나를 고르라.
             - term_summary는 30자 이내로, 용어의 뜻을 쉬운 말로 풀어 쓰라.
+
+            [섹터 변동 이유 작성 규칙]
+
+            - sector_lines에 있는 모든 섹터에 대해 변동 이유를 하나씩 쓰라. 빠뜨리지 마라.
+            - 섹터마다 1~2문장, 합계 100자 이내로 작성하라.
+            - 첫 문장은 이 섹터를 움직인 사건이 무엇인지 쓰라.
+            - 둘째 문장을 쓴다면 그 사건이 한국의 해당 섹터와 어떻게 이어지는지 쓰라.
+              해외 기업의 실적이나 글로벌 수요가 국내 섹터로 번지는 경로를 짚어 주면 좋다.
+            - 해요체로 끝맺어라.
+            - 등락률 숫자를 문장에 다시 쓰지 마라. 숫자는 화면이 이미 보여준다.
+            - 오른 섹터에는 오른 이유를, 내린 섹터에는 내린 이유를 쓰라. change_rate의 부호와
+              설명의 방향이 어긋나면 안 된다.
+            - 후보 뉴스에서 근거를 찾을 수 없으면 사건을 지어내지 마라. 그럴 때는 업황이나 수급
+              흐름으로 짐작되는 범위까지만 "~로 보여요", "~영향으로 풀이돼요"처럼 단정하지 않는
+              표현으로 쓰라.
+            - 특정 종목이나 상품의 매수, 매도를 권유하지 마라.
 
             [공통 원칙]
 
@@ -277,6 +296,36 @@ public class OpenAiBriefingGenerator implements BriefingGenerator {
                         Briefing.DAILY_ISSUE_COUNT));
 
         List<String> required = new ArrayList<>(List.of("headline", "issues"));
+
+        // 섹터 이름을 enum으로 못박아 모델이 성적표에 없는 섹터를 지어내지 못하게 한다.
+        // 성적표가 비어 있으면 설명할 대상이 없다. strict 스키마는 정의한 키를 모두 required에 넣어야 하므로 아예 뺀다.
+        List<String> sectorNames = request.sectorLines().stream()
+                .map(BriefingSectorLine::sectorName)
+                .toList();
+        if (!sectorNames.isEmpty()) {
+            Map<String, Object> sectorReasonProperties = new LinkedHashMap<>();
+            sectorReasonProperties.put("sector", Map.of("type", "string", "enum", sectorNames));
+            sectorReasonProperties.put("reason", Map.of("type", "string", "maxLength", MAX_SECTOR_REASON_LENGTH));
+
+            Map<String, Object> sectorReasonSchema = new LinkedHashMap<>();
+            sectorReasonSchema.put("type", "object");
+            sectorReasonSchema.put("properties", sectorReasonProperties);
+            sectorReasonSchema.put("required", List.of("sector", "reason"));
+            sectorReasonSchema.put("additionalProperties", false);
+
+            properties.put(
+                    "sector_reasons",
+                    Map.of(
+                            "type",
+                            "array",
+                            "items",
+                            sectorReasonSchema,
+                            "minItems",
+                            sectorNames.size(),
+                            "maxItems",
+                            sectorNames.size()));
+            required.add("sector_reasons");
+        }
         // 용어 후보가 없으면 고를 대상이 없다. strict 스키마는 정의한 키를 모두 required에 넣어야 하므로 아예 뺀다.
         if (!request.termCandidates().isEmpty()) {
             List<Long> termIds = request.termCandidates().stream()
@@ -351,6 +400,8 @@ public class OpenAiBriefingGenerator implements BriefingGenerator {
                     "브리핑 이슈는 " + Briefing.DAILY_ISSUE_COUNT + "건이어야 합니다: " + issues.size());
         }
 
+        List<SectorReasonResult> sectorReasons = parseSectorReasons(result, request);
+
         Long termId = null;
         String termSummary = null;
         if (result.has("term_id")) {
@@ -364,6 +415,36 @@ public class OpenAiBriefingGenerator implements BriefingGenerator {
             termSummary = result.path("term_summary").asText();
         }
 
-        return new BriefingGenerationResult(headline, issues, termId, termSummary);
+        return new BriefingGenerationResult(headline, issues, sectorReasons, termId, termSummary);
+    }
+
+    /**
+     * 섹터별 변동 이유를 읽어 온다.
+     *
+     * <p>성적표에 없는 섹터와 중복된 섹터는 예외로 막는다. 전자는 모델이 지어낸 섹터이고, 후자는 한 섹터를 두 번 설명하느라 다른
+     * 섹터가 빠졌다는 뜻이라 어느 쪽도 그대로 저장하면 안 된다.
+     *
+     * <p>반대로 일부 섹터가 빠진 것은 통과시킨다. 설명이 없는 섹터는 등락률만 보여주면 되고, 문장 하나 때문에 그날 브리핑 전체를
+     * 실패시키는 편이 손해가 크기 때문이다.
+     */
+    private static List<SectorReasonResult> parseSectorReasons(JsonNode result, BriefingGenerationRequest request) {
+        Set<String> knownSectors = request.sectorLines().stream()
+                .map(BriefingSectorLine::sectorName)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<SectorReasonResult> sectorReasons = new ArrayList<>();
+        Set<String> usedSectors = new LinkedHashSet<>();
+        for (JsonNode sectorReason : result.path("sector_reasons")) {
+            String sectorName = sectorReason.path("sector").asText();
+            if (!knownSectors.contains(sectorName)) {
+                throw new BriefingGenerationException("성적표에 없는 섹터를 설명했습니다: " + sectorName);
+            }
+            if (!usedSectors.add(sectorName)) {
+                throw new BriefingGenerationException("같은 섹터를 두 번 설명했습니다: " + sectorName);
+            }
+            sectorReasons.add(new SectorReasonResult(
+                    sectorName, sectorReason.path("reason").asText()));
+        }
+        return sectorReasons;
     }
 }
