@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.muffin.global.apiPayload.exception.GeneralException;
@@ -35,6 +36,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class QuizQueryServiceTest {
@@ -77,6 +81,31 @@ class QuizQueryServiceTest {
         assertEquals(0, response.progress().correctCount());
         assertNull(response.progress().nextQuestionOrder());
         assertTrue(response.questions().isEmpty());
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = QuizSetStatus.class,
+            names = {"GENERATING", "READY", "UNAVAILABLE"})
+    @DisplayName("생성 중·공개 전·생성 실패 퀴즈는 풀이 상태를 조회하지 않고 이용 불가로 반환한다")
+    void getTodayQuiz_returnsUnavailableWhenQuizSetIsNotPublished(QuizSetStatus status) {
+        LocalDate today = LocalDate.now(KST);
+        User user = onboardedUser("세현");
+        QuizSet quizSet = publishedQuizSet(today);
+        ReflectionTestUtils.setField(quizSet, "status", status);
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(quizSet));
+
+        TodayQuizResponse response = quizQueryService.getTodayQuiz(USER_ID);
+
+        assertEquals(today, response.quizDate());
+        assertEquals(QuizSetStatus.UNAVAILABLE, response.quizSetStatus());
+        assertNull(response.dailyQuizSetId());
+        assertNull(response.sessionStatus());
+        assertNull(response.progress().nextQuestionOrder());
+        assertTrue(response.questions().isEmpty());
+        verifyNoInteractions(quizSessionRepository);
     }
 
     @Test
@@ -136,15 +165,52 @@ class QuizQueryServiceTest {
     }
 
     @Test
-    @DisplayName("완료된 세션이면 FINISHED 진행률과 빈 문제 목록을 반환한다")
-    void getTodayQuiz_returnsFinishedWithoutQuestionsWhenSessionIsFinished() {
+    @DisplayName("두 문항을 모두 틀려도 진행 중이며 세 번째 문항부터 이어 푼다")
+    void getTodayQuiz_returnsThirdQuestionAfterTwoIncorrectAttempts() {
         LocalDate today = LocalDate.now(KST);
         User user = onboardedUser("세현");
         QuizSet quizSet = publishedQuizSet(today);
         QuizSession session = QuizSession.start(USER_ID, QUIZ_SET_ID, today, 3);
-        ReflectionTestUtils.setField(session, "status", QuizSessionStatus.FINISHED);
-        ReflectionTestUtils.setField(session, "solvedCount", 3);
-        ReflectionTestUtils.setField(session, "correctCount", 2);
+        session.recordAttempt(101L, 1012L, false, null, LocalDateTime.now());
+        session.recordAttempt(102L, 1022L, false, null, LocalDateTime.now());
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(quizSet));
+        when(quizSessionRepository.findByUserIdAndDailyQuizSetId(USER_ID, QUIZ_SET_ID))
+                .thenReturn(Optional.of(session));
+
+        TodayQuizResponse response = quizQueryService.getTodayQuiz(USER_ID);
+
+        assertEquals(QuizSetStatus.PUBLISHED, response.quizSetStatus());
+        assertEquals(QuizSessionStatus.PROGRESS, response.sessionStatus());
+        assertEquals(2, response.progress().solvedCount());
+        assertEquals(0, response.progress().correctCount());
+        assertEquals(3, response.progress().nextQuestionOrder());
+        assertTrue(response.questions().stream()
+                .anyMatch(
+                        question -> question.quizOrder() == response.progress().nextQuestionOrder()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 2, 3})
+    @DisplayName("정답 수와 보상 지급 여부에 관계없이 완료된 세션은 FINISHED와 빈 문제 목록을 반환한다")
+    void getTodayQuiz_returnsFinishedWithoutQuestionsRegardlessOfCorrectCount(int correctCount) {
+        LocalDate today = LocalDate.now(KST);
+        User user = onboardedUser("세현");
+        QuizSet quizSet = publishedQuizSet(today);
+        QuizSession session = QuizSession.start(USER_ID, QUIZ_SET_ID, today, 3);
+        for (int order = 1; order <= 3; order++) {
+            boolean correct = order <= correctCount;
+            session.recordAttempt(
+                    100L + order,
+                    1000L + order * 10L + (correct ? 1 : 2),
+                    correct,
+                    correct ? 100_000L : null,
+                    LocalDateTime.now());
+        }
+        if (correctCount > 0) {
+            session.claimReward();
+        }
 
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(quizSetRepository.findByQuizDate(today)).thenReturn(Optional.of(quizSet));
@@ -156,7 +222,7 @@ class QuizQueryServiceTest {
         assertEquals(QuizSessionStatus.FINISHED, response.sessionStatus());
         assertEquals(3, response.progress().totalCount());
         assertEquals(3, response.progress().solvedCount());
-        assertEquals(2, response.progress().correctCount());
+        assertEquals(correctCount, response.progress().correctCount());
         assertNull(response.progress().nextQuestionOrder());
         assertTrue(response.questions().isEmpty());
     }
