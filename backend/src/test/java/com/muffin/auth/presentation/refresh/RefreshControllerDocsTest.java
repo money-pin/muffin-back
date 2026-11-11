@@ -94,8 +94,7 @@ class RefreshControllerDocsTest {
     }
 
     private MockMvc mockMvcOf(RefreshCommandService stub, RestDocumentationContextProvider restDocumentation) {
-        return MockMvcBuilders.standaloneSetup(
-                        new AuthController(null, null, null, stub, null, null, refreshTokenCookieHelper))
+        return MockMvcBuilders.standaloneSetup(new AuthController(null, stub, null, null, refreshTokenCookieHelper))
                 .setControllerAdvice(new GeneralExceptionAdvice())
                 .apply(documentationConfiguration(restDocumentation)
                         .operationPreprocessors()

@@ -1,54 +1,23 @@
 package com.muffin.auth.presentation.swagger;
 
+import com.muffin.auth.presentation.apple.dto.AppleAuthRequest;
+import com.muffin.auth.presentation.apple.dto.AppleAuthResponse;
 import com.muffin.auth.presentation.google.dto.GoogleAuthRequest;
 import com.muffin.auth.presentation.google.dto.GoogleAuthResponse;
-import com.muffin.auth.presentation.login.dto.LocalLoginRequest;
-import com.muffin.auth.presentation.login.dto.LoginResponse;
+import com.muffin.auth.presentation.kakao.dto.KakaoAuthRequest;
+import com.muffin.auth.presentation.kakao.dto.KakaoAuthResponse;
 import com.muffin.auth.presentation.refresh.dto.RefreshResponse;
-import com.muffin.auth.presentation.signup.dto.LocalSignupRequest;
-import com.muffin.auth.presentation.signup.dto.SignupResponse;
+import com.muffin.auth.presentation.withdraw.dto.AppleWithdrawalRequest;
 import com.muffin.global.apiPayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
-@Tag(name = "Auth", description = "인증(회원가입/로그인/로그아웃/탈퇴) API")
+@Tag(name = "Auth", description = "인증(소셜 로그인/로그아웃/탈퇴) API")
 public interface AuthApi {
-
-    @Operation(
-            summary = "로컬 회원가입 (AUTH-01-1)",
-            description = "이메일/비밀번호로 회원가입하고 즉시 로그인 상태로 access token을 발급한다. refresh token은 HttpOnly Cookie로 내려간다.")
-    @ApiResponses({
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "가입 성공"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "400",
-                description = "요청 값 검증 실패(COMMON_400_002), 약관 미동의(AUTH_400_002), 비밀번호 형식 오류(COMMON_400_001)"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "409",
-                description = "이미 사용 중인 이메일입니다.(AUTH_409_001) 또는 최근 탈퇴한 이메일입니다.(AUTH_409_003, 탈퇴 후 30일 이내)")
-    })
-    ResponseEntity<ApiResponse<SignupResponse>> signupLocal(LocalSignupRequest request, HttpServletResponse response);
-
-    @Operation(
-            summary = "로컬 로그인 (AUTH-02-1)",
-            description = "이메일/비밀번호로 로그인하고 access token을 발급한다. refresh token은 HttpOnly Cookie로 내려간다.")
-    @ApiResponses({
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인 성공"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "401",
-                description = "이메일 또는 비밀번호가 일치하지 않습니다. (AUTH_401_002)"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "403",
-                description = "탈퇴한 계정입니다.(AUTH_403_002) 또는 정지된 계정입니다.(AUTH_403_003)"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                responseCode = "423",
-                description = "로그인 시도 횟수를 초과하여 계정이 잠겼습니다.(AUTH_423_002, 30분 후 자동 해제)")
-    })
-    ApiResponse<LoginResponse> loginLocal(LocalLoginRequest request, HttpServletResponse response);
 
     @Operation(
             summary = "Access/Refresh Token 재발급 (AUTH-02-2)",
@@ -80,10 +49,16 @@ public interface AuthApi {
 
     @Operation(
             summary = "회원 탈퇴 (AUTH-09-2)",
-            description = "Authorization 헤더의 access token으로 식별된 계정을 탈퇴 처리한다. 이름은 즉시 삭제되고 이메일은 복구 불가능한 값으로 대체되며, "
-                    + "refresh token이 무효화되고 refresh token Cookie가 만료(Max-Age=0)된다. 투자/퀴즈 기록은 탈퇴 6개월 후 별도 배치가 삭제한다.")
+            description = "Authorization 헤더의 access token으로 식별된 계정을 탈퇴 처리한다. 이름과 이메일은 즉시 삭제되고 소셜 계정 연결(sub)도 끊기며, "
+                    + "refresh token이 무효화되고 refresh token Cookie가 만료(Max-Age=0)된다. 투자/퀴즈 기록은 탈퇴 6개월 후 별도 배치가 삭제한다. "
+                    + "애플 계정은 탈퇴 직전 애플 로그인을 다시 띄워 받은 authorizationCode를 body로 보내야 하며(애플 토큰 철회용), "
+                    + "구글·카카오 계정은 body 없이 호출한다.")
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "탈퇴 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "400",
+                description = "애플 계정인데 authorizationCode가 없음(AUTH_400_003), 유효하지 않거나 만료된 code(AUTH_400_004), "
+                        + "code의 애플 계정이 탈퇴 대상과 다름(AUTH_400_005)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "401",
                 description = "인증이 필요합니다. (AUTH_401_001)"),
@@ -91,7 +66,8 @@ public interface AuthApi {
                 responseCode = "409",
                 description = "이미 탈퇴했거나 정지된 계정이라 탈퇴할 수 없습니다. (COMMON_409_001)")
     })
-    ApiResponse<Void> withdraw(@AuthenticationPrincipal Long userId, HttpServletResponse response);
+    ApiResponse<Void> withdraw(
+            @AuthenticationPrincipal Long userId, AppleWithdrawalRequest request, HttpServletResponse response);
 
     @Operation(
             summary = "구글 로그인/가입",
@@ -102,13 +78,52 @@ public interface AuthApi {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인/가입 성공"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "401",
-                description = "유효하지 않은 구글 로그인 토큰입니다. (AUTH_401_004)"),
+                description = "유효하지 않은 소셜 로그인 토큰입니다. (AUTH_401_004)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "403",
                 description = "탈퇴한 계정입니다.(AUTH_403_002) 또는 정지된 계정입니다.(AUTH_403_003)"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "409",
-                description = "최근 탈퇴한 이메일입니다.(AUTH_409_003, 신규 가입 시에만)")
+                description = "최근 탈퇴한 계정입니다.(AUTH_409_003, 탈퇴 후 30일 이내 재가입 시)")
     })
     ApiResponse<GoogleAuthResponse> authenticateGoogle(GoogleAuthRequest request, HttpServletResponse response);
+
+    @Operation(
+            summary = "카카오 로그인/가입",
+            description = "카카오 SDK가 발급한 OpenID Connect ID Token을 검증해 기존 계정이면 로그인, 없으면 자동 가입한다(서비스 약관은 자동 동의로 간주). "
+                    + "access token은 응답 바디로, refresh token은 HttpOnly Cookie로 발급한다. "
+                    + "기능명세서(v3.1)에 없는 확장 기능이라 별도 명세 ID가 없다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인/가입 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "유효하지 않은 소셜 로그인 토큰입니다. (AUTH_401_004)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "403",
+                description = "탈퇴한 계정입니다.(AUTH_403_002) 또는 정지된 계정입니다.(AUTH_403_003)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "최근 탈퇴한 계정입니다.(AUTH_409_003, 탈퇴 후 30일 이내 재가입 시)")
+    })
+    ApiResponse<KakaoAuthResponse> authenticateKakao(KakaoAuthRequest request, HttpServletResponse response);
+
+    @Operation(
+            summary = "애플 로그인/가입",
+            description = "애플 SDK가 발급한 identity token을 검증해 기존 계정이면 로그인, 없으면 자동 가입한다(서비스 약관은 자동 동의로 간주). "
+                    + "애플은 이름을 최초 로그인 때만 SDK로 주므로 그때 givenName/familyName을 함께 보내야 한다(이후에는 생략). "
+                    + "access token은 응답 바디로, refresh token은 HttpOnly Cookie로 발급한다. "
+                    + "기능명세서(v3.1)에 없는 확장 기능이라 별도 명세 ID가 없다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인/가입 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "유효하지 않은 소셜 로그인 토큰입니다. (AUTH_401_004)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "403",
+                description = "탈퇴한 계정입니다.(AUTH_403_002) 또는 정지된 계정입니다.(AUTH_403_003)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "최근 탈퇴한 계정입니다.(AUTH_409_003, 탈퇴 후 30일 이내 재가입 시)")
+    })
+    ApiResponse<AppleAuthResponse> authenticateApple(AppleAuthRequest request, HttpServletResponse response);
 }

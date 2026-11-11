@@ -12,10 +12,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.muffin.sector.application.SectorQueryService;
+import com.muffin.sector.presentation.dto.SectorGuideResponse;
+import com.muffin.sector.presentation.dto.SectorGuideResponse.ReferenceAssetResponse;
+import com.muffin.sector.presentation.dto.SectorGuideResponse.ReferenceAssetType;
+import com.muffin.sector.presentation.dto.SectorGuideResponse.SectorGuideItem;
 import com.muffin.sector.presentation.dto.SectorListResponse;
 import com.muffin.sector.presentation.dto.SectorListResponse.SectorGroupResponse;
 import com.muffin.sector.presentation.dto.SectorListResponse.SectorResponse;
 import java.util.List;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -33,6 +38,69 @@ class SectorControllerDocsTest {
 
     @Mock
     private SectorQueryService sectorQueryService;
+
+    @Test
+    @DisplayName("섹터 안내의 ETF·BTC 응답과 nullable 설명을 문서화한다")
+    void documentSectorGuide(RestDocumentationContextProvider restDocumentation) throws Exception {
+        when(sectorQueryService.getSectorGuide())
+                .thenReturn(new SectorGuideResponse(
+                        2,
+                        List.of(
+                                new SectorGuideItem(
+                                        "GOLD",
+                                        "금",
+                                        "글로벌 금 선물 기반",
+                                        new ReferenceAssetResponse(
+                                                ReferenceAssetType.ETF,
+                                                "132030",
+                                                "KODEX 골드선물(H)",
+                                                "금 선물 가격의 움직임을 반영하는 ETF입니다.")),
+                                new SectorGuideItem(
+                                        "CRYPTO",
+                                        "코인",
+                                        null,
+                                        new ReferenceAssetResponse(
+                                                ReferenceAssetType.CRYPTO,
+                                                "BTC",
+                                                "비트코인",
+                                                "비트코인 시세를 기준 자산으로 사용합니다.")))));
+
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new SectorController(sectorQueryService))
+                .apply(documentationConfiguration(restDocumentation)
+                        .operationPreprocessors()
+                        .withRequestDefaults(prettyPrint())
+                        .withResponseDefaults(prettyPrint()))
+                .build();
+
+        mockMvc.perform(get("/api/sectors/guide").header("Authorization", AUTHORIZATION))
+                .andExpect(status().isOk())
+                .andDo(document(
+                        "sector-guide-success",
+                        requestHeaders(headerWithName("Authorization").description("Bearer access token")),
+                        responseFields(
+                                fieldWithPath("isSuccess").description("성공 여부"),
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("result.totalCount").description("반환된 활성 섹터 수"),
+                                fieldWithPath("result.sectors")
+                                        .description("그룹 표시 순서, 섹터 표시 순서, 섹터 코드 오름차순의 활성 섹터 목록. 없으면 빈 배열"),
+                                fieldWithPath("result.sectors[].sectorCode").description("섹터 코드. 프론트 아이콘 매핑에 사용"),
+                                fieldWithPath("result.sectors[].name").description("섹터 이름"),
+                                fieldWithPath("result.sectors[].description")
+                                        .optional()
+                                        .description("섹터 설명. 미등록 시 null"),
+                                fieldWithPath("result.sectors[].referenceAsset")
+                                        .description("DB에서 해당 섹터에 실제 연결된 기준 자산"),
+                                fieldWithPath("result.sectors[].referenceAsset.type")
+                                        .description("기준 자산 유형: ETF 또는 CRYPTO. BTC는 CRYPTO"),
+                                fieldWithPath("result.sectors[].referenceAsset.code")
+                                        .description("ETF 종목코드 또는 BTC"),
+                                fieldWithPath("result.sectors[].referenceAsset.name")
+                                        .description("기준 자산 이름"),
+                                fieldWithPath("result.sectors[].referenceAsset.description")
+                                        .optional()
+                                        .description("기준 자산 설명. 미등록 시 null"))));
+    }
 
     @Test
     void documentAvailableSectors(RestDocumentationContextProvider restDocumentation) throws Exception {

@@ -99,15 +99,6 @@ muffin:
       zone: Asia/Seoul
 
   auth:
-    email-verification:
-      code-length: 6
-      expire-minutes: 5
-      resend-cooldown-seconds: 30
-      max-attempts: 5
-      max-daily-resend-count: 10
-      cleanup-cron: "0 0 * * * *" # 매시 정각, 만료된 인증 레코드 정리
-      zone: Asia/Seoul
-
     jwt:
       secret: ${JWT_SECRET}
       access-token-expire-minutes: 60
@@ -116,15 +107,24 @@ muffin:
     google:
       client-id: ${GOOGLE_CLIENT_ID}
 
-    login:
-      max-attempts: 5
-      lock-minutes: 30
+    kakao:
+      native-app-key: ${KAKAO_NATIVE_APP_KEY}
+      # 카카오가 정한 고정값이라 기본값을 둔다. 바뀌면 env로 덮어쓴다.
+      jwk-set-uri: ${KAKAO_JWK_SET_URI:https://kauth.kakao.com/.well-known/jwks.json}
+      issuer: ${KAKAO_ISSUER:https://kauth.kakao.com}
+      admin-key: ${KAKAO_ADMIN_KEY}
+      api-base-url: ${KAKAO_API_BASE_URL:https://kapi.kakao.com}
 
-    signup:
-      unverified-account-cleanup:
-        ttl-minutes: 1440 # 24시간
-        cleanup-cron: "0 0 * * * *" # 매시 정각
-        zone: Asia/Seoul
+    apple:
+      bundle-id: ${APPLE_BUNDLE_ID}
+      # 애플이 정한 고정값이라 기본값을 둔다. 바뀌면 env로 덮어쓴다.
+      jwk-set-uri: ${APPLE_JWK_SET_URI:https://appleid.apple.com/auth/keys}
+      issuer: ${APPLE_ISSUER:https://appleid.apple.com}
+      team-id: ${APPLE_TEAM_ID}
+      key-id: ${APPLE_KEY_ID}
+      # .p8 파일 전체를 base64 한 줄로 인코딩한 값
+      private-key: ${APPLE_PRIVATE_KEY}
+      api-base-url: ${APPLE_API_BASE_URL:https://appleid.apple.com}
 
     withdrawal:
       data-cleanup:
@@ -132,8 +132,8 @@ muffin:
         cleanup-cron: "0 0 3 * * *" # 매일 새벽 3시
         zone: Asia/Seoul
 
-    deleted-email:
-      hash-secret: ${DELETED_EMAIL_HASH_SECRET}
+    deleted-account:
+      hash-secret: ${DELETED_ACCOUNT_HASH_SECRET}
 
   news:
     rss:
@@ -141,6 +141,9 @@ muffin:
       # UNIFIED: 전체 후보를 한 번에 평가해 하루 max-total건 (카테고리 균형 보장 안 함)
       # PER_CATEGORY: 카테고리마다 따로 평가해 각각 max-per-category건 (총량이 카테고리 수에 비례)
       selection-mode: ${NEWS_RSS_SELECTION_MODE:UNIFIED}
+      # 매경 뉴스 섹션 피드. 헤드라인·전체뉴스는 섹션 피드와 기사가 겹치고 카테고리를 잃어 제외한다
+      # 문화·연예, 스포츠, 게임은 선별 기준이 대부분 걸러내는 후보라 수집하지 않는다
+      # category 값은 R__seed_category.sql의 category.name과 정확히 일치해야 한다
       feeds:
         - category: 경제
           url: ${NEWS_RSS_ECONOMY_URL:https://www.mk.co.kr/rss/30100041/}
@@ -148,6 +151,14 @@ muffin:
           url: ${NEWS_RSS_STOCK_URL:https://www.mk.co.kr/rss/50200011/}
         - category: 세계
           url: ${NEWS_RSS_WORLD_URL:https://www.mk.co.kr/rss/30300018/}
+        - category: 기업·경영
+          url: ${NEWS_RSS_BUSINESS_URL:https://www.mk.co.kr/rss/50100032/}
+        - category: 부동산
+          url: ${NEWS_RSS_REALESTATE_URL:https://www.mk.co.kr/rss/50300009/}
+        - category: 정치
+          url: ${NEWS_RSS_POLITICS_URL:https://www.mk.co.kr/rss/30200030/}
+        - category: 사회
+          url: ${NEWS_RSS_SOCIETY_URL:https://www.mk.co.kr/rss/50400012/}
 
     ai:
       # AI 기반 기능의 활성화 여부 (비활성화 시 관련 AI 컴포넌트를 등록하지 않음)

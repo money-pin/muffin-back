@@ -51,9 +51,9 @@ groups:
       # 0이라 임계값에 걸리지 않고, or는 같은 라벨 조합에서 왼쪽을 우선하므로
       # 두 항이 겹쳐 중복 발화하지도 않는다.
       #
-      # batch_job!="" 이 필요한 이유: PromQL에서 없는 라벨은 빈 문자열이고, 빈 문자열은
-      # 부정 정규식에 걸리지 않는다. 이 매처가 없으면 batch_job 라벨이 아예 없는
-      # 시계열(구 버전 앱이 job= 으로 내보내던 것)까지 통과한다.
+      # batch_job!="" 이 필요한 이유: PromQL에서 없는 라벨은 빈 문자열이다. 이 매처가
+      # 없으면 batch_job 라벨이 아예 없는 시계열(구 버전 앱이 job= 으로 내보내던 것)까지
+      # 통과한다.
       #
       # 26시간(93600초)인 이유: 하루 주기 잡이 조금 밀려도 오탐하지 않게 하는 여유다.
       # 휴장일은 애초에 문제가 안 된다. 휴장은 SKIPPED(정상 종료)라 성공 시각을
@@ -62,14 +62,14 @@ groups:
         expr: >-
           (
             (
-              (time() - muffin_batch_job_last_success_timestamp_seconds{batch_job!="",batch_job!~"email_verification_cleanup|unverified_account_cleanup"})
-              and muffin_batch_job_last_success_timestamp_seconds{batch_job!="",batch_job!~"email_verification_cleanup|unverified_account_cleanup"} > 0
+              (time() - muffin_batch_job_last_success_timestamp_seconds{batch_job!=""})
+              and muffin_batch_job_last_success_timestamp_seconds{batch_job!=""} > 0
             )
             or
             (
               (time() - process_start_time_seconds{application="muffin"})
               * on(instance, job) group_right()
-              (muffin_batch_job_last_success_timestamp_seconds{batch_job!="",batch_job!~"email_verification_cleanup|unverified_account_cleanup"} == bool 0)
+              (muffin_batch_job_last_success_timestamp_seconds{batch_job!=""} == bool 0)
             )
           ) > 93600
         for: 10m
@@ -82,29 +82,6 @@ groups:
             로그는 {service="muffin"} |= "batch job=" 로 조회합니다.
             경과가 앱 가동 시간과 비슷하면 재기동 후 아직 한 번도 돌지 않은 것이므로,
             그 잡의 다음 실행 시각이 지났는지부터 확인하세요.
-
-      # 매시 정각에 도는 잡 2개. 일간 기준(26시간)을 그대로 쓰면 하루를 통째로
-      # 놓치므로 따로 둔다. 쿼리 구조는 위 룰과 같다.
-      - alert: 매시 정리 잡이 3시간 넘게 성공하지 않음
-        expr: >-
-          (
-            (
-              (time() - muffin_batch_job_last_success_timestamp_seconds{batch_job=~"email_verification_cleanup|unverified_account_cleanup"})
-              and muffin_batch_job_last_success_timestamp_seconds{batch_job=~"email_verification_cleanup|unverified_account_cleanup"} > 0
-            )
-            or
-            (
-              (time() - process_start_time_seconds{application="muffin"})
-              * on(instance, job) group_right()
-              (muffin_batch_job_last_success_timestamp_seconds{batch_job=~"email_verification_cleanup|unverified_account_cleanup"} == bool 0)
-            )
-          ) > 10800
-        for: 10m
-        labels:
-          severity: warning
-        annotations:
-          summary: '{{ $labels.batch_job }} 잡이 3시간 넘게 성공하지 않았습니다'
-          description: 매시 정각에 도는 정리 잡입니다. 스케줄러가 죽었는지 확인하세요.
 
   # ---------------------------------------------------------------------------
   # 가용성: 관측 대상이 살아 있는가. 여기가 울리면 위쪽 배치 알림은 볼 필요가 없다.

@@ -11,6 +11,7 @@ import com.muffin.auth.application.RefreshTokenIssuer;
 import com.muffin.auth.domain.AccessTokenProvider;
 import com.muffin.auth.domain.auth.Auth;
 import com.muffin.auth.domain.auth.AuthRepository;
+import com.muffin.auth.domain.enums.AuthProvider;
 import com.muffin.auth.domain.refreshtoken.RefreshTokenRepository;
 import com.muffin.user.domain.User;
 import com.muffin.user.domain.UserRepository;
@@ -84,7 +85,8 @@ class LogoutControllerTest {
     @DisplayName("GOOGLE 계정으로 로그인된 상태에서도 로그아웃하면 200, refresh token이 삭제된다")
     void logout_googleAccount_success() throws Exception {
         User user = userRepository.save(User.register(null, UUID.randomUUID().toString(), "홍길동", null));
-        authRepository.save(Auth.createGoogle(user.getUserId(), "google-logout@example.com", "google-sub-logout"));
+        authRepository.save(Auth.createSocial(
+                user.getUserId(), AuthProvider.GOOGLE, "google-logout@example.com", "google-sub-logout"));
         refreshTokenIssuer.issue(user.getUserId());
 
         mockMvc.perform(post("/api/auth/logout").header("Authorization", bearerTokenFor(user.getUserId())))

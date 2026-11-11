@@ -32,7 +32,7 @@ class ErrorResponseFormatTest {
     @Test
     @DisplayName("XML만 받겠다는 요청이어도 검증 실패 응답은 400과 공통 JSON 포맷으로 나간다")
     void validationFailure_staysJsonWhenAcceptExcludesJson() throws Exception {
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/auth/google")
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_XML)
                         .content("{}"))
@@ -45,7 +45,7 @@ class ErrorResponseFormatTest {
     @Test
     @DisplayName("XML만 받겠다는 요청이어도 본문 파싱 실패 응답은 400과 공통 JSON 포맷으로 나간다")
     void malformedBody_staysJsonWhenAcceptExcludesJson() throws Exception {
-        mockMvc.perform(post("/auth/signup")
+        mockMvc.perform(post("/auth/google")
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_XML)
                         .content("{"))

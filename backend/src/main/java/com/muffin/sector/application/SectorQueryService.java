@@ -1,8 +1,15 @@
 package com.muffin.sector.application;
 
+import com.muffin.sector.application.projection.SectorGuideProjection;
+import com.muffin.sector.domain.exception.SectorException;
+import com.muffin.sector.domain.exception.code.SectorErrorCode;
 import com.muffin.sector.domain.sector.Sector;
 import com.muffin.sector.domain.sector.SectorRepository;
 import com.muffin.sector.domain.sectorgroup.SectorGroupRepository;
+import com.muffin.sector.presentation.dto.SectorGuideResponse;
+import com.muffin.sector.presentation.dto.SectorGuideResponse.ReferenceAssetResponse;
+import com.muffin.sector.presentation.dto.SectorGuideResponse.ReferenceAssetType;
+import com.muffin.sector.presentation.dto.SectorGuideResponse.SectorGuideItem;
 import com.muffin.sector.presentation.dto.SectorListResponse;
 import com.muffin.sector.presentation.dto.SectorListResponse.SectorGroupResponse;
 import com.muffin.sector.presentation.dto.SectorListResponse.SectorResponse;
@@ -21,6 +28,28 @@ public class SectorQueryService {
 
     private final SectorGroupRepository sectorGroupRepository;
     private final SectorRepository sectorRepository;
+    private final SectorGuideQueryRepository sectorGuideQueryRepository;
+
+    @Transactional(readOnly = true)
+    public SectorGuideResponse getSectorGuide() {
+        List<SectorGuideItem> sectors = sectorGuideQueryRepository.findActiveSectorGuides().stream()
+                .map(this::toGuideItem)
+                .toList();
+        return new SectorGuideResponse(sectors.size(), sectors);
+    }
+
+    private SectorGuideItem toGuideItem(SectorGuideProjection sector) {
+        if (sector.assetCode() == null || sector.assetName() == null) {
+            throw new SectorException(SectorErrorCode.REFERENCE_ASSET_NOT_FOUND);
+        }
+        // 현재 코인 기준 자산은 ETF가 아닌 CoinGecko의 BTC 시세를 사용한다.
+        ReferenceAssetType type = "BTC".equals(sector.assetCode()) ? ReferenceAssetType.CRYPTO : ReferenceAssetType.ETF;
+        return new SectorGuideItem(
+                sector.sectorCode(),
+                sector.name(),
+                sector.description(),
+                new ReferenceAssetResponse(type, sector.assetCode(), sector.assetName(), sector.assetDescription()));
+    }
 
     @Transactional(readOnly = true)
     public SectorListResponse getAvailableSectors() {
