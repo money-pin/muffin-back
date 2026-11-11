@@ -158,7 +158,7 @@ muffin:
       endpoint: ${OPENAI_RESPONSES_URL:https://api.openai.com/v1/responses}
 
       ai-selection:
-        model: ${NEWS_AI_SELECTION_MODEL:gpt-5-mini}
+        model: ${NEWS_AI_SELECTION_MODEL:gpt-6-luna}
         # PER_CATEGORY 모드에서 카테고리당 상한
         max-per-category: ${NEWS_AI_SELECTION_MAX_PER_CATEGORY:5}
         # UNIFIED 모드에서 하루 전체 상한. 재구성·해설카드 비용을 이 값이 결정한다
