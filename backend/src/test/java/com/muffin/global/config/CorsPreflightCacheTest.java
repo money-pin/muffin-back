@@ -22,6 +22,10 @@ import org.springframework.test.web.servlet.MockMvc;
 class CorsPreflightCacheTest {
 
     private static final String ALLOWED_ORIGIN = "http://localhost:5173";
+
+    /** iOS Capacitor WebView가 보내는 origin. http가 아닌 커스텀 스킴이다. */
+    private static final String CAPACITOR_ORIGIN = "capacitor://localhost";
+
     private static final String ONE_HOUR_IN_SECONDS = "3600";
 
     @Autowired
@@ -47,6 +51,22 @@ class CorsPreflightCacheTest {
                         .header("Access-Control-Request-Headers", "Authorization"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", ALLOWED_ORIGIN))
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+    }
+
+    /**
+     * 네이티브 앱의 WebView는 http가 아닌 스킴을 origin으로 보낸다. 스프링의 allowedOrigins는 스킴을 따지지 않고
+     * 대소문자 무시 완전일치로만 판정하므로 그대로 허용되는데, 그게 설정에 의존하는 동작이라 고정해 둔다.
+     */
+    @Test
+    @DisplayName("커스텀 스킴 origin도 허용 목록에 있으면 preflight를 통과한다")
+    void preflight_allowsCustomSchemeOrigin() throws Exception {
+        mockMvc.perform(options("/api/investments/asset")
+                        .header("Origin", CAPACITOR_ORIGIN)
+                        .header("Access-Control-Request-Method", "GET")
+                        .header("Access-Control-Request-Headers", "Authorization"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", CAPACITOR_ORIGIN))
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
 
