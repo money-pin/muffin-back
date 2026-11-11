@@ -46,7 +46,8 @@ public class NewsQueryService {
 
     private static final int MIN_PAGE_SIZE = 1;
     private static final int MAX_PAGE_SIZE = 50;
-    private static final List<String> TODAY_NEWS_CATEGORIES = List.of("경제", "증권", "세계");
+    /** 오늘의 뉴스에 보여 줄 카테고리와 그 표시 순서. 뉴스 알림의 대표 뉴스도 이 순서로 고른다. */
+    public static final List<String> TODAY_NEWS_CATEGORIES = List.of("경제", "증권", "세계");
 
     private final NewsRepository newsRepository;
     private final NewsQueryRepository newsQueryRepository;

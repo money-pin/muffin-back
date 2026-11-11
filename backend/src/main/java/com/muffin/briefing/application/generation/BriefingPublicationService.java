@@ -3,11 +3,13 @@ package com.muffin.briefing.application.generation;
 import com.muffin.briefing.domain.Briefing;
 import com.muffin.briefing.domain.BriefingRepository;
 import com.muffin.briefing.domain.enums.BriefingStatus;
+import com.muffin.global.event.BriefingPublishedEvent;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BriefingPublicationService {
 
     private final BriefingRepository briefingRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 기준일까지의 발행 대기 브리핑을 공개한다.
@@ -34,7 +37,16 @@ public class BriefingPublicationService {
         for (Briefing briefing : targets) {
             briefing.publish(publishedAt);
             log.info("Briefing published: briefingDate={}", briefing.getBriefingDate());
+            eventPublisher.publishEvent(new BriefingPublishedEvent(briefing.getBriefingDate(), publishedAt));
         }
         return targets.size();
+    }
+
+    /** 지정한 날짜의 브리핑이 이미 공개됐는지. 늦은 발행 재시도가 할 일이 없는 경우를 구분하는 데 쓴다. */
+    @Transactional(readOnly = true)
+    public boolean isPublished(LocalDate briefingDate) {
+        return briefingRepository
+                .findByBriefingDateAndStatus(briefingDate, BriefingStatus.PUBLISHED)
+                .isPresent();
     }
 }

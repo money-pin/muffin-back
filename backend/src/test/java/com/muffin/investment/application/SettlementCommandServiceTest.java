@@ -1,10 +1,12 @@
 package com.muffin.investment.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
+import com.muffin.global.event.SettlementCompletedEvent;
 import com.muffin.investment.application.settlement.SettlementBatchResult;
 import com.muffin.investment.application.settlement.SettlementCommandService;
 import com.muffin.investment.domain.investment.Investment;
@@ -29,6 +31,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 
 /**
  * 정산 배치 오케스트레이터를 실제 저장소로 검증한다.
@@ -38,6 +42,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
+@RecordApplicationEvents
 class SettlementCommandServiceTest {
 
     private static final LocalDate INVEST_DATE = LocalDate.of(2026, 5, 7);
@@ -60,6 +65,9 @@ class SettlementCommandServiceTest {
 
     @MockitoBean
     private TradingCalendarService tradingCalendarService;
+
+    @Autowired
+    private ApplicationEvents applicationEvents;
 
     @BeforeEach
     void setUpCalendar() {
@@ -320,6 +328,34 @@ class SettlementCommandServiceTest {
 
     private Long createSector() {
         return sectorRepository.save(Sector.create(1L, 9L, "금융", "d", "FIN", 1)).getId();
+    }
+
+    @Test
+    @DisplayName("정산한 건이 있으면 투자 결과 알림이 구독할 정산 완료 이벤트를 투자일과 함께 발행한다")
+    void settle_publishesCompletedEventWithInvestDate() {
+        long etfId = 7L;
+        Sector sector = sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH", 1));
+        etfPriceRepository.save(EtfPrice.create(etfId, INVEST_DATE, 30_000L, 30_000L));
+        etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 31_800L, 32_000L));
+        userAssetRepository.save(UserAsset.create(1L, 1_000_000L));
+        saveConfirmed(1L, sector.getId(), 300_000L);
+
+        settlementCommandService.settle(SETTLE_DATE);
+
+        assertThat(applicationEvents.stream(SettlementCompletedEvent.class))
+                .containsExactly(new SettlementCompletedEvent(SETTLE_DATE, INVEST_DATE));
+    }
+
+    @Test
+    @DisplayName("정산 대상이 없으면 정산 완료 이벤트를 발행하지 않는다")
+    void settle_doesNotPublishEventWithoutTargets() {
+        long etfId = 7L;
+        sectorRepository.save(Sector.create(1L, etfId, "테크", "d", "TECH", 1));
+        etfPriceRepository.save(EtfPrice.create(etfId, SETTLE_DATE, 31_800L, 32_000L));
+
+        settlementCommandService.settle(SETTLE_DATE);
+
+        assertThat(applicationEvents.stream(SettlementCompletedEvent.class)).isEmpty();
     }
 
     private Long saveConfirmed(Long userId, Long sectorId, long amount) {

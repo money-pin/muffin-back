@@ -1,5 +1,6 @@
 package com.muffin.ranking.application;
 
+import com.muffin.global.event.WeeklyRankingCreatedEvent;
 import com.muffin.ranking.domain.weeklyranking.WeeklyRanking;
 import com.muffin.ranking.domain.weeklyranking.WeeklyRankingCalculator;
 import com.muffin.ranking.domain.weeklyranking.WeeklyRankingCandidate;
@@ -9,6 +10,7 @@ import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,7 @@ public class WeeklyRankingBatchService {
 
     private final WeeklyRankingAggregationRepository aggregationRepository;
     private final WeeklyRankingRepository weeklyRankingRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 기준일이 속한 주의 직전 주를 집계한다. 월요일 휴장 시에도 화요일 실행이 같은 대상 주를 계산한다.
@@ -45,6 +48,7 @@ public class WeeklyRankingBatchService {
         }
 
         weeklyRankingRepository.saveAll(rankings);
+        eventPublisher.publishEvent(new WeeklyRankingCreatedEvent(weekStartDate));
         return WeeklyRankingBatchResult.created(weekStartDate, rankings.size());
     }
 
