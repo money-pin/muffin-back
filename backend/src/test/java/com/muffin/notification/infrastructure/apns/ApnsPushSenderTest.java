@@ -220,6 +220,36 @@ class ApnsPushSenderTest {
     }
 
     @Test
+    void forbiddenOtherReasonKeepsProviderToken() {
+        registered("abc123", ApnsEnvironment.PRODUCTION);
+        List<String> authorizations = new ArrayList<>();
+        server.expect(requestTo("https://api.push.apple.com/3/device/abc123"))
+                .andExpect(request -> authorizations.add(request.getHeaders().getFirst("authorization")))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(apnsError("InvalidProviderToken")));
+        server.expect(requestTo("https://api.push.apple.com/3/device/abc123"))
+                .andExpect(request -> authorizations.add(request.getHeaders().getFirst("authorization")))
+                .andRespond(withSuccess());
+        assertThat(sender.send(USER_ID, MESSAGE)).isEqualTo(PushResult.FAILED);
+        assertThat(sender.send(USER_ID, MESSAGE)).isEqualTo(PushResult.SENT);
+        assertThat(authorizations.get(1)).isEqualTo(authorizations.get(0));
+    }
+
+    @Test
+    void exceptionDeletingOneDeviceDoesNotStopOthers() {
+        DeviceToken expired = leaving("expired", LocalDateTime.now(KST).minusMinutes(1));
+        DeviceToken current = DeviceToken.register(USER_ID, "current", ApnsEnvironment.PRODUCTION);
+        when(deviceTokenRepository.findAllByUserId(USER_ID)).thenReturn(List.of(expired, current));
+        org.mockito.Mockito.doThrow(new IllegalStateException("delete failed"))
+                .when(deviceTokenRepository)
+                .delete(expired);
+        server.expect(requestTo("https://api.push.apple.com/3/device/current")).andRespond(withSuccess());
+        assertThat(sender.send(USER_ID, MESSAGE)).isEqualTo(PushResult.SENT);
+        server.verify();
+    }
+
+    @Test
     @DisplayName("모든 기기 발송이 실패하면 FAILED")
     void send_allDevicesFail_failed() {
         registered("abc123", ApnsEnvironment.PRODUCTION);

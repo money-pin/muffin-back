@@ -36,11 +36,17 @@ public class ApnsPushSender implements PushSender {
         LocalDateTime now = LocalDateTime.now(KST);
         PushResult result = PushResult.NO_DEVICE;
         for (DeviceToken device : deviceTokenRepository.findAllByUserId(userId)) {
-            if (device.isExpired(now)) {
-                deviceTokenRepository.delete(device);
-                continue;
+            PushResult sent;
+            try {
+                if (device.isExpired(now)) {
+                    deviceTokenRepository.delete(device);
+                    continue;
+                }
+                sent = sendTo(device, userId, message);
+            } catch (RuntimeException e) {
+                log.warn("APNs device processing failed: userId={}", userId, e);
+                sent = PushResult.FAILED;
             }
-            PushResult sent = sendTo(device, userId, message);
             if (sent == PushResult.SENT || (sent == PushResult.FAILED && result == PushResult.NO_DEVICE)) {
                 result = sent;
             }
@@ -66,7 +72,8 @@ public class ApnsPushSender implements PushSender {
                 deviceTokenRepository.delete(device);
                 return PushResult.NO_DEVICE;
             }
-            if (e.getStatusCode() == HttpStatus.FORBIDDEN) {
+            if (e.getStatusCode() == HttpStatus.FORBIDDEN
+                    && e.getResponseBodyAsString().contains("\"ExpiredProviderToken\"")) {
                 providerToken.invalidate();
             }
             log.warn(

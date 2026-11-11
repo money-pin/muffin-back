@@ -71,7 +71,10 @@ class DeviceTokenControllerTest {
     /** 로그인과 같은 순서로 세션을 시작한 뒤 access token을 발급한다. */
     private String loggedIn(Long userId) {
         refreshTokenIssuer.startSession(userId);
-        return accessTokenProvider.issue(userId, "USER");
+        return accessTokenProvider.issue(
+                userId,
+                "USER",
+                refreshTokenRepository.findByUserId(userId).orElseThrow().getSessionId());
     }
 
     private ResultActions register(Long userId, String body) throws Exception {
@@ -192,11 +195,7 @@ class DeviceTokenControllerTest {
     void register_staleSession_rejected() throws Exception {
         String oldDeviceAccessToken = loggedIn(USER_A);
         register(USER_A, "new-device", "PRODUCTION").andExpect(status().isOk());
-        // 다른 기기 로그인을 흉내 낸다. access token 발급 시각이 초 단위라 1초 넘게 뒤로 둔다.
-        jdbcTemplate.update(
-                "update refresh_token set session_started_at = ? where user_id = ?",
-                LocalDateTime.now(ZoneId.of("Asia/Seoul")).plusSeconds(5),
-                USER_A);
+        refreshTokenIssuer.startSession(USER_A);
 
         registerWith(oldDeviceAccessToken, body("old-device"))
                 .andExpect(status().isUnauthorized())

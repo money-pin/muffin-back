@@ -27,7 +27,7 @@ public class RefreshCommandService {
     @Transactional
     public TokenPair refresh(String rawRefreshToken) {
         RefreshToken refreshToken = refreshTokenIssuer
-                .findValid(rawRefreshToken)
+                .findValidForUpdate(rawRefreshToken)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 
         User user = userRepository
@@ -42,7 +42,7 @@ public class RefreshCommandService {
         }
 
         String accessToken =
-                accessTokenProvider.issue(user.getUserId(), user.getRole().name());
+                accessTokenProvider.issue(user.getUserId(), user.getRole().name(), refreshToken.getSessionId());
         String newRefreshToken = refreshTokenIssuer.issue(user.getUserId());
 
         return new TokenPair(accessToken, newRefreshToken);

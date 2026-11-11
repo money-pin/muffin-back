@@ -67,10 +67,10 @@ muffin:
 
     briefing-publication:
       # 크론의 MON-FRI가 "주말 미발행" 정책을 담당한다. 공휴일에는 발행한다.
-      # 07:30에 공개하고, 생성이 늦으면 09:50까지 10분마다 다시 시도한다. 알림은 09:00 전 공개분만 보낸다.
+      # 07:30에 공개하고, 생성이 늦으면 23:50까지 10분마다 다시 시도한다. 알림은 09:00 전 공개분만 보낸다.
       scheduler-enabled: ${BRIEFING_PUBLICATION_ENABLED:true}
       cron: ${BRIEFING_PUBLICATION_CRON:0 30,40,50 7 * * MON-FRI}
-      catch-up-cron: ${BRIEFING_PUBLICATION_CATCH_UP_CRON:0 */10 8-9 * * MON-FRI}
+      catch-up-cron: ${BRIEFING_PUBLICATION_CATCH_UP_CRON:0 */10 8-23 * * MON-FRI}
       zone: ${BRIEFING_PUBLICATION_ZONE:Asia/Seoul}
 
     quiz-generation-retry:

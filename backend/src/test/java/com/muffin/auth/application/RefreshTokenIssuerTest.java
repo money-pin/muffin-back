@@ -77,6 +77,19 @@ class RefreshTokenIssuerTest {
     }
 
     @Test
+    void sessionIdChangesOnLoginAndSurvivesRotation() {
+        refreshTokenIssuer.startSession(USER_ID);
+        String first =
+                refreshTokenRepository.findByUserId(USER_ID).orElseThrow().getSessionId();
+        refreshTokenIssuer.issue(USER_ID);
+        assertThat(refreshTokenRepository.findByUserId(USER_ID).orElseThrow().getSessionId())
+                .isEqualTo(first);
+        refreshTokenIssuer.startSession(USER_ID);
+        assertThat(refreshTokenRepository.findByUserId(USER_ID).orElseThrow().getSessionId())
+                .isNotEqualTo(first);
+    }
+
+    @Test
     @DisplayName("findValid: 발급된 원문 토큰으로 조회하면 해당 행을 찾는다")
     void findValid_returnsRowForIssuedToken() {
         String rawToken = refreshTokenIssuer.issue(USER_ID);

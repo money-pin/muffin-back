@@ -77,10 +77,10 @@ public class SocialAuthCommandService {
                         endsAt -> deviceTokenRepository.endCurrentTokensAt(user.getUserId(), endsAt),
                         () -> deviceTokenRepository.deleteByUserId(user.getUserId()));
 
-        // 세션(로그인 시각)을 먼저 시작해야 이어서 발급하는 access token이 이 세션 것으로 인정된다.
+        // 세션을 먼저 시작해 access token에 같은 세션 식별자를 넣는다.
         String refreshToken = refreshTokenIssuer.startSession(user.getUserId());
-        String accessToken =
-                accessTokenProvider.issue(user.getUserId(), user.getRole().name());
+        String accessToken = accessTokenProvider.issue(
+                user.getUserId(), user.getRole().name(), refreshTokenIssuer.sessionId(user.getUserId()));
         return new TokenPair(accessToken, refreshToken);
     }
 

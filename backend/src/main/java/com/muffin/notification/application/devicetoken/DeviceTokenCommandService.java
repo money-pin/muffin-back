@@ -38,8 +38,8 @@ public class DeviceTokenCommandService {
     // 자기 기기를 등록하면 현재 기기의 토큰을 덮어쓰므로, 등록만큼은 지금 세션에서 발급된 토큰인지 확인한다.
     private void requireCurrentSession(Long userId, String accessToken) {
         boolean current = refreshTokenRepository
-                .findByUserId(userId)
-                .map(session -> session.isIssuedInCurrentSession(accessTokenProvider.parseIssuedAt(accessToken)))
+                .findByUserIdForUpdate(userId)
+                .map(session -> session.isCurrentSession(accessTokenProvider.parseSessionId(accessToken)))
                 .orElse(false);
         if (!current) {
             throw new AuthException(AuthErrorCode.STALE_SESSION);

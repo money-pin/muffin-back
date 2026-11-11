@@ -31,11 +31,17 @@ public class JwtAccessTokenProvider implements AccessTokenProvider {
 
     @Override
     public String issue(Long userId, String role) {
+        return issue(userId, role, null);
+    }
+
+    @Override
+    public String issue(Long userId, String role, String sessionId) {
         Instant now = Instant.now();
         Instant expiry = now.plus(properties.accessTokenExpireMinutes(), ChronoUnit.MINUTES);
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim(ROLE_CLAIM, role)
+                .claim("sessionId", sessionId)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
                 .signWith(key)
@@ -49,6 +55,11 @@ public class JwtAccessTokenProvider implements AccessTokenProvider {
         } catch (IllegalArgumentException e) {
             throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
         }
+    }
+
+    @Override
+    public String parseSessionId(String accessToken) {
+        return parseClaims(accessToken).get("sessionId", String.class);
     }
 
     @Override

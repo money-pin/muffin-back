@@ -7,6 +7,10 @@ public interface AccessTokenProvider {
 
     String issue(Long userId, String role);
 
+    String issue(Long userId, String role, String sessionId);
+
+    String parseSessionId(String accessToken);
+
     Long parseUserId(String accessToken);
 
     /** 발급 시각(초 단위). */

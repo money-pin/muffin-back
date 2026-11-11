@@ -68,7 +68,7 @@ public class RefreshTokenIssuer {
      */
     public Optional<LocalDateTime> lastAccessTokenExpiry(Long userId) {
         return refreshTokenRepository
-                .findByUserId(userId)
+                .findByUserIdForUpdate(userId)
                 .map(token -> token.getUpdatedAt() != null ? token.getUpdatedAt() : token.getCreatedAt())
                 .map(lastIssuedAt -> lastIssuedAt.plusMinutes(properties.accessTokenExpireMinutes()));
     }
@@ -76,6 +76,14 @@ public class RefreshTokenIssuer {
     /** 원문 refresh token으로 아직 만료되지 않은 레코드를 찾는다. 재발급/로그아웃에서 사용한다. */
     public Optional<RefreshToken> findValid(String rawToken) {
         return refreshTokenRepository.findByTokenHash(hash(rawToken)).filter(token -> !token.isExpired());
+    }
+
+    public Optional<RefreshToken> findValidForUpdate(String rawToken) {
+        return refreshTokenRepository.findByTokenHashForUpdate(hash(rawToken)).filter(token -> !token.isExpired());
+    }
+
+    public String sessionId(Long userId) {
+        return refreshTokenRepository.findByUserId(userId).orElseThrow().getSessionId();
     }
 
     private static String generateRawToken() {
