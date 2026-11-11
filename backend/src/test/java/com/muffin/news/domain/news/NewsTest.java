@@ -1,5 +1,6 @@
 package com.muffin.news.domain.news;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -194,5 +195,46 @@ class NewsTest {
                 PUBLISHED_AT,
                 "https://example.com/thumb.png",
                 "https://example.com/news/1");
+    }
+
+    /** 재매핑은 남길 것, 지울 것, 더할 것을 한 번에 맞춘다. */
+    @Test
+    void syncTerms_addsRemovesAndKeeps() {
+        News news = reconstructed();
+        news.addTerm(10L);
+        news.addTerm(20L);
+
+        int changed = news.syncTerms(java.util.List.of(20L, 30L));
+
+        assertThat(changed).isEqualTo(2);
+        assertThat(news.getTerms()).extracting(NewsTerm::getTermId).containsExactlyInAnyOrder(20L, 30L);
+    }
+
+    /** 바뀐 것이 없으면 0을 돌려준다. 호출한 쪽이 불필요한 저장을 건너뛸 수 있어야 한다. */
+    @Test
+    void syncTerms_reportsNoChangeWhenIdentical() {
+        News news = reconstructed();
+        news.addTerm(10L);
+
+        assertThat(news.syncTerms(java.util.List.of(10L))).isZero();
+        assertThat(news.getTerms()).hasSize(1);
+    }
+
+    /** 빈 목록으로 맞추면 연결이 모두 사라진다. 매칭이 하나도 안 되는 본문이 여기에 해당한다. */
+    @Test
+    void syncTerms_clearsAllWhenTargetIsEmpty() {
+        News news = reconstructed();
+        news.addTerm(10L);
+        news.addTerm(20L);
+
+        assertThat(news.syncTerms(java.util.List.of())).isEqualTo(2);
+        assertThat(news.getTerms()).isEmpty();
+    }
+
+    private static News reconstructed() {
+        News news = News.processing(
+                1L, "뉴스", "매일경제", java.time.LocalDateTime.of(2026, 7, 18, 9, 0), null, "https://example.com/sync");
+        news.completeReconstruction("뉴스", "뉴스 요약", "본문입니다.");
+        return news;
     }
 }

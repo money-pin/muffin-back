@@ -187,6 +187,11 @@ muffin:
         - category: 사회
           url: ${NEWS_RSS_SOCIETY_URL:https://www.mk.co.kr/rss/50400012/}
 
+    term:
+      # 기동 시 과거 뉴스의 용어 연결을 현재 매칭 규칙으로 다시 맞출지 여부.
+      # 매칭 규칙을 고친 배포에서만 한 번 켜고, batch job=term_remapping 로그를 확인한 뒤 다시 끈다.
+      remap-on-startup: ${TERM_REMAP_ON_STARTUP:false}
+
     ai:
       # AI 기반 기능의 활성화 여부 (비활성화 시 관련 AI 컴포넌트를 등록하지 않음)
       enabled: ${NEWS_AI_ENABLED:false}

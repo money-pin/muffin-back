@@ -25,6 +25,21 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     Optional<News> findByIdForUpdate(@Param("id") Long id);
 
     /**
+     * 용어 재매핑 대상. 본문이 없으면 매칭할 것이 없고, 삭제된 뉴스는 화면에 나가지 않는다.
+     *
+     * <p>엔티티가 아니라 id만 읽는 이유는 전체 뉴스를 한 번에 메모리에 올리지 않기 위해서다. 실제 본문은 덩어리 단위로 다시 읽는다.
+     */
+    @Query(
+            """
+            SELECT n.id
+            FROM News n
+            WHERE n.deletedAt IS NULL
+              AND n.content IS NOT NULL
+            ORDER BY n.id
+            """)
+    List<Long> findIdsForTermRemapping();
+
+    /**
      * 퀴즈 출제 후보 중 해설카드까지 끝난 뉴스.
      *
      * <p>브리핑과 같은 이유로 기간을 수집 시각으로 자른다. 기사 작성 시각으로 자르면 오늘 아침 수집분 가운데 어제 쓰인 기사가
