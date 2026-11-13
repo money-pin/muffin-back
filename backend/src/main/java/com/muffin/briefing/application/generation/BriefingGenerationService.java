@@ -60,12 +60,6 @@ public class BriefingGenerationService {
     /** AI에 넘길 후보 상한. 넓게 보되 프롬프트 크기는 묶어 둔다. */
     private static final int CANDIDATE_LIMIT = 40;
 
-    /**
-     * 후보를 찾을 때 거슬러 올라가는 일수. 아침 브리핑은 "간밤"의 소식을 다루는데 발행 시각 기준 당일 기사만 보면 새벽 기사 몇 건밖에
-     * 남지 않는다. 전날 기사까지 포함해야 어제와 오늘의 흐름을 다룰 수 있다.
-     */
-    private static final int CANDIDATE_LOOKBACK_DAYS = 1;
-
     private static final int MAX_TERM_CANDIDATES = 10;
 
     private static final List<NewsStatus> CANDIDATE_STATUSES = List.of(NewsStatus.PENDING, NewsStatus.PUBLISHED);
@@ -186,10 +180,18 @@ public class BriefingGenerationService {
         }
     }
 
-    /** 당일과 전날 발행된 재구성 완료 뉴스를 후보로 모은다. */
+    /**
+     * 오늘 수집된 재구성 완료 뉴스를 후보로 모은다.
+     *
+     * <p>기준일 당일에 <b>수집된</b> 기사만 본다. 아침 브리핑은 "간밤"의 소식을 다루는데, 그 소식은 오늘 아침 RSS 수집분에
+     * 통째로 들어 있다. 기사 작성 시각으로 자르면 같은 수집분이 자정 경계에서 쪼개지고, 어제 수집해 이미 어제 브리핑에 쓴 기사가
+     * 오늘 후보로 다시 올라온다.
+     *
+     * <p>수집이 실패한 날은 후보가 0건이 되어 브리핑이 미뤄진다. 종전에도 전날 수집분 중 자정 이후 기사만 남아 최소 후보 수를
+     * 채우지 못했으므로 결과는 같고, 하루 지난 기사로 아침 브리핑을 만드는 경로가 사라진 것이 차이다.
+     */
     private List<BriefingIssueCandidate> findCandidates(LocalDate briefingDate) {
-        LocalDateTime startInclusive =
-                briefingDate.minusDays(CANDIDATE_LOOKBACK_DAYS).atStartOfDay();
+        LocalDateTime startInclusive = briefingDate.atStartOfDay();
         LocalDateTime endExclusive = briefingDate.plusDays(1).atStartOfDay();
 
         List<News> newsList = newsRepository.findBriefingCandidates(

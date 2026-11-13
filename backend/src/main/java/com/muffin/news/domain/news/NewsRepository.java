@@ -69,14 +69,21 @@ public interface NewsRepository extends JpaRepository<News, Long> {
 
     /**
      * 브리핑 이슈 후보. 브리핑은 뉴스 공개 시각보다 먼저 발행될 수 있어 아직 공개 전인 PENDING과 이미 공개된 PUBLISHED를 함께 본다.
+     *
+     * <p>기간을 기사 작성 시각({@code publishedAt})이 아니라 <b>수집 시각({@code createdAt})</b>으로 자른다. RSS 피드는
+     * 지난 하루치 기사를 한꺼번에 담고 있어, 한 번의 수집에 어제 쓰인 기사와 오늘 새벽에 쓰인 기사가 섞여 들어온다. 작성 시각으로
+     * 자르면 그 수집분이 날짜 경계에서 쪼개지고, 반대로 어제 수집해 이미 어제 브리핑에 쓴 기사가 오늘 후보로 다시 올라온다.
+     * 수집 시각으로 자르면 "오늘 아침에 받아 온 기사"가 통째로 후보가 되고, 같은 기사는 수집이 한 번뿐이라 두 번 쓰이지 않는다.
+     *
+     * <p>정렬은 작성 시각 내림차순 그대로 둔다. 같은 수집분 안에서는 최근에 쓰인 기사가 먼저 와야 한다.
      */
     @Query(
             """
             SELECT n
             FROM News n
             WHERE n.status IN :statuses
-              AND n.publishedAt >= :startInclusive
-              AND n.publishedAt < :endExclusive
+              AND n.createdAt >= :startInclusive
+              AND n.createdAt < :endExclusive
               AND n.deletedAt IS NULL
               AND n.summary IS NOT NULL
               AND n.content IS NOT NULL
