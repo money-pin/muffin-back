@@ -315,7 +315,11 @@ class NewsControllerDocsTest {
                                 fieldWithPath("result.sectorImpacts[].sectorName")
                                         .description("섹터 표시명"),
                                 fieldWithPath("result.sectorImpacts[].impact")
-                                        .description("영향도(POSITIVE, NEUTRAL, NEGATIVE)"))));
+                                        .description("영향도(POSITIVE, NEUTRAL, NEGATIVE)"),
+                                fieldWithPath("result.sectorImpacts[].reason")
+                                        .optional()
+                                        .description("해당 섹터가 오를/내릴 것으로 보는 이유 한 문장."
+                                                + " NEUTRAL이거나 이 기능 이전에 분석된 기사면 null"))));
     }
 
     @Test
@@ -333,7 +337,8 @@ class NewsControllerDocsTest {
     }
 
     private static SectorImpactItem impact(String code, String name, ImpactType impact) {
-        return new SectorImpactItem(code, name, impact);
+        String reason = impact == ImpactType.NEUTRAL ? null : "기사에서 밝힌 수요 변화가 이 섹터로 이어져요.";
+        return new SectorImpactItem(code, name, impact, reason);
     }
 
     private static org.springframework.restdocs.payload.ResponseFieldsSnippet errorResponseFields(String code) {

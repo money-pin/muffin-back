@@ -4,6 +4,7 @@ import com.muffin.global.apiPayload.code.GeneralErrorCode;
 import com.muffin.global.apiPayload.exception.GeneralException;
 import com.muffin.news.application.exception.NewsErrorCode;
 import com.muffin.news.application.exception.NewsException;
+import com.muffin.news.application.sectorimpact.SectorRow;
 import com.muffin.news.application.term.TermTextMatcher;
 import com.muffin.news.domain.category.Category;
 import com.muffin.news.domain.category.CategoryRepository;
@@ -176,22 +177,27 @@ public class NewsQueryService {
                 .filter(found -> found.getDeletedAt() == null)
                 .orElseThrow(() -> new NewsException(NewsErrorCode.NEWS_NOT_FOUND));
 
-        Map<Long, ImpactType> impactBySectorId = loadImpactsBySectorId(news.getId());
+        Map<Long, NewsSectorImpact> impactBySectorId = loadImpactsBySectorId(news.getId());
 
         List<SectorImpactItem> sectorImpacts = newsQueryRepository.findActiveSectorsInDisplayOrder().stream()
-                .map(sector -> new SectorImpactItem(
-                        sector.sectorCode(),
-                        sector.sectorName(),
-                        impactBySectorId.getOrDefault(sector.sectorId(), ImpactType.NEUTRAL)))
+                .map(sector -> toSectorImpactItem(sector, impactBySectorId.get(sector.sectorId())))
                 .toList();
 
         return new NewsSectorImpactResponse(news.getId(), sectorImpacts);
     }
 
-    private Map<Long, ImpactType> loadImpactsBySectorId(Long newsId) {
-        Map<Long, ImpactType> impactBySectorId = new HashMap<>();
+    /** 분석 결과가 없는 섹터는 NEUTRAL로 채우고, 그때는 설명할 영향이 없으므로 이유도 비운다. */
+    private static SectorImpactItem toSectorImpactItem(SectorRow sector, NewsSectorImpact impact) {
+        if (impact == null) {
+            return new SectorImpactItem(sector.sectorCode(), sector.sectorName(), ImpactType.NEUTRAL, null);
+        }
+        return new SectorImpactItem(sector.sectorCode(), sector.sectorName(), impact.getImpact(), impact.getReason());
+    }
+
+    private Map<Long, NewsSectorImpact> loadImpactsBySectorId(Long newsId) {
+        Map<Long, NewsSectorImpact> impactBySectorId = new HashMap<>();
         for (NewsSectorImpact impact : newsSectorImpactRepository.findByNewsId(newsId)) {
-            impactBySectorId.putIfAbsent(impact.getSectorId(), impact.getImpact());
+            impactBySectorId.putIfAbsent(impact.getSectorId(), impact);
         }
         return impactBySectorId;
     }

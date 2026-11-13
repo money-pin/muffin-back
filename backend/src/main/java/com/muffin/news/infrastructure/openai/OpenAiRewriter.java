@@ -44,6 +44,9 @@ public class OpenAiRewriter implements NewsRewriter {
      * 소스다. {@link com.muffin.sector.application.seed.SectorSeedData#SECTORS}의 12개 코드와 일치해야 하며,
      * 어긋나면 저장 시점의 섹터 조회에서 실패해 해당 뉴스가 FAILED 처리된다.
      */
+    /** 섹터 영향 이유 한 줄의 상한. 도메인의 NewsSectorImpact가 같은 값으로 다시 거른다. */
+    private static final int MAX_SECTOR_REASON_LENGTH = 60;
+
     private static final Map<String, String> SECTOR_DESCRIPTIONS = sectorDescriptions();
 
     private static final List<String> SECTOR_CODES = List.copyOf(SECTOR_DESCRIPTIONS.keySet());
@@ -151,6 +154,18 @@ public class OpenAiRewriter implements NewsRewriter {
         - STRONG_POSITIVE와 STRONG_NEGATIVE는 해당 섹터가 뉴스의 직접적인 주제일 때만 사용하라.
         - 긍정적 영향과 부정적 영향이 함께 존재하면 원문에서 더 직접적이고 명확한 영향을 기준으로 판단하라.
 
+        [섹터 영향 이유(reason) 작성 규칙]
+
+        - NEUTRAL로 판단한 섹터는 reason을 빈 문자열로 두라. 영향이 없다고 해놓고 이유를 적으면 그 자체가
+          지어낸 말이 된다.
+        - NEUTRAL이 아닌 섹터만 1문장, 60자 이내로 쓰라.
+        - 이 기사의 어떤 내용 때문에 그 섹터가 오를 것으로 또는 내릴 것으로 보는지 쓰라.
+        - 판단 근거는 모두 원문 안에 있어야 한다. 원문에 없는 사실, 수치, 전망을 덧붙이지 마라.
+        - 등급 이름(POSITIVE 등)을 문장에 그대로 쓰지 마라. 화면이 이미 보여준다.
+        - impact가 긍정이면 오르는 이유를, 부정이면 내리는 이유를 쓰라. 등급과 설명의 방향이 어긋나면 안 된다.
+        - 해요체로 끝맺어라.
+        - 특정 종목이나 상품의 매수, 매도를 권유하지 마라.
+
         [warning_flags 작성 규칙]
 
         원문에 다음 문제가 있을 때만 해당 값을 포함하라.
@@ -171,11 +186,13 @@ public class OpenAiRewriter implements NewsRewriter {
           "sector_impacts": [
             {
               "sector_code": "DEPOSIT",
-              "impact": "NEUTRAL"
+              "impact": "NEUTRAL",
+              "reason": ""
             },
             {
               "sector_code": "GOLD",
-              "impact": "POSITIVE"
+              "impact": "POSITIVE",
+              "reason": "안전자산 수요가 늘어 금 가격을 밀어올릴 수 있어요."
             }
           ],
           "warning_flags": []
@@ -301,14 +318,14 @@ public class OpenAiRewriter implements NewsRewriter {
     private static Map<String, Object> sectorImpactsSchema() {
         Map<String, Object> itemSchema = new LinkedHashMap<>();
         itemSchema.put("type", "object");
-        itemSchema.put(
-                "properties",
-                Map.of(
-                        "sector_code",
-                        Map.of("type", "string", "enum", SECTOR_CODES),
-                        "impact",
-                        Map.of("type", "string", "enum", IMPACT_TYPES)));
-        itemSchema.put("required", List.of("sector_code", "impact"));
+        // reason은 NEUTRAL일 때 빈 문자열이어야 하므로 minLength를 두지 않는다.
+        // strict 스키마는 정의한 키를 모두 required에 넣어야 해서 키 자체는 항상 존재한다.
+        Map<String, Object> itemProperties = new LinkedHashMap<>();
+        itemProperties.put("sector_code", Map.of("type", "string", "enum", SECTOR_CODES));
+        itemProperties.put("impact", Map.of("type", "string", "enum", IMPACT_TYPES));
+        itemProperties.put("reason", Map.of("type", "string", "maxLength", MAX_SECTOR_REASON_LENGTH));
+        itemSchema.put("properties", itemProperties);
+        itemSchema.put("required", List.of("sector_code", "impact", "reason"));
         itemSchema.put("additionalProperties", false);
 
         return Map.of(
@@ -347,7 +364,8 @@ public class OpenAiRewriter implements NewsRewriter {
                 .valueStream()
                 .map(impact -> new SectorImpactResult(
                         impact.path("sector_code").asText(),
-                        ImpactType.valueOf(impact.path("impact").asText())))
+                        ImpactType.valueOf(impact.path("impact").asText()),
+                        impact.path("reason").asText(null)))
                 .toList();
 
         Set<String> returnedSectorCodes =
