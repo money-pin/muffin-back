@@ -2,9 +2,7 @@ package com.muffin.news.application.term;
 
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
-import com.muffin.news.domain.term.TermDictionary;
 import com.muffin.news.domain.term.TermDictionaryRepository;
-import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +17,12 @@ public class NewsTermMappingService {
     private final NewsRepository newsRepository;
     private final TermDictionaryRepository termDictionaryRepository;
 
-    /** 재구성 본문에 포함된 경제금융용어를 찾아 NewsTerm으로 연결한다. */
+    /**
+     * 재구성 본문에 포함된 경제금융용어를 찾아 NewsTerm으로 연결한다.
+     *
+     * <p>추가만 하지 않고 {@link News#syncTerms}로 맞추는 이유는, 이 메서드가 같은 뉴스에 두 번 이상 불릴 수 있기 때문이다
+     * (재구성 이벤트 재발행, 수동 재시도). 두 번째 호출이 첫 번째 결과를 그대로 유지하도록 두면 매칭 규칙이 바뀌어도 옛 연결이 남는다.
+     */
     @Transactional
     public int mapTerms(Long newsId) {
         News news = newsRepository
@@ -31,32 +34,16 @@ public class NewsTermMappingService {
             return 0;
         }
 
-        // 긴 용어를 먼저 매핑해 짧은 부분 문자열 용어보다 구체적인 후보가 우선 연결되도록 한다.
-        List<TermDictionary> matchedTerms = termDictionaryRepository.findAll().stream()
-                .filter(term -> isMatchable(term.getTerm()))
-                .sorted(Comparator.comparingInt(
-                                (TermDictionary term) -> term.getTerm().length())
-                        .reversed())
-                .filter(term -> TermTextMatcher.containsTerm(news.getContent(), term.getTerm()))
-                .toList();
+        List<Long> termIds = NewsTermMatcher.matchedTermIds(
+                news.getContent(), NewsTermMatcher.matchableTerms(termDictionaryRepository.findAll()));
 
-        // 엔티티 상태 변경은 stream 밖에서 명시적으로 수행해 매핑 후보 추출과 저장 대상 추가를 분리한다.
-        int mappedCount = 0;
-        for (TermDictionary term : matchedTerms) {
-            if (news.addTerm(term.getId())) {
-                mappedCount++;
-            }
-        }
-
-        if (mappedCount > 0) {
+        int changedCount = news.syncTerms(termIds);
+        if (changedCount > 0) {
             newsRepository.save(news);
         }
 
-        log.info("News term mapping completed: newsId={}, mapped={}", newsId, mappedCount);
-        return mappedCount;
-    }
-
-    private static boolean isMatchable(String term) {
-        return term != null && TermTextMatcher.normalizedLength(term) >= 2;
+        log.info(
+                "News term mapping completed: newsId={}, matched={}, changed={}", newsId, termIds.size(), changedCount);
+        return changedCount;
     }
 }

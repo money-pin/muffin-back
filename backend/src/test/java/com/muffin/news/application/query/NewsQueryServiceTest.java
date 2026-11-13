@@ -306,4 +306,52 @@ class NewsQueryServiceTest {
                 0L,
                 isScrapped);
     }
+
+    /** 분석된 섹터는 등급과 함께 이유를 내려주고, 분석되지 않은 섹터는 NEUTRAL에 이유 없이 채운다. */
+    @Test
+    void getSectorImpacts_carriesReasonForAnalysedSectorsOnly() {
+        News news = reconstructedNewsForImpacts();
+        when(newsRepository.findById(104L)).thenReturn(Optional.of(news));
+        when(newsQueryRepository.findActiveSectorsInDisplayOrder())
+                .thenReturn(List.of(
+                        new com.muffin.news.application.sectorimpact.SectorRow(1L, "GOLD", "금"),
+                        new com.muffin.news.application.sectorimpact.SectorRow(2L, "USD", "달러"),
+                        new com.muffin.news.application.sectorimpact.SectorRow(3L, "BIO", "바이오/제약")));
+        when(newsSectorImpactRepository.findByNewsId(104L))
+                .thenReturn(List.of(
+                        com.muffin.news.domain.sectorimpact.NewsSectorImpact.create(
+                                104L,
+                                1L,
+                                com.muffin.news.domain.sectorimpact.enums.ImpactType.POSITIVE,
+                                "안전자산 수요가 늘어요."),
+                        com.muffin.news.domain.sectorimpact.NewsSectorImpact.create(
+                                104L,
+                                2L,
+                                com.muffin.news.domain.sectorimpact.enums.ImpactType.NEUTRAL,
+                                "영향이 없는데 적었어요.")));
+
+        List<com.muffin.news.presentation.dto.NewsSectorImpactResponse.SectorImpactItem> items =
+                newsQueryService.getSectorImpacts(104L).sectorImpacts();
+
+        assertThat(items)
+                .extracting(
+                        com.muffin.news.presentation.dto.NewsSectorImpactResponse.SectorImpactItem::sectorCode,
+                        com.muffin.news.presentation.dto.NewsSectorImpactResponse.SectorImpactItem::impact,
+                        com.muffin.news.presentation.dto.NewsSectorImpactResponse.SectorImpactItem::reason)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(
+                                "GOLD", com.muffin.news.domain.sectorimpact.enums.ImpactType.POSITIVE, "안전자산 수요가 늘어요."),
+                        org.assertj.core.groups.Tuple.tuple(
+                                "USD", com.muffin.news.domain.sectorimpact.enums.ImpactType.NEUTRAL, null),
+                        org.assertj.core.groups.Tuple.tuple(
+                                "BIO", com.muffin.news.domain.sectorimpact.enums.ImpactType.NEUTRAL, null));
+    }
+
+    private static News reconstructedNewsForImpacts() {
+        News news = News.processing(
+                1L, "뉴스", "매일경제", LocalDateTime.of(2026, 7, 18, 9, 0), null, "https://example.com/impacts");
+        ReflectionTestUtils.setField(news, "id", 104L);
+        news.completeReconstruction("뉴스", "뉴스 요약", "재구성된 본문입니다.");
+        return news;
+    }
 }

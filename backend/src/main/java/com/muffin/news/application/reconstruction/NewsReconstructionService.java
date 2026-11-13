@@ -109,7 +109,7 @@ public class NewsReconstructionService {
                     if (sector == null) {
                         throw new IllegalStateException("Sector not found: " + result.sectorCode());
                     }
-                    return NewsSectorImpact.create(news.getId(), sector.getId(), result.impact());
+                    return NewsSectorImpact.create(news.getId(), sector.getId(), result.impact(), result.reason());
                 })
                 .toList();
     }

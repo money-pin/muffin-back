@@ -26,10 +26,11 @@ class NewsSectorImpactPersistenceTest {
     @Test
     @DisplayName("같은 뉴스-섹터 영향도를 두 번 저장하면 유니크 제약 위반이 발생한다")
     void newsSectorImpact_duplicateNewsAndSector_violatesUnique() {
-        newsSectorImpactRepository.saveAndFlush(NewsSectorImpact.create(1L, 10L, ImpactType.POSITIVE));
+        newsSectorImpactRepository.saveAndFlush(NewsSectorImpact.create(1L, 10L, ImpactType.POSITIVE, "안전자산 수요가 늘어요."));
 
         assertThrows(
                 DataIntegrityViolationException.class,
-                () -> newsSectorImpactRepository.saveAndFlush(NewsSectorImpact.create(1L, 10L, ImpactType.NEGATIVE)));
+                () -> newsSectorImpactRepository.saveAndFlush(
+                        NewsSectorImpact.create(1L, 10L, ImpactType.NEGATIVE, "달러 강세로 눌려요.")));
     }
 }

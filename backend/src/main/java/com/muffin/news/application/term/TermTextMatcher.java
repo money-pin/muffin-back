@@ -102,16 +102,45 @@ public final class TermTextMatcher {
         return builder.toString();
     }
 
+    /**
+     * 매칭 구간이 더 긴 낱말의 일부가 아닌지 확인한다.
+     *
+     * <p>ASCII 키워드는 양옆을 모두 본다. {@code CP}가 {@code ABCP}에 걸리면 안 되기 때문이다.
+     *
+     * <p>한글 키워드는 <b>앞쪽만</b> 본다. 한국어는 수식어가 앞에 붙어 복합어를 만들고(무+이표채, 금+지로) 조사와 어미는 뒤에
+     * 붙기 때문이다(결제+가, 청산+될). 뒤까지 막으면 조사가 붙은 정상 표기를 전부 놓친다. 이 규칙이 없을 때 "마찬가지로"와
+     * "규정상 금지로"에서 용어 {@code 지로(GIRO)}의 별칭 {@code 지로}가 걸렸다.
+     *
+     * <p>앞 글자가 한글이라는 이유로 버려지는 복합어(국부펀드의 {@code 펀드})는 대체로 그 복합어 자체가 사전에 등재되어 있어
+     * 더 긴 매칭이 대신 잡는다.
+     */
     private static boolean hasValidBoundary(
             String originalContent, NormalizedText normalizedContent, String normalizedKeyword, int start, int end) {
+        int originalStart = normalizedContent.originalIndexes().get(start);
+        int originalEnd = normalizedContent.originalIndexes().get(end);
+
+        if (startsWithHangul(normalizedKeyword)) {
+            return !isHangulAt(originalContent, originalStart - 1);
+        }
         if (!isAsciiAlphaNumericKeyword(normalizedKeyword)) {
             return true;
         }
-
-        int originalStart = normalizedContent.originalIndexes().get(start);
-        int originalEnd = normalizedContent.originalIndexes().get(end);
         return !isAsciiAlphaNumericAt(originalContent, originalStart - 1)
                 && !isAsciiAlphaNumericAt(originalContent, originalEnd + 1);
+    }
+
+    /** 한글로 시작하는 키워드만 앞쪽 경계를 따진다. 한자나 기호로 시작하는 키워드는 종전대로 둔다. */
+    private static boolean startsWithHangul(String keyword) {
+        return !keyword.isEmpty() && isHangul(keyword.charAt(0));
+    }
+
+    private static boolean isHangulAt(String value, int index) {
+        return index >= 0 && index < value.length() && isHangul(value.charAt(index));
+    }
+
+    /** 완성형 음절(가~힣)만 본다. 자모 단독은 본문에 낱말로 등장하지 않는다. */
+    private static boolean isHangul(char ch) {
+        return ch >= '\uac00' && ch <= '\ud7a3';
     }
 
     private static boolean isAsciiAlphaNumericKeyword(String keyword) {

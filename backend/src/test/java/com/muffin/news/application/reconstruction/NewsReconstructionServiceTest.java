@@ -71,7 +71,7 @@ class NewsReconstructionServiceTest {
                         "AI가 쓴 제목",
                         "한 줄 요약",
                         "재구성된 본문",
-                        List.of(new SectorImpactResult("GOLD", ImpactType.POSITIVE)),
+                        List.of(new SectorImpactResult("GOLD", ImpactType.POSITIVE, "안전자산 수요가 늘어요.")),
                         List.of()));
 
         reconstructionService.reconstruct(List.of(newsId));
@@ -122,7 +122,7 @@ class NewsReconstructionServiceTest {
                         "AI가 쓴 제목",
                         "한 줄 요약",
                         "재구성된 본문",
-                        List.of(new SectorImpactResult("GOLD", ImpactType.POSITIVE)),
+                        List.of(new SectorImpactResult("GOLD", ImpactType.POSITIVE, "안전자산 수요가 늘어요.")),
                         List.of()));
         when(newsSectorImpactRepository.saveAll(anyList())).thenThrow(new IllegalStateException("db unavailable"));
 

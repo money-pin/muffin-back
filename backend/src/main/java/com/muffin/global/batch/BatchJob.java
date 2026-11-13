@@ -29,6 +29,7 @@ public enum BatchJob {
     NOTIFICATION_QUIZ_REMINDER("notification_quiz_reminder", "notification"),
     NOTIFICATION_RANKING("notification_ranking", "notification"),
     RSS_COLLECTION("rss_collection", "news"),
+    TERM_REMAPPING("term_remapping", "news"),
     QUIZ_GENERATION_RETRY("quiz_generation_retry", "quiz"),
     QUIZ_PUBLICATION("quiz_publication", "quiz"),
     WEEKLY_RANKING("weekly_ranking", "ranking"),

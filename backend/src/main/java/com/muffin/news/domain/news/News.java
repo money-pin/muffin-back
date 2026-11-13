@@ -17,8 +17,12 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -159,6 +163,41 @@ public class News extends BaseEntity {
         }
         this.terms.add(NewsTerm.create(termId));
         return true;
+    }
+
+    /**
+     * 연결된 용어를 주어진 목록과 똑같이 맞춘다. 매칭 규칙이 바뀐 뒤 과거 뉴스를 다시 매핑할 때 쓴다.
+     *
+     * <p>지우고 다시 담지 않고 차집합만 건드리는 이유는 {@code news_term}의 생성 시각을 보존하기 위해서다. 바뀐 규칙에도
+     * 그대로 걸리는 용어는 원래 연결된 그 행이고, 재매핑 때문에 모든 행의 시각이 오늘로 바뀌면 언제부터 연결돼 있었는지를 잃는다.
+     *
+     * @return 실제로 바뀐 연결 수(추가 + 삭제). 0이면 저장할 것이 없다
+     */
+    public int syncTerms(Collection<Long> termIds) {
+        if (termIds == null) {
+            throw new IllegalArgumentException("termIds는 필수입니다.");
+        }
+        Set<Long> target = new LinkedHashSet<>(termIds);
+        if (target.contains(null)) {
+            throw new IllegalArgumentException("termIds에 null이 들어갈 수 없습니다.");
+        }
+
+        int removed = 0;
+        Iterator<NewsTerm> iterator = terms.iterator();
+        while (iterator.hasNext()) {
+            if (!target.contains(iterator.next().getTermId())) {
+                iterator.remove();
+                removed++;
+            }
+        }
+
+        int added = 0;
+        for (Long termId : target) {
+            if (addTerm(termId)) {
+                added++;
+            }
+        }
+        return removed + added;
     }
 
     /** 뉴스에 연결된 용어 목록을 읽기 전용으로 반환한다. */

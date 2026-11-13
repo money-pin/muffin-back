@@ -7,7 +7,9 @@ package com.muffin.global.batch;
  */
 public enum BatchTrigger {
     SCHEDULER("scheduler"),
-    EVENT("event");
+    EVENT("event"),
+    /** 애플리케이션 기동 시 한 번 실행되는 보정 작업. 평소에는 꺼져 있고 필요한 배포에서만 켠다. */
+    STARTUP("startup");
 
     private final String code;
 
