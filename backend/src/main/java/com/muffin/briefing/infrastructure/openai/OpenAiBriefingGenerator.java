@@ -299,8 +299,14 @@ public class OpenAiBriefingGenerator implements BriefingGenerator {
 
         // 섹터 이름을 enum으로 못박아 모델이 성적표에 없는 섹터를 지어내지 못하게 한다.
         // 성적표가 비어 있으면 설명할 대상이 없다. strict 스키마는 정의한 키를 모두 required에 넣어야 하므로 아예 뺀다.
+        //
+        // 행 수가 아니라 고유 이름 수로 항목 수를 정한다. sector 테이블은 name에 유일 제약이 없어 이름이 같은 섹터가
+        // 성적표에 둘 이상 올 수 있는데, 그때 행 수만큼 항목을 요구하면 enum에 고를 값이 모자라 모델이 같은 이름을 두 번
+        // 쓸 수밖에 없다. 그 응답은 중복으로 거부되고 예외가 되어 그날 브리핑이 통째로 UNAVAILABLE이 된다.
+        // 설명 몇 개가 빠지는 것은 등락률만 보여주면 되지만, 브리핑이 사라지는 것은 복구할 방법이 없다.
         List<String> sectorNames = request.sectorLines().stream()
                 .map(BriefingSectorLine::sectorName)
+                .distinct()
                 .toList();
         if (!sectorNames.isEmpty()) {
             Map<String, Object> sectorReasonProperties = new LinkedHashMap<>();

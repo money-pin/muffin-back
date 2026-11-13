@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** 섹터 변동 이유를 주고받는 부분을 검증한다. 모델 응답이 성적표와 어긋나면 그대로 저장되면 안 된다. */
@@ -169,5 +170,56 @@ class OpenAiBriefingGeneratorTest {
     private static String envelope(String payload) {
         return "{\"output\":[{\"content\":[{\"type\":\"output_text\",\"text\":"
                 + new ObjectMapper().writeValueAsString(payload) + "}]}]}";
+    }
+
+    /**
+     * sector 테이블은 name에 유일 제약이 없다. 이름이 같은 섹터가 성적표에 둘 오면 enum에 고를 값이 모자라 모델이 같은
+     * 이름을 두 번 쓸 수밖에 없고, 그 응답은 중복으로 거부되어 그날 브리핑이 통째로 UNAVAILABLE이 된다.
+     */
+    @Test
+    void sizesSectorReasonSchemaByDistinctNames() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        OpenAiBriefingGenerator generator = generator(builder);
+        BriefingGenerationRequest request = new BriefingGenerationRequest(
+                BRIEFING_DATE,
+                candidates(),
+                BuzzSignal.empty(),
+                List.of(
+                        new BriefingSectorLine("반도체", new BigDecimal("2.31")),
+                        new BriefingSectorLine("반도체", new BigDecimal("1.10")),
+                        new BriefingSectorLine("2차전지", new BigDecimal("-1.04"))),
+                List.of());
+
+        server.expect(requestTo("https://api.test/responses"))
+                .andExpect(sectorReasonSchema -> {
+                    JsonNode schema = new ObjectMapper()
+                            .readTree(sectorReasonSchema.getBody().toString())
+                            .path("text")
+                            .path("format")
+                            .path("schema")
+                            .path("properties")
+                            .path("sector_reasons");
+                    assertThat(schema.path("minItems").asInt()).isEqualTo(2);
+                    assertThat(schema.path("maxItems").asInt()).isEqualTo(2);
+                    assertThat(schema.path("items")
+                                    .path("properties")
+                                    .path("sector")
+                                    .path("enum")
+                                    .size())
+                            .isEqualTo(2);
+                })
+                .andRespond(withSuccess(
+                        response(
+                                """
+                                {"sector":"반도체","reason":"AI 수요가 이어졌어요."},
+                                {"sector":"2차전지","reason":"전기차 수요 둔화 우려가 이어졌어요."}
+                                """),
+                        MediaType.APPLICATION_JSON));
+
+        BriefingGenerationResult result = generator.generate(request);
+
+        assertThat(result.sectorReasons()).hasSize(2);
+        server.verify();
     }
 }
