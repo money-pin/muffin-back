@@ -24,13 +24,20 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     @Query("SELECT n FROM News n WHERE n.id = :id")
     Optional<News> findByIdForUpdate(@Param("id") Long id);
 
+    /**
+     * 퀴즈 출제 후보 중 해설카드까지 끝난 뉴스.
+     *
+     * <p>브리핑과 같은 이유로 기간을 수집 시각으로 자른다. 기사 작성 시각으로 자르면 오늘 아침 수집분 가운데 어제 쓰인 기사가
+     * 전부 빠지고, 그 기사들은 어제 퀴즈가 돌 때는 아직 수집 전이었으므로 <b>어느 날 퀴즈에도 쓰이지 못한 채 사라진다.</b>
+     * 매경 피드에서 00시~06시에 쓰인 기사는 전체의 2% 남짓이라 남는 후보가 출제에 필요한 3건에 못 미친다.
+     */
     @Query(
             """
             SELECT n
             FROM News n
             WHERE n.status = :status
-              AND n.publishedAt >= :startInclusive
-              AND n.publishedAt < :endExclusive
+              AND n.createdAt >= :startInclusive
+              AND n.createdAt < :endExclusive
               AND n.deletedAt IS NULL
               AND n.summary IS NOT NULL
               AND n.content IS NOT NULL
@@ -49,13 +56,14 @@ public interface NewsRepository extends JpaRepository<News, Long> {
             @Param("endExclusive") LocalDateTime endExclusive,
             Pageable pageable);
 
+    /** 해설카드가 아직 없어도 재구성만 끝났으면 퀴즈 후보로 쓴다. 기간 기준은 {@link #findQuizCandidates}와 같다. */
     @Query(
             """
             SELECT n
             FROM News n
             WHERE n.status = :status
-              AND n.publishedAt >= :startInclusive
-              AND n.publishedAt < :endExclusive
+              AND n.createdAt >= :startInclusive
+              AND n.createdAt < :endExclusive
               AND n.deletedAt IS NULL
               AND n.summary IS NOT NULL
               AND n.content IS NOT NULL

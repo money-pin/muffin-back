@@ -143,7 +143,13 @@ public class DailyQuizGenerationService {
         });
     }
 
-    /** 사용자 공개 전이라도 재구성 결과가 있는 발행 대기 뉴스 후보 중 퀴즈에 적합한 3개를 고른다. */
+    /**
+     * 사용자 공개 전이라도 재구성 결과가 있는 발행 대기 뉴스 후보 중 퀴즈에 적합한 3개를 고른다.
+     *
+     * <p>기준일 당일에 <b>수집된</b> 기사에서 고른다. 퀴즈는 그날 09시에 공개되는 뉴스에서 나와야 하는데, 그 뉴스가 바로 당일
+     * 아침 수집분이다. 기사 작성 시각으로 자르면 같은 수집분에서 어제 쓰인 기사만 빠져, 사용자가 그날 읽는 기사 대부분이 출제
+     * 대상에서 제외된다.
+     */
     private List<News> findQuizSourceNews(LocalDate quizDate) {
         LocalDateTime startInclusive = quizDate.atStartOfDay();
         LocalDateTime endExclusive = quizDate.plusDays(1).atStartOfDay();
