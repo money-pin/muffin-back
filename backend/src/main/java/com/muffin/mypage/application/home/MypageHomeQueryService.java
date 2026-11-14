@@ -19,6 +19,8 @@ import com.muffin.user.domain.exception.UserException;
 import com.muffin.user.domain.exception.code.UserErrorCode;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -63,10 +65,28 @@ public class MypageHomeQueryService {
                         character.getName(),
                         character.getImageUrl()),
                 toStreakSummary(streak),
-                recentNewsRows.stream()
-                        .map(row -> new RecentNewsItem(
-                                row.newsId(), row.title(), row.thumbnailUrl(), row.readAt(), row.isScrapped()))
-                        .toList());
+                recentNewsRows.stream().map(this::toRecentNewsItem).toList());
+    }
+
+    private RecentNewsItem toRecentNewsItem(RecentReadNewsRow row) {
+        return new RecentNewsItem(
+                row.newsId(),
+                row.title(),
+                row.categoryName(),
+                originalThumbnail(row.thumbnailUrl()),
+                row.viewCount(),
+                toKst(row.publishedAt()),
+                toKst(row.viewedAt()),
+                row.isScrapped());
+    }
+
+    /** 원본 썸네일이 있으면 그대로, 없으면(빈 문자열 포함) null을 반환한다. 최근 읽은 뉴스 목록과 같은 규칙이다. */
+    private static String originalThumbnail(String thumbnailUrl) {
+        return (thumbnailUrl != null && !thumbnailUrl.isBlank()) ? thumbnailUrl : null;
+    }
+
+    private OffsetDateTime toKst(LocalDateTime dateTime) {
+        return dateTime == null ? null : dateTime.atZone(clock.getZone()).toOffsetDateTime();
     }
 
     private StreakSummary toStreakSummary(StreakCalculator.Result streak) {

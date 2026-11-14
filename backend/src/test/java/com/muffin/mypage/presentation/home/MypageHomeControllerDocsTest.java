@@ -18,7 +18,7 @@ import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.RecentNewsItem
 import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.StreakSummary;
 import com.muffin.mypage.presentation.home.dto.MypageHomeResponse.WeeklyActivityDay;
 import com.muffin.mypage.presentation.home.dto.WeekDay;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,14 +73,20 @@ class MypageHomeControllerDocsTest {
                                 new RecentNewsItem(
                                         1L,
                                         "한국은행, 기준금리 동결 결정",
+                                        "경제",
                                         "https://example.com/images/news/1.jpg",
-                                        LocalDateTime.now(),
+                                        1234L,
+                                        OffsetDateTime.parse("2026-05-07T09:00:00+09:00"),
+                                        OffsetDateTime.parse("2026-05-08T20:15:00+09:00"),
                                         true),
                                 new RecentNewsItem(
                                         2L,
                                         "미국 기술주 상승세 지속",
+                                        "증권",
                                         "https://example.com/images/news/2.jpg",
-                                        LocalDateTime.now(),
+                                        87L,
+                                        OffsetDateTime.parse("2026-05-07T08:10:00+09:00"),
+                                        OffsetDateTime.parse("2026-05-08T19:40:00+09:00"),
                                         false)));
             }
         };
@@ -111,7 +117,11 @@ class MypageHomeControllerDocsTest {
                                 fieldWithPath("result.recentNews[].title").description("뉴스 제목"),
                                 fieldWithPath("result.recentNews[].thumbnailUrl")
                                         .description("썸네일 URL"),
-                                fieldWithPath("result.recentNews[].readAt").description("열람 시각"),
+                                fieldWithPath("result.recentNews[].categoryName")
+                                        .description("카테고리 표시명"),
+                                fieldWithPath("result.recentNews[].viewCount").description("조회수"),
+                                fieldWithPath("result.recentNews[].publishedAt").description("발행 시각(KST)"),
+                                fieldWithPath("result.recentNews[].viewedAt").description("열람 시각(KST)"),
                                 fieldWithPath("result.recentNews[].isScrapped").description("현재 사용자의 스크랩 여부"))));
     }
 

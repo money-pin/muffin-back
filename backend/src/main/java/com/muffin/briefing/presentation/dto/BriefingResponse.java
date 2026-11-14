@@ -13,7 +13,7 @@ import java.util.List;
  * <p>{@code marketIndices}는 지표별로 기준일 이하의 가장 최근 정상 수신 건을 담는다. 받아오지 못한 지표는 배열에서 빠지므로
  * 카드 수가 5장보다 적을 수 있고, 프론트는 없는 카드를 "데이터 준비 중"으로 렌더링한다.
  *
- * @param isToday 요청한 날짜의 브리핑인지 여부. 주말에 금요일 브리핑으로 대체된 경우 false다
+ * @param isToday 요청한 날짜의 브리핑인지 여부. 그날 브리핑이 없어 직전 발행분으로 대체된 경우 false다
  */
 public record BriefingResponse(
         LocalDate briefingDate,
