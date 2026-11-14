@@ -26,11 +26,11 @@ public class BriefingPublicationScheduler {
     private final Clock clock;
 
     /**
-     * 발행 시각(07:30)에 READY 브리핑을 공개하고, 그때 생성이 끝나지 않았으면 07:50까지 10분마다 다시 시도한다. 주말 미발행 정책은 크론의 요일 지정이
-     * 담당하므로 거래일 캘린더는 참조하지 않는다. 공휴일에도 발행한다.
+     * 발행 시각(07:30)에 READY 브리핑을 공개하고, 그때 생성이 끝나지 않았으면 07:50까지 10분마다 다시 시도한다. 요일을 가리지 않으므로 거래일
+     * 캘린더는 참조하지 않는다. 주말과 공휴일에도 발행한다.
      */
     @Scheduled(
-            cron = "${muffin.batch.briefing-publication.cron:0 30,40,50 7 * * MON-FRI}",
+            cron = "${muffin.batch.briefing-publication.cron:0 30,40,50 7 * * *}",
             zone = "${muffin.batch.briefing-publication.zone:Asia/Seoul}")
     public void publishBriefing() {
         publish();
@@ -41,7 +41,7 @@ public class BriefingPublicationScheduler {
      * 공개했으면 할 일이 없으므로 건너뛴다. 09:00 이후 공개분은 알림을 보내지 않는다(NOTI-01).
      */
     @Scheduled(
-            cron = "${muffin.batch.briefing-publication.catch-up-cron:0 */10 8-23 * * MON-FRI}",
+            cron = "${muffin.batch.briefing-publication.catch-up-cron:0 */10 8-23 * * *}",
             zone = "${muffin.batch.briefing-publication.zone:Asia/Seoul}")
     public void publishLateBriefing() {
         publish();

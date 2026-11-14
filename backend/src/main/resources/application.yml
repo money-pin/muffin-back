@@ -73,11 +73,12 @@ muffin:
       zone: ${MARKET_INDICATOR_ZONE:Asia/Seoul}
 
     briefing-publication:
-      # 크론의 MON-FRI가 "주말 미발행" 정책을 담당한다. 공휴일에는 발행한다.
+      # 요일을 가리지 않고 매일 발행한다. 생성 스케줄러도 매일 돌기 때문에, 발행만 평일로 묶어 두면
+      # 주말에 만들어진 브리핑이 READY로 남아 사용자에게 영영 보이지 않는다.
       # 07:30에 공개하고, 생성이 늦으면 23:50까지 10분마다 다시 시도한다. 알림은 09:00 전 공개분만 보낸다.
       scheduler-enabled: ${BRIEFING_PUBLICATION_ENABLED:true}
-      cron: ${BRIEFING_PUBLICATION_CRON:0 30,40,50 7 * * MON-FRI}
-      catch-up-cron: ${BRIEFING_PUBLICATION_CATCH_UP_CRON:0 */10 8-23 * * MON-FRI}
+      cron: ${BRIEFING_PUBLICATION_CRON:0 30,40,50 7 * * *}
+      catch-up-cron: ${BRIEFING_PUBLICATION_CATCH_UP_CRON:0 */10 8-23 * * *}
       zone: ${BRIEFING_PUBLICATION_ZONE:Asia/Seoul}
 
     quiz-generation-retry:

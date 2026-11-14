@@ -73,8 +73,8 @@ public class BriefingQueryService {
     private final Clock clock;
 
     /**
-     * 오늘의 브리핑. 오늘 발행분이 없으면 최근 발행분으로 대체하고 {@code isToday=false}로 알린다. 주말에 들어오면 금요일
-     * 브리핑이 보이는 동작이 이것이다.
+     * 오늘의 브리핑. 오늘 발행분이 없으면 최근 발행분으로 대체하고 {@code isToday=false}로 알린다. 수집이 부족해 그날
+     * 브리핑이 아예 만들어지지 않은 날 직전 발행분이 보이는 동작이 이것이다.
      */
     @Transactional(readOnly = true)
     public BriefingResponse getTodayBriefing() {
