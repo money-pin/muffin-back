@@ -9,6 +9,8 @@ import com.muffin.auth.domain.AccessTokenProvider;
 import com.muffin.character.domain.characterprofile.CharacterProfile;
 import com.muffin.character.domain.characterprofile.CharacterRepository;
 import com.muffin.character.domain.enums.MuffinType;
+import com.muffin.news.domain.category.Category;
+import com.muffin.news.domain.category.CategoryRepository;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.readhistory.ReadHistory;
@@ -44,6 +46,9 @@ class MypageHomeControllerTest {
 
     @Autowired
     private AccessTokenProvider accessTokenProvider;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -110,10 +115,19 @@ class MypageHomeControllerTest {
     }
 
     private News saveReadNews(Long userId, String title, String originalUrl) {
+        Long categoryId = economyCategoryId();
         News news = newsRepository.save(
-                News.processing(1L, title, "테스트뉴스", LocalDateTime.now(), "http://thumb", originalUrl));
+                News.processing(categoryId, title, "테스트뉴스", LocalDateTime.now(), "http://thumb", originalUrl));
         readHistoryRepository.save(ReadHistory.create(userId, news.getId()));
         return news;
+    }
+
+    /** 홈 카드가 카테고리 표시명을 함께 내려주므로 조인 대상이 실제로 있어야 한다. */
+    private Long economyCategoryId() {
+        return categoryRepository
+                .findByName("경제")
+                .orElseGet(() -> categoryRepository.save(Category.create("경제", null)))
+                .getId();
     }
 
     private String bearerTokenFor(Long userId) {
@@ -139,7 +153,12 @@ class MypageHomeControllerTest {
                 .andExpect(jsonPath("$.result.recentNews.length()", is(2)))
                 .andExpect(jsonPath("$.result.recentNews[0].title", is("뉴스2")))
                 .andExpect(jsonPath("$.result.recentNews[0].isScrapped", is(true)))
-                .andExpect(jsonPath("$.result.recentNews[1].isScrapped", is(false)));
+                .andExpect(jsonPath("$.result.recentNews[1].isScrapped", is(false)))
+                // 홈과 최근 읽은 뉴스 목록이 같은 카드를 그린다. 아래 네 값이 빠지면 그 화면에서 조회수와 날짜가 빈 값이 된다.
+                .andExpect(jsonPath("$.result.recentNews[0].categoryName", is("경제")))
+                .andExpect(jsonPath("$.result.recentNews[0].viewCount").exists())
+                .andExpect(jsonPath("$.result.recentNews[0].publishedAt").exists())
+                .andExpect(jsonPath("$.result.recentNews[0].viewedAt").exists());
     }
 
     @Test

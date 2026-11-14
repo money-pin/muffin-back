@@ -74,7 +74,15 @@ class MypageHomeQueryServiceTest {
         when(quizSessionRepository.findDatesByUserIdAndStatus(USER_ID, QuizSessionStatus.FINISHED))
                 .thenReturn(List.of(LocalDate.of(2026, 7, 23)));
         when(newsQueryRepository.findRecentReadNews(any(), anyInt()))
-                .thenReturn(List.of(new RecentReadNewsRow(10L, "제목", "http://thumb", LocalDateTime.now(), true)));
+                .thenReturn(List.of(new RecentReadNewsRow(
+                        10L,
+                        "제목",
+                        "경제",
+                        "http://thumb",
+                        1234L,
+                        LocalDateTime.of(2026, 7, 23, 9, 0),
+                        LocalDateTime.of(2026, 7, 23, 20, 15),
+                        true)));
 
         MypageHomeResponse response = myPageHomeQueryService.getHome(USER_ID);
 
@@ -85,6 +93,11 @@ class MypageHomeQueryServiceTest {
         assertThat(response.recentNews()).hasSize(1);
         assertThat(response.recentNews().get(0).newsId()).isEqualTo(10L);
         assertThat(response.recentNews().get(0).isScrapped()).isTrue();
+        // 홈과 최근 읽은 뉴스 목록이 같은 카드를 그린다. 조회수와 발행 시각이 빠지면 그 화면에서 빈 값이 렌더링된다.
+        assertThat(response.recentNews().get(0).categoryName()).isEqualTo("경제");
+        assertThat(response.recentNews().get(0).viewCount()).isEqualTo(1234L);
+        assertThat(response.recentNews().get(0).publishedAt()).isNotNull();
+        assertThat(response.recentNews().get(0).viewedAt()).isNotNull();
     }
 
     @Test
