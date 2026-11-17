@@ -57,7 +57,10 @@ public record BriefingResponse(
             String referenceSymbol) {}
 
     /**
-     * @param sectors 관련 섹터 칩. NEUTRAL을 제외한 상위 2개까지만 담는다
+     * @param categoryName 이 이슈의 태그. 근거 기사의 카테고리이고, 뉴스 목록 카드의 뱃지와 같은 값이다.
+     *     기사가 삭제됐거나 카테고리를 찾지 못하면 null이다
+     * @param sectors 관련 섹터 칩. NEUTRAL을 제외한 상위 2개까지만 담는다. 태그 기준이 카테고리로 바뀌어 더는
+     *     태그로 쓰지 않지만, 아직 이 필드를 읽는 화면이 있어 남겨 둔다. 프론트가 참조를 끊으면 함께 지운다
      * @param articleAvailable 근거 기사를 열 수 있는지 여부. 기사가 아직 공개 전이거나 삭제됐으면 false이고, 화면은
      *     [기사 보기] 버튼을 숨긴다
      */
@@ -66,6 +69,7 @@ public record BriefingResponse(
             String title,
             String summary,
             String impactLine,
+            String categoryName,
             List<SectorChip> sectors,
             Long newsId,
             boolean articleAvailable) {}

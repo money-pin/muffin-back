@@ -18,6 +18,8 @@ import com.muffin.briefing.domain.enums.BriefingStatus;
 import com.muffin.briefing.domain.enums.MarketIndicator;
 import com.muffin.briefing.domain.enums.MarketIndicatorUnit;
 import com.muffin.briefing.presentation.dto.BriefingResponse;
+import com.muffin.news.domain.category.Category;
+import com.muffin.news.domain.category.CategoryRepository;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.sectorimpact.NewsSectorImpactRepository;
@@ -46,6 +48,7 @@ class BriefingQueryServiceTest {
     private BriefingViewRepository briefingViewRepository;
     private NewsRepository newsRepository;
     private NewsSectorImpactRepository newsSectorImpactRepository;
+    private CategoryRepository categoryRepository;
     private TermDictionaryRepository termDictionaryRepository;
     private SectorRepository sectorRepository;
     private MarketIndicatorPriceRepository marketIndicatorPriceRepository;
@@ -57,10 +60,12 @@ class BriefingQueryServiceTest {
         briefingViewRepository = mock(BriefingViewRepository.class);
         newsRepository = mock(NewsRepository.class);
         newsSectorImpactRepository = mock(NewsSectorImpactRepository.class);
+        categoryRepository = mock(CategoryRepository.class);
         termDictionaryRepository = mock(TermDictionaryRepository.class);
         sectorRepository = mock(SectorRepository.class);
 
         when(sectorRepository.findAll()).thenReturn(List.of());
+        when(categoryRepository.findAllById(any())).thenReturn(List.of());
         when(newsSectorImpactRepository.findByNewsIdIn(any())).thenReturn(List.of());
 
         marketIndicatorPriceRepository = mock(MarketIndicatorPriceRepository.class);
@@ -71,6 +76,7 @@ class BriefingQueryServiceTest {
                 briefingViewRepository,
                 newsRepository,
                 newsSectorImpactRepository,
+                categoryRepository,
                 termDictionaryRepository,
                 sectorRepository,
                 marketIndicatorPriceRepository,
@@ -252,6 +258,42 @@ class BriefingQueryServiceTest {
         queryService.recordView(9L, TODAY);
 
         assertThat(existing.getViewedAt()).isEqualTo(LocalDateTime.of(2026, 7, 20, 8, 0));
+    }
+
+    /**
+     * 섹터를 태그로 쓰면 국내 부동산·생활 기사는 붙을 섹터가 없어 태그가 빈 채로 나간다. 태그 기준을 카테고리로
+     * 통일했으므로, 섹터가 하나도 없어도 태그는 채워져야 한다.
+     */
+    @Test
+    @DisplayName("관련 섹터가 없어도 이슈 태그로 쓸 기사 카테고리를 내려보낸다")
+    void getTodayBriefing_exposesCategoryNameWhenSectorChipsAreEmpty() {
+        givenPublishedToday();
+        givenNews(publishedNews(101L), publishedNews(102L), publishedNews(103L));
+        when(categoryRepository.findAllById(any())).thenReturn(List.of(category(1L, "부동산")));
+
+        BriefingResponse response = queryService.getTodayBriefing();
+
+        assertThat(response.issues())
+                .allSatisfy(issue -> assertThat(issue.sectors()).isEmpty())
+                .extracting(BriefingResponse.Issue::categoryName)
+                .containsOnly("부동산");
+    }
+
+    @Test
+    @DisplayName("카테고리를 찾지 못하면 categoryName은 null이다")
+    void getTodayBriefing_leavesCategoryNameNullWhenCategoryIsMissing() {
+        givenPublishedToday();
+        givenNews(publishedNews(101L), publishedNews(102L), publishedNews(103L));
+
+        assertThat(queryService.getTodayBriefing().issues())
+                .extracting(BriefingResponse.Issue::categoryName)
+                .containsOnlyNulls();
+    }
+
+    private static Category category(Long categoryId, String name) {
+        Category category = Category.create(name, null);
+        ReflectionTestUtils.setField(category, "id", categoryId);
+        return category;
     }
 
     private void givenPublishedToday() {

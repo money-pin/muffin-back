@@ -18,6 +18,8 @@ import com.muffin.briefing.presentation.dto.BriefingDateListResponse;
 import com.muffin.briefing.presentation.dto.BriefingDateListResponse.BriefingDateItem;
 import com.muffin.briefing.presentation.dto.BriefingResponse;
 import com.muffin.briefing.presentation.dto.BriefingViewResponse;
+import com.muffin.news.domain.category.Category;
+import com.muffin.news.domain.category.CategoryRepository;
 import com.muffin.news.domain.news.News;
 import com.muffin.news.domain.news.NewsRepository;
 import com.muffin.news.domain.news.enums.NewsStatus;
@@ -31,6 +33,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +69,7 @@ public class BriefingQueryService {
     private final BriefingViewRepository briefingViewRepository;
     private final NewsRepository newsRepository;
     private final NewsSectorImpactRepository newsSectorImpactRepository;
+    private final CategoryRepository categoryRepository;
     private final TermDictionaryRepository termDictionaryRepository;
     private final SectorRepository sectorRepository;
     private final MarketIndicatorPriceRepository marketIndicatorPriceRepository;
@@ -161,12 +165,15 @@ public class BriefingQueryService {
                 : newsSectorImpactRepository.findByNewsIdIn(newsIds).stream()
                         .collect(Collectors.groupingBy(NewsSectorImpact::getNewsId));
 
+        Map<Long, String> categoryNamesById = categoryNames(newsById.values());
+
         List<BriefingResponse.Issue> issues = briefing.getIssues().stream()
                 .map(issue -> new BriefingResponse.Issue(
                         issue.getIssueOrder(),
                         issue.getTitle(),
                         issue.getSummary(),
                         issue.getImpactLine(),
+                        categoryName(newsById.get(issue.getNewsId()), categoryNamesById),
                         sectorChips(impactsByNewsId.getOrDefault(issue.getNewsId(), List.of()), sectorsById),
                         issue.getNewsId(),
                         isArticleAvailable(newsById.get(issue.getNewsId()))))
@@ -231,6 +238,34 @@ public class BriefingQueryService {
                 .map(sector -> new BriefingResponse.SectorChip(sector.getSectorCode(), sector.getName()))
                 .limit(MAX_SECTOR_CHIPS)
                 .toList();
+    }
+
+    /** 이슈에 걸린 기사들의 카테고리 이름을 한 번에 읽는다. */
+    private Map<Long, String> categoryNames(Collection<News> newsList) {
+        List<Long> categoryIds = newsList.stream()
+                .map(News::getCategoryId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (categoryIds.isEmpty()) {
+            return Map.of();
+        }
+        return categoryRepository.findAllById(categoryIds).stream()
+                .collect(Collectors.toMap(Category::getId, Category::getName));
+    }
+
+    /**
+     * 이슈에 붙는 태그. 뉴스 목록 카드와 같은 기준인 기사 카테고리를 쓴다.
+     *
+     * <p>섹터를 태그로 쓰던 때는 국내 부동산·생활 기사의 태그가 비었다. 섹터는 모의투자 대상 12개뿐이고 주식 섹터는
+     * 전부 미국 산업이라 그런 기사가 붙을 칸이 없기 때문이다. 같은 기사가 뉴스 목록에서는 카테고리 뱃지를 제대로
+     * 달고 있으므로, 두 화면의 태그 기준을 카테고리로 통일한다.
+     */
+    private static String categoryName(News news, Map<Long, String> categoryNamesById) {
+        if (news == null || news.getCategoryId() == null) {
+            return null;
+        }
+        return categoryNamesById.get(news.getCategoryId());
     }
 
     private static BriefingResponse.SectorScoreboard sectorScoreboard(
